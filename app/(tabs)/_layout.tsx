@@ -1,21 +1,83 @@
-import { Tabs } from "expo-router";
-import React from "react";
-import { Platform } from "react-native";
+// app/(tabs)/_layout.tsx
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import React from 'react';
 
-export default function TabLayout() {
+export default function RootLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: "absolute",
-          },
-          default: {},
-        }),
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#F0F0F0',
+          paddingBottom: 28,
+          paddingTop: 12,
+          height: 90,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 5,
+        },
+        tabBarActiveTintColor: '#00C851',
+        tabBarInactiveTintColor: '#999',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+          marginTop: 6,
+        },
+        tabBarIconStyle: {
+          marginBottom: 4,
+        },
       }}
-    ></Tabs>
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Accueil',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="enterprise"
+        options={{
+          title: 'Entreprise',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="location" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="favorites"
+        options={{
+          title: 'Favoris',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="heart-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profil',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen 
+        name="enterprise-details" 
+        options={{
+          title: 'Détails de l\'entreprise',
+          // presentation: 'card',
+          headerShown: false,
+        }}
+      />
+    </Tabs>
   );
-}
+};
+

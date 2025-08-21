@@ -15,6 +15,7 @@ const Login = () => {
   const handleLogin = () => {
     console.log("Email:", email);
     console.log("Password:", password);
+    router.push("/(tabs)")
     // Ici tu pourrais appeler ton API pour authentification
   };
 
