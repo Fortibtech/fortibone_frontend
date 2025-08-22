@@ -6,11 +6,10 @@ import {
   Image,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 // Types
@@ -41,7 +40,7 @@ const enterprises: Enterprise[] = [
     name: 'Newbest',
     rating: 4.5,
     category: 'Localisation',
-    image: 'https://images.unsplash.com/photo-1560472355-536de3962603?w=200',
+    image: require("@/assets/images/entreprise3.png"),
     categoryId: 'shopping'
   },
   {
@@ -49,7 +48,7 @@ const enterprises: Enterprise[] = [
     name: 'BlancheTech',
     rating: 4.8,
     category: 'Localisation',
-    image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200',
+    image: require("@/assets/images/entreprise2.png"),
     categoryId: 'shopping'
   },
   {
@@ -57,7 +56,7 @@ const enterprises: Enterprise[] = [
     name: 'Newbest',
     rating: 4.5,
     category: 'Localisation',
-    image: 'https://images.unsplash.com/photo-1560472355-536de3962603?w=200',
+    image: require("@/assets/images/entreprise3.png"),
     categoryId: 'food'
   },
   {
@@ -65,7 +64,7 @@ const enterprises: Enterprise[] = [
     name: 'BlancheTech',
     rating: 4.8,
     category: 'Localisation',
-    image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200',
+    image: require("@/assets/images/entreprise2.png"),
     categoryId: 'cosmetic'
   },
   {
@@ -73,7 +72,7 @@ const enterprises: Enterprise[] = [
     name: 'Newbest',
     rating: 4.5,
     category: 'Localisation',
-    image: 'https://images.unsplash.com/photo-1560472355-536de3962603?w=200',
+    image: require("@/assets/images/entreprise3.png"),
     categoryId: 'food'
   },
   {
@@ -81,7 +80,7 @@ const enterprises: Enterprise[] = [
     name: 'BlancheTech',
     rating: 4.8,
     category: 'Localisation',
-    image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200',
+    image: require("@/assets/images/entreprise2.png"),
     categoryId: 'shopping'
   },
 ];
@@ -90,7 +89,7 @@ const EnterprisePage: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
   const navigateToEnterpriseDetails = (enterpriseId: number): void => {
-    router.push(`/(tabs)/enterprise-details?id=${enterpriseId}`);
+    router.push(`/enterprise-details?id=${enterpriseId}`);
   };
 
   const filteredEnterprises: Enterprise[] = activeCategory === 'all' 
@@ -122,6 +121,7 @@ const EnterprisePage: React.FC = () => {
             onPress={() => setActiveCategory(category.id)}
             activeOpacity={0.8}
           >
+            {activeCategory === category.id && (<Ionicons name='flame-outline' size={20} color={'red'}/>)}
             <Text style={[
               styles.tabText,
               activeCategory === category.id && styles.activeTabText
@@ -142,16 +142,18 @@ const EnterprisePage: React.FC = () => {
       activeOpacity={0.8}
     >
       <Image 
-        source={{ uri: enterprise.image }} 
+        source={enterprise.image } 
         style={styles.enterpriseImage} 
       />
       <View style={styles.enterpriseContent}>
-        <Text style={styles.enterpriseTitle} numberOfLines={1}>
-          {enterprise.name}
-        </Text>
-        <Text style={styles.enterpriseCategory}>
-          {enterprise.category}
-        </Text>
+        <View>
+          <Text style={styles.enterpriseTitle} numberOfLines={1}>
+            {enterprise.name}
+          </Text>
+          <Text style={styles.enterpriseCategory}>
+            {enterprise.category}
+          </Text>
+        </View>
         <View style={styles.ratingContainer}>
           <Ionicons name="star" size={14} color="#FFD700" />
           <Text style={styles.rating}>{enterprise.rating}</Text>
@@ -174,7 +176,7 @@ const EnterprisePage: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+      {/* <StatusBar backgroundColor="#fff" barStyle="dark-content" /> */}
       
       {renderHeader()}
       {renderCategoryTabs()}
@@ -190,28 +192,31 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    // justifyContent: 'space-between',
+    // alignItems: 'center',
+    padding: 15,
+    // paddingVertical: 16,
+    margin: 20,
+    borderRadius: 16,
+    // backgroundColor: '#fff',
+    borderWidth: 0.5,
+    borderColor: 'gray',
+    // borderBottomColor: '#F0F0F0',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#333',
+    color: 'gray',
     letterSpacing: 0.3,
   },
   placeholder: {
     width: 32,
   },
   tabContainer: {
-    backgroundColor: '#fff',
+    // backgroundColor: '#fff',
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    // borderBottomWidth: 1,
+    // borderBottomColor: '#F0F0F0',
   },
   tabScrollContent: {
     paddingHorizontal: 20,
@@ -219,7 +224,7 @@ const styles = StyleSheet.create({
   tab: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 22,
+    borderRadius: 16,
     marginRight: 12,
     backgroundColor: '#F5F6FA',
     borderWidth: 1,
@@ -228,6 +233,10 @@ const styles = StyleSheet.create({
   activeTab: {
     backgroundColor: '#00C851',
     borderColor: '#00C851',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    alignContent: 'space-around',
+    flexDirection: 'row'
   },
   tabText: {
     fontSize: 14,
@@ -237,6 +246,7 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#fff',
     fontWeight: '600',
+    marginLeft: 5
   },
   content: {
     flex: 1,
@@ -270,6 +280,9 @@ const styles = StyleSheet.create({
   },
   enterpriseContent: {
     padding: 14,
+    flexDirection: 'row',
+    alignContent: 'space-between',
+    justifyContent: 'space-between'
   },
   enterpriseTitle: {
     fontSize: 15,

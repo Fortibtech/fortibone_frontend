@@ -43,18 +43,18 @@ export default function RootLayout() {
         }}
       />
       <Tabs.Screen
-        name="enterprise"
+        name="entreprise"
         options={{
           title: 'Entreprise',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="location" size={size} color={color} />
+            <Ionicons name="location-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="favorites"
         options={{
-          title: 'Favoris',
+          title: 'Inventaire',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="heart-outline" size={size} color={color} />
           ),
@@ -63,20 +63,13 @@ export default function RootLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: 'Chat',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
-      <Tabs.Screen 
-        name="enterprise-details" 
-        options={{
-          title: 'Détails de l\'entreprise',
-          // presentation: 'card',
-          headerShown: false,
-        }}
-      />
+      
     </Tabs>
   );
 };
