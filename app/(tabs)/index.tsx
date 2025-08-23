@@ -3,16 +3,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { JSX } from 'react';
 import {
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import Svg, { Polygon } from 'react-native-svg';
 
 // Types
 interface Enterprise {
@@ -28,42 +29,73 @@ const enterprises: Enterprise[] = [
   {
     id: 1,
     name: 'Chococam',
-    rating: 5.0,
+    rating: 50,
     category: 'Alimentation',
-    image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200',
+    image: require("@/assets/images/entreprise1.png"),
     discount: '50%'
   },
   {
     id: 2,
     name: 'Cappuccino',
-    rating: 4.5,
+    rating: 45,
     category: 'Alimentation',
-    image: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=200',
+    image: require("@/assets/images/entreprise2.png"),
     discount: '45%'
   },
   {
     id: 3,
     name: 'Newbest',
-    rating: 4.5,
+    rating: 45,
     category: 'Localisation',
-    image: 'https://images.unsplash.com/photo-1560472355-536de3962603?w=200'
+    image: require("@/assets/images/entreprise3.png")
   },
   {
     id: 4,
     name: 'BlancheTech',
-    rating: 4.8,
+    rating: 48,
     category: 'Localisation',
-    image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200'
-  }
+    image: require("@/assets/images/entreprise2.png")
+  },
+  // {
+  //   id: 5,
+  //   name: 'Chococam',
+  //   rating: 50,
+  //   category: 'Alimentation',
+  //   image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200',
+  //   discount: '50%'
+  // },
+  // {
+  //   id: 6,
+  //   name: 'Cappuccino',
+  //   rating: 45,
+  //   category: 'Alimentation',
+  //   image: 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=200',
+  //   discount: '45%'
+  // },
+  // {
+  //   id: 7,
+  //   name: 'Newbest',
+  //   rating: 45,
+  //   category: 'Localisation',
+  //   image: 'https://images.unsplash.com/photo-1560472355-536de3962603?w=200'
+  // },
+  // {
+  //   id: 8,
+  //   name: 'BlancheTech',
+  //   rating: 48,
+  //   category: 'Localisation',
+  //   image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200'
+  // }
 ];
 
 const HomePage: React.FC = () => {
   const navigateToEnterpriseDetails = (enterpriseId: number): void => {
-    router.push(`/(tabs)/enterprise-details?id=${enterpriseId}`);
+    router.push(`/enterprise-details?id=${enterpriseId}`);
   };
 
   const renderHeader = (): JSX.Element => (
-    <View style={styles.header}><Ionicons name="apps" size={24} color="#fff" />
+    <View style={styles.header}>
+    <View style={styles.header2}><Ionicons name="grid-outline" size={24} color="#fff" />
       <View style={styles.headerLeft}>
         
         <View style={styles.logoContainer}>
@@ -75,18 +107,20 @@ const HomePage: React.FC = () => {
         </View>
       </View>
       <TouchableOpacity style={styles.notificationButton}>
-        <Ionicons name="notifications-outline" size={24} color="#fff" />
+        <Ionicons name="cart-outline" size={24} color="#fff" />
       </TouchableOpacity>
+      </View>
+      {renderSearchBar()}
     </View>
   );
 
   const renderSearchBar = (): JSX.Element => (
     <View style={styles.searchContainer}>
-      <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+      <Ionicons name="search" size={20} color="white" style={styles.searchIcon} />
       <TextInput
         style={styles.searchInput}
         placeholder="Recherche"
-        placeholderTextColor="#999"
+        placeholderTextColor="white"
       />
     </View>
   );
@@ -94,18 +128,39 @@ const HomePage: React.FC = () => {
   const renderPromoBanner = (): JSX.Element => (
     <View style={styles.bannerContainer}>
       <View style={styles.banner}>
-        <View style={styles.bannerContent}>
-          <Text style={styles.bannerTitle}>Don't Miss Out!</Text>
-          <Text style={styles.bannerSubtitle}>Discount up to 50%</Text>
-          <TouchableOpacity style={styles.bannerButton}>
-            <Text style={styles.bannerButtonText}>Check Now</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.bannerImageContainer}>
-          <Image 
-            source={{ uri: 'https://images.unsplash.com/photo-1560472355-536de3962603?w=150' }}
-            style={styles.bannerImage}
+        {/* Fond de base (couleur du bas) */}
+        <View style={styles.bannerBackground} />
+        
+        {/* Forme SVG pour la division oblique */}
+        <Svg
+          height="100%"
+          width="90%"
+          style={styles.svgOverlay}
+          viewBox="10 0 100 80"
+          preserveAspectRatio="none"
+        >
+          {/* Polygone pour la section du haut (forme oblique) */}
+          <Polygon
+            points="0,0 100,0 65,90 0,90"
+            fill="#FFF9CD"
           />
+        </Svg>
+        
+        {/* Contenu par-dessus */}
+        <View style={styles.bannerContentWrapper}>
+          <View style={styles.bannerContent}>
+            <Text style={styles.bannerTitle}>Don't Miss Out!</Text>
+            <Text style={styles.bannerSubtitle}>Discount up to 50%</Text>
+            <TouchableOpacity style={styles.bannerButton}>
+              <Text style={styles.bannerButtonText}>Check Now</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.bannerImageContainer}>
+            <Image 
+              source={require("@/assets/images/Image.png")}
+              style={styles.bannerImage}
+            />
+          </View>
         </View>
       </View>
     </View>
@@ -118,20 +173,19 @@ const HomePage: React.FC = () => {
       onPress={() => navigateToEnterpriseDetails(enterprise.id)}
       activeOpacity={0.8}
     >
-      <Image source={{ uri: enterprise.image }} style={styles.gridImage} />
+      <Image source={enterprise.image} style={styles.gridImage} />
       <View style={styles.gridContent}>
         <Text style={styles.gridTitle} numberOfLines={1}>{enterprise.name}</Text>
         <Text style={styles.gridCategory}>{enterprise.category}</Text>
         <View style={styles.gridFooter}>
           <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={14} color="#FFD700" />
-            <Text style={styles.rating}>{enterprise.rating}</Text>
+            {/* <Ionicons name="star" size={14} color="#FFD700" /> */}
+            <Text style={styles.rating}>{enterprise.rating} k</Text>
           </View>
-          {enterprise.discount && (
             <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>{enterprise.discount}</Text>
+              <Ionicons name='add' style={styles.discountText} />
             </View>
-          )}
+          
         </View>
       </View>
     </TouchableOpacity>
@@ -142,7 +196,6 @@ const HomePage: React.FC = () => {
       <StatusBar backgroundColor="#00C851" barStyle="light-content" />
       
       {renderHeader()}
-      {renderSearchBar()}
       {renderPromoBanner()}
 
       <ScrollView 
@@ -164,14 +217,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
+    backgroundColor: '#059669',
+    height: 300,
+  },
+  header2: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#00C851',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    height: 100,
-    paddingTop: 30,
+    paddingTop: 40,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -203,10 +258,10 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#047D58',
     marginHorizontal: 20,
-    marginVertical: 16,
-    borderRadius: 25,
+    marginTop: 16,
+    borderRadius: 10,
     paddingHorizontal: 16,
     height: 48,
     shadowColor: '#000',
@@ -225,26 +280,58 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   bannerContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
+    position: 'relative',
+    padding: 20,
+    marginTop: -140,
   },
   banner: {
-    backgroundColor: '#FFF3CD',
-    borderRadius: 16,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderRadius: 20,
+    position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    height: 170,
+    overflow: 'hidden',
+  },
+  
+  bannerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'white', // Couleur du bas (verte)
+  },
+  
+  svgOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  
+  bannerContentWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 2,
   },
   bannerContent: {
     flex: 1,
+    paddingVertical: 20,
+    paddingHorizontal: 30,
+    // width: 300,
+    // height: 150
   },
   bannerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#333',
     marginBottom: 6,
@@ -256,12 +343,12 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   bannerButton: {
-    backgroundColor: '#00C851',
+    backgroundColor: '#059669',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
     alignSelf: 'flex-start',
-    shadowColor: '#00C851',
+    shadowColor: '#059669',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -273,14 +360,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bannerImageContainer: {
-    width: 80,
-    height: 80,
-    marginLeft: 16,
+    width: 200,
+    height: 150,
+    marginRight: -40,
+    marginTop: 80,
   },
+  
   bannerImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 12,
+    width: '80%',
+    height: '80%',
+    borderRadius: 20,
   },
   content: {
     flex: 1,
@@ -295,7 +384,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   gridItem: {
-    width: '48%',
+    width: '45%',
     backgroundColor: '#fff',
     borderRadius: 16,
     marginBottom: 16,
@@ -310,20 +399,22 @@ const styles = StyleSheet.create({
     height: 120,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16
   },
   gridContent: {
-    padding: 14,
+    padding: 10,
   },
   gridTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 1,
   },
   gridCategory: {
     fontSize: 12,
     color: '#666',
-    marginBottom: 10,
+    marginBottom: 1,
     fontWeight: '400',
   },
   gridFooter: {
@@ -339,18 +430,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#333',
     marginLeft: 4,
-    fontWeight: '500',
+    fontWeight: '800',
   },
   discountBadge: {
     backgroundColor: '#FFD700',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
+    // paddingHorizontal: 0,
+    // paddingVertical: 0,
+    borderRadius: 80,
+    width: 40,
+    height:  40,
+    flexDirection: 'column',
+    // flex: 0.01,
+    alignItems: 'center',
+    
+    justifyContent: 'center',
+    alignContent: 'center'
   },
   discountText: {
-    fontSize: 10,
+    fontSize: 30,
     fontWeight: '700',
-    color: '#333',
+    color: 'white',
   },
 });
 
