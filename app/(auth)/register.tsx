@@ -272,8 +272,8 @@ const Register = () => {
   const handleCreateAccount = () => {
     if (isFormValid() && validatePassword(formData.motDePasse)) {
       console.log('Données du compte:', formData);
-      router.push("/(auth)/login")
-    }
+      
+    }router.push("/(professionnel)")
   };
 
   const handleGenderSelect = (gender: string) => {
