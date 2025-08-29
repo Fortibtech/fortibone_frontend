@@ -1,10 +1,13 @@
-import BackButton from '@/components/BackButton';
-import CustomButton from '@/components/CustomButton';
-import InputField from '@/components/InputField';
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { registerUser } from "@/api/authService";
+import { RegisterPayload } from "@/types/auth";
+import BackButton from "@/components/BackButton";
+import CustomButton from "@/components/CustomButton";
+import InputField from "@/components/InputField";
+import { useUserStore } from "@/store/userStore";
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -15,14 +18,15 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
+  Alert,
+} from "react-native";
 
-// Modal de sélection de date
+// --- Modal Date Picker ---
 const DatePickerModal = ({
   visible,
   onClose,
   onSelect,
-  selectedDate
+  selectedDate,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -33,17 +37,15 @@ const DatePickerModal = ({
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
 
   const handleDateChange = (event: any, date?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       setShowAndroidPicker(false);
-      if (event.type === 'set' && date) {
+      if (event.type === "set" && date) {
         setTempDate(date);
         onSelect(date);
       }
       onClose();
-    } else {
-      if (date) {
-        setTempDate(date);
-      }
+    } else if (date) {
+      setTempDate(date);
     }
   };
 
@@ -52,22 +54,11 @@ const DatePickerModal = ({
     onClose();
   };
 
-  // Effect pour déclencher le picker Android quand le modal devient visible
   React.useEffect(() => {
-    if (visible && Platform.OS === 'android') {
-      setShowAndroidPicker(true);
-    }
+    if (visible && Platform.OS === "android") setShowAndroidPicker(true);
   }, [visible]);
 
-  const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-  // Pour Android, on affiche directement le DateTimePicker natif
-  if (Platform.OS === 'android' && showAndroidPicker) {
+  if (Platform.OS === "android" && showAndroidPicker) {
     return (
       <DateTimePicker
         value={tempDate}
@@ -79,19 +70,17 @@ const DatePickerModal = ({
     );
   }
 
-  // Pour iOS, on affiche le modal personnalisé
-  if (Platform.OS === 'ios') {
+  if (Platform.OS === "ios") {
     return (
       <Modal
         visible={visible}
         animationType="fade"
-        transparent={true}
+        transparent
         onRequestClose={onClose}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.dateModalContainer}>
             <Text style={styles.modalTitle}>Sélectionner une date</Text>
-            
             <DateTimePicker
               value={tempDate}
               mode="date"
@@ -100,17 +89,15 @@ const DatePickerModal = ({
               maximumDate={new Date()}
               style={styles.datePicker}
             />
-            
             <View style={styles.dateModalButtons}>
-              <TouchableOpacity 
-                style={[styles.dateButton, styles.cancelButton]} 
+              <TouchableOpacity
+                style={[styles.dateButton, styles.cancelButton]}
                 onPress={onClose}
               >
                 <Text style={styles.cancelButtonText}>Annuler</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.dateButton, styles.confirmButton]} 
+              <TouchableOpacity
+                style={[styles.dateButton, styles.confirmButton]}
                 onPress={handleConfirm}
               >
                 <Text style={styles.confirmButtonText}>Confirmer</Text>
@@ -125,22 +112,20 @@ const DatePickerModal = ({
   return null;
 };
 
-const GenderSelectionModal = ({ 
-  visible, 
-  onClose, 
+// --- Modal Gender ---
+const GenderSelectionModal = ({
+  visible,
+  onClose,
   onSelect,
-  selectedGender 
-}: { 
+  selectedGender,
+}: {
   visible: boolean;
   onClose: () => void;
   onSelect: (gender: string) => void;
   selectedGender: string;
 }) => {
-  const [tempSelectedGender, setTempSelectedGender] = useState<string>(selectedGender);
-
-  const handleGenderSelect = (gender: string) => {
-    setTempSelectedGender(gender);
-  };
+  const [tempSelectedGender, setTempSelectedGender] =
+    useState<string>(selectedGender);
 
   const handleSave = () => {
     if (tempSelectedGender) {
@@ -153,69 +138,49 @@ const GenderSelectionModal = ({
     <Modal
       visible={visible}
       animationType="fade"
-      transparent={true}
+      transparent
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Sélectionnez le sexe</Text>
-          
           <View style={styles.genderOptions}>
-            {/* Option Masculin */}
-            <TouchableOpacity 
-              style={[
-                styles.genderOption,
-                tempSelectedGender === 'Masculin' && styles.selectedOption
-              ]}
-              onPress={() => handleGenderSelect('Masculin')}
-            >
-              <Text style={[
-                styles.genderText,
-                tempSelectedGender === 'Masculin' && styles.selectedText
-              ]}>
-                Masculin
-              </Text>
-              <View style={[
-                styles.radioButton,
-                tempSelectedGender === 'Masculin' && styles.radioButtonSelected
-              ]}>
-                {tempSelectedGender === 'Masculin' && (
-                  <Ionicons name="checkmark" size={16} color="#fff" />
-                )}
-              </View>
-            </TouchableOpacity>
-
-            {/* Option Féminin */}
-            <TouchableOpacity 
-              style={[
-                styles.genderOption,
-                tempSelectedGender === 'Féminin' && styles.selectedOption
-              ]}
-              onPress={() => handleGenderSelect('Féminin')}
-            >
-              <Text style={[
-                styles.genderText,
-                tempSelectedGender === 'Féminin' && styles.selectedText
-              ]}>
-                Féminin
-              </Text>
-              <View style={[
-                styles.radioButton,
-                tempSelectedGender === 'Féminin' && styles.radioButtonSelected
-              ]}>
-                {tempSelectedGender === 'Féminin' && (
-                  <Ionicons name="checkmark" size={16} color="#fff" />
-                )}
-              </View>
-            </TouchableOpacity>
+            {["Masculin", "Féminin"].map((gender) => (
+              <TouchableOpacity
+                key={gender}
+                style={[
+                  styles.genderOption,
+                  tempSelectedGender === gender && styles.selectedOption,
+                ]}
+                onPress={() => setTempSelectedGender(gender)}
+              >
+                <Text
+                  style={[
+                    styles.genderText,
+                    tempSelectedGender === gender && styles.selectedText,
+                  ]}
+                >
+                  {gender}
+                </Text>
+                <View
+                  style={[
+                    styles.radioButton,
+                    tempSelectedGender === gender && styles.radioButtonSelected,
+                  ]}
+                >
+                  {tempSelectedGender === gender && (
+                    <Ionicons name="checkmark" size={16} color="#fff" />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
-
           <View style={styles.modalButtonContainer}>
             <CustomButton
               title="Save"
               onPress={handleSave}
-              backgroundColor={tempSelectedGender ? '#00C851' : '#E0E0E0'}
-              textColor={tempSelectedGender ? '#fff' : '#999'}
+              backgroundColor={tempSelectedGender ? "#00C851" : "#E0E0E0"}
+              textColor={tempSelectedGender ? "#fff" : "#999"}
               width="100%"
               height={40}
               borderRadius={20}
@@ -228,84 +193,190 @@ const GenderSelectionModal = ({
   );
 };
 
-// Écran de création de compte
-const Register = () => {
-  const [formData, setFormData] = useState({
-    prenom: '',
-    nom: '',
-    sexe: '',
-    pays: '',
-    ville: '',
-    dateNaissance: '',
-    email: '',
-    motDePasse: ''
-  });
-  const router = useRouter();
-  const [showGenderModal, setShowGenderModal] = useState(false);
-  const [showDateModal, setShowDateModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+// --- Modal Profile Type ---
+const ProfileTypeModal = ({
+  visible,
+  onClose,
+  onSelect,
+  selectedType,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (type: "PARTICULIER" | "PRO") => void;
+  selectedType: string;
+}) => {
+  const [tempType, setTempType] = useState<string>(selectedType);
+  const options: { value: "PARTICULIER" | "PRO"; label: string }[] = [
+    { value: "PARTICULIER", label: "Particulier" },
+    { value: "PRO", label: "Professionnel" },
+  ];
 
-  const updateField = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const isFormValid = () => {
-    return Object.values(formData).every(value => value.trim() !== '') &&
-    validateEmail(formData.email) &&
-    validatePassword(formData.motDePasse);
-  };
-
-  const validatePassword = (password: string) => {
-    const hasMinLength = password.length >= 8;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    
-    return hasMinLength && hasUpperCase && hasLowerCase && hasNumber;
-  };
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleCreateAccount = () => {
-    if (isFormValid() && validatePassword(formData.motDePasse)) {
-      console.log('Données du compte:', formData);
-      router.push("/(auth)/login")
+  const handleSave = () => {
+    if (tempType) {
+      onSelect(tempType as "PARTICULIER" | "PRO");
+      onClose();
     }
   };
 
-  const handleGenderSelect = (gender: string) => {
-    updateField('sexe', gender);
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Type de profil</Text>
+          {options.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[
+                styles.genderOption,
+                tempType === opt.value && styles.selectedOption,
+              ]}
+              onPress={() => setTempType(opt.value)}
+            >
+              <Text
+                style={[
+                  styles.genderText,
+                  tempType === opt.value && styles.selectedText,
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          <View style={styles.modalButtonContainer}>
+            <CustomButton
+              title="Save"
+              onPress={handleSave}
+              backgroundColor={tempType ? "#00C851" : "#E0E0E0"}
+              textColor={tempType ? "#fff" : "#999"}
+              width="100%"
+              height={40}
+              borderRadius={20}
+              fontSize={14}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+// --- Écran Register ---
+const Register = () => {
+  const [formData, setFormData] = useState({
+    prenom: "",
+    nom: "",
+    sexe: "",
+    pays: "",
+    ville: "",
+    dateNaissance: "",
+    email: "",
+    motDePasse: "",
+    phoneNumber: "",
+    profileType: "",
+  });
+
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [showProfileTypeModal, setShowProfileTypeModal] = useState(false);
+  const router = useRouter();
+  // const router = useRouter();
+
+  const updateField = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const validatePassword = (password: string) => {
+    return (
+      password.length >= 8 &&
+      /[A-Z]/.test(password) &&
+      /[a-z]/.test(password) &&
+      /\d/.test(password)
+    );
+  };
+
+  const validateEmail = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const isFormValid = () => {
+    return (
+      Object.values(formData).every((v) => v.trim() !== "") &&
+      validateEmail(formData.email) &&
+      validatePassword(formData.motDePasse)
+    );
+  };
+
+  const handleCreateAccount = async () => {
+    if (!isFormValid()) {
+      Alert.alert("Erreur", "Veuillez remplir tous les champs correctement.");
+      return;
+    }
+
+    const payload: RegisterPayload = {
+      firstName: formData.prenom,
+      lastName: formData.nom,
+      gender: formData.sexe === "Masculin" ? "MALE" : "FEMALE",
+      profileType: formData.profileType === "PRO" ? "PRO" : "PARTICULIER",
+      country: formData.pays.trim(),
+      city: formData.ville.trim(),
+      dateOfBirth: selectedDate
+        ? selectedDate.toISOString().split("T")[0]
+        : "1990-01-01",
+      email: formData.email.trim(),
+      password: formData.motDePasse,
+      phoneNumber: formData.phoneNumber.trim(),
+    };
+
+    console.log("✅ Formulaire validé :", payload);
+
+    try {
+      const result = await registerUser(payload);
+
+      // Stocker l'email dans Zustand
+      useUserStore.getState().setEmail(payload.email);
+
+      if (result.success) {
+        // Rediriger vers la page de login
+        // Affichage message succès
+        Alert.alert("Succès", result.message);
+        router.push("/(auth)/OtpScreen");
+      }
+    } catch (error: any) {
+      // Affichage message erreur
+      Alert.alert("Erreur", error.message);
+    }
+  };
+
+  const handleGenderSelect = (gender: string) => updateField("sexe", gender);
+  const handleProfileTypeSelect = (type: "PARTICULIER" | "PRO") =>
+    updateField("profileType", type);
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
-    updateField('dateNaissance', `${day}/${month}/${year}`);
-  };
-
-  const openDatePicker = () => {
-    setShowDateModal(true);
+    updateField("dateNaissance", `${day}/${month}/${year}`);
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>   
+        <View style={styles.header}>
           <BackButton />
           <Text style={styles.headerTitle}>Créer un compte</Text>
         </View>
 
-        <ScrollView 
-          style={styles.scrollContent} 
+        <ScrollView
+          style={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
@@ -315,34 +386,50 @@ const Register = () => {
               label="Prénom"
               placeholder="Prénom"
               value={formData.prenom}
-              onChangeText={(text) => updateField('prenom', text)}
+              onChangeText={(text) => updateField("prenom", text)}
             />
-
             <InputField
               label="Nom"
               placeholder="Nom"
               value={formData.nom}
-              onChangeText={(text) => updateField('nom', text)}
+              onChangeText={(text) => updateField("nom", text)}
             />
 
-            {/* Champ Sexe - ouvre le modal */}
+            {/* Sexe */}
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Sexe</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.selectField}
                 onPress={() => setShowGenderModal(true)}
               >
-                <Text style={[
-                  styles.selectFieldText,
-                  !formData.sexe && styles.placeholderText
-                ]}>
-                  {formData.sexe || 'Sélectionnez le sexe'}
+                <Text
+                  style={[
+                    styles.selectFieldText,
+                    !formData.sexe && styles.placeholderText,
+                  ]}
+                >
+                  {formData.sexe || "Sélectionnez le sexe"}
                 </Text>
-                <Ionicons 
-                  name="chevron-down" 
-                  size={20} 
-                  color="#666" 
-                />
+                <Ionicons name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Type de profil */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Type de profil</Text>
+              <TouchableOpacity
+                style={styles.selectField}
+                onPress={() => setShowProfileTypeModal(true)}
+              >
+                <Text
+                  style={[
+                    styles.selectFieldText,
+                    !formData.profileType && styles.placeholderText,
+                  ]}
+                >
+                  {formData.profileType || "Sélectionnez le type de profil"}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
             </View>
 
@@ -350,34 +437,37 @@ const Register = () => {
               label="Pays"
               placeholder="Pays"
               value={formData.pays}
-              onChangeText={(text) => updateField('pays', text)}
+              onChangeText={(text) => updateField("pays", text)}
             />
-
             <InputField
               label="Ville"
               placeholder="Ville"
               value={formData.ville}
-              onChangeText={(text) => updateField('ville', text)}
+              onChangeText={(text) => updateField("ville", text)}
+            />
+            <InputField
+              label="Téléphone"
+              placeholder="+33612345678"
+              value={formData.phoneNumber}
+              onChangeText={(text) => updateField("phoneNumber", text)}
             />
 
-            {/* Champ Date de naissance - ouvre le calendrier */}
+            {/* Date de naissance */}
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Date de naissance</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.selectField}
-                onPress={openDatePicker}
+                onPress={() => setShowDateModal(true)}
               >
-                <Text style={[
-                  styles.selectFieldText,
-                  !formData.dateNaissance && styles.placeholderText
-                ]}>
-                  {formData.dateNaissance || 'jj/mm/aaaa'}
+                <Text
+                  style={[
+                    styles.selectFieldText,
+                    !formData.dateNaissance && styles.placeholderText,
+                  ]}
+                >
+                  {formData.dateNaissance || "jj/mm/aaaa"}
                 </Text>
-                <Ionicons 
-                  name="calendar-outline" 
-                  size={20} 
-                  color="#666" 
-                />
+                <Ionicons name="calendar-outline" size={20} color="#666" />
               </TouchableOpacity>
             </View>
 
@@ -385,60 +475,56 @@ const Register = () => {
               label="Email"
               placeholder="Email"
               value={formData.email}
-              onChangeText={(text) => updateField('email', text)}
+              onChangeText={(text) => updateField("email", text)}
             />
-            {formData.email && !validateEmail(formData.email) && (
-              <Text style={styles.errorText}>
-                Format d'email invalide
-              </Text>
-            )}
             <InputField
               label="Mot de passe"
               placeholder="Mot de passe"
-              secureTextEntry={true}
+              secureTextEntry
               value={formData.motDePasse}
-              onChangeText={(text) => updateField('motDePasse', text)}
+              onChangeText={(text) => updateField("motDePasse", text)}
             />
-
-            <Text style={[
-              styles.passwordInfo,
-              formData.motDePasse && !validatePassword(formData.motDePasse) && styles.errorText
-            ]}>
-              Le mot de passe doit comporter au moins 8 caractères et inclure des lettres majuscules, des lettres minuscules et des chiffres
-              {formData.motDePasse && !validatePassword(formData.motDePasse) && " - Mot de passe insuffisant"}
+            <Text
+              style={[
+                styles.passwordInfo,
+                formData.motDePasse &&
+                  !validatePassword(formData.motDePasse) &&
+                  styles.errorText,
+              ]}
+            >
+              Le mot de passe doit comporter au moins 8 caractères et inclure
+              des lettres majuscules, des lettres minuscules et des chiffres
+              {formData.motDePasse &&
+                !validatePassword(formData.motDePasse) &&
+                " - Mot de passe insuffisant"}
             </Text>
 
             <View style={styles.createButtonContainer}>
               <CustomButton
                 title="Créer un compte"
                 onPress={handleCreateAccount}
-                backgroundColor={isFormValid() ? '#00C851' : '#E0E0E0'}
-                textColor={isFormValid() ? '#fff' : '#999'}
+                backgroundColor={isFormValid() ? "#00C851" : "#E0E0E0"}
+                textColor={isFormValid() ? "#fff" : "#999"}
                 width="100%"
                 height={50}
                 borderRadius={25}
               />
             </View>
-
-            <View style={styles.loginLinkContainer}>
-              <Text style={styles.loginText}>Vous avez déjà un compte ? </Text>
-              <TouchableOpacity
-              onPress={() => router.push("/(auth)/login")}>
-                <Text style={styles.loginLink}>Se connecter</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </ScrollView>
 
-        {/* Modal de sélection du sexe */}
         <GenderSelectionModal
           visible={showGenderModal}
           onClose={() => setShowGenderModal(false)}
           onSelect={handleGenderSelect}
           selectedGender={formData.sexe}
         />
-
-        {/* Modal de sélection de date */}
+        <ProfileTypeModal
+          visible={showProfileTypeModal}
+          onClose={() => setShowProfileTypeModal(false)}
+          onSelect={handleProfileTypeSelect}
+          selectedType={formData.profileType}
+        />
         <DatePickerModal
           visible={showDateModal}
           onClose={() => setShowDateModal(false)}
@@ -450,218 +536,142 @@ const Register = () => {
   );
 };
 
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    marginHorizontal: 30,
-    marginTop: 30
-  },
-  backButton: {
-    marginRight: 16,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
+  header: { marginHorizontal: 30, marginTop: 30 },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '600',
-    color: '#111',
+    fontWeight: "600",
+    color: "#111",
     marginTop: 16,
   },
-  scrollContent: {
-    flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingBottom: 20,
-  },
+  scrollContent: { flex: 1 },
+  scrollContainer: { flexGrow: 1, paddingBottom: 20 },
   formContainer: {
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  fieldContainer: {
-    marginVertical: 10,
-    width: 343,
-  },
-  label: {
-    marginBottom: 5,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#111',
-  },
+  fieldContainer: { marginVertical: 10, width: 343 },
+  label: { marginBottom: 5, fontSize: 14, fontWeight: "500", color: "#111" },
   selectField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderRadius: 8,
     height: 48,
     paddingHorizontal: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
-  selectFieldText: {
-    fontSize: 16,
-    color: '#111',
-  },
-  placeholderText: {
-    color: '#999',
-  },
+  selectFieldText: { fontSize: 16, color: "#111" },
+  placeholderText: { color: "#999" },
   passwordInfo: {
     fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginTop: 8,
     marginBottom: 20,
     paddingHorizontal: 10,
     lineHeight: 16,
   },
-  createButtonContainer: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  loginLinkContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loginText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  loginLink: {
-    fontSize: 14,
-    color: '#8B5CF6',
-    fontWeight: '500',
-  },
+  createButtonContainer: { width: "100%", marginBottom: 20 },
 
-  // Styles pour le modal général
+  // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 15,
     padding: 20,
-    width: '90%',
+    width: "90%",
     maxWidth: 350,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111',
-    textAlign: 'center',
+    fontWeight: "600",
+    color: "#111",
+    textAlign: "center",
     marginBottom: 20,
   },
-
-  // Styles pour le modal de genre
-  genderOptions: {
-    marginBottom: 20,
-  },
+  genderOptions: { marginBottom: 20 },
   genderOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 12,
     paddingHorizontal: 15,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     borderRadius: 10,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
   },
-  selectedOption: {
-    backgroundColor: '#E8F5E8',
-    borderColor: '#00C851',
-  },
-  genderText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#111',
-  },
-  selectedText: {
-    color: '#00C851',
-  },
+  selectedOption: { backgroundColor: "#E8F5E8", borderColor: "#00C851" },
+  genderText: { fontSize: 16, fontWeight: "500", color: "#111" },
+  selectedText: { color: "#00C851" },
   radioButton: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#D0D0D0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
+    borderColor: "#D0D0D0",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
   },
-  radioButtonSelected: {
-    backgroundColor: '#00C851',
-    borderColor: '#00C851',
-  },
-  modalButtonContainer: {
-    width: '100%',
-  },
+  radioButtonSelected: { backgroundColor: "#00C851", borderColor: "#00C851" },
+  modalButtonContainer: { width: "100%" },
 
-  // Styles pour le modal de date (manquants dans le code original)
+  // Date Modal
   dateModalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 15,
     padding: 20,
-    width: '90%',
+    width: "90%",
     maxWidth: 350,
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
   },
-  datePicker: {
-    width: '100%',
-    marginBottom: 20,
-  },
+  datePicker: { width: "100%", marginBottom: 20 },
   dateModalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
   },
   dateButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
     marginHorizontal: 5,
   },
   cancelButton: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
-  confirmButton: {
-    backgroundColor: '#00C851',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#666',
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#fff',
-  },
+  confirmButton: { backgroundColor: "#00C851" },
+  cancelButtonText: { fontSize: 16, fontWeight: "500", color: "#666" },
+  confirmButtonText: { fontSize: 16, fontWeight: "500", color: "#fff" },
   errorText: {
     fontSize: 12,
-    color: '#FF4444',
-    textAlign: 'center',
+    color: "#FF4444",
+    textAlign: "center",
     marginTop: 4,
     marginBottom: 8,
   },
