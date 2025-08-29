@@ -49,7 +49,7 @@ export default function RootLayout() {
         options={{
           title: 'Catalogue',
           tabBarIcon: ({ color, size }) => (
-            <BookOpen size={size} color={color} />
+            <BookOpen size={size} color={color} fill={color} />
           ),
         }}
       />
@@ -58,7 +58,7 @@ export default function RootLayout() {
         options={{
           title: 'Commande',
           tabBarIcon: ({ color, size }) => (
-            <ShoppingCart size={size} color={color} />
+            <ShoppingCart size={size} color={color} fill={color} />
           ),
         }}
       />
