@@ -1,10 +1,11 @@
 // app/(tabs)/index.tsx
 import GraphCard, { SalesData } from '@/components/GraphCard';
+import Sidebar from '@/components/sidebar';
 import SalesDashboard, { DashboardData } from '@/components/StatCard';
 import AnalyticsDashboard, { AnalyticsData } from '@/components/yearSelector';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { AlignJustify, Bell } from "lucide-react-native";
+import { Bell } from "lucide-react-native";
 import React, { JSX } from 'react';
 import {
   SafeAreaView,
@@ -26,6 +27,20 @@ interface Enterprise {
   compare: string;
   discount?: Float
 }
+
+interface Business {
+  name: string;
+  description: string;
+  type: string;
+  address: string;
+  phoneNumber: string;
+  logoUrl: string;
+  coverImageUrl: string;
+  latitude: number;
+  longitude: number;
+  currencyId: string;
+}
+
 
 const enterprises: Enterprise[] = [
   {
@@ -55,10 +70,55 @@ const enterprises: Enterprise[] = [
   },
 ];
 
+const businesses: Business[] = [
+  {
+    name: "Mon Super Étal",
+    description: "Le meilleur endroit pour trouver des produits frais et locaux.",
+    type: "COMMERCANT",
+    address: "123 Rue Principale, 75001 Paris, France",
+    phoneNumber: "+33123456789",
+    logoUrl: require("@/assets/images/catalogue.png"),
+    coverImageUrl: "https://example.com/cover.jpg",
+    latitude: 48.8566,
+    longitude: 2.3522,
+    currencyId: "clw9a1b2c0000d4t6efgh1234"
+  },
+  {
+    name: "Mon Super Étal",
+    description: "Le meilleur endroit pour trouver des produits frais et locaux.",
+    type: "COMMERCANT",
+    address: "123 Rue Principale, 75001 Paris, France",
+    phoneNumber: "+33123456789",
+    logoUrl: require("@/assets/images/entreprise1.png"),
+    coverImageUrl: "https://example.com/cover.jpg",
+    latitude: 48.8566,
+    longitude: 2.3522,
+    currencyId: "clw9a1b2c0000d4t6efgh1234"
+  },
+  {
+    name: "Mon Super Étal",
+    description: "Le meilleur endroit pour trouver des produits frais et locaux.",
+    type: "COMMERCANT",
+    address: "123 Rue Principale, 75001 Paris, France",
+    phoneNumber: "+33123456789",
+    logoUrl: require("@/assets/images/entreprise2.png"),
+    coverImageUrl: "https://example.com/cover.jpg",
+    latitude: 48.8566,
+    longitude: 2.3522,
+    currencyId: "clw9a1b2c0000d4t6efgh1234"
+  },
+];
+
 const HomePage: React.FC = () => {
   const navigateToEnterpriseDetails = (enterpriseId: number): void => {
     router.push(`/enterprise-details?id=${enterpriseId}`);
   };
+
+  const handleBusinessSelect = (business: Business) => {
+    console.log('Selected business:', business.name);
+    // Add navigation or other logic here
+  };
+
 
   const sampleData: SalesData = {
     id: '1',
@@ -112,7 +172,7 @@ const HomePage: React.FC = () => {
 
   const renderHeader = (): JSX.Element => (
     <View style={styles.header}>
-        <AlignJustify size={30} color="black" />
+        <Sidebar businesses={businesses} onBusinessSelect={handleBusinessSelect} />
             {renderSearchBar()}
         <TouchableOpacity style={styles.notificationButton}>
             <Bell size={30} color="black" />
@@ -128,25 +188,6 @@ const HomePage: React.FC = () => {
         placeholder="Rechercher"
         placeholderTextColor="gray"
       />
-    </View>
-  );
-
-  const renderPromoBanner = (): JSX.Element => (
-    <View style={styles.bannerContainer}>
-      <View style={styles.banner}>
-        {/* Fond de base (couleur du bas) */}
-        <View style={styles.bannerBackground} />
-        
-        {/* Contenu par-dessus */}
-          <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>Don't Miss Out!</Text>
-            <Text style={styles.bannerSubtitle}>Discount up to 50%</Text>
-            <TouchableOpacity style={styles.bannerButton}>
-              <Text style={styles.bannerButtonText}>Check Now</Text>
-            </TouchableOpacity>
-          </View>
-         
-      </View>
     </View>
   );
 
@@ -215,9 +256,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 10,
-    paddingHorizontal: 15,
+    paddingHorizontal: 5,
+    paddingRight: 20,
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: 10,
   },
 
   headerLeft: {
