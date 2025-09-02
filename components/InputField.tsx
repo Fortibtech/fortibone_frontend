@@ -4,12 +4,13 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextInputProps,
   TouchableOpacity,
   View,
 } from "react-native";
 
 // Interface pour typer les props du composant
-interface InputFieldProps {
+interface InputFieldProps extends TextInputProps {
   label: string; // Le texte affiché au-dessus de l'input
   placeholder: string; // Texte indicatif dans le champ
   secureTextEntry?: boolean; // Si true, masque le texte (mot de passe)
@@ -18,11 +19,7 @@ interface InputFieldProps {
 }
 
 /**
- * Composant réutilisable pour un champ de saisie (texte ou mot de passe)
- * - Affiche un label descriptif
- * - Supporte le placeholder
- * - Gestion du type mot de passe avec icône œil pour afficher/masquer
- * - Largeur fixe 343px, hauteur fixe 48px pour cohérence UI
+ * Composant réutilisable pour un champ de saisie (texte, mot de passe, numérique)
  */
 const InputField: React.FC<InputFieldProps> = ({
   label,
@@ -30,6 +27,8 @@ const InputField: React.FC<InputFieldProps> = ({
   secureTextEntry = false,
   value,
   onChangeText,
+  keyboardType = "default", // valeur par défaut
+  ...rest
 }) => {
   // State local pour basculer l'affichage du mot de passe
   const [showPassword, setShowPassword] = useState(!secureTextEntry);
@@ -47,6 +46,8 @@ const InputField: React.FC<InputFieldProps> = ({
           secureTextEntry={!showPassword && secureTextEntry} // masque si password et non affiché
           value={value}
           onChangeText={onChangeText}
+          keyboardType={keyboardType} // permet numeric, email, etc.
+          {...rest} // passe toutes les autres props
         />
 
         {/* Affiche l'icône œil uniquement si c'est un mot de passe */}
@@ -56,7 +57,7 @@ const InputField: React.FC<InputFieldProps> = ({
             onPress={() => setShowPassword(!showPassword)} // toggle affichage
           >
             <Ionicons
-              name={showPassword ? "eye-outline" : "eye-off-outline"} // œil ouvert/fermé
+              name={showPassword ? "eye-outline" : "eye-off-outline"}
               size={24}
               color="#555"
             />
@@ -69,33 +70,32 @@ const InputField: React.FC<InputFieldProps> = ({
 
 export default InputField;
 
-// Styles pour le composant
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 10, // espace entre les champs
-    width: 343, // largeur fixe pour cohérence design
+    marginVertical: 10,
+    width: 343,
   },
   label: {
     marginBottom: 5,
     fontSize: 14,
     fontWeight: "500",
-    color: "#111", // texte sombre pour lisibilité
+    color: "#111",
   },
   inputWrapper: {
-    flexDirection: "row", // aligne input et icône sur la même ligne
+    flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ccc", // bord gris clair pour champ input
-    borderRadius: 8, // coins arrondis
-    height: 48, // hauteur fixe pour cohérence UI
-    paddingHorizontal: 10, // padding interne
+    borderColor: "#ccc",
+    borderRadius: 8,
+    height: 48,
+    paddingHorizontal: 10,
   },
   input: {
-    flex: 1, // prend tout l'espace disponible
+    flex: 1,
     fontSize: 16,
     color: "#111",
   },
   icon: {
-    marginLeft: 10, // espace entre texte et icône
+    marginLeft: 10,
   },
 });
