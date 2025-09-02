@@ -7,7 +7,7 @@ import { useUserStore } from "@/store/userStore";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -21,17 +21,47 @@ import {
   Alert,
 } from "react-native";
 
-// --- Modal Date Picker ---
-const DatePickerModal = ({
-  visible,
-  onClose,
-  onSelect,
-  selectedDate,
-}: {
+// --- Types ---
+interface DatePickerModalProps {
   visible: boolean;
   onClose: () => void;
   onSelect: (date: Date) => void;
   selectedDate?: Date;
+}
+
+interface GenderSelectionModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (gender: string) => void;
+  selectedGender: string;
+}
+
+interface ProfileTypeModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (type: "PARTICULIER" | "PRO") => void;
+  selectedType: string;
+}
+
+interface FormData {
+  prenom: string;
+  nom: string;
+  sexe: string;
+  pays: string;
+  ville: string;
+  dateNaissance: string;
+  email: string;
+  motDePasse: string;
+  phoneNumber: string;
+  profileType: string;
+}
+
+// --- Modal Date Picker ---
+const DatePickerModal: React.FC<DatePickerModalProps> = ({
+  visible,
+  onClose,
+  onSelect,
+  selectedDate,
 }) => {
   const [tempDate, setTempDate] = useState<Date>(selectedDate || new Date());
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
@@ -40,7 +70,6 @@ const DatePickerModal = ({
     if (Platform.OS === "android") {
       setShowAndroidPicker(false);
       if (event.type === "set" && date) {
-        setTempDate(date);
         onSelect(date);
       }
       onClose();
@@ -113,16 +142,11 @@ const DatePickerModal = ({
 };
 
 // --- Modal Gender ---
-const GenderSelectionModal = ({
+const GenderSelectionModal: React.FC<GenderSelectionModalProps> = ({
   visible,
   onClose,
   onSelect,
   selectedGender,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onSelect: (gender: string) => void;
-  selectedGender: string;
 }) => {
   const [tempSelectedGender, setTempSelectedGender] =
     useState<string>(selectedGender);
@@ -177,7 +201,7 @@ const GenderSelectionModal = ({
           </View>
           <View style={styles.modalButtonContainer}>
             <CustomButton
-              title="Save"
+              title="Enregistrer"
               onPress={handleSave}
               backgroundColor={tempSelectedGender ? "#00C851" : "#E0E0E0"}
               textColor={tempSelectedGender ? "#fff" : "#999"}
@@ -194,16 +218,11 @@ const GenderSelectionModal = ({
 };
 
 // --- Modal Profile Type ---
-const ProfileTypeModal = ({
+const ProfileTypeModal: React.FC<ProfileTypeModalProps> = ({
   visible,
   onClose,
   onSelect,
   selectedType,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onSelect: (type: "PARTICULIER" | "PRO") => void;
-  selectedType: string;
 }) => {
   const [tempType, setTempType] = useState<string>(selectedType);
   const options: { value: "PARTICULIER" | "PRO"; label: string }[] = [
@@ -245,11 +264,21 @@ const ProfileTypeModal = ({
               >
                 {opt.label}
               </Text>
+              <View
+                style={[
+                  styles.radioButton,
+                  tempType === opt.value && styles.radioButtonSelected,
+                ]}
+              >
+                {tempType === opt.value && (
+                  <Ionicons name="checkmark" size={16} color="#fff" />
+                )}
+              </View>
             </TouchableOpacity>
           ))}
           <View style={styles.modalButtonContainer}>
             <CustomButton
-              title="Save"
+              title="Enregistrer"
               onPress={handleSave}
               backgroundColor={tempType ? "#00C851" : "#E0E0E0"}
               textColor={tempType ? "#fff" : "#999"}
@@ -265,9 +294,9 @@ const ProfileTypeModal = ({
   );
 };
 
-// --- Écran Register ---
-const Register = () => {
-  const [formData, setFormData] = useState({
+// --- Register Screen ---
+const Register: React.FC = () => {
+  const [formData, setFormData] = useState<FormData>({
     prenom: "",
     nom: "",
     sexe: "",
@@ -285,31 +314,31 @@ const Register = () => {
   const [showDateModal, setShowDateModal] = useState(false);
   const [showProfileTypeModal, setShowProfileTypeModal] = useState(false);
   const router = useRouter();
-  // const router = useRouter();
 
-  const updateField = (field: string, value: string) => {
+  const updateField = useCallback((field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const validatePassword = (password: string) => {
+  const validatePassword = useCallback((password: string) => {
     return (
       password.length >= 8 &&
       /[A-Z]/.test(password) &&
       /[a-z]/.test(password) &&
       /\d/.test(password)
     );
-  };
+  }, []);
 
-  const validateEmail = (email: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateEmail = useCallback((email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }, []);
 
-  const isFormValid = () => {
+  const isFormValid = useCallback(() => {
     return (
       Object.values(formData).every((v) => v.trim() !== "") &&
       validateEmail(formData.email) &&
       validatePassword(formData.motDePasse)
     );
-  };
+  }, [formData, validateEmail, validatePassword]);
 
   const handleCreateAccount = async () => {
     if (!isFormValid()) {
@@ -318,10 +347,10 @@ const Register = () => {
     }
 
     const payload: RegisterPayload = {
-      firstName: formData.prenom,
-      lastName: formData.nom,
+      firstName: formData.prenom.trim(),
+      lastName: formData.nom.trim(),
       gender: formData.sexe === "Masculin" ? "MALE" : "FEMALE",
-      profileType: formData.profileType === "PRO" ? "PRO" : "PARTICULIER",
+      profileType: formData.profileType as "PARTICULIER" | "PRO",
       country: formData.pays.trim(),
       city: formData.ville.trim(),
       dateOfBirth: selectedDate
@@ -332,36 +361,47 @@ const Register = () => {
       phoneNumber: formData.phoneNumber.trim(),
     };
 
-    console.log("✅ Formulaire validé :", payload);
-
     try {
       const result = await registerUser(payload);
-
-      // Stocker l'email dans Zustand
       useUserStore.getState().setEmail(payload.email);
 
       if (result.success) {
-        // Rediriger vers la page de login
-        // Affichage message succès
         Alert.alert("Succès", result.message);
-        router.push("/(auth)/OtpScreen");
+        router.push(
+          formData.profileType === "PRO"
+            ? "/(professionnel)"
+            : "/(auth)/OtpScreen"
+        );
       }
     } catch (error: any) {
-      // Affichage message erreur
-      Alert.alert("Erreur", error.message);
+      Alert.alert("Erreur", error.message || "Une erreur est survenue.");
     }
   };
 
-  const handleGenderSelect = (gender: string) => updateField("sexe", gender);
-  const handleProfileTypeSelect = (type: "PARTICULIER" | "PRO") =>
-    updateField("profileType", type);
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    const day = date.getDate().toString().padStart(2, "0");
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const year = date.getFullYear();
-    updateField("dateNaissance", `${day}/${month}/${year}`);
-  };
+  const handleGenderSelect = useCallback(
+    (gender: string) => {
+      updateField("sexe", gender);
+    },
+    [updateField]
+  );
+
+  const handleProfileTypeSelect = useCallback(
+    (type: "PARTICULIER" | "PRO") => {
+      updateField("profileType", type);
+    },
+    [updateField]
+  );
+
+  const handleDateSelect = useCallback(
+    (date: Date) => {
+      setSelectedDate(date);
+      const day = date.getDate().toString().padStart(2, "0");
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const year = date.getFullYear();
+      updateField("dateNaissance", `${day}/${month}/${year}`);
+    },
+    [updateField]
+  );
 
   return (
     <KeyboardAvoidingView
@@ -395,7 +435,6 @@ const Register = () => {
               onChangeText={(text) => updateField("nom", text)}
             />
 
-            {/* Sexe */}
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Sexe</Text>
               <TouchableOpacity
@@ -414,7 +453,6 @@ const Register = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Type de profil */}
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Type de profil</Text>
               <TouchableOpacity
@@ -450,9 +488,9 @@ const Register = () => {
               placeholder="+33612345678"
               value={formData.phoneNumber}
               onChangeText={(text) => updateField("phoneNumber", text)}
+              keyboardType="phone-pad"
             />
 
-            {/* Date de naissance */}
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Date de naissance</Text>
               <TouchableOpacity
@@ -476,6 +514,8 @@ const Register = () => {
               placeholder="Email"
               value={formData.email}
               onChangeText={(text) => updateField("email", text)}
+              keyboardType="email-address"
+              autoCapitalize="none"
             />
             <InputField
               label="Mot de passe"
@@ -483,6 +523,7 @@ const Register = () => {
               secureTextEntry
               value={formData.motDePasse}
               onChangeText={(text) => updateField("motDePasse", text)}
+              autoCapitalize="none"
             />
             <Text
               style={[
@@ -578,8 +619,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   createButtonContainer: { width: "100%", marginBottom: 20 },
-
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -633,8 +672,6 @@ const styles = StyleSheet.create({
   },
   radioButtonSelected: { backgroundColor: "#00C851", borderColor: "#00C851" },
   modalButtonContainer: { width: "100%" },
-
-  // Date Modal
   dateModalContainer: {
     backgroundColor: "#fff",
     borderRadius: 15,

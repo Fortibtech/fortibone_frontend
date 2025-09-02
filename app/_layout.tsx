@@ -23,7 +23,13 @@ export default function RootLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="pro" />
-      <Stack.Screen name="enterprise-details" />
+      <Stack.Screen
+        name="enterprise-details"
+        options={{
+          title: "Détails de l'entreprise",
+          headerShown: false,
+        }}
+      />
       <Stack.Screen name="product-details/[id]" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(profile-particulier)" />
