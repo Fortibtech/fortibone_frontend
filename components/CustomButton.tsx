@@ -17,6 +17,7 @@ type ButtonProps = {
   textColor?: string; // couleur du texte
   borderRadius?: number; // arrondi des bords
   fontSize?: number; // taille du texte
+  disabled?: boolean; // <-- ajout
 };
 
 export default function CustomButton({
@@ -28,19 +29,21 @@ export default function CustomButton({
   textColor = "#fff",
   borderRadius = 10,
   fontSize = 16,
+  disabled = false, // <-- ajout
 }: ButtonProps) {
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress} // empêche le clic si disabled
       style={[
         styles.button,
         {
           width,
           height,
-          backgroundColor,
+          backgroundColor: disabled ? "#aeb3b3" : backgroundColor, // style visuel
           borderRadius,
         } as ViewStyle,
       ]}
+      activeOpacity={disabled ? 1 : 0.7} // pas de feedback quand disabled
     >
       <Text
         style={[
