@@ -1,7 +1,7 @@
 // app/_layout.tsx ou app/(tabs)/_layout.tsx
-import React, { useEffect, useState } from "react";
-import { Stack } from "expo-router";
 import { useUserStore } from "@/store/userStore";
+import { Stack } from "expo-router";
+import { useEffect, useState } from "react";
 
 export default function RootLayout() {
   const { hydrateTokenAndProfile } = useUserStore();
@@ -20,11 +20,25 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
+
+    <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
+      {/* <Stack.Screen name="(auth)" options={{ headerShown: false }} /> */}
+      <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
+      {/* <Stack.Screen name="pro/createBusiness" options={{ headerShown: false }} /> */}
+      {/* <Stack.Screen name="onboarding" options={{ headerShown: false }} /> */}
+      {/* <Stack.Screen name="+not-found" /> */}
       <Stack.Screen name="pro" />
-      <Stack.Screen
-        name="enterprise-details"
+      <Stack.Screen name="product" />
+      <Stack.Screen 
+        name="enterprise-details" 
+
+    // <Stack screenOptions={{ headerShown: false }}>
+    //   <Stack.Screen name="index" />
+      
+    //   <Stack.Screen
+    //     name="enterprise-details"
         options={{
           title: "Détails de l'entreprise",
           headerShown: false,
