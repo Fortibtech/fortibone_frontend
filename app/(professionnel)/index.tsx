@@ -6,8 +6,11 @@ import AnalyticsDashboard, { AnalyticsData } from '@/components/yearSelector';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Bell } from "lucide-react-native";
-import React, { JSX } from 'react';
+import React, { JSX, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -19,6 +22,9 @@ import {
 } from 'react-native';
 import { Float } from 'react-native/Libraries/Types/CodegenTypes';
 
+// Import des services API
+import { Business, BusinessesService, SelectedBusinessManager } from '@/api';
+
 // Types
 interface Enterprise {
   id: number;
@@ -27,20 +33,6 @@ interface Enterprise {
   compare: string;
   discount?: Float
 }
-
-interface Business {
-  name: string;
-  description: string;
-  type: string;
-  address: string;
-  phoneNumber: string;
-  logoUrl: string;
-  coverImageUrl: string;
-  latitude: number;
-  longitude: number;
-  currencyId: string;
-}
-
 
 const enterprises: Enterprise[] = [
   {
@@ -70,55 +62,60 @@ const enterprises: Enterprise[] = [
   },
 ];
 
-const businesses: Business[] = [
-  {
-    name: "Mon Super Étal",
-    description: "Le meilleur endroit pour trouver des produits frais et locaux.",
-    type: "COMMERCANT",
-    address: "123 Rue Principale, 75001 Paris, France",
-    phoneNumber: "+33123456789",
-    logoUrl: require("@/assets/images/catalogue.png"),
-    coverImageUrl: "https://example.com/cover.jpg",
-    latitude: 48.8566,
-    longitude: 2.3522,
-    currencyId: "clw9a1b2c0000d4t6efgh1234"
-  },
-  {
-    name: "Mon Super Étal",
-    description: "Le meilleur endroit pour trouver des produits frais et locaux.",
-    type: "COMMERCANT",
-    address: "123 Rue Principale, 75001 Paris, France",
-    phoneNumber: "+33123456789",
-    logoUrl: require("@/assets/images/entreprise1.png"),
-    coverImageUrl: "https://example.com/cover.jpg",
-    latitude: 48.8566,
-    longitude: 2.3522,
-    currencyId: "clw9a1b2c0000d4t6efgh1234"
-  },
-  {
-    name: "Mon Super Étal",
-    description: "Le meilleur endroit pour trouver des produits frais et locaux.",
-    type: "COMMERCANT",
-    address: "123 Rue Principale, 75001 Paris, France",
-    phoneNumber: "+33123456789",
-    logoUrl: require("@/assets/images/entreprise2.png"),
-    coverImageUrl: "https://example.com/cover.jpg",
-    latitude: 48.8566,
-    longitude: 2.3522,
-    currencyId: "clw9a1b2c0000d4t6efgh1234"
-  },
-];
-
 const HomePage: React.FC = () => {
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      
+      // Charger les entreprises depuis l'API
+      const businessesResponse = await BusinessesService.getBusinesses({
+        page: 1,
+        limit: 50
+      });
+      setBusinesses(businessesResponse.data);
+      
+      // Vérifier si une entreprise est déjà sélectionnée
+      const selected = await SelectedBusinessManager.getSelectedBusiness();
+      setSelectedBusiness(selected);
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement:', error);
+      Alert.alert('Erreur', 'Impossible de charger les données');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadInitialData();
+    setRefreshing(false);
+  };
+
   const navigateToEnterpriseDetails = (enterpriseId: number): void => {
     router.push(`/enterprise-details?id=${enterpriseId}`);
   };
 
-  const handleBusinessSelect = (business: Business) => {
-    console.log('Selected business:', business.name);
-    // Add navigation or other logic here
+  const handleBusinessSelect = async (business: Business) => {
+    try {
+      console.log('Sélection de l\'entreprise:', business.name);
+      await BusinessesService.selectBusiness(business);
+      setSelectedBusiness(business);
+      Alert.alert('Succès', `Entreprise "${business.name}" sélectionnée`);
+    } catch (error) {
+      console.error('Erreur lors de la sélection:', error);
+      Alert.alert('Erreur', 'Impossible de sélectionner l\'entreprise');
+    }
   };
-
 
   const sampleData: SalesData = {
     id: '1',
@@ -129,6 +126,7 @@ const HomePage: React.FC = () => {
     casesData: [600, 580, 650, 750, 700, 580],
     months: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct']
   };
+
   const dashboardData: DashboardData = {
     hitRate: 68,
     deals: 76,
@@ -168,21 +166,24 @@ const HomePage: React.FC = () => {
     console.log('Graph card pressed:', id);
   };
 
-
-
   const renderHeader = (): JSX.Element => (
     <View style={styles.header}>
-        <Sidebar businesses={businesses} onBusinessSelect={handleBusinessSelect} />
-            {renderSearchBar()}
-        <TouchableOpacity style={styles.notificationButton}>
-            <Bell size={30} color="black" />
-        </TouchableOpacity>      
+      <Sidebar 
+        businesses={businesses} 
+        selectedBusiness={selectedBusiness}
+        onBusinessSelect={handleBusinessSelect} 
+        loading={loading}
+      />
+      {renderSearchBar()}
+      <TouchableOpacity style={styles.notificationButton}>
+        <Bell size={30} color="black" />
+      </TouchableOpacity>      
     </View>
   );
 
   const renderSearchBar = (): JSX.Element => (
     <View style={styles.searchContainer}>
-      <Ionicons name="search" size={25} color="white" style={styles.searchIcon} />
+      <Ionicons name="search" size={25} color="gray" style={styles.searchIcon} />
       <TextInput
         style={styles.searchInput}
         placeholder="Rechercher"
@@ -190,6 +191,39 @@ const HomePage: React.FC = () => {
       />
     </View>
   );
+
+  const renderSelectedBusinessBanner = (): JSX.Element | null => {
+    if (!selectedBusiness) return null;
+
+    return (
+      <View style={styles.selectedBusinessBanner}>
+        <View style={styles.bannerContent}>
+          <Text style={styles.selectedBusinessTitle}>
+            🏢 {selectedBusiness.name}
+          </Text>
+          <Text style={styles.selectedBusinessType}>
+            {selectedBusiness.type}
+          </Text>
+          <Text style={styles.selectedBusinessAddress} numberOfLines={1}>
+            📍 {selectedBusiness.address}
+          </Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.changeBusiness}
+          onPress={() => {
+            // Ouvrir la sidebar pour changer d'entreprise
+            Alert.alert(
+              'Changer d\'entreprise',
+              'Ouvrez le menu (☰) pour sélectionner une autre entreprise',
+              [{ text: 'OK' }]
+            );
+          }}
+        >
+          <Text style={styles.changeBusinessText}>Changer</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderEnterpriseCard = (enterprise: Enterprise): JSX.Element => (
     <TouchableOpacity 
@@ -203,13 +237,25 @@ const HomePage: React.FC = () => {
         <Text style={styles.rating}>${enterprise.rating}</Text>
         <View style={styles.gridFooter}>
           <View style={styles.ratingContainer}>
-            {/* <Ionicons name="star" size={14} color="#FFD700" /> */}
-            <Text style={styles.gridCategory}>{enterprise.compare} </Text>
+            <Text style={styles.gridCategory}>{enterprise.compare}</Text>
           </View>
         </View>
       </View>
     </TouchableOpacity>
   );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar backgroundColor="#00C851" barStyle="light-content" />
+        {renderHeader()}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#059669" />
+          <Text style={styles.loadingText}>Chargement des données...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -217,19 +263,33 @@ const HomePage: React.FC = () => {
       
       {renderHeader()}
       
-
       <ScrollView 
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#059669']}
+          />
+        }
       >
+        {renderSelectedBusinessBanner()}
+
         <View style={styles.headerSection2}>
-            <Text style={styles.bannerTitle}>Mes infos</Text>
+          <Text style={styles.bannerTitle}>Mes infos</Text>
+          {selectedBusiness && (
+            <Text style={styles.businessCount}>
+              {businesses.length} entreprise{businesses.length > 1 ? 's' : ''} disponible{businesses.length > 1 ? 's' : ''}
+            </Text>
+          )}
         </View>
 
         <View style={styles.grid}>
           {enterprises.map(renderEnterpriseCard)}
         </View>
+
         <GraphCard 
           salesData={sampleData} 
           onPress={handlePress}
@@ -250,6 +310,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fafafb',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
   header: {
     backgroundColor: '#fff',
     height: 100,
@@ -261,7 +331,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 10,
   },
-
+  selectedBusinessBanner: {
+    backgroundColor: '#e8f5e8',
+    marginHorizontal: 10,
+    marginVertical: 15,
+    borderRadius: 12,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: '#059669',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  bannerContent: {
+    flex: 1,
+  },
+  selectedBusinessTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1b5e20',
+    marginBottom: 4,
+  },
+  selectedBusinessType: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2e7d32',
+    marginBottom: 2,
+  },
+  selectedBusinessAddress: {
+    fontSize: 12,
+    color: '#388e3c',
+  },
+  changeBusiness: {
+    backgroundColor: '#059669',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  changeBusinessText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  businessCount: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -274,8 +394,8 @@ const styles = StyleSheet.create({
     flexDirection:'row'
   },
   bgImage: { 
-    width: 20, // largeur de l'image
-    height: 20, // hauteur de l'image
+    width: 20,
+    height: 20,
     marginRight: 10,
     marginTop: 5,
     resizeMode: "contain",
@@ -292,9 +412,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    // backgroundColor: '#047D58',
     marginHorizontal: 20,
-    // marginTop: 16,
     borderRadius: 10,
     paddingHorizontal: 16,
     height: 48,
@@ -313,6 +431,8 @@ const styles = StyleSheet.create({
   },
   headerSection2: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 20
   },
   bannerContainer: {
@@ -321,20 +441,10 @@ const styles = StyleSheet.create({
   },
   banner: {
     borderRadius: 16,
-    // color: 'gray',
     elevation: 1,
   },
-  
   bannerBackground: {
-    backgroundColor: 'white', // Couleur du bas (verte)
-  },
- 
-  bannerContent: {
-    flex: 1,
-    paddingVertical: 20,
-    paddingHorizontal: 30,
-    // width: 300,
-    // height: 150
+    backgroundColor: 'white',
   },
   bannerTitle: {
     fontSize: 22,
@@ -365,7 +475,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 10,
-    // paddingBottom: 20, // Space for tab bar
   },
   grid: {
     flexDirection: 'row',
@@ -383,7 +492,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  
   gridContent: {
     paddingVertical: 15,
     paddingHorizontal: 10,
@@ -420,15 +528,11 @@ const styles = StyleSheet.create({
   },
   discountBadge: {
     backgroundColor: '#FFD700',
-    // paddingHorizontal: 0,
-    // paddingVertical: 0,
     borderRadius: 80,
     width: 40,
     height:  40,
     flexDirection: 'column',
-    // flex: 0.01,
     alignItems: 'center',
-    
     justifyContent: 'center',
     alignContent: 'center'
   },

@@ -40,7 +40,7 @@ export const loginUser = async (email: string, password: string) => {
       password,
     });
 
-    console.log("🚀 ~ loginUser response status:", response.status);
+    console.log("🚀 ~ loginUser response status:", response);
 
     if (response.status === 201) {
       return {
