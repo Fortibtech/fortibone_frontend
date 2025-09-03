@@ -1,13 +1,13 @@
+import { loginUser, resendOtp } from "@/api/authService"; // <-- ton service loginUser
 import BackButton from "@/components/BackButton";
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loginUser, resendOtp } from "@/api/authService"; // <-- ton service loginUser
 import { useUserStore } from "@/store/userStore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -34,7 +34,7 @@ const Login = () => {
         useUserStore.getState().setToken(result.token);
 
         Alert.alert("Succès", "Connexion réussie !");
-        router.replace("/(tabs)");
+        router.replace("/(professionnel)");
       }
     } catch (err: any) {
       // ⚡ Cas email non vérifié
