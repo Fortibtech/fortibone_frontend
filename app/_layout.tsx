@@ -2,7 +2,7 @@
 import { useUserStore } from "@/store/userStore";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
-
+import Toast from "react-native-toast-message";
 export default function RootLayout() {
   const { hydrateTokenAndProfile } = useUserStore();
   const [loading, setLoading] = useState(true);
@@ -20,37 +20,38 @@ export default function RootLayout() {
   }
 
   return (
+    <>
+      <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
+        {/* <Stack.Screen name="(auth)" options={{ headerShown: false }} /> */}
+        <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
+        {/* <Stack.Screen name="pro/createBusiness" options={{ headerShown: false }} /> */}
+        {/* <Stack.Screen name="onboarding" options={{ headerShown: false }} /> */}
+        {/* <Stack.Screen name="+not-found" /> */}
+        <Stack.Screen name="pro" />
+        <Stack.Screen name="product" />
+        <Stack.Screen
+          name="enterprise-details"
+          // <Stack screenOptions={{ headerShown: false }}>
+          //   <Stack.Screen name="index" />
 
-    <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
-      {/* <Stack.Screen name="(auth)" options={{ headerShown: false }} /> */}
-      <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
-      {/* <Stack.Screen name="pro/createBusiness" options={{ headerShown: false }} /> */}
-      {/* <Stack.Screen name="onboarding" options={{ headerShown: false }} /> */}
-      {/* <Stack.Screen name="+not-found" /> */}
-      <Stack.Screen name="pro" />
-      <Stack.Screen name="product" />
-      <Stack.Screen 
-        name="enterprise-details" 
-
-    // <Stack screenOptions={{ headerShown: false }}>
-    //   <Stack.Screen name="index" />
-      
-    //   <Stack.Screen
-    //     name="enterprise-details"
-        options={{
-          title: "Détails de l'entreprise",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen name="product-details/[id]" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(profile-particulier)" />
-      <Stack.Screen name="(details-products)" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="onboarding" />
-      <Stack.Screen name="+not-found" />
-    </Stack>
+          //   <Stack.Screen
+          //     name="enterprise-details"
+          options={{
+            title: "Détails de l'entreprise",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen name="product-details/[id]" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(profile-particulier)" />
+        <Stack.Screen name="(details-products)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+      <Toast />
+    </>
   );
 }

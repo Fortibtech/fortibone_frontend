@@ -1,9 +1,9 @@
 // app/(tabs)/favorites.tsx
 
+import ProtectedRoute from "@/components/ProtectedRoute";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { SafeAreaView, StatusBar, StyleSheet, Text, View } from "react-native";
-import ProtectedRoute from "@/components/ProtectedRoute";
 
 const FavoritesPage: React.FC = () => {
   return (

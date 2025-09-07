@@ -1,11 +1,14 @@
 // app/(tabs)/index.tsx
+import { getAllProductsLike, ProductSearchResponse } from "@/api/Products";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useCartStore } from "@/stores/useCartStore";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { JSX, useEffect, useState } from "react";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import {
-  ActivityIndicator, // Ajouté pour le spinner
+  ActivityIndicator,
   Image,
+  Keyboard,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -16,7 +19,6 @@ import {
   View,
 } from "react-native";
 import Svg, { Polygon } from "react-native-svg";
-import { getAllProductsLike, ProductSearchResponse } from "@/api/Products";
 
 // 🔹 image fallback si produit n'a pas d'image
 const fallbackImage = require("@/assets/images/store-placeholder.png");
@@ -24,6 +26,7 @@ const fallbackImage = require("@/assets/images/store-placeholder.png");
 // Type produit minimal (adapté à ton API)
 type Product = {
   id: string;
+  productId: string;
   name: string;
   businessName?: string;
   category?: string;
@@ -34,22 +37,74 @@ type Product = {
 const HomePage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const cartItems = useCartStore((s) => s.items);
+  const totalCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const response: ProductSearchResponse = await getAllProductsLike();
-        setProducts(response.data); // <-- on prend uniquement le tableau de produits
-      } catch (error) {
-        console.error("❌ Erreur lors du chargement des produits :", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProducts();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.length > 1) {
+        fetchSuggestions(searchQuery);
+        setShowSuggestions(true);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fetchProducts = async (search: string = "") => {
+    try {
+      setLoading(true);
+      const params = search ? { search } : {};
+      const response: ProductSearchResponse = await getAllProductsLike(params);
+      setProducts(response.data);
+    } catch (error) {
+      console.error("❌ Erreur lors du chargement des produits :", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSuggestions = async (query: string) => {
+    try {
+      const response: ProductSearchResponse = await getAllProductsLike({
+        search: query,
+        limit: 5,
+      });
+      setSuggestions(response.data);
+    } catch (error) {
+      console.error("❌ Erreur lors du chargement des suggestions :", error);
+      setSuggestions([]);
+    }
+  };
+
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+  };
+
+  const handleSearchSubmit = () => {
+    fetchProducts(searchQuery);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    Keyboard.dismiss();
+  };
+
+  const handleSuggestionSelect = (product: Product) => {
+    setSearchQuery(product.name);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    Keyboard.dismiss();
+    fetchProducts(product.name);
+  };
 
   const renderHeader = (): JSX.Element => (
     <View style={styles.header}>
@@ -69,8 +124,16 @@ const HomePage: React.FC = () => {
             <Text style={styles.logoText}>ForthOne</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.notificationButton}>
+        <TouchableOpacity
+          style={styles.notificationButton}
+          onPress={() => router.push("/(profile-particulier)/cart")}
+        >
           <Ionicons name="cart-outline" size={24} color="#fff" />
+          {totalCount > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{totalCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
       {renderSearchBar()}
@@ -78,18 +141,42 @@ const HomePage: React.FC = () => {
   );
 
   const renderSearchBar = (): JSX.Element => (
-    <View style={styles.searchContainer}>
-      <Ionicons
-        name="search"
-        size={20}
-        color="white"
-        style={styles.searchIcon}
-      />
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Recherche"
-        placeholderTextColor="white"
-      />
+    <View style={styles.searchWrapper}>
+      <View style={styles.searchContainer}>
+        <Ionicons
+          name="search"
+          size={20}
+          color="white"
+          style={styles.searchIcon}
+        />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Recherche"
+          placeholderTextColor="white"
+          value={searchQuery}
+          onChangeText={handleSearchChange}
+          onSubmitEditing={handleSearchSubmit}
+          returnKeyType="search"
+        />
+      </View>
+      {showSuggestions && suggestions.length > 0 && (
+        <View style={styles.searchSuggestions}>
+          <ScrollView
+            nestedScrollEnabled={true}
+            style={styles.suggestionsScroll}
+          >
+            {suggestions.map((prod) => (
+              <TouchableOpacity
+                key={prod.id}
+                style={styles.suggestionItem}
+                onPress={() => handleSuggestionSelect(prod)}
+              >
+                <Text style={styles.suggestionText}>{prod.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 
@@ -132,7 +219,7 @@ const HomePage: React.FC = () => {
       onPress={() =>
         router.push({
           pathname: "/product-details/[id]",
-          params: { id: product.id.toString() },
+          params: { id: product.productId.toString() },
         })
       }
       activeOpacity={0.8}
@@ -164,7 +251,7 @@ const HomePage: React.FC = () => {
       <Text style={styles.loadingText}>Chargement des produits...</Text>
     </View>
   );
-  console.log(products);
+
   return (
     <ProtectedRoute>
       <SafeAreaView style={styles.container}>
@@ -175,6 +262,7 @@ const HomePage: React.FC = () => {
           style={styles.content}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
           {loading ? (
             renderSkeleton()
@@ -238,12 +326,15 @@ const styles = StyleSheet.create({
   notificationButton: {
     padding: 4,
   },
+  searchWrapper: {
+    position: "relative",
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#047D58",
-    marginHorizontal: 20,
-    marginTop: 16,
     borderRadius: 10,
     paddingHorizontal: 16,
     height: 48,
@@ -259,8 +350,36 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: "#333",
+    color: "white",
     fontWeight: "400",
+  },
+  searchSuggestions: {
+    position: "absolute",
+    top: 53,
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    maxHeight: 200,
+    zIndex: 100,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    marginHorizontal: 20,
+  },
+  suggestionsScroll: {
+    maxHeight: 200,
+  },
+  suggestionItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  suggestionText: {
+    fontSize: 16,
+    color: "#333",
   },
   bannerContainer: {
     position: "relative",
@@ -351,6 +470,24 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  cartBadge: {
+    position: "absolute",
+    top: -4,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "red",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+    zIndex: 1,
+  },
+  cartBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 120,
@@ -425,14 +562,12 @@ const styles = StyleSheet.create({
     color: "white",
   },
   loadingContainer: {
-    // Ajouté pour le spinner
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 40,
   },
   loadingText: {
-    // Ajouté pour le texte sous le spinner
     marginTop: 10,
     fontSize: 16,
     color: "#333",

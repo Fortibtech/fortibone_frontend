@@ -26,7 +26,6 @@ export class CategoryService {
 
     try {
       const response = await axiosInstance.get<Category[]>("/categories");
-      
       // Mettre en cache avec TTL plus long
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
       

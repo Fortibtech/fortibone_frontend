@@ -1,7 +1,7 @@
 // src/store/userStore.ts
-import { create } from "zustand";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getProfile as fetchProfileFromAPI } from "@/api/authService";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { create } from "zustand";
 
 export interface UserProfile {
   id: string;
@@ -23,16 +23,16 @@ interface UserStore {
   otp: string | null;
   userProfile: UserProfile | null;
 
-  // ✅ setters
+  // setters
   setEmail: (email: string) => void;
   setToken: (token: string) => Promise<void>;
   setOtp: (otp: string) => void;
   setUserProfile: (profile: UserProfile) => void;
 
-  // 🔑 actions
+  // actions
   hydrateTokenAndProfile: () => Promise<void>;
-  logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 export const useUserStore = create<UserStore>((set, get) => ({
@@ -49,7 +49,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
   setOtp: (otp: string) => set({ otp }),
   setUserProfile: (profile: UserProfile) => set({ userProfile: profile }),
 
-  // 🔹 Hydrate token + profil au démarrage
+  // Hydrate token + profil au démarrage
   hydrateTokenAndProfile: async () => {
     try {
       const savedToken = await AsyncStorage.getItem("access_token");
@@ -57,7 +57,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
         set({ token: savedToken });
         console.log("🔑 Token hydraté :", savedToken);
 
-        // 🔹 Hydrate le profil si possible
+        // On essaie d’hydrater le profil
         const profile = await fetchProfileFromAPI();
         set({ userProfile: profile });
         console.log("🚀 Profil hydraté :", profile);
@@ -68,13 +68,14 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }
   },
 
-  // 🔹 Rafraîchir le profil depuis l'API
+  // Rafraîchir explicitement le profil depuis l’API
   refreshProfile: async () => {
     const token = get().token;
     if (!token) return;
     try {
       const profile = await fetchProfileFromAPI();
       set({ userProfile: profile });
+      console.log("✅ Profil rafraîchi :", profile);
     } catch (e) {
       console.error("Erreur refreshProfile :", e);
     }

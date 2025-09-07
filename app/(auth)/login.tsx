@@ -3,7 +3,6 @@ import BackButton from "@/components/BackButton";
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
 import { useUserStore } from "@/store/userStore";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -27,14 +26,25 @@ const Login = () => {
     try {
       setLoading(true);
       const result = await loginUser(email, password);
-      await AsyncStorage.setItem("access_token", result.token);
       if (result.success && result.token) {
-        console.log("apres connection ", result.token);
-        await AsyncStorage.setItem("access_token", result.token);
-        useUserStore.getState().setToken(result.token);
+        // ✅ Stocke le token dans le store et AsyncStorage
+        await useUserStore.getState().setToken(result.token);
+
+        // ✅ Charge le profil depuis l'API
+        await useUserStore.getState().refreshProfile();
+
+        const profile = useUserStore.getState().userProfile;
+        if (!profile) {
+          Alert.alert("Erreur", "Impossible de charger votre profil.");
+          return;
+        }
 
         Alert.alert("Succès", "Connexion réussie !");
-        router.replace("/(professionnel)");
+        if (profile.profileType === "PRO") {
+          router.replace("/(professionnel)");
+        } else {
+          router.replace("/(tabs)");
+        }
       }
     } catch (err: any) {
       // ⚡ Cas email non vérifié

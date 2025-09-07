@@ -2,8 +2,8 @@
 
 // Ces endpoints peuvent être utilisés par un utilisateur classique pour consulter, interagir ou laisser des avis sur les produits :
 // GET /products/search — Recherche avancée et filtrage des produits********
+// GET /products/{id} — Obtenir les détails d'un produit et de ses variantes********npm install
 
-// GET /products/{id} — Obtenir les détails d'un produit et de ses variantes
 // POST /products/{id}/favorite — Ajouter un produit à sa liste de favoris
 // DELETE /products/{id}/favorite — Retirer un produit de sa liste de favoris
 
