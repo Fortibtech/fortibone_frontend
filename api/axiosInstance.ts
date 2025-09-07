@@ -3,7 +3,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ✅ Définir la base URL
-const API_URL = "https://dash.fortibtech.com";
+const API_URL = "https://rightly-settled-lion.ngrok-free.app";
 
 // ✅ Créer une instance Axios
 const axiosInstance = axios.create({

@@ -7,6 +7,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
 
+    "types": ["react", "react-native"],
     "skipLibCheck": true,
     "jsx": "react-jsx", // ou "react-native" selon la version
     "strict": true,
