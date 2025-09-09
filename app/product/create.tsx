@@ -1,9 +1,9 @@
-// screens/CreateProductScreen.tsx - Version mise à jour avec sélection de catégories
+// screens/CreateProductScreen.tsx - Version dynamique avec attributs de catégories
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { Camera, ChevronDown, Package, Search, Tag } from 'lucide-react-native';
+import { Calendar, Camera, ChevronDown, Package, Palette, Search, Tag } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -26,6 +26,7 @@ import {
 import {
   Business,
   Category,
+  CategoryAttribute,
   CategoryService,
   CreateProductData,
   ProductService,
@@ -35,6 +36,92 @@ import {
 interface CreateProductScreenProps {
   onProductCreated?: (product: any) => void;
 }
+
+// Composant de sélection iOS-friendly
+interface IOSPickerProps {
+  title: string;
+  options: { label: string; value: string }[];
+  selectedValue: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+}
+
+const IOSPicker: React.FC<IOSPickerProps> = ({ 
+  title, 
+  options, 
+  selectedValue, 
+  onValueChange, 
+  placeholder = "Sélectionner..." 
+}) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  
+  const selectedOption = options.find(option => option.value === selectedValue);
+
+  return (
+    <>
+      <TouchableOpacity 
+        style={styles.iosPickerButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={[
+          styles.iosPickerText,
+          !selectedOption && styles.iosPickerPlaceholder
+        ]}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </Text>
+        <ChevronDown size={20} color="#666" />
+      </TouchableOpacity>
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalCancelButton}>Annuler</Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.modalTitle}>{title}</Text>
+            
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalDoneButton}>OK</Text>
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={options}
+            keyExtractor={(item) => item.value}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.optionItem,
+                  selectedValue === item.value && styles.selectedOptionItem
+                ]}
+                onPress={() => {
+                  onValueChange(item.value);
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={[
+                  styles.optionText,
+                  selectedValue === item.value && styles.selectedOptionText
+                ]}>
+                  {item.label}
+                </Text>
+                {selectedValue === item.value && (
+                  <Ionicons name="checkmark" size={24} color="#059669" />
+                )}
+              </TouchableOpacity>
+            )}
+          />
+        </SafeAreaView>
+      </Modal>
+    </>
+  );
+};
 
 export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ 
   onProductCreated 
@@ -51,6 +138,16 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
   const [categorySearchText, setCategorySearchText] = useState('');
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
   
+  // États pour les attributs dynamiques
+  const [attributeValues, setAttributeValues] = useState<Record<string, string>>({});
+  const [attributeErrors, setAttributeErrors] = useState<Record<string, string>>({});
+  
+  // État pour le date picker
+  const [showDatePicker, setShowDatePicker] = useState<{ attributeId: string; show: boolean }>({ 
+    attributeId: '', 
+    show: false 
+  });
+  
   const [formData, setFormData] = useState<CreateProductData>({
     name: '',
     description: '',
@@ -59,6 +156,16 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Options pour les unités de vente
+  const salesUnitOptions = [
+    { label: 'Unité (pièce)', value: 'UNIT' },
+    { label: 'LOT', value: 'LOT' },
+    { label: 'Kilogramme', value: 'KG' },
+    { label: 'Gramme', value: 'G' },
+    { label: 'Litre', value: 'L' },
+    { label: 'Millilitre', value: 'ML' },
+  ];
 
   useEffect(() => {
     initializeScreen();
@@ -183,9 +290,35 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
     setCategoryModalVisible(false);
     setCategorySearchText('');
     
+    // Réinitialiser les valeurs d'attributs pour la nouvelle catégorie
+    const newAttributeValues: Record<string, string> = {};
+    category.attributes.forEach(attribute => {
+      newAttributeValues[attribute.id] = '';
+    });
+    setAttributeValues(newAttributeValues);
+    setAttributeErrors({});
+    
     // Effacer l'erreur de catégorie si elle existe
     if (formErrors.categoryId) {
       setFormErrors(prev => ({ ...prev, categoryId: '' }));
+    }
+  };
+
+  const handleAttributeChange = (attributeId: string, value: string) => {
+    setAttributeValues(prev => ({ ...prev, [attributeId]: value }));
+    
+    // Effacer l'erreur de l'attribut modifié
+    if (attributeErrors[attributeId]) {
+      setAttributeErrors(prev => ({ ...prev, [attributeId]: '' }));
+    }
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker({ attributeId: '', show: false });
+    
+    if (selectedDate && showDatePicker.attributeId) {
+      const dateString = selectedDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
+      handleAttributeChange(showDatePicker.attributeId, dateString);
     }
   };
 
@@ -212,7 +345,17 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
       errors.salesUnit = 'L\'unité de vente est obligatoire';
     }
 
+    // Valider les attributs de catégorie
+    if (selectedCategory) {
+      const attributeValidation = CategoryService.validateCategoryAttributes(
+        selectedCategory,
+        attributeValues
+      );
+      Object.assign(errors, attributeValidation.errors);
+    }
+
     setFormErrors(errors);
+    setAttributeErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
@@ -221,11 +364,19 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
 
     try {
       setLoading(true);
-      console.log('mes data',selectedBusiness,formData)
+      
+      // Préparer les données du produit avec les attributs
+      const productData = {
+        ...formData,
+        attributes: attributeValues
+      };
+
+      console.log('Données du produit:', productData);
+      
       // Créer le produit
       const newProduct = await ProductService.createProduct(
         selectedBusiness.id,
-        formData
+        productData
       );
 
       console.log('✅ Produit créé:', newProduct);
@@ -275,6 +426,116 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
     // Effacer l'erreur du champ modifié
     if (formErrors[field]) {
       setFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const renderDynamicAttribute = (attribute: CategoryAttribute) => {
+    const value = attributeValues[attribute.id] || '';
+    const error = attributeErrors[attribute.id];
+
+    const getAttributeIcon = (attributeName: string) => {
+      const name = attributeName.toLowerCase();
+      if (name.includes('couleur') || name.includes('color')) return Palette;
+      if (name.includes('date') || name.includes('péremption')) return Calendar;
+      return Tag;
+    };
+
+    const IconComponent = getAttributeIcon(attribute.name);
+
+    switch (attribute.type) {
+      case 'date':
+        return (
+          <View key={attribute.id} style={styles.formGroup}>
+            <Text style={styles.label}>
+              {attribute.name} {attribute.required && '*'}
+            </Text>
+            <TouchableOpacity
+              style={[styles.dateInput, error && styles.inputError]}
+              onPress={() => setShowDatePicker({ attributeId: attribute.id, show: true })}
+            >
+              <View style={styles.dateInputContent}>
+                <IconComponent size={16} color="#666" />
+                <Text style={[
+                  styles.dateInputText,
+                  !value && styles.dateInputPlaceholder
+                ]}>
+                  {value ? new Date(value).toLocaleDateString('fr-FR') : 'Sélectionner une date'}
+                </Text>
+                <Calendar size={16} color="#666" />
+              </View>
+            </TouchableOpacity>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+          </View>
+        );
+
+      case 'select':
+        if (!attribute.options || attribute.options.length === 0) {
+          return null;
+        }
+        
+        const selectOptions = attribute.options.map(option => ({
+          label: option,
+          value: option
+        }));
+
+        return (
+          <View key={attribute.id} style={styles.formGroup}>
+            <Text style={styles.label}>
+              {attribute.name} {attribute.required && '*'}
+            </Text>
+            <View style={[error && styles.inputError]}>
+              <IOSPicker
+                title={`Sélectionner ${attribute.name}`}
+                options={selectOptions}
+                selectedValue={value}
+                onValueChange={(newValue) => handleAttributeChange(attribute.id, newValue)}
+                placeholder={`Choisir ${attribute.name.toLowerCase()}`}
+              />
+            </View>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+          </View>
+        );
+
+      case 'number':
+        return (
+          <View key={attribute.id} style={styles.formGroup}>
+            <Text style={styles.label}>
+              {attribute.name} {attribute.required && '*'}
+            </Text>
+            <View style={styles.inputWithIcon}>
+              <IconComponent size={16} color="#666" style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, styles.inputWithPadding, error && styles.inputError]}
+                value={value}
+                onChangeText={(text) => handleAttributeChange(attribute.id, text)}
+                placeholder={`Entrer ${attribute.name.toLowerCase()}`}
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+            </View>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+          </View>
+        );
+
+      default: // text
+        return (
+          <View key={attribute.id} style={styles.formGroup}>
+            <Text style={styles.label}>
+              {attribute.name} {attribute.required && '*'}
+            </Text>
+            <View style={styles.inputWithIcon}>
+              <IconComponent size={16} color="#666" style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, styles.inputWithPadding, error && styles.inputError]}
+                value={value}
+                onChangeText={(text) => handleAttributeChange(attribute.id, text)}
+                placeholder={`Entrer ${attribute.name.toLowerCase()}`}
+                placeholderTextColor="#999"
+              />
+            </View>
+            {error && <Text style={styles.errorText}>{error}</Text>}
+          </View>
+        );
     }
   };
 
@@ -438,6 +699,11 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
                         {category.description}
                       </Text>
                     )}
+                    {category.attributes.length > 0 && (
+                      <Text style={styles.categoryAttributesCount}>
+                        {category.attributes.length} attribut{category.attributes.length > 1 ? 's' : ''}
+                      </Text>
+                    )}
                   </View>
                 </View>
                 
@@ -508,17 +774,26 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
 
       {renderCategorySelector()}
 
+      {/* Attributs dynamiques de la catégorie */}
+      {selectedCategory && selectedCategory.attributes.length > 0 && (
+        <View style={styles.dynamicAttributesSection}>
+          <Text style={styles.dynamicAttributesTitle}>
+            🏷️ Attributs spécifiques - {selectedCategory.name}
+          </Text>
+          {selectedCategory.attributes.map(renderDynamicAttribute)}
+        </View>
+      )}
+
       <View style={styles.formGroup}>
         <Text style={styles.label}>Unité de vente *</Text>
-        <View style={[styles.pickerContainer, formErrors.salesUnit && styles.inputError]}>
-          <Picker
+        <View style={[formErrors.salesUnit && styles.inputError]}>
+          <IOSPicker
+            title="Sélectionner l'unité de vente"
+            options={salesUnitOptions}
             selectedValue={formData.salesUnit}
             onValueChange={(value) => updateFormData('salesUnit', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Unité (pièce)" value="UNIT" />
-            <Picker.Item label="LOT" value="LOT" />
-          </Picker>
+            placeholder="Choisir l'unité"
+          />
         </View>
         {formErrors.salesUnit && (
           <Text style={styles.errorText}>{formErrors.salesUnit}</Text>
@@ -568,6 +843,16 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
       </KeyboardAvoidingView>
 
       {renderCategoryModal()}
+      
+      {/* Date Picker */}
+      {showDatePicker.show && (
+        <DateTimePicker
+          value={new Date()}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -703,6 +988,73 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
+  inputWithIcon: {
+    position: 'relative',
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: 16,
+    top: 18,
+    zIndex: 1,
+  },
+  inputWithPadding: {
+    paddingLeft: 44,
+  },
+  // Styles pour les sélecteurs iOS
+  iosPickerButton: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 56,
+  },
+  iosPickerText: {
+    fontSize: 16,
+    color: '#1f2937',
+  },
+  iosPickerPlaceholder: {
+    color: '#9ca3af',
+  },
+  // Styles pour les dates
+  dateInput: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    minHeight: 56,
+  },
+  dateInputContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateInputText: {
+    fontSize: 16,
+    color: '#1f2937',
+    flex: 1,
+    marginLeft: 8,
+  },
+  dateInputPlaceholder: {
+    color: '#9ca3af',
+  },
+  // Styles pour les attributs dynamiques
+  dynamicAttributesSection: {
+    marginTop: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  dynamicAttributesTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#059669',
+    marginBottom: 16,
+  },
   categorySelector: {
     backgroundColor: '#f9fafb',
     borderRadius: 12,
@@ -761,6 +1113,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1f2937',
   },
+  modalCancelButton: {
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  modalDoneButton: {
+    fontSize: 16,
+    color: '#059669',
+    fontWeight: '600',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -814,9 +1175,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     lineHeight: 18,
+    marginBottom: 4,
   },
   selectedCategoryItemDesc: {
     color: '#047857',
+  },
+  categoryAttributesCount: {
+    fontSize: 12,
+    color: '#8b5cf6',
+    fontWeight: '500',
+  },
+  // Styles pour les options dans les modals
+  optionItem: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectedOptionItem: {
+    backgroundColor: '#f0f9ff',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#1f2937',
+  },
+  selectedOptionText: {
+    color: '#059669',
+    fontWeight: '600',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -846,16 +1235,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#6b7280',
-  },
-  pickerContainer: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    overflow: 'hidden',
-  },
-  picker: {
-    height: 50,
   },
   errorText: {
     fontSize: 14,

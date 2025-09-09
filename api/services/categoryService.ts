@@ -1,15 +1,8 @@
 import axiosInstance from "../axiosInstance";
 import { cacheManager } from "../cache";
+import { Category, CategoryAttribute } from "../types";
 
-export interface Category {
-  id: string;
-  name: string;
-  description?: string;
-  icon?: string;
-  color?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
+
 
 export class CategoryService {
   private static readonly CACHE_TTL = 30 * 60 * 1000; // 30 minutes (les catégories changent peu)
@@ -99,5 +92,41 @@ export class CategoryService {
       console.error("❌ Erreur lors du rafraîchissement des catégories:", error);
       throw error;
     }
+  }
+
+  /**
+   * Récupère les attributs d'une catégorie spécifique
+   */
+  static async getCategoryAttributes(categoryId: string): Promise<CategoryAttribute[]> {
+    try {
+      const category = await this.getCategoryById(categoryId);
+      return category.attributes || [];
+    } catch (error) {
+      console.error("❌ Erreur lors de la récupération des attributs:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Valide les attributs requis pour une catégorie
+   */
+  static validateCategoryAttributes(
+    category: Category, 
+    attributeValues: Record<string, string>
+  ): { isValid: boolean; errors: Record<string, string> } {
+    const errors: Record<string, string> = {};
+
+    category.attributes.forEach(attribute => {
+      const value = attributeValues[attribute.id];
+      
+      if (attribute.required && (!value || !value.trim())) {
+        errors[attribute.id] = `${attribute.name} est requis`;
+      }
+    });
+
+    return {
+      isValid: Object.keys(errors).length === 0,
+      errors
+    };
   }
 }
