@@ -1,13 +1,15 @@
-// app/pro/createBusiness.tsx
+// app/pro/createBusiness.tsx - Version améliorée avec sélecteurs iOS
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
+import { Banknote, Building, ChevronDown } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Image,
+  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -19,6 +21,123 @@ import {
 
 // Import des services API
 import { BusinessesService, CreateBusinessData, Currency, CurrencyService } from '@/api';
+
+// Composant de sélection iOS-friendly
+interface IOSPickerProps {
+  title: string;
+  options: { label: string; value: string }[];
+  selectedValue: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  searchable?: boolean;
+}
+
+const IOSPicker: React.FC<IOSPickerProps> = ({ 
+  title, 
+  options, 
+  selectedValue, 
+  onValueChange, 
+  placeholder = "Sélectionner...",
+  searchable = false
+}) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  
+  const selectedOption = options.find(option => option.value === selectedValue);
+
+  const filteredOptions = searchable && searchText 
+    ? options.filter(option => 
+        option.label.toLowerCase().includes(searchText.toLowerCase()) ||
+        option.value.toLowerCase().includes(searchText.toLowerCase())
+      )
+    : options;
+
+  return (
+    <>
+      <TouchableOpacity 
+        style={styles.iosPickerButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={[
+          styles.iosPickerText,
+          !selectedOption && styles.iosPickerPlaceholder
+        ]}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </Text>
+        <ChevronDown size={20} color="#666" />
+      </TouchableOpacity>
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalCancelButton}>Annuler</Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.modalTitle}>{title}</Text>
+            
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalDoneButton}>OK</Text>
+            </TouchableOpacity>
+          </View>
+
+          {searchable && (
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher..."
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholderTextColor="#999"
+              />
+            </View>
+          )}
+
+          <FlatList
+            data={filteredOptions}
+            keyExtractor={(item) => item.value}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.optionItem,
+                  selectedValue === item.value && styles.selectedOptionItem
+                ]}
+                onPress={() => {
+                  onValueChange(item.value);
+                  setModalVisible(false);
+                  setSearchText('');
+                }}
+              >
+                <Text style={[
+                  styles.optionText,
+                  selectedValue === item.value && styles.selectedOptionText
+                ]}>
+                  {item.label}
+                </Text>
+                {selectedValue === item.value && (
+                  <Ionicons name="checkmark" size={24} color="#059669" />
+                )}
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  Aucun résultat pour "{searchText}"
+                </Text>
+              </View>
+            )}
+          />
+        </SafeAreaView>
+      </Modal>
+    </>
+  );
+};
 
 const CreateBusiness: React.FC = () => {
   const [business, setBusiness] = useState<Partial<CreateBusinessData>>({
@@ -37,6 +156,25 @@ const CreateBusiness: React.FC = () => {
   const [loadingCurrencies, setLoadingCurrencies] = useState(true);
   const [logoUri, setLogoUri] = useState<string>('');
   const [coverUri, setCoverUri] = useState<string>('');
+
+  // Options pour les types d'entreprise
+  const businessTypeOptions = [
+    { 
+      label: '🏪 Commerçant', 
+      value: 'COMMERCANT',
+      description: 'Vente de produits au détail'
+    },
+    { 
+      label: '🏭 Fournisseur', 
+      value: 'FOURNISSEUR',
+      description: 'Approvisionnement en gros'
+    },
+    { 
+      label: '🍽️ Restaurateur', 
+      value: 'RESTAURATEUR',
+      description: 'Services de restauration'
+    },
+  ];
 
   useEffect(() => {
     loadCurrencies();
@@ -84,6 +222,42 @@ const CreateBusiness: React.FC = () => {
         setCoverUri(result.assets[0].uri);
       }
     }
+  };
+
+  const takePhoto = async (field: 'logo' | 'cover') => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la caméra.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: field === 'logo' ? [1, 1] : [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      if (field === 'logo') {
+        setLogoUri(result.assets[0].uri);
+      } else {
+        setCoverUri(result.assets[0].uri);
+      }
+    }
+  };
+
+  const showImageOptions = (field: 'logo' | 'cover') => {
+    const title = field === 'logo' ? 'Logo de l\'entreprise' : 'Image de couverture';
+    
+    Alert.alert(
+      title,
+      'Choisissez une option',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Galerie', onPress: () => pickImage(field) },
+        { text: 'Caméra', onPress: () => takePhoto(field) },
+      ]
+    );
   };
 
   const validateForm = (): boolean => {
@@ -146,7 +320,6 @@ const CreateBusiness: React.FC = () => {
       // Upload du logo si présent
       if (logoUri) {
         try {
-          // Note: Vous devrez adapter cette partie selon votre implémentation d'upload
           await BusinessesService.uploadLogo(newBusiness.id, {
             uri: logoUri,
             type: 'image/jpeg',
@@ -194,6 +367,10 @@ const CreateBusiness: React.FC = () => {
     }
   };
 
+  const updateBusiness = (field: keyof CreateBusinessData, value: any) => {
+    setBusiness(prev => ({ ...prev, [field]: value }));
+  };
+
   const renderImagePicker = (
     field: 'logo' | 'cover',
     uri: string,
@@ -207,10 +384,17 @@ const CreateBusiness: React.FC = () => {
           styles.imagePicker,
           field === 'cover' && styles.coverImagePicker
         ]} 
-        onPress={() => pickImage(field)}
+        onPress={() => showImageOptions(field)}
+        activeOpacity={0.7}
       >
         {uri ? (
-          <Image source={{ uri }} style={styles.imagePreview} />
+          <>
+            <Image source={{ uri }} style={styles.imagePreview} />
+            <View style={styles.imageOverlay}>
+              <Ionicons name="camera" size={24} color="white" />
+              <Text style={styles.changeImageText}>Changer</Text>
+            </View>
+          </>
         ) : (
           <View style={styles.imagePickerContent}>
             <Ionicons name="camera-outline" size={32} color="#666" />
@@ -218,7 +402,7 @@ const CreateBusiness: React.FC = () => {
               {field === 'logo' ? 'Ajouter un logo' : 'Ajouter une couverture'}
             </Text>
             <Text style={styles.imagePickerSubtext}>
-              Ratio {aspectRatio}
+              Ratio {aspectRatio} • Touchez pour sélectionner
             </Text>
           </View>
         )}
@@ -226,12 +410,18 @@ const CreateBusiness: React.FC = () => {
     </View>
   );
 
+  // Préparer les options de devises
+  const currencyOptions = currencies.map(currency => ({
+    label: `${currency.name} (${currency.code}) ${currency.symbol}`,
+    value: currency.id
+  }));
+
   if (loadingCurrencies) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#059669" />
-          <Text style={styles.loadingText}>Chargement...</Text>
+          <Text style={styles.loadingText}>Chargement des devises...</Text>
         </View>
       </SafeAreaView>
     );
@@ -250,43 +440,55 @@ const CreateBusiness: React.FC = () => {
       <ScrollView 
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formContainer}>
           {/* Informations de base */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>📝 Informations de base</Text>
             
-            <Text style={styles.label}>Nom de l'entreprise *</Text>
-            <TextInput
-              style={styles.input}
-              value={business.name}
-              onChangeText={(text) => setBusiness({ ...business, name: text })}
-              placeholder="Entrez le nom de votre entreprise"
-              placeholderTextColor="#6b7280"
-            />
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Nom de l'entreprise *</Text>
+              <TextInput
+                style={styles.input}
+                value={business.name}
+                onChangeText={(text) => updateBusiness('name', text)}
+                placeholder="Entrez le nom de votre entreprise"
+                placeholderTextColor="#999"
+              />
+            </View>
 
-            <Text style={styles.label}>Description *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={business.description}
-              onChangeText={(text) => setBusiness({ ...business, description: text })}
-              placeholder="Décrivez votre entreprise"
-              placeholderTextColor="#6b7280"
-              multiline
-              numberOfLines={4}
-            />
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Description *</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={business.description}
+                onChangeText={(text) => updateBusiness('description', text)}
+                placeholder="Décrivez votre entreprise, ses activités et ses spécialités..."
+                placeholderTextColor="#999"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
 
-            <Text style={styles.label}>Type d'entreprise *</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={business.type}
-                onValueChange={(value) => setBusiness({ ...business, type: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="Commerçant" value="COMMERCANT" />
-                <Picker.Item label="Fournisseur" value="FOURNISSEUR" />
-                <Picker.Item label="Restaurateur" value="RESTAURATEUR" />
-              </Picker>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Type d'entreprise *</Text>
+              <View style={styles.inputWithIcon}>
+                <Building size={16} color="#666" style={styles.inputIcon} />
+                <View style={styles.pickerWrapper}>
+                  <IOSPicker
+                    title="Sélectionner le type d'entreprise"
+                    options={businessTypeOptions.map(type => ({
+                      label: type.label,
+                      value: type.value
+                    }))}
+                    selectedValue={business.type || ''}
+                    onValueChange={(value) => updateBusiness('type', value)}
+                    placeholder="Choisir le type d'activité"
+                  />
+                </View>
+              </View>
             </View>
           </View>
 
@@ -294,24 +496,29 @@ const CreateBusiness: React.FC = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>📍 Contact et localisation</Text>
             
-            <Text style={styles.label}>Adresse *</Text>
-            <TextInput
-              style={styles.input}
-              value={business.address}
-              onChangeText={(text) => setBusiness({ ...business, address: text })}
-              placeholder="Adresse complète de votre entreprise"
-              placeholderTextColor="#6b7280"
-            />
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Adresse *</Text>
+              <TextInput
+                style={styles.input}
+                value={business.address}
+                onChangeText={(text) => updateBusiness('address', text)}
+                placeholder="Adresse complète de votre entreprise"
+                placeholderTextColor="#999"
+                multiline
+              />
+            </View>
 
-            <Text style={styles.label}>Numéro de téléphone *</Text>
-            <TextInput
-              style={styles.input}
-              value={business.phoneNumber}
-              onChangeText={(text) => setBusiness({ ...business, phoneNumber: text })}
-              placeholder="+237 123 456 789"
-              placeholderTextColor="#6b7280"
-              keyboardType="phone-pad"
-            />
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Numéro de téléphone *</Text>
+              <TextInput
+                style={styles.input}
+                value={business.phoneNumber}
+                onChangeText={(text) => updateBusiness('phoneNumber', text)}
+                placeholder="+237 123 456 789"
+                placeholderTextColor="#999"
+                keyboardType="phone-pad"
+              />
+            </View>
 
             <View style={styles.coordinatesContainer}>
               <View style={styles.coordinateInput}>
@@ -319,9 +526,9 @@ const CreateBusiness: React.FC = () => {
                 <TextInput
                   style={styles.input}
                   value={business.latitude?.toString()}
-                  onChangeText={(text) => setBusiness({ ...business, latitude: parseFloat(text) || 0 })}
+                  onChangeText={(text) => updateBusiness('latitude', parseFloat(text) || 0)}
                   placeholder="4.0511"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor="#999"
                   keyboardType="numeric"
                 />
               </View>
@@ -331,41 +538,50 @@ const CreateBusiness: React.FC = () => {
                 <TextInput
                   style={styles.input}
                   value={business.longitude?.toString()}
-                  onChangeText={(text) => setBusiness({ ...business, longitude: parseFloat(text) || 0 })}
+                  onChangeText={(text) => updateBusiness('longitude', parseFloat(text) || 0)}
                   placeholder="9.7679"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor="#999"
                   keyboardType="numeric"
                 />
               </View>
+            </View>
+
+            <View style={styles.coordinatesHint}>
+              <Ionicons name="information-circle" size={16} color="#8b5cf6" />
+              <Text style={styles.hintText}>
+                Utilisez Google Maps pour obtenir les coordonnées exactes de votre entreprise
+              </Text>
             </View>
           </View>
 
           {/* Devise */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>💰 Devise</Text>
+            <Text style={styles.sectionTitle}>💰 Configuration financière</Text>
             
-            <Text style={styles.label}>Devise de l'entreprise *</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={business.currencyId}
-                onValueChange={(value) => setBusiness({ ...business, currencyId: value })}
-                style={styles.picker}
-              >
-                <Picker.Item label="Sélectionner une devise" value="" />
-                {currencies.map((currency) => (
-                  <Picker.Item 
-                    key={currency.id} 
-                    label={`${currency.name} (${currency.code}) ${currency.symbol}`} 
-                    value={currency.id} 
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Devise de l'entreprise *</Text>
+              <View style={styles.inputWithIcon}>
+                <Banknote size={16} color="#666" style={styles.inputIcon} />
+                <View style={styles.pickerWrapper}>
+                  <IOSPicker
+                    title="Sélectionner la devise"
+                    options={[
+                      { label: "Sélectionner une devise", value: "" },
+                      ...currencyOptions
+                    ]}
+                    selectedValue={business.currencyId || ''}
+                    onValueChange={(value) => updateBusiness('currencyId', value)}
+                    placeholder="Choisir la devise principale"
+                    searchable={true}
                   />
-                ))}
-              </Picker>
+                </View>
+              </View>
             </View>
           </View>
 
           {/* Images */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🖼️ Images</Text>
+            <Text style={styles.sectionTitle}>🖼️ Images de l'entreprise</Text>
             {renderImagePicker('logo', logoUri, 'Logo de l\'entreprise', '1:1')}
             {renderImagePicker('cover', coverUri, 'Image de couverture', '16:9')}
           </View>
@@ -376,9 +592,15 @@ const CreateBusiness: React.FC = () => {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="white" />
+              <View style={styles.submitButtonContent}>
+                <ActivityIndicator color="white" size="small" />
+                <Text style={styles.submitButtonText}>Création en cours...</Text>
+              </View>
             ) : (
-              <Text style={styles.submitButtonText}>Créer l'entreprise</Text>
+              <View style={styles.submitButtonContent}>
+                <Building size={20} color="white" />
+                <Text style={styles.submitButtonText}>Créer l'entreprise</Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
@@ -396,11 +618,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
   },
   loadingText: {
-    marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: '#6b7280',
   },
   header: {
     flexDirection: 'row',
@@ -409,12 +631,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     paddingVertical: 15,
     paddingHorizontal: 20,
-    paddingTop: 40,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1f2937',
   },
@@ -423,7 +644,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   formContainer: {
     marginTop: 20,
@@ -436,13 +657,16 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1f2937',
+    marginBottom: 20,
+  },
+  formGroup: {
     marginBottom: 20,
   },
   label: {
@@ -452,12 +676,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
     color: '#1f2937',
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
@@ -465,57 +688,194 @@ const styles = StyleSheet.create({
     height: 100,
     textAlignVertical: 'top',
   },
-  pickerContainer: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
+  inputWithIcon: {
+    position: 'relative',
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: 16,
+    top: 18,
+    zIndex: 1,
+  },
+  pickerWrapper: {
+    marginLeft: 44,
+  },
+  // Styles pour les sélecteurs iOS
+  iosPickerButton: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 56,
   },
-  picker: {
-    height: 50,
+  iosPickerText: {
+    fontSize: 16,
+    color: '#1f2937',
+  },
+  iosPickerPlaceholder: {
+    color: '#9ca3af',
   },
   coordinatesContainer: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   coordinateInput: {
     flex: 1,
   },
+  coordinatesHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#f8f9ff',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e7ff',
+  },
+  hintText: {
+    fontSize: 14,
+    color: '#6366f1',
+    flex: 1,
+    lineHeight: 18,
+  },
+  // Styles des images
   imageSection: {
     marginBottom: 20,
   },
   imagePicker: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
     height: 120,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#e5e7eb',
     borderStyle: 'dashed',
+    overflow: 'hidden',
+    position: 'relative',
   },
   coverImagePicker: {
     height: 150,
   },
   imagePickerContent: {
     alignItems: 'center',
+    gap: 8,
   },
   imagePickerText: {
     fontSize: 16,
     color: '#6b7280',
-    marginTop: 8,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   imagePickerSubtext: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#9ca3af',
-    marginTop: 4,
+    textAlign: 'center',
   },
   imagePreview: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  changeImageText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fafafb',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  modalCancelButton: {
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  modalDoneButton: {
+    fontSize: 16,
+    color: '#059669',
+    fontWeight: '600',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    marginHorizontal: 20,
+    marginVertical: 15,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1f2937',
+    paddingVertical: 12,
+  },
+  optionItem: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectedOptionItem: {
+    backgroundColor: '#f0f9ff',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#1f2937',
+    flex: 1,
+  },
+  selectedOptionText: {
+    color: '#059669',
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
   },
   submitButton: {
     backgroundColor: '#059669',
@@ -525,14 +885,20 @@ const styles = StyleSheet.create({
     marginTop: 20,
     shadowColor: '#059669',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 6,
   },
   submitButtonDisabled: {
     backgroundColor: '#9ca3af',
     shadowOpacity: 0,
     elevation: 0,
+  },
+  submitButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   submitButtonText: {
     color: '#fff',

@@ -37,7 +37,7 @@ export class BusinessesService {
     }
 
     try {
-      const response = await axiosInstance.get<PaginatedResponse<Business>>("/users/me/businesses", {
+      const response = await axiosInstance.get<PaginatedResponse<Business>>("/businesses", {
         params: filters
       });
       
