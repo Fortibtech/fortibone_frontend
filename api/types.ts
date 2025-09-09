@@ -89,12 +89,21 @@ export interface Business {
     };
   }
 
+  export interface CategoryAttribute {
+    id: string;
+    name: string;
+    categoryId: string;
+    required?: boolean;
+    type?: 'text' | 'number' | 'date' | 'select' | 'color';
+    options?: string[]; // Pour les attributs de type select
+  }
+  
   export interface Category {
     id: string;
     name: string;
     description?: string;
-    icon?: string;
-    color?: string;
+    imageUrl?: string;
+    attributes: CategoryAttribute[];
     createdAt?: string;
     updatedAt?: string;
   }
