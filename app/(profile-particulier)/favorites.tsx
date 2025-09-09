@@ -1,22 +1,22 @@
-import { useEffect, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  FlatList,
-  ActivityIndicator,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-  Animated,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { deleteFavoris } from "@/api/Products";
 import { getFavoris, UserFavorite } from "@/api/Users";
 import BackButton from "@/components/BackButton";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-import { deleteFavoris } from "@/api/Products";
 
 // Responsive dimensions
 const { width } = Dimensions.get("window");
@@ -162,18 +162,17 @@ const Favorites = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <BackButton size={isTablet ? 50 : 45} />
-          </View>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            Mes favoris ({favorites.length})
-          </Text>
-          <View style={styles.headerRight} />
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <BackButton size={isTablet ? 50 : 45} />
         </View>
-
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          Mes favoris ({favorites.length})
+        </Text>
+        <View style={styles.headerRight} />
+      </View>
+      <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
         {/* Liste ou message vide */}
         {favorites.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -203,9 +202,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8f8f8",
-    paddingHorizontal: width * 0.04,
   },
   contentWrapper: {
+    paddingHorizontal: width * 0.04,
     flex: 1,
   },
   header: {
