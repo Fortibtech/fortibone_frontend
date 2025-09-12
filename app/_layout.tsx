@@ -25,8 +25,6 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
         {/* <Stack.Screen name="(auth)" options={{ headerShown: false }} /> */}
-        <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
-        {/* <Stack.Screen name="pro/createBusiness" options={{ headerShown: false }} /> */}
         {/* <Stack.Screen name="onboarding" options={{ headerShown: false }} /> */}
         {/* <Stack.Screen name="+not-found" /> */}
         <Stack.Screen name="pro" />
@@ -48,6 +46,8 @@ export default function RootLayout() {
         <Stack.Screen name="(profile-particulier)" />
         <Stack.Screen name="(details-products)" />
         <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
+        <Stack.Screen name="(inventory)" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="+not-found" />
       </Stack>
