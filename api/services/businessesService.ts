@@ -4,9 +4,37 @@ import { SelectedBusinessManager } from "../selectedBusinessManager";
 import {
   Business,
   BusinessFilters,
-  CreateBusinessData,
-  PaginatedResponse
+  CreateBusinessData
 } from "../types";
+
+// Types pour les nouveaux endpoints
+export interface AddMemberData {
+  email: string;
+  role: "MEMBER" | "ADMIN";
+}
+
+export interface UpdateMemberRoleData {
+  role: "MEMBER" | "ADMIN" | "OWNER";
+}
+
+export interface BusinessMember {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "MEMBER" | "ADMIN" | "OWNER";
+  joinedAt: string;
+}
+
+export interface OpeningHour {
+  dayOfWeek: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY" | "SUNDAY";
+  openTime: string; // Format "HH:mm"
+  closeTime: string; // Format "HH:mm"
+}
+
+export interface UpdateOpeningHoursData {
+  hours: OpeningHour[];
+}
 
 export class BusinessesService {
   private static readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes
@@ -17,6 +45,7 @@ export class BusinessesService {
       
       // Invalider le cache des listes
       await cacheManager.invalidatePattern("businesses_list");
+      await cacheManager.invalidatePattern("user_businesses");
       
       console.log("✅ Entreprise créée:", response.data.name);
       return response.data;
@@ -26,25 +55,25 @@ export class BusinessesService {
     }
   }
 
-  static async getBusinesses(filters: BusinessFilters = {}): Promise<PaginatedResponse<Business>> {
-    const cacheKey = `businesses_list_${JSON.stringify(filters)}`;
+  static async getBusinesses(filters: BusinessFilters = {}): Promise<Business[]> {
+    const cacheKey = `user_businesses_${JSON.stringify(filters)}`;
     
     // Vérifier le cache
-    const cachedData = await cacheManager.get<PaginatedResponse<Business>>(cacheKey);
+    const cachedData = await cacheManager.get<Business[]>(cacheKey);
     if (cachedData) {
       console.log("📦 Données récupérées du cache:", cacheKey);
       return cachedData;
     }
 
     try {
-      const response = await axiosInstance.get<PaginatedResponse<Business>>("/businesses", {
+      const response = await axiosInstance.get<Business[]>("/users/me/businesses", {
         params: filters
       });
       
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
       
-      console.log("✅ Entreprises récupérées:", response.data.data.length);
+      console.log("✅ Entreprises récupérées:", response.data.length);
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des entreprises:", error);
@@ -83,6 +112,7 @@ export class BusinessesService {
       // Invalider les caches
       await cacheManager.invalidate(`business_${id}`);
       await cacheManager.invalidatePattern("businesses_list");
+      await cacheManager.invalidatePattern("user_businesses");
       
       // Mettre à jour l'entreprise sélectionnée si c'est celle-ci
       const selectedBusiness = await SelectedBusinessManager.getSelectedBusiness();
@@ -105,6 +135,7 @@ export class BusinessesService {
       // Invalider les caches
       await cacheManager.invalidate(`business_${id}`);
       await cacheManager.invalidatePattern("businesses_list");
+      await cacheManager.invalidatePattern("user_businesses");
       
       // Supprimer de la sélection si c'est celle-ci
       const selectedBusiness = await SelectedBusinessManager.getSelectedBusiness();
@@ -161,7 +192,104 @@ export class BusinessesService {
     }
   }
 
-  // Méthodes utilitaires pour la gestion des entreprises sélectionnées
+  // === GESTION DES MEMBRES ===
+
+  static async addMember(businessId: string, data: AddMemberData): Promise<BusinessMember> {
+    try {
+      const response = await axiosInstance.post<BusinessMember>(`/businesses/${businessId}/members`, data);
+      
+      // Invalider le cache des membres
+      await cacheManager.invalidate(`business_members_${businessId}`);
+      
+      console.log("✅ Membre ajouté:", data.email);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Erreur lors de l'ajout du membre:", error);
+      throw error;
+    }
+  }
+
+  static async getMembers(businessId: string): Promise<BusinessMember[]> {
+    const cacheKey = `business_members_${businessId}`;
+    
+    // Vérifier le cache
+    const cachedData = await cacheManager.get<BusinessMember[]>(cacheKey);
+    if (cachedData) {
+      console.log("📦 Membres récupérés du cache");
+      return cachedData;
+    }
+
+    try {
+      const response = await axiosInstance.get<BusinessMember[]>(`/businesses/${businessId}/members`);
+      
+      // Mettre en cache
+      await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
+      
+      console.log("✅ Membres récupérés:", response.data.length);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Erreur lors de la récupération des membres:", error);
+      throw error;
+    }
+  }
+
+  static async updateMemberRole(
+    businessId: string, 
+    memberId: string, 
+    data: UpdateMemberRoleData
+  ): Promise<BusinessMember> {
+    try {
+      const response = await axiosInstance.post<BusinessMember>(
+        `/businesses/${businessId}/members/${memberId}`, 
+        data
+      );
+      
+      // Invalider le cache des membres
+      await cacheManager.invalidate(`business_members_${businessId}`);
+      
+      console.log("✅ Rôle du membre mis à jour:", data.role);
+      return response.data;
+    } catch (error) {
+      console.error("❌ Erreur lors de la mise à jour du rôle:", error);
+      throw error;
+    }
+  }
+
+  static async removeMember(businessId: string, memberId: string): Promise<void> {
+    try {
+      await axiosInstance.delete(`/businesses/${businessId}/members/${memberId}`);
+      
+      // Invalider le cache des membres
+      await cacheManager.invalidate(`business_members_${businessId}`);
+      
+      console.log("✅ Membre supprimé");
+    } catch (error) {
+      console.error("❌ Erreur lors de la suppression du membre:", error);
+      throw error;
+    }
+  }
+
+  // === GESTION DES HORAIRES D'OUVERTURE ===
+
+  static async updateOpeningHours(
+    businessId: string, 
+    data: UpdateOpeningHoursData
+  ): Promise<void> {
+    try {
+      await axiosInstance.put(`/businesses/${businessId}/opening-hours`, data);
+      
+      // Invalider le cache de l'entreprise
+      await cacheManager.invalidate(`business_${businessId}`);
+      
+      console.log("✅ Horaires d'ouverture mis à jour");
+    } catch (error) {
+      console.error("❌ Erreur lors de la mise à jour des horaires:", error);
+      throw error;
+    }
+  }
+
+  // === MÉTHODES UTILITAIRES POUR LA GESTION DES ENTREPRISES SÉLECTIONNÉES ===
+
   static async selectBusiness(business: Business): Promise<void> {
     await SelectedBusinessManager.setSelectedBusiness(business);
   }
