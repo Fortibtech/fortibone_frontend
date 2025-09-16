@@ -34,6 +34,15 @@ interface Enterprise {
   discount?: Float
 }
 
+interface BusinessAction {
+  id: string;
+  title: string;
+  icon: string;
+  description: string;
+  route: string;
+  color: string;
+}
+
 const enterprises: Enterprise[] = [
   {
     id: 1,
@@ -77,15 +86,18 @@ const HomePage: React.FC = () => {
       setLoading(true);
       
       // Charger les entreprises depuis l'API
-      const businessesResponse = await BusinessesService.getBusinesses({
-        page: 1,
-        limit: 50
-      });
-      setBusinesses(businessesResponse.data);
+      const businessesResponse = await BusinessesService.getBusinesses();
+      setBusinesses(businessesResponse);
       
       // Vérifier si une entreprise est déjà sélectionnée
       const selected = await SelectedBusinessManager.getSelectedBusiness();
       setSelectedBusiness(selected);
+      
+      // Si une entreprise est sélectionnée mais n'est plus dans la liste, la désélectionner
+      if (selected && !businessesResponse.find(b => b.id === selected.id)) {
+        await BusinessesService.clearSelectedBusiness();
+        setSelectedBusiness(null);
+      }
       
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
@@ -115,6 +127,45 @@ const HomePage: React.FC = () => {
       console.error('Erreur lors de la sélection:', error);
       Alert.alert('Erreur', 'Impossible de sélectionner l\'entreprise');
     }
+  };
+
+  const getBusinessActions = (): BusinessAction[] => {
+    if (!selectedBusiness) return [];
+
+    return [
+      {
+        id: 'details',
+        title: 'Détails & Modifier',
+        icon: 'business-outline',
+        description: 'Voir et modifier les informations',
+        route: `/pro/business-details?id=${selectedBusiness.id}`,
+        color: '#059669'
+      },
+      {
+        id: 'members',
+        title: 'Gérer les membres',
+        icon: 'people-outline',
+        description: 'Ajouter, modifier, supprimer des membres',
+        route: `/pro/business-members?id=${selectedBusiness.id}`,
+        color: '#2563eb'
+      },
+      {
+        id: 'hours',
+        title: 'Horaires d\'ouverture',
+        icon: 'time-outline',
+        description: 'Définir les horaires d\'ouverture',
+        route: `/pro/opening-hours?id=${selectedBusiness.id}`,
+        color: '#dc2626'
+      },
+      {
+        id: 'analytics',
+        title: 'Statistiques',
+        icon: 'analytics-outline',
+        description: 'Voir les performances',
+        route: `/pro/business-members?id=${selectedBusiness.id}`,
+        color: '#7c3aed'
+      }
+    ];
   };
 
   const sampleData: SalesData = {
@@ -207,11 +258,16 @@ const HomePage: React.FC = () => {
           <Text style={styles.selectedBusinessAddress} numberOfLines={1}>
             📍 {selectedBusiness.address}
           </Text>
+          {selectedBusiness.isVerified && (
+            <View style={styles.verifiedBadge}>
+              <Ionicons name="checkmark-circle" size={16} color="#059669" />
+              <Text style={styles.verifiedText}>Vérifié</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity 
           style={styles.changeBusiness}
           onPress={() => {
-            // Ouvrir la sidebar pour changer d'entreprise
             Alert.alert(
               'Changer d\'entreprise',
               'Ouvrez le menu (☰) pour sélectionner une autre entreprise',
@@ -224,6 +280,87 @@ const HomePage: React.FC = () => {
       </View>
     );
   };
+
+  const renderBusinessActions = (): JSX.Element | null => {
+    if (!selectedBusiness) return null;
+
+    const actions = getBusinessActions();
+
+    return (
+      <View style={styles.businessActionsContainer}>
+        <Text style={styles.sectionTitle}>Actions rapides</Text>
+        <View style={styles.actionsGrid}>
+          {actions.map((action) => (
+            <TouchableOpacity
+              key={action.id}
+              style={[styles.actionCard, { borderLeftColor: action.color }]}
+              onPress={() => router.push(action.route)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: `${action.color}15` }]}>
+                <Ionicons name={action.icon as any} size={24} color={action.color} />
+              </View>
+              <View style={styles.actionContent}>
+                <Text style={styles.actionTitle}>{action.title}</Text>
+                <Text style={styles.actionDescription}>{action.description}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const renderQuickStats = (): JSX.Element | null => {
+    if (!selectedBusiness) return null;
+
+    return (
+      <View style={styles.quickStatsContainer}>
+        <Text style={styles.sectionTitle}>Aperçu rapide</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{selectedBusiness.averageRating.toFixed(1)}</Text>
+            <Text style={styles.statLabel}>Note moyenne</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{selectedBusiness.reviewCount}</Text>
+            <Text style={styles.statLabel}>Avis</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={styles.statBadge}>
+              <Text style={styles.statBadgeText}>
+                {selectedBusiness.isVerified ? 'Vérifié' : 'En attente'}
+              </Text>
+            </View>
+            <Text style={styles.statLabel}>Statut</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderNoBusinessSelected = (): JSX.Element => (
+    <View style={styles.noBusinessContainer}>
+      <Ionicons name="business-outline" size={60} color="#ccc" />
+      <Text style={styles.noBusinessTitle}>Aucune entreprise sélectionnée</Text>
+      <Text style={styles.noBusinessText}>
+        Sélectionnez une entreprise dans le menu pour accéder aux outils de gestion
+      </Text>
+      <TouchableOpacity
+        style={styles.selectBusinessButton}
+        onPress={() => {
+          Alert.alert(
+            'Sélectionner une entreprise',
+            'Ouvrez le menu (☰) pour sélectionner une entreprise',
+            [{ text: 'OK' }]
+          );
+        }}
+      >
+        <Text style={styles.selectBusinessButtonText}>Sélectionner une entreprise</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   const renderEnterpriseCard = (enterprise: Enterprise): JSX.Element => (
     <TouchableOpacity 
@@ -277,8 +414,17 @@ const HomePage: React.FC = () => {
       >
         {renderSelectedBusinessBanner()}
 
+        {selectedBusiness ? (
+          <>
+            {renderQuickStats()}
+            {renderBusinessActions()}
+          </>
+        ) : (
+          renderNoBusinessSelected()
+        )}
+
         <View style={styles.headerSection2}>
-          <Text style={styles.bannerTitle}>Mes infos</Text>
+          <Text style={styles.bannerTitle}>Statistiques générales</Text>
           {selectedBusiness && (
             <Text style={styles.businessCount}>
               {businesses.length} entreprise{businesses.length > 1 ? 's' : ''} disponible{businesses.length > 1 ? 's' : ''}
@@ -365,6 +511,17 @@ const styles = StyleSheet.create({
   selectedBusinessAddress: {
     fontSize: 12,
     color: '#388e3c',
+    marginBottom: 8,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  verifiedText: {
+    fontSize: 12,
+    color: '#059669',
+    marginLeft: 4,
+    fontWeight: '600',
   },
   changeBusiness: {
     backgroundColor: '#059669',
@@ -381,6 +538,132 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontStyle: 'italic',
+  },
+  businessActionsContainer: {
+    marginHorizontal: 10,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 15,
+  },
+  actionsGrid: {
+    gap: 12,
+  },
+  actionCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  actionContent: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  actionDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  quickStatsContainer: {
+    marginHorizontal: 10,
+    marginBottom: 20,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  statBadge: {
+    backgroundColor: '#e8f5e8',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  statBadgeText: {
+    fontSize: 12,
+    color: '#059669',
+    fontWeight: '600',
+  },
+  noBusinessContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+    marginHorizontal: 10,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  noBusinessTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  noBusinessText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 30,
+  },
+  selectBusinessButton: {
+    backgroundColor: '#059669',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  selectBusinessButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   headerLeft: {
     flexDirection: 'row',

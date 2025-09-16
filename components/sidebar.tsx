@@ -41,11 +41,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     router.push('/pro/createBusiness');
   };
 
-  const navigateToNotifications = () => {
-    toggleSidebar();
-    router.push('/pro/notifications');
-  };
-
   const navigateToProfile = () => {
     toggleSidebar();
     router.push('/pro/profile');
@@ -233,15 +228,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Ionicons name="add-circle-outline" size={24} color="#fff" />
                 <Text style={styles.buttonText}>Nouvelle Entreprise</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.sidebarButton}
-                onPress={navigateToNotifications}
-              >
-                <Ionicons name="notifications-outline" size={24} color="#fff" />
-                <Text style={styles.buttonText}>Notifications</Text>
-              </TouchableOpacity>
-              
               <TouchableOpacity
                 style={styles.sidebarButton}
                 onPress={navigateToProfile}
