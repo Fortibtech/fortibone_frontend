@@ -1,3 +1,4 @@
+import { createOrder } from "@/api/Orders";
 import { addToFavorite, deleteFavoris, getProductById } from "@/api/Products";
 import BackButton from "@/components/BackButton";
 import AddProductReviewModal from "@/components/produit/AddProductReviewModal";
@@ -8,11 +9,14 @@ import ReviewActions from "@/components/produit/ReviewActions";
 import { useCartStore } from "@/stores/useCartStore";
 import { Products } from "@/types/Product";
 import { Variant } from "@/types/v";
+import { useStripe } from "@stripe/stripe-react-native";
+import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
   ScrollView,
@@ -29,17 +33,21 @@ const { width: screenWidth } = Dimensions.get("window");
 
 const ProductDetails = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
-
   const { toggleItem, isInCart } = useCartStore();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [product, setProduct] = useState<Products | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSlide, setActiveSlide] = useState(0);
   const [favLoading, setFavLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
-  // États pour les modals
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
+    "STRIPE" | "MVOLA" | "MANUAL"
+  >("STRIPE");
   const [showAddReview, setShowAddReview] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -60,7 +68,6 @@ const ProductDetails = () => {
     try {
       setFavLoading(true);
       if (isFavorite) {
-        // → retirer
         await deleteFavoris(id);
         setIsFavorite(false);
         Toast.show({
@@ -68,7 +75,6 @@ const ProductDetails = () => {
           text1: "Produit retiré des favoris",
         });
       } else {
-        // → ajouter
         await addToFavorite(id);
         setIsFavorite(true);
         Toast.show({
@@ -89,47 +95,153 @@ const ProductDetails = () => {
 
   const inCart = (variantId?: string) => {
     if (variantId) return isInCart(variantId);
-    // fallback: pas de variant
     return isInCart(product?.id || "");
   };
 
   const handleAddToCart = () => {
     if (!product) return;
 
-    // état avant action
-    const alreadyInCart = selectedVariant
-      ? isInCart(selectedVariant.id)
-      : isInCart(product.id);
+    const variant = selectedVariant || product.variants?.[0];
+    if (!variant) {
+      Toast.show({
+        type: "error",
+        text1: "Veuillez sélectionner une variante",
+      });
+      return;
+    }
 
-    // on construit l'item qu'on veut toggle
-    const variant = selectedVariant || {
-      id: product.id,
-      price: product.variants?.[0]?.price ?? 0, // fallback 0 si pas de variant
-      imageUrl: product.imageUrl,
-    };
+    const alreadyInCart = isInCart(variant.id);
 
     toggleItem({
       productId: product.id,
+      businessId: product.businessId,
+      supplierBusinessId: product.businessId,
       variantId: variant.id,
       name: product.name,
       price: variant.price,
-      imageUrl: variant.imageUrl,
+      imageUrl: variant.imageUrl ?? product.imageUrl,
       quantity: 1,
     });
 
-    // toast cohérent
-    if (alreadyInCart) {
+    Toast.show({
+      type: alreadyInCart ? "info" : "success",
+      text1: alreadyInCart
+        ? "Produit retiré du panier"
+        : "✅ Le produit a été ajouté au panier avec succès !",
+    });
+  };
+
+  const handleBuyNow = async () => {
+    if (!product) return;
+
+    const variant = selectedVariant || product.variants?.[0];
+    if (!variant) {
       Toast.show({
-        type: "info",
-        text1: "Produit retiré du panier",
+        type: "error",
+        text1: "Veuillez sélectionner une variante",
       });
-    } else {
-      Toast.show({
-        type: "success",
-        text1: "✅ Le produit a été ajouté au panier avec succès !",
+      return;
+    }
+
+    setPaymentLoading(true);
+
+    try {
+      // 1. Créer une commande via l'API
+      const orderResponse = await createOrder({
+        type: "PENDING", // Type pour un achat immédiat, ajuster si nécessaire
+        businessId: product.businessId,
+        lines: [
+          {
+            variantId: variant.id,
+            quantity: 1,
+          },
+        ],
       });
+
+      const orderId = orderResponse.id; // Utiliser l'id de CreateOrderResponse
+
+      // 2. Appeler l'endpoint de paiement
+      const requestBody: any = {
+        method: selectedPaymentMethod,
+        metadata: {},
+      };
+
+      if (selectedPaymentMethod === "STRIPE") {
+        requestBody.metadata.paymentMethodId = "pm_xxx"; // À remplacer par une méthode de paiement réelle
+      }
+      // Pour MVOLA ou MANUAL, metadata peut être vide ou contenir des données spécifiques
+      // Exemple : requestBody.metadata.mvolaPhone = 'numero_telephone' pour MVOLA
+
+      const paymentResponse = await axios.post(
+        `https://votre-api.com/payments/orders/${orderId}/pay`,
+        requestBody,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            // Ajoutez ici tout en-tête d'authentification si nécessaire
+          },
+        }
+      );
+
+      const paymentData = paymentResponse.data;
+
+      if (paymentResponse.status === 200) {
+        if (selectedPaymentMethod === "STRIPE") {
+          const { clientSecret } = paymentData;
+
+          // 3. Initialiser le PaymentSheet pour Stripe
+          const { error: initError } = await initPaymentSheet({
+            paymentIntentClientSecret: clientSecret,
+            merchantDisplayName: "Votre Entreprise",
+          });
+
+          if (initError) {
+            Alert.alert("Erreur", initError.message);
+            setPaymentLoading(false);
+            return;
+          }
+
+          // 4. Présenter le PaymentSheet
+          const { error: paymentError } = await presentPaymentSheet();
+
+          if (paymentError) {
+            Alert.alert("Erreur de paiement", paymentError.message);
+          } else {
+            Alert.alert("Succès", "Le paiement a été effectué avec succès !");
+          }
+        } else if (selectedPaymentMethod === "MVOLA") {
+          Alert.alert(
+            "Paiement Mvola",
+            "Veuillez suivre les instructions envoyées à votre numéro Mvola."
+          );
+        } else if (selectedPaymentMethod === "MANUAL") {
+          Alert.alert(
+            "Paiement Manuel",
+            "Votre commande est enregistrée. Veuillez procéder au paiement hors ligne."
+          );
+        }
+      } else if (paymentResponse.status === 400) {
+        Alert.alert(
+          "Erreur",
+          "Commande non trouvée ou non éligible au paiement."
+        );
+      } else if (paymentResponse.status === 401) {
+        Alert.alert("Erreur", "Non autorisé.");
+      } else if (paymentResponse.status === 403) {
+        Alert.alert("Erreur", "Accès interdit.");
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Erreur",
+        error.message || "Une erreur est survenue lors du paiement."
+      );
+
+      console.error(error);
+    } finally {
+      setPaymentLoading(false);
     }
   };
+
   const renderStars = (val: number) =>
     Array.from({ length: 5 }).map((_, i) => (
       <Text
@@ -156,7 +268,6 @@ const ProductDetails = () => {
     );
   }
 
-  // Images du carrousel (pour l’instant juste l’image principale)
   const images = product.variants.length
     ? product.variants.map((v) => ({ uri: v.imageUrl }))
     : [{ uri: product.imageUrl }];
@@ -168,7 +279,7 @@ const ProductDetails = () => {
           width={screenWidth}
           height={250}
           data={images}
-          scrollAnimationDuration={300} // Smoother animation
+          scrollAnimationDuration={300}
           onSnapToItem={(index) => setActiveSlide(index)}
           renderItem={({ item }) => (
             <View style={styles.carouselContainer}>
@@ -181,7 +292,6 @@ const ProductDetails = () => {
           )}
         />
 
-        {/* Pagination */}
         <View style={styles.paginationContainer}>
           {images.map((_, index) => (
             <View
@@ -194,34 +304,31 @@ const ProductDetails = () => {
           ))}
         </View>
 
-        {/* Back Button */}
         <View style={styles.backButtonContainer}>
           <BackButton />
         </View>
 
-        {/* Cart Icon */}
         <TouchableOpacity
           style={[
             styles.cartIconContainer,
-            inCart(selectedVariant?.id) && { backgroundColor: "#4caf50" },
+            inCart(selectedVariant?.id) ? styles.cartIconContainerInCart : null,
           ]}
           onPress={handleAddToCart}
-          activeOpacity={0.7} // Subtle press feedback
+          activeOpacity={0.7}
         >
           <Image
             source={require("@/assets/images/logo/cart.png")}
             style={[
               styles.icon,
-              inCart(selectedVariant?.id) && { tintColor: "#fff" },
+              inCart(selectedVariant?.id) ? { tintColor: "#fff" } : null,
             ]}
           />
         </TouchableOpacity>
 
-        {/* Favorite Icon */}
         <TouchableOpacity
           style={[
             styles.favoriteIconContainer,
-            isFavorite && { backgroundColor: "red" },
+            isFavorite ? { backgroundColor: "red" } : null,
           ]}
           onPress={handleToggleFavorite}
           disabled={favLoading}
@@ -231,13 +338,16 @@ const ProductDetails = () => {
             source={require("@/assets/images/logo/heart.png")}
             style={[
               styles.icon,
-              favLoading && { tintColor: "#ccc" },
-              isFavorite && { tintColor: "#fff" },
+              favLoading
+                ? { tintColor: "#ccc" }
+                : isFavorite
+                ? { tintColor: "#fff" }
+                : null,
             ]}
           />
         </TouchableOpacity>
       </View>
-      {/* Partie basse : description + avis */}
+
       <ScrollView
         style={styles.bottomSection}
         contentContainerStyle={styles.bottomSectionContent}
@@ -247,7 +357,6 @@ const ProductDetails = () => {
           <Text style={styles.description}>{product.description}</Text>
         </ScrollView>
 
-        {/* Note + nombre d’avis */}
         <View style={styles.ratingRow}>
           <View style={{ flexDirection: "row" }}>
             {renderStars(Math.round(product.averageRating))}
@@ -256,7 +365,7 @@ const ProductDetails = () => {
             {product.averageRating.toFixed(1)} ({product.reviewCount} avis)
           </Text>
         </View>
-        {/* autre */}
+
         <View style={styles.infoContainer}>
           <Text style={styles.price}>{product.variants[0].price}</Text>
           <Text style={styles.stockText}>
@@ -270,23 +379,85 @@ const ProductDetails = () => {
             onVariantSelect={setSelectedVariant}
           />
           <CategoryInfo category={product.category} />
+
+          <Text style={styles.paymentMethodTitle}>Moyen de paiement</Text>
+          <View style={styles.paymentMethodContainer}>
+            {["STRIPE", "MVOLA", "MANUAL"].map((method) => (
+              <TouchableOpacity
+                key={method}
+                style={[
+                  styles.paymentMethodButton,
+                  selectedPaymentMethod === method
+                    ? styles.paymentMethodButtonSelected
+                    : null,
+                ]}
+                onPress={() =>
+                  setSelectedPaymentMethod(
+                    method as "STRIPE" | "MVOLA" | "MANUAL"
+                  )
+                }
+              >
+                <Text
+                  style={[
+                    styles.paymentMethodText,
+                    selectedPaymentMethod === method
+                      ? styles.paymentMethodTextSelected
+                      : null,
+                  ]}
+                >
+                  {method === "STRIPE" ? "Carte bancaire (Stripe)" : method}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.addToCartButton,
+                inCart(selectedVariant?.id)
+                  ? styles.addToCartButtonInCart
+                  : null,
+              ]}
+              onPress={handleAddToCart}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.addToCartButtonText}>
+                {inCart(selectedVariant?.id)
+                  ? "Retirer du panier"
+                  : "Ajouter au panier"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.buyButton,
+                paymentLoading ? styles.buyButtonDisabled : null,
+              ]}
+              onPress={handleBuyNow}
+              disabled={paymentLoading}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.buyButtonText}>
+                {paymentLoading ? "Chargement..." : "Acheter maintenant"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.reviewActionsContainer}>
+        <View style={styles.actionsRow}>
           <ReviewActions
             onShowReviews={() => setShowReviews(true)}
             onAddReview={() => setShowAddReview(true)}
           />
         </View>
 
-        {/* Modal pour lister les avis */}
         <ProductReviewsListModal
           productId={product.id}
           visible={showReviews}
           onClose={() => setShowReviews(false)}
         />
 
-        {/* Modal pour ajouter un avis */}
         <AddProductReviewModal
           productId={product.id}
           visible={showAddReview}
@@ -375,6 +546,9 @@ const styles = StyleSheet.create({
     elevation: 3,
     zIndex: 10,
   },
+  cartIconContainerInCart: {
+    backgroundColor: "#4caf50",
+  },
   favoriteIconContainer: {
     position: "absolute",
     top: 60,
@@ -407,7 +581,7 @@ const styles = StyleSheet.create({
   },
   bottomSectionContent: {
     padding: 20,
-    paddingBottom: 40, // Extra padding to ensure content is not cut off
+    paddingBottom: 40,
   },
   title: {
     fontSize: 24,
@@ -449,24 +623,82 @@ const styles = StyleSheet.create({
     color: "#666",
     marginBottom: 12,
   },
-  reviewActionsContainer: {
+  paymentMethodTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  paymentMethodContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  paymentMethodButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 6,
+    marginHorizontal: 4,
+    alignItems: "center",
+  },
+  paymentMethodButtonSelected: {
+    borderColor: "#000",
+    backgroundColor: "#f0f0f0",
+  },
+  paymentMethodText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  paymentMethodTextSelected: {
+    fontWeight: "600",
+    color: "#000",
+  },
+  actionButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: 16,
-    marginBottom: 20, // Ensure buttons are not cut off
+  },
+  addToCartButton: {
+    flex: 1,
+    backgroundColor: "#4caf50",
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignItems: "center",
+    marginRight: 8,
+  },
+  addToCartButtonInCart: {
+    backgroundColor: "#f44336",
+  },
+  addToCartButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  buyButton: {
+    flex: 1,
+    backgroundColor: "#000",
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  buyButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  buyButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
   actionsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 16,
-  },
-  actionBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#000",
-    borderRadius: 6,
-  },
-  btnText: {
-    color: "#000",
   },
 });
 

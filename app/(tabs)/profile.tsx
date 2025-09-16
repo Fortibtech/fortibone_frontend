@@ -7,6 +7,9 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Animated,
+  Dimensions,
+  FlatList,
   Image,
   SafeAreaView,
   ScrollView,
@@ -15,9 +18,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Dimensions,
-  Animated,
-  FlatList,
 } from "react-native";
 
 // Responsive dimensions
@@ -29,6 +29,7 @@ type ProfileRoutes =
   | "/(profile-particulier)/notifications"
   | "/(profile-particulier)/user-businesses"
   | "/(profile-particulier)/category"
+  | "/(profile-particulier)/your-orders"
   | "/(profile-particulier)/security"
   | "/(profile-particulier)/favorites"
   | "/(profile-particulier)/help"
@@ -97,6 +98,11 @@ const ProfilePage = () => {
       title: "Vos favoris",
       route: "/(profile-particulier)/favorites",
       icon: "heart-outline",
+    },
+    {
+      title: "Vos Commandes en cours",
+      route: "/(profile-particulier)/your-orders",
+      icon: "basket-outline",
     },
     {
       title: "Vos entreprises",

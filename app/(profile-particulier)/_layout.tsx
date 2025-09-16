@@ -9,11 +9,13 @@ export default function RootLayout() {
       <Stack.Screen name="help" />
       <Stack.Screen name="category" />
       <Stack.Screen name="category/[id]" />
+      <Stack.Screen name="order-details/[id]" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="personal-info" />
       <Stack.Screen name="security" />
       <Stack.Screen name="user-businesses" />
       <Stack.Screen name="favorites" />
+      <Stack.Screen name="your-orders" />
     </Stack>
   );
 }

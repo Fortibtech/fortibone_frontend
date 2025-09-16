@@ -1,7 +1,10 @@
+import { createOrder } from "@/api/Orders";
 import BackButton from "@/components/BackButton";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { CartItem, useCartStore } from "@/stores/useCartStore";
+import { useCartStore } from "@/stores/useCartStore";
+import { CreateOrderPayload } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 import {
   Image,
   ScrollView,
@@ -11,12 +14,118 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
-// 🔹 Image fallback si produit n'a pas d'image
+// 🔹 Image par défaut si produit sans image
 const fallbackImage = require("@/assets/images/store-placeholder.png");
 
+// 🔹 Interface explicite pour CartItem
+interface CartItem {
+  variantId: string;
+  businessId: string;
+  supplierBusinessId: string;
+  name: string;
+  price: string;
+  quantity: number;
+  imageUrl?: string;
+}
+
 const Cart = () => {
-  const { items, removeItem, toggleItem } = useCartStore();
+  const { items, removeItem } = useCartStore();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleCheckout = async () => {
+    if (isLoading) return;
+    if (items.length === 0) {
+      Toast.show({
+        type: "info",
+        text1: "Votre panier est vide",
+      });
+      return;
+    }
+
+    // Vérification du premier item pour businessId / supplierBusinessId
+    const firstItem = items[0];
+    if (!firstItem.businessId || !firstItem.supplierBusinessId) {
+      Toast.show({
+        type: "error",
+        text1: "Impossible de passer la commande",
+        text2: "Fournisseur ou business manquant pour le produit",
+      });
+      console.error("🛑 Premier item invalide:", firstItem);
+      return;
+    }
+
+    // Vérification que tous les items ont le même businessId et supplierBusinessId
+    const businessId = firstItem.businessId;
+    const supplierBusinessId = firstItem.supplierBusinessId;
+    const invalidBusiness = items.find(
+      (item) =>
+        item.businessId !== businessId ||
+        item.supplierBusinessId !== supplierBusinessId
+    );
+    if (invalidBusiness) {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Tous les articles doivent provenir du même fournisseur.",
+      });
+      console.error("🛑 Articles de fournisseurs différents:", invalidBusiness);
+      return;
+    }
+
+    // Vérification que tous les items ont un variantId
+    const invalidItem = items.find((i) => !i.variantId);
+    if (invalidItem) {
+      Toast.show({
+        type: "error",
+        text1: "Produit invalide dans le panier",
+        text2: invalidItem.name,
+      });
+      console.error("🛑 Item sans variantId:", invalidItem);
+      return;
+    }
+
+    // Construction du payload
+    const payload: CreateOrderPayload = {
+      type: "SALE",
+      businessId: firstItem.businessId,
+      supplierBusinessId: firstItem.supplierBusinessId,
+      notes: "Commande depuis l'app mobile",
+      lines: items.map((item) => ({
+        variantId: item.variantId,
+        quantity: item.quantity,
+      })),
+    };
+
+    console.log("📦 Payload envoyé à l’API:", JSON.stringify(payload, null, 2));
+
+    try {
+      setIsLoading(true);
+      const res = await createOrder(payload);
+      console.log("✅ Commande réussie:", res);
+
+      // Vider le panier après succès
+      useCartStore.setState({ items: [] });
+
+      Toast.show({
+        type: "success",
+        text1: "Commande passée avec succès 🎉",
+      });
+    } catch (err: any) {
+      console.error(
+        "❌ Erreur lors de la création de la commande:",
+        err.response?.data || err.message
+      );
+      Toast.show({
+        type: "error",
+        text1: "Erreur lors de la commande",
+        text2: err.response?.data?.message?.join?.(", ") || err.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Fonction pour incrémenter/décrémenter la quantité
   const updateQuantity = (variantId: string, delta: number) => {
@@ -39,7 +148,8 @@ const Cart = () => {
   // Calcul du total
   const totalPrice = items
     .reduce((sum, item) => {
-      return sum + parseFloat(item.price) * item.quantity;
+      const price = parseFloat(item.price);
+      return isNaN(price) ? sum : sum + price * item.quantity;
     }, 0)
     .toFixed(2);
 
@@ -64,6 +174,7 @@ const Cart = () => {
           <TouchableOpacity
             onPress={() => updateQuantity(item.variantId, -1)}
             style={styles.quantityButton}
+            accessibilityLabel="Diminuer la quantité"
           >
             <Ionicons name="remove" size={20} color="#333" />
           </TouchableOpacity>
@@ -71,6 +182,7 @@ const Cart = () => {
           <TouchableOpacity
             onPress={() => updateQuantity(item.variantId, 1)}
             style={styles.quantityButton}
+            accessibilityLabel="Augmenter la quantité"
           >
             <Ionicons name="add" size={20} color="#333" />
           </TouchableOpacity>
@@ -79,6 +191,7 @@ const Cart = () => {
       <TouchableOpacity
         onPress={() => removeItem(item.variantId)}
         style={styles.removeButton}
+        accessibilityLabel="Supprimer l'article"
       >
         <Ionicons name="trash-outline" size={24} color="#FF3B30" />
       </TouchableOpacity>
@@ -111,9 +224,14 @@ const Cart = () => {
                 <Text style={styles.totalLabel}>Total :</Text>
                 <Text style={styles.totalPrice}>{totalPrice} €</Text>
               </View>
-              <TouchableOpacity style={styles.checkoutButton}>
+              <TouchableOpacity
+                onPress={handleCheckout}
+                style={[styles.checkoutButton, isLoading && { opacity: 0.6 }]}
+                disabled={isLoading}
+                accessibilityLabel="Passer la commande"
+              >
                 <Text style={styles.checkoutButtonText}>
-                  Passer la commande
+                  {isLoading ? "En cours..." : "Passer la commande"}
                 </Text>
               </TouchableOpacity>
             </View>
