@@ -1,8 +1,8 @@
 // src/api/axiosInstance.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-
 // ✅ Définir la base URL
+// "https://dash.fortibtech.com";
 const API_URL = "https://dash.fortibtech.com";
 
 // ✅ Créer une instance Axios

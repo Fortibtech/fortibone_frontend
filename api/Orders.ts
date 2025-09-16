@@ -19,16 +19,29 @@ export const createOrder = async (
       "/orders",
       payload
     );
-    console.log("✅ Order created:", response.data);
+    // TODO: Remplacer par une bibliothèque de journalisation structurée (ex: winston)
+    console.log("✅ Commande créée:", response.data);
+
+    // Validation basique de la réponse
+    if (!response.data.id || !response.data.orderNumber) {
+      throw new Error("Réponse API invalide: id ou orderNumber manquant");
+    }
+
     return response.data;
   } catch (error: any) {
+    // TODO: Remplacer par une bibliothèque de journalisation structurée
     console.error(
-      "❌ Error creating order:",
+      "❌ Erreur lors de la création de la commande:",
       error.response?.data || error.message
     );
-    throw error;
+    throw new Error(
+      `Échec de la création de la commande: ${
+        error.response?.data?.message || error.message
+      }`
+    );
   }
 };
+
 export const getMyOrders = async (params?: {
   search?: string;
   page?: number;
@@ -47,15 +60,28 @@ export const getMyOrders = async (params?: {
   try {
     const response = await axiosInstance.get<MyOrdersResponse>(
       "/orders/orders/my-orders",
-      { params }
+      { params: { page: 1, limit: 10, ...params } } // Valeurs par défaut
     );
+    // Validation basique de la réponse
+    if (!response.data.data || !Array.isArray(response.data.data)) {
+      throw new Error(
+        "Réponse API invalide : données manquantes ou incorrectes"
+      );
+    }
+    // TODO: Remplacer par une bibliothèque de journalisation structurée (ex: winston)
+    console.log("✅ Commandes récupérées:", response.data);
     return response.data;
   } catch (error: any) {
+    // TODO: Remplacer par une bibliothèque de journalisation structurée
     console.error(
-      "❌ Error fetching my orders:",
+      "❌ Erreur lors de la récupération des commandes:",
       error.response?.data || error.message
     );
-    throw error;
+    throw new Error(
+      `Échec de la récupération des commandes: ${
+        error.response?.data?.message || error.message
+      }`
+    );
   }
 };
 // ----------------------
@@ -66,24 +92,40 @@ export const getOrderById = async (orderId: string): Promise<OrderResponse> => {
     const { data } = await axiosInstance.get<OrderResponse>(
       `/orders/${orderId}`
     );
+    if (!data.id || !data.orderNumber) {
+      throw new Error("Réponse API invalide : id ou orderNumber manquant");
+    }
+    // TODO: Remplacer par une bibliothèque de journalisation structurée (ex: winston)
+    console.log("✅ Détails de la commande récupérés:", data);
     return data;
   } catch (error: any) {
+    // TODO: Remplacer par une bibliothèque de journalisation structurée
     console.error(
-      "❌ Erreur getOrderById:",
+      "❌ Erreur lors de la récupération des détails de la commande:",
       error.response?.data || error.message
     );
-    throw error;
+    throw new Error(
+      `Échec de la récupération des détails: ${
+        error.response?.data?.message || error.message
+      }`
+    );
   }
 };
 // ----------------------
 // API: Lister commandes d'une entreprise
 // ----------------------
+export interface OrdersPaginatedResponse {
+  data: OrderResponse[];
+  totalPages: number;
+  currentPage: number;
+}
+
 export const getBusinessOrders = async (
   businessId: string,
   params: GetBusinessOrdersParams = {}
-): Promise<OrderResponse> => {
+): Promise<OrdersPaginatedResponse> => {
   try {
-    const { data } = await axiosInstance.get<OrderResponse>(
+    const { data } = await axiosInstance.get<OrdersPaginatedResponse>(
       `/orders/businesses/${businessId}/orders`,
       { params }
     );
@@ -96,6 +138,7 @@ export const getBusinessOrders = async (
     throw error;
   }
 };
+
 // ----------------------
 // API: Update order status
 // ----------------------

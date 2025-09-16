@@ -8,6 +8,7 @@ export interface OrderLinePayload {
 
 export interface CreateOrderPayload {
   type:
+    | "SALE"
     | "PENDING"
     | "CONFIRMED"
     | "SHIPPED"
@@ -15,7 +16,6 @@ export interface CreateOrderPayload {
     | "COMPLETED"
     | "CANCELLED"
     | "REFUNDED";
-
   businessId: string;
   supplierBusinessId?: string;
   notes?: string;

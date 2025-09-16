@@ -1,15 +1,18 @@
-// app/_layout.tsx ou app/(tabs)/_layout.tsx
+// app/_layout.tsx
 import { useUserStore } from "@/store/userStore";
+import { STRIPE_PUBLISHABLE_KEY } from "@env";
+import { StripeProvider } from "@stripe/stripe-react-native";
 import { Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import Toast from "react-native-toast-message";
+
 export default function RootLayout() {
   const { hydrateTokenAndProfile } = useUserStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const hydrate = async () => {
-      await hydrateTokenAndProfile(); // Hydrate token + profil
+      await hydrateTokenAndProfile();
       setLoading(false);
     };
     hydrate();
@@ -20,38 +23,35 @@ export default function RootLayout() {
   }
 
   return (
-    <>
-      <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        {/* <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> */}
-        {/* <Stack.Screen name="(auth)" options={{ headerShown: false }} /> */}
-        {/* <Stack.Screen name="onboarding" options={{ headerShown: false }} /> */}
-        {/* <Stack.Screen name="+not-found" /> */}
-        <Stack.Screen name="pro" />
-        <Stack.Screen name="product" />
-        <Stack.Screen
-          name="enterprise-details"
-          // <Stack screenOptions={{ headerShown: false }}>
-          //   <Stack.Screen name="index" />
-
-          //   <Stack.Screen
-          //     name="enterprise-details"
-          options={{
-            title: "Détails de l'entreprise",
-            headerShown: false,
-          }}
-        />
-        <Stack.Screen name="product-details/[id]" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(profile-particulier)" />
-        <Stack.Screen name="(details-products)" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
-        <Stack.Screen name="(inventory)" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <Toast />
-    </>
+    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+      <>
+        <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="pro" />
+          <Stack.Screen name="product" />
+          <Stack.Screen
+            name="enterprise-details"
+            options={{
+              title: "Détails de l'entreprise",
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen name="product-details/[id]" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(profile-particulier)" />
+          <Stack.Screen name="(details-products)" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen
+            name="(professionnel)"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen name="(inventory)" />
+          <Stack.Screen name="(orders)" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+        <Toast />
+      </>
+    </StripeProvider>
   );
 }
