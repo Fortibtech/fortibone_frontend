@@ -221,7 +221,7 @@ const BusinessOrders = () => {
         <View style={styles.backButtonContainer}>
           <BackButton />
         </View>
-        <Text style={styles.headerTitle}>Commandes de l'entreprise</Text>
+        <Text style={styles.headerTitle}>Commandes de l&lsquo;entreprise</Text>
       </View>
       {orders.length === 0 && !isLoading ? (
         <View style={styles.emptyContainer}>

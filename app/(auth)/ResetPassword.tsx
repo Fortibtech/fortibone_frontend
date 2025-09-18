@@ -1,12 +1,12 @@
+import { forgotPassword } from "@/api/authService";
 import BackButton from "@/components/BackButton";
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
-import React, { useState } from "react";
-import { StyleSheet, Text, View, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import { useUserStore } from "@/store/userStore"; // ✅ Import store
-import { forgotPassword } from "@/api/authService";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");

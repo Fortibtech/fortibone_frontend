@@ -1,7 +1,8 @@
 // app/(tabs)/enterprise.tsx
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { JSX, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import React, { JSX, useState } from "react";
+
 import {
   Image,
   SafeAreaView,
@@ -9,8 +10,8 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
-} from 'react-native';
+  View,
+} from "react-native";
 
 // Types
 interface Category {
@@ -28,73 +29,76 @@ interface Enterprise {
 }
 
 const categories: Category[] = [
-  { id: 'all', name: 'Tout' },
-  { id: 'cosmetic', name: 'Cosmétique' },
-  { id: 'shopping', name: 'Shopping' },
-  { id: 'food', name: 'Alimentation' },
+  { id: "all", name: "Tout" },
+  { id: "cosmetic", name: "Cosmétique" },
+  { id: "shopping", name: "Shopping" },
+  { id: "food", name: "Alimentation" },
 ];
 
 const enterprises: Enterprise[] = [
   {
     id: 1,
-    name: 'Newbest',
+    name: "Newbest",
     rating: 4.5,
-    category: 'Localisation',
+    category: "Localisation",
     image: require("@/assets/images/entreprise3.png"),
-    categoryId: 'shopping'
+    categoryId: "shopping",
   },
   {
     id: 2,
-    name: 'BlancheTech',
+    name: "BlancheTech",
     rating: 4.8,
-    category: 'Localisation',
+    category: "Localisation",
     image: require("@/assets/images/entreprise2.png"),
-    categoryId: 'shopping'
+    categoryId: "shopping",
   },
   {
     id: 3,
-    name: 'Newbest',
+    name: "Newbest",
     rating: 4.5,
-    category: 'Localisation',
+    category: "Localisation",
     image: require("@/assets/images/entreprise3.png"),
-    categoryId: 'food'
+    categoryId: "food",
   },
   {
     id: 4,
-    name: 'BlancheTech',
+    name: "BlancheTech",
     rating: 4.8,
-    category: 'Localisation',
+    category: "Localisation",
     image: require("@/assets/images/entreprise2.png"),
-    categoryId: 'cosmetic'
+    categoryId: "cosmetic",
   },
   {
     id: 5,
-    name: 'Newbest',
+    name: "Newbest",
     rating: 4.5,
-    category: 'Localisation',
+    category: "Localisation",
     image: require("@/assets/images/entreprise3.png"),
-    categoryId: 'food'
+    categoryId: "food",
   },
   {
     id: 6,
-    name: 'BlancheTech',
+    name: "BlancheTech",
     rating: 4.8,
-    category: 'Localisation',
+    category: "Localisation",
     image: require("@/assets/images/entreprise2.png"),
-    categoryId: 'shopping'
+    categoryId: "shopping",
   },
 ];
 
 const EnterprisePage: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeCategory, setActiveCategory] = useState<string>("all");
 
   const navigateToEnterpriseDetails = (enterpriseId: number): void => {
-    router.push(`/enterprise-details?id=${enterpriseId}`);
+    router.push(`/enterprise-details?id=${enterpriseId}` as any);
   };
 
-  const filteredEnterprises: Enterprise[] = activeCategory === 'all' 
-    ? enterprises 
-    : enterprises.filter(enterprise => enterprise.categoryId === activeCategory);
+  const filteredEnterprises: Enterprise[] =
+    activeCategory === "all"
+      ? enterprises
+      : enterprises.filter(
+          (enterprise) => enterprise.categoryId === activeCategory
+        );
 
   const renderHeader = (): JSX.Element => (
     <View style={styles.header}>
@@ -106,8 +110,8 @@ const EnterprisePage: React.FC = () => {
 
   const renderCategoryTabs = (): JSX.Element => (
     <View style={styles.tabContainer}>
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabScrollContent}
       >
@@ -116,16 +120,20 @@ const EnterprisePage: React.FC = () => {
             key={category.id}
             style={[
               styles.tab,
-              activeCategory === category.id && styles.activeTab
+              activeCategory === category.id && styles.activeTab,
             ]}
             onPress={() => setActiveCategory(category.id)}
             activeOpacity={0.8}
           >
-            {activeCategory === category.id && (<Ionicons name='flame-outline' size={20} color={'red'}/>)}
-            <Text style={[
-              styles.tabText,
-              activeCategory === category.id && styles.activeTabText
-            ]}>
+            {activeCategory === category.id && (
+              <Ionicons name="flame-outline" size={20} color={"red"} />
+            )}
+            <Text
+              style={[
+                styles.tabText,
+                activeCategory === category.id && styles.activeTabText,
+              ]}
+            >
               {category.name}
             </Text>
           </TouchableOpacity>
@@ -135,24 +143,22 @@ const EnterprisePage: React.FC = () => {
   );
 
   const renderEnterpriseCard = (enterprise: Enterprise): JSX.Element => (
-    <TouchableOpacity 
-      key={enterprise.id} 
+    <TouchableOpacity
+      key={enterprise.id}
       style={styles.enterpriseCard}
       onPress={() => navigateToEnterpriseDetails(enterprise.id)}
       activeOpacity={0.8}
     >
-      <Image 
-        source={enterprise.image } 
-        style={styles.enterpriseImage} 
+      <Image
+        source={{ uri: enterprise.image }}
+        style={styles.enterpriseImage}
       />
       <View style={styles.enterpriseContent}>
         <View>
           <Text style={styles.enterpriseTitle} numberOfLines={1}>
             {enterprise.name}
           </Text>
-          <Text style={styles.enterpriseCategory}>
-            {enterprise.category}
-          </Text>
+          <Text style={styles.enterpriseCategory}>{enterprise.category}</Text>
         </View>
         <View style={styles.ratingContainer}>
           <Ionicons name="star" size={14} color="#FFD700" />
@@ -163,8 +169,8 @@ const EnterprisePage: React.FC = () => {
   );
 
   const renderEnterpriseGrid = (): JSX.Element => (
-    <ScrollView 
-      style={styles.content} 
+    <ScrollView
+      style={styles.content}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
     >
@@ -177,7 +183,7 @@ const EnterprisePage: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       {/* <StatusBar backgroundColor="#fff" barStyle="dark-content" /> */}
-      
+
       {renderHeader()}
       {renderCategoryTabs()}
       {renderEnterpriseGrid()}
@@ -188,10 +194,10 @@ const EnterprisePage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: "#FAFAFA",
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: "row",
     // justifyContent: 'space-between',
     // alignItems: 'center',
     padding: 15,
@@ -200,13 +206,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     // backgroundColor: '#fff',
     borderWidth: 0.5,
-    borderColor: 'gray',
+    borderColor: "gray",
     // borderBottomColor: '#F0F0F0',
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: '600',
-    color: 'gray',
+    fontWeight: "600",
+    color: "gray",
     letterSpacing: 0.3,
   },
   placeholder: {
@@ -226,27 +232,27 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 16,
     marginRight: 12,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: "#F5F6FA",
     borderWidth: 1,
-    borderColor: '#E8E9ED',
+    borderColor: "#E8E9ED",
   },
   activeTab: {
-    backgroundColor: '#00C851',
-    borderColor: '#00C851',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    alignContent: 'space-around',
-    flexDirection: 'row'
+    backgroundColor: "#00C851",
+    borderColor: "#00C851",
+    alignItems: "center",
+    justifyContent: "space-around",
+    alignContent: "space-around",
+    flexDirection: "row",
   },
   tabText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
+    fontWeight: "500",
+    color: "#666",
   },
   activeTabText: {
-    color: '#fff',
-    fontWeight: '600',
-    marginLeft: 5
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 5,
   },
   content: {
     flex: 1,
@@ -257,55 +263,55 @@ const styles = StyleSheet.create({
     paddingBottom: 120, // Space for tab bar
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   enterpriseCard: {
-    width: '48%',
-    backgroundColor: '#fff',
+    width: "48%",
+    backgroundColor: "#fff",
     borderRadius: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   enterpriseImage: {
-    width: '100%',
+    width: "100%",
     height: 120,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: "#F5F6FA",
   },
   enterpriseContent: {
     padding: 14,
-    flexDirection: 'row',
-    alignContent: 'space-between',
-    justifyContent: 'space-between'
+    flexDirection: "row",
+    alignContent: "space-between",
+    justifyContent: "space-between",
   },
   enterpriseTitle: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 4,
     letterSpacing: 0.2,
   },
   enterpriseCategory: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginBottom: 10,
-    fontWeight: '400',
+    fontWeight: "400",
   },
   ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   rating: {
     fontSize: 13,
-    color: '#333',
+    color: "#333",
     marginLeft: 4,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });
 
