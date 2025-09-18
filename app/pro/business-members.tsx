@@ -1,21 +1,20 @@
 // app/business-members/[id].tsx
 import { AddMemberData, BusinessesService, BusinessMember } from '@/api';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface MemberWithLoading extends BusinessMember {
@@ -302,15 +301,58 @@ const BusinessMembersScreen: React.FC = () => {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Rôle</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={newMemberData.role}
-                    onValueChange={(role) => setNewMemberData({ ...newMemberData, role: role as any })}
-                    style={styles.picker}
+                <View style={styles.roleOptions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.roleOption,
+                      newMemberData.role === 'MEMBER' && styles.roleOptionSelected
+                    ]}
+                    onPress={() => setNewMemberData({ ...newMemberData, role: 'MEMBER' })}
                   >
-                    <Picker.Item label="Membre" value="MEMBER" />
-                    <Picker.Item label="Administrateur" value="ADMIN" />
-                  </Picker>
+                    <View style={styles.roleOptionContent}>
+                      <Text style={[
+                        styles.roleOptionText,
+                        newMemberData.role === 'MEMBER' && styles.roleOptionTextSelected
+                      ]}>
+                        Membre
+                      </Text>
+                      <Text style={[
+                        styles.roleDescription,
+                        newMemberData.role === 'MEMBER' && styles.roleDescriptionSelected
+                      ]}>
+                        Accès limité aux fonctionnalités de base
+                      </Text>
+                    </View>
+                    {newMemberData.role === 'MEMBER' && (
+                      <Ionicons name="checkmark-circle" size={20} color="#059669" />
+                    )}
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.roleOption,
+                      newMemberData.role === 'ADMIN' && styles.roleOptionSelected
+                    ]}
+                    onPress={() => setNewMemberData({ ...newMemberData, role: 'ADMIN' })}
+                  >
+                    <View style={styles.roleOptionContent}>
+                      <Text style={[
+                        styles.roleOptionText,
+                        newMemberData.role === 'ADMIN' && styles.roleOptionTextSelected
+                      ]}>
+                        Administrateur
+                      </Text>
+                      <Text style={[
+                        styles.roleDescription,
+                        newMemberData.role === 'ADMIN' && styles.roleDescriptionSelected
+                      ]}>
+                        Accès complet à la gestion de l'entreprise
+                      </Text>
+                    </View>
+                    {newMemberData.role === 'ADMIN' && (
+                      <Ionicons name="checkmark-circle" size={20} color="#059669" />
+                    )}
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -366,12 +408,23 @@ const BusinessMembersScreen: React.FC = () => {
                       ]}
                       onPress={() => handleUpdateRole('MEMBER')}
                     >
-                      <Text style={[
-                        styles.roleOptionText,
-                        selectedMember.role === 'MEMBER' && styles.roleOptionTextSelected
-                      ]}>
-                        Membre
-                      </Text>
+                      <View style={styles.roleOptionContent}>
+                        <Text style={[
+                          styles.roleOptionText,
+                          selectedMember.role === 'MEMBER' && styles.roleOptionTextSelected
+                        ]}>
+                          Membre
+                        </Text>
+                        <Text style={[
+                          styles.roleDescription,
+                          selectedMember.role === 'MEMBER' && styles.roleDescriptionSelected
+                        ]}>
+                          Accès limité aux fonctionnalités de base
+                        </Text>
+                      </View>
+                      {selectedMember.role === 'MEMBER' && (
+                        <Ionicons name="checkmark-circle" size={20} color="#059669" />
+                      )}
                     </TouchableOpacity>
                     
                     <TouchableOpacity
@@ -381,12 +434,23 @@ const BusinessMembersScreen: React.FC = () => {
                       ]}
                       onPress={() => handleUpdateRole('ADMIN')}
                     >
-                      <Text style={[
-                        styles.roleOptionText,
-                        selectedMember.role === 'ADMIN' && styles.roleOptionTextSelected
-                      ]}>
-                        Administrateur
-                      </Text>
+                      <View style={styles.roleOptionContent}>
+                        <Text style={[
+                          styles.roleOptionText,
+                          selectedMember.role === 'ADMIN' && styles.roleOptionTextSelected
+                        ]}>
+                          Administrateur
+                        </Text>
+                        <Text style={[
+                          styles.roleDescription,
+                          selectedMember.role === 'ADMIN' && styles.roleDescriptionSelected
+                        ]}>
+                          Accès complet à la gestion de l'entreprise
+                        </Text>
+                      </View>
+                      {selectedMember.role === 'ADMIN' && (
+                        <Ionicons name="checkmark-circle" size={20} color="#059669" />
+                      )}
                     </TouchableOpacity>
                   </View>
                 </>
@@ -580,14 +644,6 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-  },
-  picker: {
-    height: 50,
-  },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -630,25 +686,39 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   roleOptions: {
-    gap: 10,
+    gap: 12,
   },
   roleOption: {
     borderWidth: 2,
     borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 15,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   roleOptionSelected: {
     borderColor: '#059669',
     backgroundColor: '#e8f5e8',
   },
+  roleOptionContent: {
+    flex: 1,
+  },
   roleOptionText: {
     fontSize: 16,
-    color: '#666',
+    color: '#333',
     fontWeight: '600',
+    marginBottom: 4,
   },
   roleOptionTextSelected: {
+    color: '#059669',
+  },
+  roleDescription: {
+    fontSize: 13,
+    color: '#888',
+    lineHeight: 18,
+  },
+  roleDescriptionSelected: {
     color: '#059669',
   },
 });
