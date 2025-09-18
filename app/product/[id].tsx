@@ -1,29 +1,36 @@
-// screens/ProductDetailScreen.tsx
+// screens/ProductDetailScreen.tsx - Version complète avec gestion des variantes
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Edit, Heart, MapPin, Package, Share, Tag, Trash2 } from 'lucide-react-native';
+import { Edit, Heart, MapPin, Package, Plus, Share, Tag, Trash2 } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 // Import des services API
 import {
-    Business,
-    BusinessesService,
-    Product,
-    ProductService
+  Business,
+  BusinessesService,
+  Product,
+  ProductService,
+  ProductVariant
 } from '@/api';
+
+// Import des composants
+import { VariantFormModal } from '@/components/VariantFormModal';
+import { EditProductScreen } from './edit';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -46,6 +53,11 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // États pour les variantes
+  const [showVariantModal, setShowVariantModal] = useState(false);
+  const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
+  const [showEditProductModal, setShowEditProductModal] = useState(false);
 
   useEffect(() => {
     if (productId) {
@@ -63,7 +75,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     try {
       setLoading(true);
       
-      // Charger les détails du produit
+      // Charger les détails du produit avec variantes
       const productData = await ProductService.getProductById(productId);
       setProduct(productData);
       
@@ -92,22 +104,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     }
   };
 
-  const handleEdit = () => {
-    if (product) {
-      if (onEdit) {
-        onEdit(product);
-      } else {
-        router.push(`/products/${product.id}/edit`);
-      }
-    }
+  const handleEditProduct = () => {
+    setShowEditProductModal(true);
   };
 
-  const handleDelete = () => {
+  const handleDeleteProduct = () => {
     if (!product) return;
 
     Alert.alert(
       'Supprimer le produit',
-      `Êtes-vous sûr de vouloir supprimer "${product.name}" ? Cette action est irréversible.`,
+      `Êtes-vous sûr de vouloir supprimer "${product.name}" et toutes ses variantes ? Cette action est irréversible.`,
       [
         {
           text: 'Annuler',
@@ -116,20 +122,19 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: confirmDelete,
+          onPress: confirmDeleteProduct,
         },
       ]
     );
   };
 
-  const confirmDelete = async () => {
+  const confirmDeleteProduct = async () => {
     if (!product) return;
 
     try {
       setIsDeleting(true);
       
-      // Note: Vous devrez implémenter ProductService.deleteProduct() si nécessaire
-      // await ProductService.deleteProduct(product.id);
+      await ProductService.deleteProduct(product.id);
       
       if (onDelete) {
         onDelete(product.id);
@@ -137,7 +142,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       
       Alert.alert(
         'Succès',
-        'Produit supprimé avec succès',
+        'Produit et ses variantes supprimés avec succès',
         [
           {
             text: 'OK',
@@ -154,6 +159,59 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     }
   };
 
+  const handleAddVariant = () => {
+    setEditingVariant(null);
+    setShowVariantModal(true);
+  };
+
+  const handleEditVariant = (variant: ProductVariant) => {
+    setEditingVariant(variant);
+    setShowVariantModal(true);
+  };
+
+  const handleDeleteVariant = (variant: ProductVariant) => {
+    Alert.alert(
+      'Supprimer la variante',
+      `Êtes-vous sûr de vouloir supprimer la variante "${variant.sku}" ?`,
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => confirmDeleteVariant(variant),
+        },
+      ]
+    );
+  };
+
+  const confirmDeleteVariant = async (variant: ProductVariant) => {
+    try {
+      await ProductService.deleteVariant(variant.id);
+      
+      // Recharger les détails du produit
+      await loadProductDetails();
+      
+      Alert.alert('Succès', 'Variante supprimée avec succès');
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la variante:', error);
+      Alert.alert('Erreur', 'Impossible de supprimer la variante');
+    }
+  };
+
+  const onVariantSaved = () => {
+    setShowVariantModal(false);
+    setEditingVariant(null);
+    loadProductDetails(); // Recharger les données
+  };
+
+  const onProductSaved = () => {
+    setShowEditProductModal(false);
+    loadProductDetails(); // Recharger les données
+  };
+
   const handleShare = () => {
     if (product) {
       Alert.alert('Partager', `Partage du produit "${product.name}" (fonctionnalité à implémenter)`);
@@ -162,7 +220,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const toggleLike = () => {
     setIsLiked(!isLiked);
-    // Ici vous pourriez sauvegarder le statut "like" via l'API si disponible
   };
 
   const renderHeader = () => (
@@ -215,6 +272,131 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     </View>
   );
 
+  const renderVariantCard = ({ item: variant }: { item: ProductVariant }) => (
+    <View style={styles.variantCard}>
+      <View style={styles.variantHeader}>
+        <View style={styles.variantInfo}>
+          <Text style={styles.variantSku}>{variant.sku}</Text>
+          <Text style={styles.variantPrice}>{variant.price} FCFA</Text>
+        </View>
+        
+        <View style={styles.variantActions}>
+          <TouchableOpacity
+            style={styles.variantActionButton}
+            onPress={() => handleEditVariant(variant)}
+          >
+            <Edit size={16} color="#059669" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.variantActionButton, styles.deleteVariantButton]}
+            onPress={() => handleDeleteVariant(variant)}
+          >
+            <Trash2 size={16} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.variantDetails}>
+        <View style={styles.variantDetailRow}>
+          <Text style={styles.variantDetailLabel}>Stock:</Text>
+          <Text style={[
+            styles.variantDetailValue,
+            variant.quantityInStock < 10 && styles.lowStock
+          ]}>
+            {variant.quantityInStock} unités
+          </Text>
+        </View>
+        
+        <View style={styles.variantDetailRow}>
+          <Text style={styles.variantDetailLabel}>Prix d'achat:</Text>
+          <Text style={styles.variantDetailValue}>{variant.purchasePrice} FCFA</Text>
+        </View>
+
+        {variant.barcode && (
+          <View style={styles.variantDetailRow}>
+            <Text style={styles.variantDetailLabel}>Code-barres:</Text>
+            <Text style={styles.variantDetailValue}>{variant.barcode}</Text>
+          </View>
+        )}
+      </View>
+
+      {variant.attributeValues.length > 0 && (
+        <View style={styles.attributesContainer}>
+          {variant.attributeValues.map((attr) => (
+            <View key={attr.id} style={styles.attributeChip}>
+              <Text style={styles.attributeChipText}>
+                {attr.attribute.name}: {attr.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {variant.imageUrl && (
+        <View style={styles.variantImageContainer}>
+          <Image 
+            source={{ uri: variant.imageUrl }} 
+            style={styles.variantImage}
+            resizeMode="cover"
+          />
+        </View>
+      )}
+    </View>
+  );
+
+  const renderVariantsSection = () => {
+    if (!product?.variants || product.variants.length === 0) {
+      return (
+        <View style={styles.variantsSection}>
+          <View style={styles.variantsSectionHeader}>
+            <Text style={styles.sectionTitle}>Variantes</Text>
+            <TouchableOpacity
+              style={styles.addVariantButton}
+              onPress={handleAddVariant}
+            >
+              <Plus size={16} color="white" />
+              <Text style={styles.addVariantButtonText}>Ajouter</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.noVariantsContainer}>
+            <Package size={48} color="#ccc" />
+            <Text style={styles.noVariantsText}>Aucune variante</Text>
+            <Text style={styles.noVariantsSubtext}>
+              Ajoutez des variantes pour spécifier les tailles, couleurs, etc.
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.variantsSection}>
+        <View style={styles.variantsSectionHeader}>
+          <Text style={styles.sectionTitle}>
+            Variantes ({product.variants.length})
+          </Text>
+          <TouchableOpacity
+            style={styles.addVariantButton}
+            onPress={handleAddVariant}
+          >
+            <Plus size={16} color="white" />
+            <Text style={styles.addVariantButtonText}>Ajouter</Text>
+          </TouchableOpacity>
+        </View>
+
+        <FlatList
+          data={product.variants}
+          renderItem={renderVariantCard}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={false}
+        />
+      </View>
+    );
+  };
+
   const renderProductInfo = () => (
     <View style={styles.contentContainer}>
       <View style={styles.productHeader}>
@@ -224,27 +406,28 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             <View style={styles.metaItem}>
               <Tag size={16} color="#6b7280" />
               <Text style={styles.metaText}>
-                Unité: {product?.salesUnit}
+                {product?.salesUnit}
               </Text>
             </View>
             
-            {product?.categoryId && (
+            {product?.category && (
               <View style={styles.metaItem}>
                 <Text style={styles.categoryBadge}>
-                  {product.categoryId}
+                  {product.category.name}
                 </Text>
               </View>
             )}
           </View>
+
+          {product?.averageRating && (
+            <View style={styles.ratingContainer}>
+              <Ionicons name="star" size={16} color="#fbbf24" />
+              <Text style={styles.ratingText}>
+                {product.averageRating.toFixed(1)} ({product.reviewCount || 0} avis)
+              </Text>
+            </View>
+          )}
         </View>
-        
-        {product?.price && (
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>
-              {product.price.toFixed(2)} XAF
-            </Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.descriptionSection}>
@@ -253,6 +436,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           {product?.description || 'Aucune description disponible'}
         </Text>
       </View>
+
+      {renderVariantsSection()}
 
       {business && (
         <View style={styles.businessSection}>
@@ -287,6 +472,13 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         <Text style={styles.sectionTitle}>Informations</Text>
         <View style={styles.detailsList}>
           <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>Stock total</Text>
+            <Text style={styles.detailValue}>
+              {product ? ProductService.getTotalStock(product) : 0} unités
+            </Text>
+          </View>
+
+          <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>ID Produit</Text>
             <Text style={styles.detailValue}>{product?.id}</Text>
           </View>
@@ -318,7 +510,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     <View style={styles.actionsContainer}>
       <TouchableOpacity 
         style={styles.editButton}
-        onPress={handleEdit}
+        onPress={handleEditProduct}
         activeOpacity={0.8}
       >
         <Edit size={20} color="white" />
@@ -327,7 +519,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       
       <TouchableOpacity 
         style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
-        onPress={handleDelete}
+        onPress={handleDeleteProduct}
         disabled={isDeleting}
         activeOpacity={0.8}
       >
@@ -390,6 +582,28 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       </ScrollView>
       
       {renderActions()}
+
+      {/* Modal pour créer/modifier une variante */}
+      <VariantFormModal
+        visible={showVariantModal}
+        product={product}
+        variant={editingVariant}
+        onClose={() => setShowVariantModal(false)}
+        onSaved={onVariantSaved}
+      />
+
+      {/* Modal pour modifier le produit */}
+      <Modal
+        visible={showEditProductModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <EditProductScreen
+          product={product}
+          onClose={() => setShowEditProductModal(false)}
+          onSaved={onProductSaved}
+        />
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -403,7 +617,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // Space for fixed actions
+    paddingBottom: 100,
   },
   header: {
     position: 'absolute',
@@ -416,7 +630,6 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
-    background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)',
     zIndex: 10,
   },
   headerButton: {
@@ -477,6 +690,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginBottom: 8,
   },
   metaItem: {
     flexDirection: 'row',
@@ -496,13 +710,14 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  priceContainer: {
-    alignItems: 'flex-end',
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  price: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#059669',
+  ratingText: {
+    fontSize: 14,
+    color: '#6b7280',
   },
   sectionTitle: {
     fontSize: 18,
@@ -518,6 +733,147 @@ const styles = StyleSheet.create({
     color: '#4b5563',
     lineHeight: 24,
   },
+  
+  // Styles pour les variantes
+  variantsSection: {
+    marginBottom: 24,
+  },
+  variantsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  addVariantButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#059669',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  addVariantButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  noVariantsContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    borderStyle: 'dashed',
+  },
+  noVariantsText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginTop: 8,
+  },
+  noVariantsSubtext: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  variantCard: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  variantHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  variantInfo: {
+    flex: 1,
+  },
+  variantSku: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  variantPrice: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  variantActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  variantActionButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  deleteVariantButton: {
+    borderColor: '#fecaca',
+    backgroundColor: '#fef2f2',
+  },
+  variantDetails: {
+    marginBottom: 12,
+  },
+  variantDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  variantDetailLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  variantDetailValue: {
+    fontSize: 14,
+    color: '#1f2937',
+    fontWeight: '500',
+  },
+  lowStock: {
+    color: '#ef4444',
+    fontWeight: '600',
+  },
+  attributesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  attributeChip: {
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0ea5e9',
+  },
+  attributeChipText: {
+    fontSize: 12,
+    color: '#0369a1',
+    fontWeight: '500',
+  },
+  variantImageContainer: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  variantImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+  },
+
+  // Styles existants...
   businessSection: {
     marginBottom: 24,
   },
@@ -674,4 +1030,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProductDetailScreen; 
+export default ProductDetailScreen;
