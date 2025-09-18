@@ -1,13 +1,13 @@
+import { resetPassword } from "@/api/authService"; // 🔑 ton API resetPassword
 import BackButton from "@/components/BackButton";
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { StyleSheet, Text, View, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { resetPassword } from "@/api/authService"; // 🔑 ton API resetPassword
 import { useUserStore } from "@/store/userStore"; // ✅ ton store
 import { ResetPasswordPayload } from "@/types/auth";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState("");

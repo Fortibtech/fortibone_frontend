@@ -1,14 +1,15 @@
 import { registerUser } from "@/api/authService";
-import { RegisterPayload } from "@/types/auth";
 import BackButton from "@/components/BackButton";
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";
 import { useUserStore } from "@/store/userStore";
+import { RegisterPayload } from "@/types/auth";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import React, { useState, useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -18,7 +19,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert,
 } from "react-native";
 
 // --- Types ---

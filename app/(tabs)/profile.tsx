@@ -6,18 +6,18 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 // Responsive dimensions
@@ -51,7 +51,7 @@ const ProfilePage = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      router.replace("/(auth)/login");
+       router.replace("/(auth)/login");
     } catch (err: any) {
       Alert.alert("Erreur", "Échec de la déconnexion");
     }
@@ -155,7 +155,7 @@ const ProfilePage = () => {
       <Animated.View style={[styles.menuItem, { opacity: cardAnim }]}>
         <TouchableOpacity
           style={styles.menuItemContent}
-          onPress={() => router.push(item.route)}
+           onPress={() => router.push(item.route)}
           activeOpacity={0.7}
           accessible={true}
           accessibilityLabel={item.title}
