@@ -1,7 +1,9 @@
+// app/index.tsx
 import CustomButton from "@/components/CustomButton";
 import { useRouter } from "expo-router";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 export default function IndexScreen() {
   const router = useRouter();
 
@@ -18,6 +20,7 @@ export default function IndexScreen() {
         source={require("../assets/images/logo/Bottom-logo.png")}
         style={[styles.bgImage, { bottom: 0, right: 0 }]}
       />
+
       <View style={styles.imgLogo}>
         <Image
           source={require("../assets/images/logo/white.png")}
@@ -25,6 +28,7 @@ export default function IndexScreen() {
         />
         <Text style={styles.title}>FortibOne</Text>
       </View>
+
       <View style={styles.button}>
         <CustomButton
           title="Démarrer"
@@ -66,15 +70,14 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginBottom: 10,
   },
-
   button: {
     marginTop: 20,
     width: "100%",
   },
   bgImage: {
     position: "absolute",
-    width: 150, // largeur de l'image
-    height: 150, // hauteur de l'image
+    width: 150,
+    height: 150,
     resizeMode: "contain",
   },
 });
