@@ -52,17 +52,84 @@ export interface Business {
     symbol: string;
   }
   
+  export interface AttributeValue {
+    id: string;
+    value: string;
+    variantId: string;
+    attributeId: string;
+    attribute: {
+      id: string;
+      name: string;
+      categoryId: string;
+    };
+  }
+  
+  export interface ProductVariant {
+    id: string;
+    sku: string;
+    barcode?: string | null;
+    price: string; // API retourne string
+    purchasePrice: string; // API retourne string
+    quantityInStock: number;
+    alertThreshold?: number | null;
+    itemsPerLot?: number | null;
+    lotPrice?: string | null;
+    imageUrl?: string | null;
+    productId: string;
+    attributeValues: AttributeValue[];
+  }
+  
+  export interface ProductCategory {
+    id: string;
+    name: string;
+  }
+  
+  // Type Product mis à jour selon la structure API
   export interface Product {
     id: string;
     name: string;
     description: string;
     categoryId: string;
-    salesUnit: 'UNIT' | 'KG' | 'LITER';
+    salesUnit: 'UNIT' | 'LOT';
     businessId: string;
-    price?: number;
-    imageUrl?: string;
+    imageUrl?: string | null;
+    averageRating?: number;
+    reviewCount?: number;
     createdAt?: string;
     updatedAt?: string;
+    variants: ProductVariant[];
+    category: ProductCategory;
+  }
+  
+  // Types pour créer/modifier les variantes
+  export interface CreateVariantData {
+    price: number;
+    purchasePrice: number;
+    quantityInStock: number;
+    sku: string;
+    barcode?: string;
+    itemsPerLot?: number;
+    lotPrice?: number;
+    imageUrl?: string;
+    attributes: {
+      attributeId: string;
+      value: string;
+    }[];
+  }
+  
+  export interface UpdateVariantData {
+    price?: number;
+    purchasePrice?: number;
+    quantityInStock?: number;
+    sku?: string;
+    barcode?: string;
+    itemsPerLot?: number;
+    lotPrice?: number;
+    imageUrl?: string;
+    attributes?: {
+      attributeId: string;
+      value: string;
+    }[];
   }
   
   export interface CreateProductData {
@@ -89,12 +156,10 @@ export interface Business {
   
   export interface PaginatedResponse<T> {
     data: T[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
   }
 
   export interface CategoryAttribute {

@@ -1,45 +1,46 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import { Camera, ChevronDown, Package, Search, Tag } from 'lucide-react-native';
+import { Camera, ChevronDown, Package, Search, Tag, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
-// Import des services API
+// Import des services et types
 import {
-  Business,
-  Category,
-  CategoryService,
-  CreateProductData,
-  ProductService,
-  SelectedBusinessManager
+    Category,
+    CategoryService,
+    CreateProductData,
+    Product,
+    ProductService
 } from '@/api';
 
-interface CreateProductScreenProps {
-  onProductCreated?: (product: any) => void;
+interface EditProductScreenProps {
+  product: Product;
+  onClose: () => void;
+  onSaved: () => void;
 }
 
-export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ 
-  onProductCreated 
+export const EditProductScreen: React.FC<EditProductScreenProps> = ({
+  product,
+  onClose,
+  onSaved,
 }) => {
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(false);
-  const [imageUri, setImageUri] = useState<string>('');
+  const [imageUri, setImageUri] = useState<string>(product.imageUrl || '');
   
   // États pour les catégories
   const [categories, setCategories] = useState<Category[]>([]);
@@ -48,10 +49,15 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [categorySearchText, setCategorySearchText] = useState('');
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
+  
+  const [formData, setFormData] = useState<CreateProductData>({
+    name: product.name,
+    description: product.description,
+    categoryId: product.categoryId,
+    salesUnit: product.salesUnit,
+  });
 
-  // États pour l'unité de vente
-  const [salesUnitModalVisible, setSalesUnitModalVisible] = useState(false);
-  const [selectedSalesUnit, setSelectedSalesUnit] = useState<{value: string, label: string, description: string} | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Options d'unité de vente
   const salesUnitOptions = [
@@ -66,27 +72,14 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
       description: 'Vente par lot ou pack groupé'
     }
   ];
-  
-  const [formData, setFormData] = useState<CreateProductData>({
-    name: '',
-    description: '',
-    categoryId: '',
-    salesUnit: 'UNIT',
-  });
 
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [salesUnitModalVisible, setSalesUnitModalVisible] = useState(false);
+  const [selectedSalesUnit, setSelectedSalesUnit] = useState<{value: string, label: string, description: string} | null>(null);
 
   useEffect(() => {
-    initializeScreen();
+    loadCategories();
+    initializeSalesUnit();
   }, []);
-
-  useEffect(() => {
-    // Initialiser l'unité de vente sélectionnée
-    const defaultUnit = salesUnitOptions.find(unit => unit.value === formData.salesUnit);
-    if (defaultUnit && !selectedSalesUnit) {
-      setSelectedSalesUnit(defaultUnit);
-    }
-  }, [formData.salesUnit]);
 
   useEffect(() => {
     // Filtrer les catégories en fonction du texte de recherche
@@ -101,34 +94,10 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
     }
   }, [categorySearchText, categories]);
 
-  const initializeScreen = async () => {
-    await Promise.all([
-      checkSelectedBusiness(),
-      loadCategories()
-    ]);
-  };
-
-  const checkSelectedBusiness = async () => {
-    try {
-      const business = await SelectedBusinessManager.getSelectedBusiness();
-      if (!business) {
-        Alert.alert(
-          'Aucune entreprise sélectionnée',
-          'Veuillez sélectionner une entreprise avant de créer un produit.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.back()
-            }
-          ]
-        );
-        return;
-      }
-      setSelectedBusiness(business);
-    } catch (error) {
-      console.error('Erreur lors de la vérification de l\'entreprise:', error);
-      Alert.alert('Erreur', 'Impossible de vérifier l\'entreprise sélectionnée');
-      router.back();
+  const initializeSalesUnit = () => {
+    const defaultUnit = salesUnitOptions.find(unit => unit.value === product.salesUnit);
+    if (defaultUnit) {
+      setSelectedSalesUnit(defaultUnit);
     }
   };
 
@@ -138,11 +107,115 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
       const categoriesData = await CategoryService.getCategories();
       setCategories(categoriesData);
       setFilteredCategories(categoriesData);
+      
+      // Trouver la catégorie actuelle
+      const currentCategory = categoriesData.find(cat => cat.id === product.categoryId);
+      if (currentCategory) {
+        setSelectedCategory(currentCategory);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des catégories:', error);
       Alert.alert('Erreur', 'Impossible de charger les catégories');
     } finally {
       setLoadingCategories(false);
+    }
+  };
+
+  const updateFormData = (field: keyof CreateProductData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Effacer l'erreur du champ modifié
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleCategorySelect = (category: Category) => {
+    setSelectedCategory(category);
+    setFormData(prev => ({ ...prev, categoryId: category.id }));
+    setCategoryModalVisible(false);
+    setCategorySearchText('');
+    
+    // Effacer l'erreur de catégorie si elle existe
+    if (formErrors.categoryId) {
+      setFormErrors(prev => ({ ...prev, categoryId: '' }));
+    }
+  };
+
+  const handleSalesUnitSelect = (unit: {value: string, label: string, description: string}) => {
+    setSelectedSalesUnit(unit);
+    setFormData(prev => ({ ...prev, salesUnit: unit.value as 'UNIT' | 'LOT' }));
+    setSalesUnitModalVisible(false);
+    
+    // Effacer l'erreur d'unité de vente si elle existe
+    if (formErrors.salesUnit) {
+      setFormErrors(prev => ({ ...prev, salesUnit: '' }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      errors.name = 'Le nom du produit est obligatoire';
+    } else if (formData.name.trim().length < 3) {
+      errors.name = 'Le nom doit contenir au moins 3 caractères';
+    }
+
+    if (!formData.description.trim()) {
+      errors.description = 'La description est obligatoire';
+    } else if (formData.description.trim().length < 10) {
+      errors.description = 'La description doit contenir au moins 10 caractères';
+    }
+
+    if (!formData.categoryId || !selectedCategory) {
+      errors.categoryId = 'Veuillez sélectionner une catégorie';
+    }
+
+    if (!formData.salesUnit) {
+      errors.salesUnit = 'L\'unité de vente est obligatoire';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    try {
+      setLoading(true);
+
+      // Mettre à jour le produit
+      const updatedProduct = await ProductService.updateProduct(product.id, formData);
+
+      console.log('✅ Produit mis à jour:', updatedProduct.name);
+
+      // Upload de l'image si elle a été changée
+      if (imageUri && imageUri !== product.imageUrl) {
+        try {
+          await ProductService.uploadProductImage(updatedProduct.id, {
+            uri: imageUri,
+            type: 'image/jpeg',
+            name: 'product.jpg',
+          } as any);
+        } catch (uploadError) {
+          console.warn('⚠️ Erreur lors de l\'upload de l\'image:', uploadError);
+        }
+      }
+
+      Alert.alert(
+        'Succès',
+        `Produit "${updatedProduct.name}" mis à jour avec succès !`
+      );
+      
+      onSaved();
+
+    } catch (error) {
+      console.error('❌ Erreur lors de la modification du produit:', error);
+      Alert.alert('Erreur', 'Impossible de modifier le produit. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -191,7 +264,7 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
 
   const showImageOptions = () => {
     Alert.alert(
-      'Ajouter une image',
+      'Changer l\'image',
       'Choisissez une option',
       [
         { text: 'Annuler', style: 'cancel' },
@@ -201,135 +274,25 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
     );
   };
 
-  const handleCategorySelect = (category: Category) => {
-    setSelectedCategory(category);
-    setFormData(prev => ({ ...prev, categoryId: category.id }));
-    setCategoryModalVisible(false);
-    setCategorySearchText('');
-    
-    // Effacer l'erreur de catégorie si elle existe
-    if (formErrors.categoryId) {
-      setFormErrors(prev => ({ ...prev, categoryId: '' }));
-    }
-  };
-
-  // ✅ NOUVELLE FONCTION POUR GÉRER LA SÉLECTION D'UNITÉ DE VENTE
-  const handleSalesUnitSelect = (unit: {value: string, label: string, description: string}) => {
-    setSelectedSalesUnit(unit);
-    setFormData(prev => ({ ...prev, salesUnit: unit.value }));
-    setSalesUnitModalVisible(false);
-    
-    // Effacer l'erreur d'unité de vente si elle existe
-    if (formErrors.salesUnit) {
-      setFormErrors(prev => ({ ...prev, salesUnit: '' }));
-    }
-  };
-
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      errors.name = 'Le nom du produit est obligatoire';
-    } else if (formData.name.trim().length < 3) {
-      errors.name = 'Le nom doit contenir au moins 3 caractères';
-    }
-
-    if (!formData.description.trim()) {
-      errors.description = 'La description est obligatoire';
-    } else if (formData.description.trim().length < 10) {
-      errors.description = 'La description doit contenir au moins 10 caractères';
-    }
-
-    if (!formData.categoryId || !selectedCategory) {
-      errors.categoryId = 'Veuillez sélectionner une catégorie';
-    }
-
-    if (!formData.salesUnit) {
-      errors.salesUnit = 'L\'unité de vente est obligatoire';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validateForm() || !selectedBusiness) return;
-
-    try {
-      setLoading(true);
-      console.log('mes data',selectedBusiness,formData)
-      // Créer le produit
-      const newProduct = await ProductService.createProduct(
-        selectedBusiness.id,
-        formData
-      );
-
-      console.log('✅ Produit créé:', newProduct);
-
-      // Upload de l'image si présente
-      if (imageUri) {
-        try {
-          await ProductService.uploadProductImage(newProduct.id, {
-            uri: imageUri,
-            type: 'image/jpeg',
-            name: 'product.jpg',
-          } as any);
-        } catch (uploadError) {
-          console.warn('⚠️ Erreur lors de l\'upload de l\'image:', uploadError);
-        }
-      }
-
-      // Callback si fourni
-      if (onProductCreated) {
-        onProductCreated(newProduct);
-      }
-
-      Alert.alert(
-        'Succès',
-        `Produit "${newProduct.name}" créé avec succès dans la catégorie "${selectedCategory?.name}" !`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              router.back();
-            }
-          }
-        ]
-      );
-
-    } catch (error) {
-      console.error('❌ Erreur lors de la création du produit:', error);
-      Alert.alert('Erreur', 'Impossible de créer le produit. Veuillez réessayer.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateFormData = (field: keyof CreateProductData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Effacer l'erreur du champ modifié
-    if (formErrors[field]) {
-      setFormErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={28} color="#333" />
+      <TouchableOpacity onPress={onClose}>
+        <X size={24} color="#333" />
       </TouchableOpacity>
       
-      <View style={styles.headerContent}>
-        <Text style={styles.headerTitle}>Nouveau Produit</Text>
-        {selectedBusiness && (
-          <Text style={styles.headerSubtitle}>
-            {selectedBusiness.name}
-          </Text>
-        )}
-      </View>
+      <Text style={styles.headerTitle}>Modifier le produit</Text>
 
-      <View style={styles.headerPlaceholder} />
+      <TouchableOpacity 
+        onPress={handleSubmit}
+        disabled={loading}
+        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color="white" />
+        ) : (
+          <Text style={styles.saveButtonText}>Sauver</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 
@@ -402,6 +365,39 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
       </TouchableOpacity>
       {formErrors.categoryId && (
         <Text style={styles.errorText}>{formErrors.categoryId}</Text>
+      )}
+    </View>
+  );
+
+  const renderSalesUnitSelector = () => (
+    <View style={styles.formGroup}>
+      <Text style={styles.label}>Unité de vente *</Text>
+      <TouchableOpacity
+        style={[styles.categorySelector, formErrors.salesUnit && styles.inputError]}
+        onPress={() => setSalesUnitModalVisible(true)}
+      >
+        {selectedSalesUnit ? (
+          <View style={styles.categorySelectorContent}>
+            <View style={styles.selectedCategoryInfo}>
+              <Package size={16} color="#059669" />
+              <Text style={styles.selectedCategoryName}>{selectedSalesUnit.label}</Text>
+              <Text style={styles.selectedCategoryDesc} numberOfLines={1}>
+                {selectedSalesUnit.description}
+              </Text>
+            </View>
+            <ChevronDown size={20} color="#666" />
+          </View>
+        ) : (
+          <View style={styles.categorySelectorContent}>
+            <Text style={styles.categorySelectorPlaceholder}>
+              Sélectionner une unité de vente
+            </Text>
+            <ChevronDown size={20} color="#666" />
+          </View>
+        )}
+      </TouchableOpacity>
+      {formErrors.salesUnit && (
+        <Text style={styles.errorText}>{formErrors.salesUnit}</Text>
       )}
     </View>
   );
@@ -503,7 +499,6 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
     </Modal>
   );
 
-  // ✅ NOUVEAU MODAL POUR LA SÉLECTION D'UNITÉ DE VENTE
   const renderSalesUnitModal = () => (
     <Modal
       visible={salesUnitModalVisible}
@@ -572,106 +567,6 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
     </Modal>
   );
 
-  // ✅ NOUVEAU SÉLECTEUR D'UNITÉ DE VENTE AVEC MODAL
-  const renderSalesUnitSelector = () => (
-    <View style={styles.formGroup}>
-      <Text style={styles.label}>Unité de vente *</Text>
-      <TouchableOpacity
-        style={[styles.categorySelector, formErrors.salesUnit && styles.inputError]}
-        onPress={() => setSalesUnitModalVisible(true)}
-      >
-        {selectedSalesUnit ? (
-          <View style={styles.categorySelectorContent}>
-            <View style={styles.selectedCategoryInfo}>
-              <Package size={16} color="#059669" />
-              <Text style={styles.selectedCategoryName}>{selectedSalesUnit.label}</Text>
-              <Text style={styles.selectedCategoryDesc} numberOfLines={1}>
-                {selectedSalesUnit.description}
-              </Text>
-            </View>
-            <ChevronDown size={20} color="#666" />
-          </View>
-        ) : (
-          <View style={styles.categorySelectorContent}>
-            <Text style={styles.categorySelectorPlaceholder}>
-              Sélectionner une unité de vente
-            </Text>
-            <ChevronDown size={20} color="#666" />
-          </View>
-        )}
-      </TouchableOpacity>
-      {formErrors.salesUnit && (
-        <Text style={styles.errorText}>{formErrors.salesUnit}</Text>
-      )}
-    </View>
-  );
-
-  const renderFormSection = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>📝 Informations du produit</Text>
-      
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Nom du produit *</Text>
-        <TextInput
-          style={[styles.input, formErrors.name && styles.inputError]}
-          value={formData.name}
-          onChangeText={(text) => updateFormData('name', text)}
-          placeholder="Ex: T-shirt Logo FortiBone"
-          placeholderTextColor="#999"
-        />
-        {formErrors.name && (
-          <Text style={styles.errorText}>{formErrors.name}</Text>
-        )}
-      </View>
-
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Description *</Text>
-        <TextInput
-          style={[
-            styles.input, 
-            styles.textArea,
-            formErrors.description && styles.inputError
-          ]}
-          value={formData.description}
-          onChangeText={(text) => updateFormData('description', text)}
-          placeholder="Décrivez votre produit en détail..."
-          placeholderTextColor="#999"
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-        />
-        {formErrors.description && (
-          <Text style={styles.errorText}>{formErrors.description}</Text>
-        )}
-      </View>
-
-      {renderCategorySelector()}
-
-      {/* ✅ REMPLACEMENT DU PICKER PAR LE NOUVEAU SÉLECTEUR */}
-      {renderSalesUnitSelector()}
-    </View>
-  );
-
-  const renderSubmitButton = () => (
-    <TouchableOpacity
-      style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-      onPress={handleSubmit}
-      disabled={loading}
-    >
-      {loading ? (
-        <View style={styles.submitButtonContent}>
-          <ActivityIndicator size="small" color="white" />
-          <Text style={styles.submitButtonText}>Création en cours...</Text>
-        </View>
-      ) : (
-        <View style={styles.submitButtonContent}>
-          <Package size={20} color="white" />
-          <Text style={styles.submitButtonText}>Créer le produit</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
@@ -687,8 +582,48 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
           keyboardShouldPersistTaps="handled"
         >
           {renderImageSection()}
-          {renderFormSection()}
-          {renderSubmitButton()}
+          
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>📝 Informations du produit</Text>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Nom du produit *</Text>
+              <TextInput
+                style={[styles.input, formErrors.name && styles.inputError]}
+                value={formData.name}
+                onChangeText={(text) => updateFormData('name', text)}
+                placeholder="Ex: T-shirt Logo FortiBone"
+                placeholderTextColor="#999"
+              />
+              {formErrors.name && (
+                <Text style={styles.errorText}>{formErrors.name}</Text>
+              )}
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Description *</Text>
+              <TextInput
+                style={[
+                  styles.input, 
+                  styles.textArea,
+                  formErrors.description && styles.inputError
+                ]}
+                value={formData.description}
+                onChangeText={(text) => updateFormData('description', text)}
+                placeholder="Décrivez votre produit en détail..."
+                placeholderTextColor="#999"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+              {formErrors.description && (
+                <Text style={styles.errorText}>{formErrors.description}</Text>
+              )}
+            </View>
+
+            {renderCategorySelector()}
+            {renderSalesUnitSelector()}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -716,22 +651,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#1f2937',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
+  saveButton: {
+    backgroundColor: '#059669',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  headerPlaceholder: {
-    width: 28,
+  saveButtonDisabled: {
+    backgroundColor: '#9ca3af',
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   content: {
     flex: 1,
@@ -867,13 +804,18 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     flex: 1,
   },
-
-  // ✅ STYLE POUR L'ICÔNE LOT (double package)
+  errorText: {
+    fontSize: 14,
+    color: '#ef4444',
+    marginTop: 4,
+  },
+  
+  // Styles pour l'icône LOT
   lotIcon: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-
+  
   // Modal styles
   modalContainer: {
     flex: 1,
@@ -893,6 +835,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1f2937',
+  },
+  headerPlaceholder: {
+    width: 28,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -980,38 +925,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6b7280',
   },
-  errorText: {
-    fontSize: 14,
-    color: '#ef4444',
-    marginTop: 4,
-  },
-  submitButton: {
-    backgroundColor: '#059669',
-    borderRadius: 12,
-    paddingVertical: 16,
-    marginTop: 20,
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#9ca3af',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  submitButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  submitButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '700',
-  },
 });
 
-export default CreateProductScreen;
