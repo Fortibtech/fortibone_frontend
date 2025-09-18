@@ -69,7 +69,7 @@ export interface Business {
     name: string;
     description: string;
     categoryId: string;
-    salesUnit: 'UNIT' | 'KG' | 'LITER';
+    salesUnit: 'UNIT' | 'LOT';
   }
   
   export interface ProductSearchFilters {
