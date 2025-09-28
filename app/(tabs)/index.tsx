@@ -113,7 +113,7 @@ const HomePage: React.FC = () => {
     <View style={styles.header}>
       <View style={styles.header2}>
         <TouchableOpacity
-          onPress={() => router.push("/(profile-particulier)/category")}
+          // onPress={() => router.push("/(profile-particulier)/category")}
           style={{ padding: 8 }}
         >
           <Ionicons name="grid-outline" size={24} color="#fff" />

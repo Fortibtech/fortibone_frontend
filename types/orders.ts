@@ -1,3 +1,4 @@
+/* eslint-disable import/export */
 // ----------------------
 // Types
 // ----------------------
@@ -39,6 +40,7 @@ export interface Product {
   categoryId: string;
 }
 
+// eslint-disable-next-line import/export
 export interface Variant {
   id: string;
   sku: string;
@@ -54,6 +56,7 @@ export interface Variant {
   product: Product;
 }
 
+// eslint-disable-next-line import/export
 export interface OrderLine {
   id: string;
   quantity: number;

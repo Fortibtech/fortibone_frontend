@@ -4,11 +4,12 @@ import { useRouter } from "expo-router";
 import {
   Image,
   ImageBackground,
-  SafeAreaView,
+
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Onboarding = () => {
   const router = useRouter();

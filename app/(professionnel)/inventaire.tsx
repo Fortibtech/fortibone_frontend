@@ -23,7 +23,7 @@ export default function InventoryScreen() {
       setLoading(true);
       try {
         const response = await BusinessesService.getBusinesses(); // ✅ pagination si besoin
-        setBusinesses(response.data);
+        setBusinesses(response);
       } catch (error) {
         console.error("❌ Erreur lors du fetch businesses:", error);
       } finally {

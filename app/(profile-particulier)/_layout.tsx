@@ -15,6 +15,7 @@ export default function RootLayout() {
       <Stack.Screen name="security" />
       <Stack.Screen name="user-businesses" />
       <Stack.Screen name="favorites" />
+      <Stack.Screen name="my-transactions" />
       <Stack.Screen name="your-orders" />
     </Stack>
   );

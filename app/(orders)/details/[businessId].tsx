@@ -185,7 +185,7 @@ const BusinessOrders = () => {
             Total: {parseFloat(item.totalAmount).toFixed(2)} €
           </Text>
           <Text style={styles.orderInfo}>
-            Client: {item.customer.firstName}
+            Client: {item.customer?.firstName || "Inconnu"}
           </Text>
           <Text style={styles.orderInfo}>
             Date: {new Date(item.createdAt).toLocaleDateString("fr-FR")}
@@ -196,18 +196,22 @@ const BusinessOrders = () => {
 
           {/* Boutons statut */}
           <View style={{ flexDirection: "row", marginTop: 8, gap: 10 }}>
-            <TouchableOpacity
-              style={[styles.statusAction, { backgroundColor: "#3B82F6" }]}
-              onPress={() => handleUpdateStatus(item.id, "CONFIRMED")}
-            >
-              <Text style={styles.statusActionText}>Confirmer</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.statusAction, { backgroundColor: "#EF4444" }]}
-              onPress={() => handleUpdateStatus(item.id, "CANCELLED")}
-            >
-              <Text style={styles.statusActionText}>Annuler</Text>
-            </TouchableOpacity>
+            {/* {item.status !== "CONFIRMED" && (
+              <TouchableOpacity
+                style={[styles.statusAction, { backgroundColor: "#3B82F6" }]}
+                onPress={() => handleUpdateStatus(item.id, "CONFIRMED")}
+              >
+                <Text style={styles.statusActionText}>Confirmer</Text>
+              </TouchableOpacity>
+            )} */}
+            {item.status !== "CANCELLED" && (
+              <TouchableOpacity
+                style={[styles.statusAction, { backgroundColor: "#EF4444" }]}
+                onPress={() => handleUpdateStatus(item.id, "CANCELLED")}
+              >
+                <Text style={styles.statusActionText}>Annuler</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
         <Ionicons name="chevron-forward" size={24} color="#333" />

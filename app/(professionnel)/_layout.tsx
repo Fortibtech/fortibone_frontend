@@ -1,7 +1,12 @@
 // app/(tabs)/_layout.tsx
-// import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from "expo-router";
-import { BookOpen, Home, Send, ShoppingCart } from "lucide-react-native";
+import {
+  BookOpen,
+  CreditCard,
+  Home,
+  Send,
+  ShoppingCart,
+} from "lucide-react-native";
 
 export default function RootLayout() {
   return (
@@ -63,6 +68,16 @@ export default function RootLayout() {
         options={{
           title: "Inventaire",
           tabBarIcon: ({ color, size }) => <Send size={size} color={color} />,
+        }}
+      />
+      {/* ✅ Nouvel onglet Transactions */}
+      <Tabs.Screen
+        name="transactions"
+        options={{
+          title: "Transactions",
+          tabBarIcon: ({ color, size }) => (
+            <CreditCard size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
