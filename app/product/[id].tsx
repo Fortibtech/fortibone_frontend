@@ -1,8 +1,17 @@
 // screens/ProductDetailScreen.tsx - Version complète avec gestion des variantes
-import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Edit, Heart, MapPin, Package, Plus, Share, Tag, Trash2 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
+import {
+  Edit,
+  Heart,
+  MapPin,
+  Package,
+  Plus,
+  Share,
+  Tag,
+  Trash2,
+} from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +26,7 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
 
 // Import des services API
 import {
@@ -25,14 +34,14 @@ import {
   BusinessesService,
   Product,
   ProductService,
-  ProductVariant
-} from '@/api';
+  ProductVariant,
+} from "@/api";
 
 // Import des composants
-import { VariantFormModal } from '@/components/VariantFormModal';
-import { EditProductScreen } from './edit';
+import { VariantFormModal } from "@/components/VariantFormModal";
+import { EditProductScreen } from "./edit";
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get("window");
 
 interface ProductDetailScreenProps {
   productId?: string;
@@ -47,16 +56,17 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 }) => {
   const params = useLocalSearchParams();
   const productId = propProductId || (params.id as string);
-  
   const [product, setProduct] = useState<Product | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // États pour les variantes
   const [showVariantModal, setShowVariantModal] = useState(false);
-  const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
+  const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(
+    null
+  );
   const [showEditProductModal, setShowEditProductModal] = useState(false);
 
   useEffect(() => {
@@ -67,38 +77,38 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const loadProductDetails = async () => {
     if (!productId) {
-      Alert.alert('Erreur', 'ID du produit manquant');
+      Alert.alert("Erreur", "ID du produit manquant");
       router.back();
       return;
     }
 
     try {
       setLoading(true);
-      
+
       // Charger les détails du produit avec variantes
       const productData = await ProductService.getProductById(productId);
       setProduct(productData);
-      
+
       // Charger les détails de l'entreprise
       try {
-        const businessData = await BusinessesService.getBusinessById(productData.businessId);
+        const businessData = await BusinessesService.getBusinessById(
+          productData.businessId
+        );
         setBusiness(businessData);
       } catch (businessError) {
-        console.warn('Impossible de charger les détails de l\'entreprise:', businessError);
+        console.warn(
+          "Impossible de charger les détails de l'entreprise:",
+          businessError
+        );
       }
-      
     } catch (error) {
-      console.error('Erreur lors du chargement du produit:', error);
-      Alert.alert(
-        'Erreur', 
-        'Impossible de charger les détails du produit',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      );
+      console.error("Erreur lors du chargement du produit:", error);
+      Alert.alert("Erreur", "Impossible de charger les détails du produit", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -112,16 +122,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     if (!product) return;
 
     Alert.alert(
-      'Supprimer le produit',
+      "Supprimer le produit",
       `Êtes-vous sûr de vouloir supprimer "${product.name}" et toutes ses variantes ? Cette action est irréversible.`,
       [
         {
-          text: 'Annuler',
-          style: 'cancel',
+          text: "Annuler",
+          style: "cancel",
         },
         {
-          text: 'Supprimer',
-          style: 'destructive',
+          text: "Supprimer",
+          style: "destructive",
           onPress: confirmDeleteProduct,
         },
       ]
@@ -133,27 +143,22 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
     try {
       setIsDeleting(true);
-      
+
       await ProductService.deleteProduct(product.id);
-      
+
       if (onDelete) {
         onDelete(product.id);
       }
-      
-      Alert.alert(
-        'Succès',
-        'Produit et ses variantes supprimés avec succès',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      );
-      
+
+      Alert.alert("Succès", "Produit et ses variantes supprimés avec succès", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
     } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
-      Alert.alert('Erreur', 'Impossible de supprimer le produit');
+      console.error("Erreur lors de la suppression:", error);
+      Alert.alert("Erreur", "Impossible de supprimer le produit");
     } finally {
       setIsDeleting(false);
     }
@@ -171,16 +176,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const handleDeleteVariant = (variant: ProductVariant) => {
     Alert.alert(
-      'Supprimer la variante',
+      "Supprimer la variante",
       `Êtes-vous sûr de vouloir supprimer la variante "${variant.sku}" ?`,
       [
         {
-          text: 'Annuler',
-          style: 'cancel',
+          text: "Annuler",
+          style: "cancel",
         },
         {
-          text: 'Supprimer',
-          style: 'destructive',
+          text: "Supprimer",
+          style: "destructive",
           onPress: () => confirmDeleteVariant(variant),
         },
       ]
@@ -190,14 +195,14 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const confirmDeleteVariant = async (variant: ProductVariant) => {
     try {
       await ProductService.deleteVariant(variant.id);
-      
+
       // Recharger les détails du produit
       await loadProductDetails();
-      
-      Alert.alert('Succès', 'Variante supprimée avec succès');
+
+      Alert.alert("Succès", "Variante supprimée avec succès");
     } catch (error) {
-      console.error('Erreur lors de la suppression de la variante:', error);
-      Alert.alert('Erreur', 'Impossible de supprimer la variante');
+      console.error("Erreur lors de la suppression de la variante:", error);
+      Alert.alert("Erreur", "Impossible de supprimer la variante");
     }
   };
 
@@ -214,7 +219,10 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const handleShare = () => {
     if (product) {
-      Alert.alert('Partager', `Partage du produit "${product.name}" (fonctionnalité à implémenter)`);
+      Alert.alert(
+        "Partager",
+        `Partage du produit "${product.name}" (fonctionnalité à implémenter)`
+      );
     }
   };
 
@@ -224,30 +232,20 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => router.back()}
         style={styles.headerButton}
       >
         <Ionicons name="arrow-back" size={24} color="white" />
       </TouchableOpacity>
-      
+
       <View style={styles.headerActions}>
-        <TouchableOpacity 
-          onPress={handleShare}
-          style={styles.headerButton}
-        >
+        <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
           <Share size={24} color="white" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={toggleLike}
-          style={styles.headerButton}
-        >
-          <Heart 
-            size={24} 
-            color="white" 
-            fill={isLiked ? "white" : "none"} 
-          />
+
+        <TouchableOpacity onPress={toggleLike} style={styles.headerButton}>
+          <Heart size={24} color="white" fill={isLiked ? "white" : "none"} />
         </TouchableOpacity>
       </View>
     </View>
@@ -256,8 +254,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const renderImageSection = () => (
     <View style={styles.imageContainer}>
       {product?.imageUrl ? (
-        <Image 
-          source={{ uri: product.imageUrl }} 
+        <Image
+          source={{ uri: product.imageUrl }}
           style={styles.productImage}
           resizeMode="cover"
         />
@@ -267,7 +265,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <Text style={styles.imagePlaceholderText}>Aucune image</Text>
         </View>
       )}
-      
       {renderHeader()}
     </View>
   );
@@ -279,7 +276,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <Text style={styles.variantSku}>{variant.sku}</Text>
           <Text style={styles.variantPrice}>{variant.price} FCFA</Text>
         </View>
-        
         <View style={styles.variantActions}>
           <TouchableOpacity
             style={styles.variantActionButton}
@@ -287,7 +283,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           >
             <Edit size={16} color="#059669" />
           </TouchableOpacity>
-          
           <TouchableOpacity
             style={[styles.variantActionButton, styles.deleteVariantButton]}
             onPress={() => handleDeleteVariant(variant)}
@@ -300,17 +295,21 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       <View style={styles.variantDetails}>
         <View style={styles.variantDetailRow}>
           <Text style={styles.variantDetailLabel}>Stock:</Text>
-          <Text style={[
-            styles.variantDetailValue,
-            variant.quantityInStock < 10 && styles.lowStock
-          ]}>
+          <Text
+            style={[
+              styles.variantDetailValue,
+              variant.quantityInStock < 10 && styles.lowStock,
+            ]}
+          >
             {variant.quantityInStock} unités
           </Text>
         </View>
-        
+
         <View style={styles.variantDetailRow}>
           <Text style={styles.variantDetailLabel}>Prix d'achat:</Text>
-          <Text style={styles.variantDetailValue}>{variant.purchasePrice} FCFA</Text>
+          <Text style={styles.variantDetailValue}>
+            {variant.purchasePrice} FCFA
+          </Text>
         </View>
 
         {variant.barcode && (
@@ -335,8 +334,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
       {variant.imageUrl && (
         <View style={styles.variantImageContainer}>
-          <Image 
-            source={{ uri: variant.imageUrl }} 
+          <Image
+            source={{ uri: variant.imageUrl }}
             style={styles.variantImage}
             resizeMode="cover"
           />
@@ -359,7 +358,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               <Text style={styles.addVariantButtonText}>Ajouter</Text>
             </TouchableOpacity>
           </View>
-          
           <View style={styles.noVariantsContainer}>
             <Package size={48} color="#ccc" />
             <Text style={styles.noVariantsText}>Aucune variante</Text>
@@ -405,11 +403,9 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <View style={styles.productMeta}>
             <View style={styles.metaItem}>
               <Tag size={16} color="#6b7280" />
-              <Text style={styles.metaText}>
-                {product?.salesUnit}
-              </Text>
+              <Text style={styles.metaText}>{product?.salesUnit}</Text>
             </View>
-            
+
             {product?.category && (
               <View style={styles.metaItem}>
                 <Text style={styles.categoryBadge}>
@@ -423,7 +419,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={16} color="#fbbf24" />
               <Text style={styles.ratingText}>
-                {product.averageRating.toFixed(1)} ({product.reviewCount || 0} avis)
+                {product.averageRating.toFixed(1)} ({product.reviewCount || 0}{" "}
+                avis)
               </Text>
             </View>
           )}
@@ -433,7 +430,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       <View style={styles.descriptionSection}>
         <Text style={styles.sectionTitle}>Description</Text>
         <Text style={styles.description}>
-          {product?.description || 'Aucune description disponible'}
+          {product?.description || "Aucune description disponible"}
         </Text>
       </View>
 
@@ -446,7 +443,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             <View style={styles.businessInfo}>
               <Text style={styles.businessName}>{business.name}</Text>
               <Text style={styles.businessType}>{business.type}</Text>
-              
               {business.address && (
                 <View style={styles.businessAddress}>
                   <MapPin size={14} color="#6b7280" />
@@ -456,10 +452,10 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                 </View>
               )}
             </View>
-            
+
             {business.logoUrl && (
-              <Image 
-                source={{ uri: business.logoUrl }} 
+              <Image
+                source={{ uri: business.logoUrl }}
                 style={styles.businessLogo}
                 resizeMode="contain"
               />
@@ -482,22 +478,21 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             <Text style={styles.detailLabel}>ID Produit</Text>
             <Text style={styles.detailValue}>{product?.id}</Text>
           </View>
-          
+
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Créé le</Text>
             <Text style={styles.detailValue}>
-              {product?.createdAt 
-                ? new Date(product.createdAt).toLocaleDateString('fr-FR')
-                : 'Non disponible'
-              }
+              {product?.createdAt
+                ? new Date(product.createdAt).toLocaleDateString("fr-FR")
+                : "Non disponible"}
             </Text>
           </View>
-          
+
           {product?.updatedAt && product.updatedAt !== product.createdAt && (
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Modifié le</Text>
               <Text style={styles.detailValue}>
-                {new Date(product.updatedAt).toLocaleDateString('fr-FR')}
+                {new Date(product.updatedAt).toLocaleDateString("fr-FR")}
               </Text>
             </View>
           )}
@@ -508,7 +503,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const renderActions = () => (
     <View style={styles.actionsContainer}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.editButton}
         onPress={handleEditProduct}
         activeOpacity={0.8}
@@ -516,8 +511,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         <Edit size={20} color="white" />
         <Text style={styles.editButtonText}>Modifier</Text>
       </TouchableOpacity>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
         onPress={handleDeleteProduct}
         disabled={isDeleting}
@@ -529,7 +524,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <Trash2 size={20} color="white" />
         )}
         <Text style={styles.deleteButtonText}>
-          {isDeleting ? 'Suppression...' : 'Supprimer'}
+          {isDeleting ? "Suppression..." : "Supprimer"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -557,7 +552,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <Text style={styles.errorSubtitle}>
             Ce produit n'existe plus ou a été supprimé
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
           >
@@ -570,9 +565,13 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-      <ScrollView 
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -580,7 +579,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         {renderImageSection()}
         {renderProductInfo()}
       </ScrollView>
-      
       {renderActions()}
 
       {/* Modal pour créer/modifier une variante */}
@@ -611,7 +609,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafb',
+    backgroundColor: "#fafafb",
   },
   scrollView: {
     flex: 1,
@@ -620,13 +618,13 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   header: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -636,37 +634,37 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   imageContainer: {
     height: 300,
-    position: 'relative',
+    position: "relative",
   },
   productImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
   imagePlaceholderText: {
     fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   contentContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     marginTop: -20,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -681,48 +679,48 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: "700",
+    color: "#1f2937",
     lineHeight: 34,
     marginBottom: 8,
   },
   productMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     marginBottom: 8,
   },
   metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   metaText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   categoryBadge: {
-    backgroundColor: '#059669',
-    color: 'white',
+    backgroundColor: "#059669",
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   ratingText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: "700",
+    color: "#1f2937",
     marginBottom: 12,
   },
   descriptionSection: {
@@ -730,67 +728,67 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 16,
-    color: '#4b5563',
+    color: "#4b5563",
     lineHeight: 24,
   },
-  
+
   // Styles pour les variantes
   variantsSection: {
     marginBottom: 24,
   },
   variantsSectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   addVariantButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#059669',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#059669",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     gap: 4,
   },
   addVariantButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   noVariantsContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 32,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderStyle: 'dashed',
+    borderColor: "#e5e7eb",
+    borderStyle: "dashed",
   },
   noVariantsText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontWeight: "600",
+    color: "#6b7280",
     marginTop: 8,
   },
   noVariantsSubtext: {
     fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
+    color: "#9ca3af",
+    textAlign: "center",
     marginTop: 4,
   },
   variantCard: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   variantHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   variantInfo: {
@@ -798,73 +796,73 @@ const styles = StyleSheet.create({
   },
   variantSku: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
     marginBottom: 4,
   },
   variantPrice: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#059669',
+    fontWeight: "700",
+    color: "#059669",
   },
   variantActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   variantActionButton: {
     padding: 8,
     borderRadius: 6,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   deleteVariantButton: {
-    borderColor: '#fecaca',
-    backgroundColor: '#fef2f2',
+    borderColor: "#fecaca",
+    backgroundColor: "#fef2f2",
   },
   variantDetails: {
     marginBottom: 12,
   },
   variantDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 4,
   },
   variantDetailLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   variantDetailValue: {
     fontSize: 14,
-    color: '#1f2937',
-    fontWeight: '500',
+    color: "#1f2937",
+    fontWeight: "500",
   },
   lowStock: {
-    color: '#ef4444',
-    fontWeight: '600',
+    color: "#ef4444",
+    fontWeight: "600",
   },
   attributesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginBottom: 12,
   },
   attributeChip: {
-    backgroundColor: '#e0f2fe',
+    backgroundColor: "#e0f2fe",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#0ea5e9',
+    borderColor: "#0ea5e9",
   },
   attributeChipText: {
     fontSize: 12,
-    color: '#0369a1',
-    fontWeight: '500',
+    color: "#0369a1",
+    fontWeight: "500",
   },
   variantImageContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   variantImage: {
@@ -878,37 +876,37 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   businessCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   businessInfo: {
     flex: 1,
   },
   businessName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
     marginBottom: 4,
   },
   businessType: {
     fontSize: 14,
-    color: '#059669',
-    fontWeight: '500',
+    color: "#059669",
+    fontWeight: "500",
     marginBottom: 8,
   },
   businessAddress: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   businessAddressText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: "#6b7280",
     flex: 1,
   },
   businessLogo: {
@@ -923,110 +921,110 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   detailItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: "#f3f4f6",
   },
   detailLabel: {
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   detailValue: {
     fontSize: 14,
-    color: '#1f2937',
-    fontWeight: '400',
-    textAlign: 'right',
+    color: "#1f2937",
+    fontWeight: "400",
+    textAlign: "right",
     flex: 1,
     marginLeft: 12,
   },
   actionsContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: "#e5e7eb",
     gap: 12,
   },
   editButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#059669',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#059669",
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
   },
   editButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   deleteButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ef4444',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ef4444",
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
   },
   deleteButtonDisabled: {
-    backgroundColor: '#9ca3af',
+    backgroundColor: "#9ca3af",
   },
   deleteButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
   loadingText: {
     fontSize: 16,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   errorContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 40,
     gap: 16,
   },
   errorTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
   },
   errorSubtitle: {
     fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
+    color: "#6b7280",
+    textAlign: "center",
     lineHeight: 22,
   },
   backButton: {
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     marginTop: 8,
   },
   backButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 

@@ -139,33 +139,34 @@ const HomePage: React.FC = () => {
         route: `(analytics)?id=${selectedBusiness.id}`,
         color: "#7c3aed",
       },
-      // {
-      //   id: "details",
-      //   title: "Détails & Modifier",
-      //   icon: "business-outline",
-      //   description: "Voir et modifier les informations",
-      //   route: `(business-details)?id=${selectedBusiness.id}`,
-      //   color: "#059669",
-      // },
-      // {
-      //   id: "members",
-      //   title: "Gérer les membres",
-      //   icon: "people-outline",
-      //   description: "Ajouter, modifier, supprimer des membres",
-      //   route: `(business-members)?id=${selectedBusiness.id}`,
-      //   color: "#2563eb",
-      // },
-      // {
-      //   id: "hours",
-      //   title: "Horaires d'ouverture",
-      //   icon: "time-outline",
-      //   description: "Définir les horaires d'ouverture",
-      //   route: `(opening-hours)?id=${selectedBusiness.id}`,
-      //   color: "#dc2626",
-      // },
+      {
+        id: "details",
+        title: "Détails & Modifier",
+        icon: "business-outline",
+        description: "Voir et modifier les informations",
+        route: `(business-details)?id=${selectedBusiness.id}`,
+        color: "#059669",
+      },
+      {
+        id: "members",
+        title: "Gérer les membres",
+        icon: "people-outline",
+        description: "Ajouter, modifier, supprimer des membres",
+        route: `(business-members)?id=${selectedBusiness.id}`,
+        color: "#2563eb",
+      },
+      {
+        id: "hours",
+        title: "Horaires d'ouverture",
+        icon: "time-outline",
+        description: "Définir les horaires d'ouverture",
+        route: `(opening-hours)?id=${selectedBusiness.id}`,
+        color: "#dc2626",
+      },
     ];
 
-    // On ajoute l'onglet Restaurants seulement pour les restaurateurs
+    
+   // On ajoute l'onglet Restaurants seulement pour les restaurateurs
     if (selectedBusiness.type === "RESTAURATEUR") {
       actions.unshift({
         id: "restaurants",
