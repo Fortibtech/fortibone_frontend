@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
   MenuItem,
   Table,
@@ -16,19 +17,43 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
+=======
+// app/(tabs)/restaurants/[id]/index.tsx
+import axiosInstance from "@/api/axiosInstance";
+import {
+  createRestaurantTable,
+  deleteRestaurantTable,
+  getMenus,
+  getTables,
+  Menu,
+  Table,
+  TablePayload,
+  updateRestaurantTable,
+  UpdateTablePayload,
+} from "@/api/restaurant";
+import BackButton from "@/components/BackButton";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
+>>>>>>> eb95630 (final version app web at 40%)
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+<<<<<<< HEAD
   FlatList,
   Modal,
   Platform,
+=======
+  Modal,
+  ScrollView,
+>>>>>>> eb95630 (final version app web at 40%)
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+<<<<<<< HEAD
 import Animated, { FadeInUp, Layout } from "react-native-reanimated";
 
 // Interface pour les éléments de données dans les sections
@@ -105,15 +130,48 @@ const AdminRestaurantDashboard = () => {
     } catch (error) {
       console.error("❌ Erreur chargement données:", error);
       setError("Échec du chargement des données. Veuillez réessayer.");
+=======
+
+const AdminRestaurantDashboard = () => {
+  const { id: businessId } = useLocalSearchParams<{ id: string }>();
+  const [tables, setTables] = useState<Table[]>([]);
+  const [menus, setMenus] = useState<Menu[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Modal création / modification table
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingTable, setEditingTable] = useState<Table | null>(null);
+  const [tableName, setTableName] = useState("");
+  const [tableCapacity, setTableCapacity] = useState("");
+  const [tableAvailable, setTableAvailable] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const tablesData = await getTables(businessId!);
+      const menusData = await getMenus(businessId!);
+      setTables(tablesData);
+      setMenus(menusData);
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de charger les données");
+>>>>>>> eb95630 (final version app web at 40%)
     } finally {
       setLoading(false);
     }
   };
 
+<<<<<<< HEAD
   useEffect(() => {
     loadData();
   }, [businessId]);
 
+=======
+  // Création / modification table
+>>>>>>> eb95630 (final version app web at 40%)
   const openCreateModal = () => {
     setEditingTable(null);
     setTableName("");
@@ -122,6 +180,7 @@ const AdminRestaurantDashboard = () => {
     setModalVisible(true);
   };
 
+<<<<<<< HEAD
   const openCreateMenuModal = async () => {
     setEditingMenu(null);
     setMenuName("");
@@ -161,6 +220,9 @@ const AdminRestaurantDashboard = () => {
   };
 
   const openEditTableModal = (table: Table) => {
+=======
+  const openEditModal = (table: Table) => {
+>>>>>>> eb95630 (final version app web at 40%)
     setEditingTable(table);
     setTableName(table.name);
     setTableCapacity(String(table.capacity));
@@ -173,8 +235,15 @@ const AdminRestaurantDashboard = () => {
       Alert.alert("Erreur", "Veuillez remplir tous les champs");
       return;
     }
+<<<<<<< HEAD
     try {
       if (editingTable) {
+=======
+
+    try {
+      if (editingTable) {
+        // Update table
+>>>>>>> eb95630 (final version app web at 40%)
         const payload: UpdateTablePayload = {
           name: tableName,
           capacity: Number(tableCapacity),
@@ -190,6 +259,10 @@ const AdminRestaurantDashboard = () => {
         );
         Alert.alert("Succès", `Table "${updated.name}" mise à jour !`);
       } else {
+<<<<<<< HEAD
+=======
+        // Create table
+>>>>>>> eb95630 (final version app web at 40%)
         const payload: TablePayload = {
           name: tableName,
           capacity: Number(tableCapacity),
@@ -204,6 +277,7 @@ const AdminRestaurantDashboard = () => {
     }
   };
 
+<<<<<<< HEAD
   const handleCreateMenu = async () => {
     if (!menuName || !menuPrice || !menuVariantId) {
       Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
@@ -283,6 +357,9 @@ const AdminRestaurantDashboard = () => {
     }
   };
 
+=======
+  // Suppression table avec nouvelle fonction
+>>>>>>> eb95630 (final version app web at 40%)
   const handleDeleteTable = (tableId: string, tableName: string) => {
     Alert.alert(
       "Confirmer la suppression",
@@ -294,9 +371,18 @@ const AdminRestaurantDashboard = () => {
           style: "destructive",
           onPress: async () => {
             try {
+<<<<<<< HEAD
               await deleteRestaurantTable(businessId!, tableId);
               setTables(tables.filter((t) => t.id !== tableId));
               Alert.alert("Succès", `Table "${tableName}" supprimée !`);
+=======
+              const response = await deleteRestaurantTable(
+                businessId!,
+                tableId
+              );
+              setTables(tables.filter((t) => t.id !== tableId));
+              Alert.alert("Succès", response.message);
+>>>>>>> eb95630 (final version app web at 40%)
             } catch (error) {
               Alert.alert("Erreur", "Impossible de supprimer la table");
             }
@@ -306,6 +392,7 @@ const AdminRestaurantDashboard = () => {
     );
   };
 
+<<<<<<< HEAD
   const handleDeleteMenu = async (menuId: string, menuName: string) => {
     Alert.alert(
       "Confirmer la suppression",
@@ -331,17 +418,34 @@ const AdminRestaurantDashboard = () => {
         },
       ]
     );
+=======
+  const handleDeleteMenu = async (menuId: string) => {
+    try {
+      await axiosInstance.delete(`/restaurants/${businessId}/menus/${menuId}`);
+      setMenus(menus.filter((m) => m.id !== menuId));
+      Alert.alert("Succès", "Menu supprimé !");
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de supprimer le menu");
+    }
+>>>>>>> eb95630 (final version app web at 40%)
   };
 
   if (loading) {
     return (
+<<<<<<< HEAD
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#3b82f6" />
         <Text style={styles.loadingText}>Chargement des données...</Text>
+=======
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text>Chargement des données...</Text>
+>>>>>>> eb95630 (final version app web at 40%)
       </View>
     );
   }
 
+<<<<<<< HEAD
   if (error) {
     return (
       <View style={styles.center}>
@@ -558,12 +662,89 @@ const AdminRestaurantDashboard = () => {
                 <Ionicons name="close" size={24} color="#1f2937" />
               </TouchableOpacity>
             </View>
+=======
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <BackButton />
+      <Text style={styles.header}>
+        Admin Dashboard - Restaurant {businessId}
+      </Text>
+
+      {/* Tables */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Tables</Text>
+          <TouchableOpacity onPress={openCreateModal}>
+            <Ionicons name="add-circle-outline" size={28} color="#2563eb" />
+          </TouchableOpacity>
+        </View>
+
+        {tables.map((t) => (
+          <View key={t.id} style={styles.card}>
+            <Text style={styles.cardTitle}>{t.name}</Text>
+            <Text>Capacité: {t.capacity}</Text>
+            <Text>Disponible: {t.isAvailable ? "✅" : "❌"}</Text>
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: "#059669" }]}
+                onPress={() => openEditModal(t)}
+              >
+                <Text style={styles.btnText}>Modifier</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: "#dc2626" }]}
+                onPress={() => handleDeleteTable(t.id, t.name)}
+              >
+                <Text style={styles.btnText}>Supprimer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Menus */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Menus</Text>
+        {menus.map((m) => (
+          <View key={m.id} style={styles.card}>
+            <Text style={styles.cardTitle}>{m.name}</Text>
+            <Text>Prix: ${m.price}</Text>
+            <Text>Actif: {m.isActive ? "✅" : "❌"}</Text>
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: "#059669" }]}
+                onPress={() => Alert.alert("Modifier", m.name)}
+              >
+                <Text style={styles.btnText}>Modifier</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: "#dc2626" }]}
+                onPress={() => handleDeleteMenu(m.id)}
+              >
+                <Text style={styles.btnText}>Supprimer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Modal Création / Edition Table */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {editingTable ? "Modifier Table" : "Nouvelle Table"}
+            </Text>
+>>>>>>> eb95630 (final version app web at 40%)
             <TextInput
               style={styles.input}
               placeholder="Nom de la table"
               value={tableName}
               onChangeText={setTableName}
+<<<<<<< HEAD
               accessibilityLabel="Nom de la table"
+=======
+>>>>>>> eb95630 (final version app web at 40%)
             />
             <TextInput
               style={styles.input}
@@ -571,6 +752,7 @@ const AdminRestaurantDashboard = () => {
               keyboardType="numeric"
               value={tableCapacity}
               onChangeText={setTableCapacity}
+<<<<<<< HEAD
               accessibilityLabel="Capacité de la table"
             />
             <View style={styles.toggleRow}>
@@ -603,10 +785,38 @@ const AdminRestaurantDashboard = () => {
                 accessibilityRole="button"
               >
                 <Text style={styles.modalButtonText}>
+=======
+            />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ marginRight: 8 }}>Disponible</Text>
+              <TouchableOpacity
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: tableAvailable ? "#059669" : "#ccc",
+                }}
+                onPress={() => setTableAvailable(!tableAvailable)}
+              />
+            </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.btn, { backgroundColor: "#2563eb" }]}
+                onPress={handleSaveTable}
+              >
+                <Text style={styles.btnText}>
+>>>>>>> eb95630 (final version app web at 40%)
                   {editingTable ? "Sauvegarder" : "Créer"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
+<<<<<<< HEAD
                 style={[styles.modalButton, { backgroundColor: "#dc2626" }]}
                 onPress={() => setModalVisible(false)}
                 accessibilityLabel="Annuler"
@@ -792,10 +1002,33 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
+=======
+                style={[styles.btn, { backgroundColor: "#dc2626" }]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.btnText}>Annuler</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
+};
+
+export default AdminRestaurantDashboard;
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#f9fafb" },
+  content: { padding: 16 },
+  header: { fontSize: 22, fontWeight: "bold", marginBottom: 16 },
+  section: { marginBottom: 24 },
+>>>>>>> eb95630 (final version app web at 40%)
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+<<<<<<< HEAD
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
@@ -888,6 +1121,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+=======
+    marginBottom: 12,
+  },
+  sectionTitle: { fontSize: 18, fontWeight: "bold" },
+  card: {
+    backgroundColor: "#fff",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  cardTitle: { fontSize: 16, fontWeight: "600", marginBottom: 4 },
+  actionsRow: { flexDirection: "row", gap: 8, marginTop: 8 },
+  btn: { flex: 1, padding: 8, borderRadius: 8, alignItems: "center" },
+  btnText: { color: "#fff", fontWeight: "600" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+>>>>>>> eb95630 (final version app web at 40%)
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -900,6 +1149,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
   },
+<<<<<<< HEAD
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -961,3 +1211,15 @@ const styles = StyleSheet.create({
 });
 
 export default AdminRestaurantDashboard;
+=======
+  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 12 },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 12,
+  },
+  modalActions: { flexDirection: "row", gap: 8 },
+});
+>>>>>>> eb95630 (final version app web at 40%)

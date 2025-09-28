@@ -18,7 +18,7 @@ export const getStatRestaurant = async (
 ): Promise<RestaurantStats> => {
   try {
     const response = await axiosInstance.get<RestaurantStats>(
-      `/restaurants/${businessId}/analytics/restaurant`
+      `/businesses/${businessId}/analytics/restaurant`
     );
     return response.data;
   } catch (error: any) {
@@ -149,7 +149,13 @@ export interface UpdateTablePayload {
   capacity?: number;
   isAvailable?: boolean;
 }
-
+export interface TableResponse {
+  id: string;
+  name: string;
+  capacity: number;
+  isAvailable: boolean;
+  businessId: string;
+}
 export const updateRestaurantTable = async (
   businessId: string,
   tableId: string,
@@ -169,6 +175,9 @@ export const updateRestaurantTable = async (
     throw error;
   }
 };
+
+
+
 
 export interface DeleteTableResponse {
   message: string; // "Table supprimée avec succès."

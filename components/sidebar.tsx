@@ -284,6 +284,21 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Text style={styles.logoutText}>Se déconnecter</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Logout Button */}
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleLogout}
+              accessible={true}
+              accessibilityLabel="Se déconnecter"
+            >
+              <Ionicons
+                name="log-out-outline"
+                size={isTablet ? 24 : 20}
+                color="#FF5722"
+              />
+              <Text style={styles.logoutText}>Se déconnecter</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
