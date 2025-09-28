@@ -1,14 +1,14 @@
+import { getUserBusinesses, UserBusiness } from "@/api/Users";
+import BackButton from "@/components/BackButton";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  FlatList,
   StyleSheet,
   Text,
   View,
-  FlatList,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getUserBusinesses, UserBusiness } from "@/api/Users";
-import BackButton from "@/components/BackButton";
 
 const UserBusinesses = () => {
   const [businesses, setBusinesses] = useState<UserBusiness[]>([]);
@@ -55,7 +55,7 @@ const UserBusinesses = () => {
       <SafeAreaView style={styles.container}>
         <BackButton />
         <View style={styles.centerContainer}>
-          <Text style={styles.centerText}>Aucune entreprise associée.</Text>
+          <Text style={styles.centerText}>Aucun restaurants en favoris</Text>
         </View>
       </SafeAreaView>
     );

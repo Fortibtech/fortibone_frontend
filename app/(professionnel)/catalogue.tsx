@@ -1,4 +1,3 @@
-// screens/ProductListScreen.tsx - Version corrigée
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { Filter, Heart, Plus, Search } from "lucide-react-native";
@@ -9,7 +8,6 @@ import {
   FlatList,
   Image,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -26,6 +24,7 @@ import {
   ProductService,
   SelectedBusinessManager,
 } from "@/api";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface ProductListScreenProps {
   onProductPress?: (product: Product) => void;
@@ -205,15 +204,16 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
     if (onProductPress) {
       onProductPress(product);
     } else {
-      // router.push(`/product/${product.id}`);
+       router.push(`/product/${product.id}`);
     }
   };
 
   const handleCreateProduct = () => {
+    console.log("Bouton d'ajout cliqué !"); // Log pour débogage
     if (onCreateProduct) {
       onCreateProduct();
     } else {
-      // router.push("/product/create");
+      router.push("/product/create"); // Navigation activée par défaut
     }
   };
 
@@ -306,9 +306,9 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
         />
       </View>
 
-      <TouchableOpacity style={styles.filterButton}>
+      {/* <TouchableOpacity style={styles.filterButton}>
         <Filter size={20} color="#666" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 

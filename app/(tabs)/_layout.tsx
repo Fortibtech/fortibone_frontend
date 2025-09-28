@@ -54,16 +54,16 @@ export default function RootLayout() {
       <Tabs.Screen
         name="favorites"
         options={{
-          title: "Inventaire",
+          title: "Restaurants",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="heart-outline" size={size} color={color} />
+            <Ionicons name="restaurant-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Chat",
+          title: "Profile",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),

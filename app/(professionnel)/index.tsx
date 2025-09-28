@@ -1,17 +1,16 @@
 // app/(tabs)/index.tsx
-import GraphCard, { SalesData } from "@/components/GraphCard";
+import { SalesData } from "@/components/GraphCard";
 import Sidebar from "@/components/sidebar";
-import SalesDashboard, { DashboardData } from "@/components/StatCard";
-import AnalyticsDashboard, { AnalyticsData } from "@/components/yearSelector";
+import { DashboardData } from "@/components/StatCard";
+import { AnalyticsData } from "@/components/yearSelector";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { Route, router } from "expo-router";
 import { Bell } from "lucide-react-native";
 import React, { JSX, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -24,6 +23,7 @@ import { Float } from "react-native/Libraries/Types/CodegenTypes";
 
 // Import des services API
 import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Types
 interface Enterprise {
@@ -115,7 +115,7 @@ const HomePage: React.FC = () => {
   };
 
   const navigateToEnterpriseDetails = (enterpriseId: number): void => {
-    router.push(`/enterprise-details?id=${enterpriseId}`);
+    router.push(`/enterprise-details?id=${enterpriseId}` as Route);
   };
 
   const handleBusinessSelect = async (business: Business) => {
@@ -133,13 +133,21 @@ const HomePage: React.FC = () => {
   const getBusinessActions = (): BusinessAction[] => {
     if (!selectedBusiness) return [];
 
-    return [
+    const actions: BusinessAction[] = [
+      {
+        id: "analytics",
+        title: "Statistiques",
+        icon: "analytics-outline",
+        description: "Voir les performances",
+        route: `(analytics)?id=${selectedBusiness.id}`,
+        color: "#7c3aed",
+      },
       {
         id: "details",
         title: "Détails & Modifier",
         icon: "business-outline",
         description: "Voir et modifier les informations",
-        route: `/pro/business-details?id=${selectedBusiness.id}`,
+        route: `(business-details)?id=${selectedBusiness.id}`,
         color: "#059669",
       },
       {
@@ -147,7 +155,7 @@ const HomePage: React.FC = () => {
         title: "Gérer les membres",
         icon: "people-outline",
         description: "Ajouter, modifier, supprimer des membres",
-        route: `/pro/business-members?id=${selectedBusiness.id}`,
+        route: `(business-members)?id=${selectedBusiness.id}`,
         color: "#2563eb",
       },
       {
@@ -155,18 +163,24 @@ const HomePage: React.FC = () => {
         title: "Horaires d'ouverture",
         icon: "time-outline",
         description: "Définir les horaires d'ouverture",
-        route: `/pro/opening-hours?id=${selectedBusiness.id}`,
+        route: `(opening-hours)?id=${selectedBusiness.id}`,
         color: "#dc2626",
       },
-      {
-        id: "analytics",
-        title: "Statistiques",
-        icon: "analytics-outline",
-        description: "Voir les performances",
-        route: `/pro/business-members?id=${selectedBusiness.id}`,
-        color: "#7c3aed",
-      },
     ];
+
+    // On ajoute l'onglet Restaurants seulement pour les restaurateurs
+    if (selectedBusiness.type === "RESTAURATEUR") {
+      actions.unshift({
+        id: "restaurants",
+        title: "Restaurants",
+        icon: "restaurant-outline",
+        description: "Gérer les tables et le menu",
+        route: `(restaurants)?id=${selectedBusiness.id}`,
+        color: "#06235cff",
+      });
+    }
+
+    return actions;
   };
 
   const sampleData: SalesData = {
@@ -300,7 +314,7 @@ const HomePage: React.FC = () => {
             <TouchableOpacity
               key={action.id}
               style={[styles.actionCard, { borderLeftColor: action.color }]}
-              onPress={() => router.push(action.route)}
+              onPress={() => router.push(action.route as Route)}
               activeOpacity={0.7}
             >
               <View
@@ -457,13 +471,13 @@ const HomePage: React.FC = () => {
           )}
         </View>
 
-        <View style={styles.grid}>{enterprises.map(renderEnterpriseCard)}</View>
+        {/* <View style={styles.grid}>{enterprises.map(renderEnterpriseCard)}</View>
 
         <GraphCard salesData={sampleData} onPress={handlePress} />
 
         <SalesDashboard data={dashboardData} />
 
-        <AnalyticsDashboard data={analyticsData} />
+        <AnalyticsDashboard data={analyticsData} /> */}
       </ScrollView>
     </SafeAreaView>
   );
