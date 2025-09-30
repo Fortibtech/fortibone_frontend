@@ -1,17 +1,17 @@
 // src/screens/InventoryScreen.tsx
-import { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
 import { BusinessesService } from "@/api/services/businessesService"; // ✅ adapte le chemin
 import { Business } from "@/api/types";
-import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function InventoryScreen() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -23,7 +23,7 @@ export default function InventoryScreen() {
       setLoading(true);
       try {
         const response = await BusinessesService.getBusinesses(); // ✅ pagination si besoin
-        setBusinesses(response.data);
+        setBusinesses(response);
       } catch (error) {
         console.error("❌ Erreur lors du fetch businesses:", error);
       } finally {

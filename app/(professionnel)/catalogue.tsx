@@ -1,21 +1,19 @@
-// screens/ProductListScreen.tsx - Version corrigée
-import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
-import { Filter, Heart, Plus, Search } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
+import { Filter, Heart, Plus, Search } from "lucide-react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
 
 // Import des services API
 import {
@@ -24,24 +22,27 @@ import {
   CategoryService,
   Product,
   ProductService,
-  SelectedBusinessManager
-} from '@/api';
+  SelectedBusinessManager,
+} from "@/api";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface ProductListScreenProps {
   onProductPress?: (product: Product) => void;
   onCreateProduct?: () => void;
 }
 
-export const ProductListScreen: React.FC<ProductListScreenProps> = ({ 
-  onProductPress, 
-  onCreateProduct 
+export const ProductListScreen: React.FC<ProductListScreenProps> = ({
+  onProductPress,
+  onCreateProduct,
 }) => {
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
+    null
+  );
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState<any>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -77,61 +78,62 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
       const categoriesData = await CategoryService.getCategories();
       setCategories(categoriesData);
     } catch (error) {
-      console.warn('Erreur lors du chargement des catégories:', error);
+      console.warn("Erreur lors du chargement des catégories:", error);
       // Ne pas bloquer l'écran si les catégories ne se chargent pas
     }
   };
 
   const checkForBusinessChange = async () => {
     try {
-      const currentBusiness = await SelectedBusinessManager.getSelectedBusiness();
-      
+      const currentBusiness =
+        await SelectedBusinessManager.getSelectedBusiness();
+
       if (!currentBusiness) {
         Alert.alert(
-          'Aucune entreprise sélectionnée',
-          'Veuillez sélectionner une entreprise depuis le menu principal.',
+          "Aucune entreprise sélectionnée",
+          "Veuillez sélectionner une entreprise depuis le menu principal.",
           [
             {
-              text: 'OK',
-              onPress: () => router.back()
-            }
+              text: "OK",
+              onPress: () => router.back(),
+            },
           ]
         );
         return;
       }
 
       // Vérifier si l'entreprise a changé
-      const hasBusinessChanged = !selectedBusiness || 
+      const hasBusinessChanged =
+        !selectedBusiness ||
         currentBusiness.id !== selectedBusiness.id ||
         currentBusiness.id !== previousBusinessIdRef.current;
 
       if (hasBusinessChanged) {
-        console.log('🔄 Changement d\'entreprise détecté:', {
-          previous: selectedBusiness?.name || 'aucune',
-          current: currentBusiness.name
+        console.log("🔄 Changement d'entreprise détecté:", {
+          previous: selectedBusiness?.name || "aucune",
+          current: currentBusiness.name,
         });
 
         setSelectedBusiness(currentBusiness);
         previousBusinessIdRef.current = currentBusiness.id;
-        
+
         // Réinitialiser l'état et recharger les données
-        setSearchText('');
+        setSearchText("");
         setPage(1);
-        await loadProducts(1, '', currentBusiness);
+        await loadProducts(1, "", currentBusiness);
       } else if (!products.length && !loading) {
         // Premier chargement ou cas où les produits ne sont pas encore chargés
-        await loadProducts(1, '', currentBusiness);
+        await loadProducts(1, "", currentBusiness);
       }
-
     } catch (error) {
-      console.error('Erreur lors de la vérification de l\'entreprise:', error);
-      Alert.alert('Erreur', 'Impossible de vérifier l\'entreprise sélectionnée');
+      console.error("Erreur lors de la vérification de l'entreprise:", error);
+      Alert.alert("Erreur", "Impossible de vérifier l'entreprise sélectionnée");
     }
   };
 
   const loadProducts = async (
-    pageNumber = 1, 
-    search = '', 
+    pageNumber = 1,
+    search = "",
     business?: Business
   ) => {
     const targetBusiness = business || selectedBusiness;
@@ -145,32 +147,37 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
         setLoadingMore(true);
       }
 
-      console.log('📦 Chargement des produits pour:', targetBusiness.name, {
+      console.log("📦 Chargement des produits pour:", targetBusiness.name, {
         page: pageNumber,
-        search: search || 'aucun',
-        businessId: targetBusiness.id
+        search: search || "aucun",
+        businessId: targetBusiness.id,
       });
 
-      const response = await ProductService.getBusinessProducts(targetBusiness.id, {
-        page: pageNumber,
-        limit: 20,
-        search: search.trim() || undefined,
-      });
+      const response = await ProductService.getBusinessProducts(
+        targetBusiness.id,
+        {
+          page: pageNumber,
+          limit: 20,
+          search: search.trim() || undefined,
+        }
+      );
 
       if (isFirstPage) {
         setProducts(response.data);
         setPage(1);
-        console.log('✅ Produits chargés:', response.data.length);
+        console.log("✅ Produits chargés:", response.data.length);
       } else {
-        setProducts(prev => [...prev, ...response.data]);
-        console.log('✅ Produits supplémentaires chargés:', response.data.length);
+        setProducts((prev) => [...prev, ...response.data]);
+        console.log(
+          "✅ Produits supplémentaires chargés:",
+          response.data.length
+        );
       }
-      
+
       setPagination(response.pagination);
-      
     } catch (error) {
-      console.error('❌ Erreur lors du chargement des produits:', error);
-      Alert.alert('Erreur', 'Impossible de charger les produits');
+      console.error("❌ Erreur lors du chargement des produits:", error);
+      Alert.alert("Erreur", "Impossible de charger les produits");
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -179,7 +186,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setSearchText('');
+    setSearchText("");
     // Forcer la vérification de l'entreprise et le rechargement
     await checkForBusinessChange();
     setRefreshing(false);
@@ -187,7 +194,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
 
   const loadMoreProducts = useCallback(async () => {
     if (loadingMore || !pagination || page >= pagination.totalPages) return;
-    
+
     const nextPage = page + 1;
     setPage(nextPage);
     await loadProducts(nextPage, searchText);
@@ -197,21 +204,22 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
     if (onProductPress) {
       onProductPress(product);
     } else {
-      router.push(`/product/${product.id}`);
+       router.push(`/product/${product.id}`);
     }
   };
 
   const handleCreateProduct = () => {
+    console.log("Bouton d'ajout cliqué !"); // Log pour débogage
     if (onCreateProduct) {
       onCreateProduct();
     } else {
-      router.push('/product/create');
+      router.push("/product/create"); // Navigation activée par défaut
     }
   };
 
   const getCategoryName = (categoryId: string): string => {
-    const category = categories.find(c => c.id === categoryId);
-    return category?.name || categoryId || 'Catégorie';
+    const category = categories.find((c) => c.id === categoryId);
+    return category?.name || categoryId || "Catégorie";
   };
 
   const renderProductCard = ({ item: product }: { item: Product }) => (
@@ -222,8 +230,8 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
     >
       <View style={styles.productImageContainer}>
         {product.imageUrl ? (
-          <Image 
-            source={{ uri: product.imageUrl }} 
+          <Image
+            source={{ uri: product.imageUrl }}
             style={styles.productImage}
             resizeMode="cover"
           />
@@ -253,11 +261,9 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
             <Text style={styles.productCategory}>
               {getCategoryName(product.categoryId)}
             </Text>
-            <Text style={styles.productUnit}>
-              Unité: {product.salesUnit}
-            </Text>
+            <Text style={styles.productUnit}>Unité: {product.salesUnit}</Text>
           </View>
-          
+
           {product.price && (
             <Text style={styles.productPrice}>
               {product.price.toFixed(2)} XAF
@@ -273,13 +279,11 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
       <TouchableOpacity onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={28} color="#333" />
       </TouchableOpacity>
-      
+
       <View style={styles.headerContent}>
         <Text style={styles.headerTitle}>Mes Produits</Text>
         {selectedBusiness && (
-          <Text style={styles.headerSubtitle}>
-            {selectedBusiness.name}
-          </Text>
+          <Text style={styles.headerSubtitle}>{selectedBusiness.name}</Text>
         )}
       </View>
 
@@ -301,10 +305,10 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
           placeholderTextColor="#999"
         />
       </View>
-      
-      <TouchableOpacity style={styles.filterButton}>
+
+      {/* <TouchableOpacity style={styles.filterButton}>
         <Filter size={20} color="#666" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 
@@ -316,21 +320,21 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
         </Text>
         <Text style={styles.statLabel}>Produits</Text>
       </View>
-      
+
       <View style={styles.statDivider} />
-      
+
       <View style={styles.statItem}>
         <Text style={styles.statNumber}>
-          {products.filter(p => p.price && p.price > 0).length}
+          {products.filter((p) => p.price && p.price > 0).length}
         </Text>
         <Text style={styles.statLabel}>Avec prix</Text>
       </View>
-      
+
       <View style={styles.statDivider} />
-      
+
       <View style={styles.statItem}>
         <Text style={styles.statNumber}>
-          {new Set(products.map(p => p.categoryId).filter(Boolean)).size}
+          {new Set(products.map((p) => p.categoryId).filter(Boolean)).size}
         </Text>
         <Text style={styles.statLabel}>Catégories</Text>
       </View>
@@ -339,7 +343,10 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
 
   const renderBusinessChangeBanner = () => {
     // Afficher une bannière si l'entreprise vient de changer
-    if (selectedBusiness && previousBusinessIdRef.current === selectedBusiness.id) {
+    if (
+      selectedBusiness &&
+      previousBusinessIdRef.current === selectedBusiness.id
+    ) {
       return null;
     }
 
@@ -357,16 +364,15 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
       <Ionicons name="cube-outline" size={64} color="#ccc" />
       <Text style={styles.emptyTitle}>Aucun produit</Text>
       <Text style={styles.emptySubtitle}>
-        {searchText 
+        {searchText
           ? `Aucun résultat pour "${searchText}"`
-          : selectedBusiness 
-            ? `${selectedBusiness.name} n'a pas encore de produits`
-            : 'Commencez par ajouter votre premier produit'
-        }
+          : selectedBusiness
+          ? `${selectedBusiness.name} n'a pas encore de produits`
+          : "Commencez par ajouter votre premier produit"}
       </Text>
-      
+
       {!searchText && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.emptyButton}
           onPress={handleCreateProduct}
         >
@@ -379,7 +385,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
 
   const renderFooter = () => {
     if (!loadingMore) return null;
-    
+
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color="#059669" />
@@ -395,10 +401,9 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#059669" />
           <Text style={styles.loadingText}>
-            {selectedBusiness 
+            {selectedBusiness
               ? `Chargement des produits de ${selectedBusiness.name}...`
-              : 'Chargement des produits...'
-            }
+              : "Chargement des produits..."}
           </Text>
         </View>
       </SafeAreaView>
@@ -424,7 +429,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#059669']}
+            colors={["#059669"]}
           />
         }
         onEndReached={loadMoreProducts}
@@ -439,47 +444,47 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafb',
+    backgroundColor: "#fafafb",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   headerContent: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: "700",
+    color: "#1f2937",
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
     marginTop: 2,
   },
   addButton: {
     padding: 4,
   },
   searchContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     gap: 10,
   },
   searchBar: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 44,
@@ -490,52 +495,52 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
+    color: "#1f2937",
   },
   filterButton: {
     width: 44,
     height: 44,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: "#f3f4f6",
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   businessChangeBanner: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: "#f0f9ff",
     paddingVertical: 8,
     paddingHorizontal: 20,
     borderLeftWidth: 4,
-    borderLeftColor: '#059669',
+    borderLeftColor: "#059669",
   },
   businessChangeText: {
     fontSize: 14,
-    color: '#047857',
-    fontWeight: '500',
+    color: "#047857",
+    fontWeight: "500",
   },
   statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    backgroundColor: "#ffffff",
     paddingVertical: 20,
     paddingHorizontal: 20,
     marginBottom: 10,
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statNumber: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#059669',
+    fontWeight: "700",
+    color: "#059669",
   },
   statLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: "#6b7280",
     marginTop: 4,
   },
   statDivider: {
     width: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: "#e5e7eb",
     marginHorizontal: 20,
   },
   productsList: {
@@ -543,14 +548,14 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   row: {
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   productCard: {
-    width: '48%',
-    backgroundColor: '#ffffff',
+    width: "48%",
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -560,33 +565,33 @@ const styles = StyleSheet.create({
     height: 120,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   productImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   productImagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    justifyContent: "center",
   },
   productInfo: {
     padding: 12,
   },
   productHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 8,
   },
   productName: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
     marginRight: 8,
   },
   favoriteButton: {
@@ -594,7 +599,7 @@ const styles = StyleSheet.create({
   },
   productDescription: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
     lineHeight: 18,
     marginBottom: 8,
   },
@@ -606,75 +611,75 @@ const styles = StyleSheet.create({
   },
   productCategory: {
     fontSize: 12,
-    color: '#059669',
-    fontWeight: '600',
+    color: "#059669",
+    fontWeight: "600",
   },
   productUnit: {
     fontSize: 12,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   productPrice: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: "700",
+    color: "#1f2937",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 40,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
+    color: "#6b7280",
+    textAlign: "center",
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 40,
     paddingVertical: 60,
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
+    color: "#6b7280",
+    textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
   },
   emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#059669',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#059669",
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
     gap: 8,
   },
   emptyButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   footerLoader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 16,
     gap: 8,
   },
   footerLoaderText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
   },
 });
 

@@ -1,15 +1,7 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "target": "es2021",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-
-    "types": ["react", "react-native"],
-    "skipLibCheck": true,
-    "jsx": "react-jsx", // ou "react-native" selon la version
+    "jsx": "react-jsx", // si tu es sur React 17+
     "strict": true,
     "paths": {
       "@/*": ["./*"]
@@ -19,7 +11,6 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "postinstall.ts"
+    "expo-env.d.ts"
   ]
 }

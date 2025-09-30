@@ -22,7 +22,7 @@ export default function OrdersScreen() {
       setLoading(true);
       try {
         const response = await BusinessesService.getBusinesses();
-        setBusinesses(response.data);
+        setBusinesses(response);
       } catch (error) {
         console.error("❌ Erreur lors du fetch businesses:", error);
       } finally {
@@ -33,6 +33,7 @@ export default function OrdersScreen() {
     fetchBusinesses();
   }, []);
 
+  console.log("les entreprises ", businesses);
   const renderItem = ({ item }: { item: Business }) => (
     <TouchableOpacity
       style={styles.card}

@@ -4,9 +4,8 @@ import { useRouter } from "expo-router";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function IndexScreen() {
+const Index = () => {
   const router = useRouter();
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Image de fond en haut à gauche */}
@@ -42,8 +41,7 @@ export default function IndexScreen() {
       </View>
     </SafeAreaView>
   );
-}
-
+};
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -81,3 +79,4 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
 });
+export default Index;

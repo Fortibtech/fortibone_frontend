@@ -11,7 +11,6 @@ import {
   Dimensions,
   FlatList,
   Image,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -19,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Responsive dimensions
 const { width } = Dimensions.get("window");
@@ -33,7 +33,8 @@ type ProfileRoutes =
   | "/(profile-particulier)/security"
   | "/(profile-particulier)/favorites"
   | "/(profile-particulier)/help"
-  | "/(profile-particulier)/about";
+  | "/(profile-particulier)/about"
+  | "/(profile-particulier)/my-transactions";
 
 const ProfilePage = () => {
   const router = useRouter();
@@ -105,35 +106,35 @@ const ProfilePage = () => {
       icon: "basket-outline",
     },
     {
-      title: "Vos entreprises",
+      title: "Mes Transactions",
+      route: "/(profile-particulier)/my-transactions",
+      icon: "swap-horizontal-outline",
+    },
+    {
+      title: "Mes restaurants favoris",
       route: "/(profile-particulier)/user-businesses",
       icon: "business-outline",
     },
-    {
-      title: "Notifications",
-      route: "/(profile-particulier)/notifications",
-      icon: "notifications-outline",
-    },
-    {
-      title: "Catégories",
-      route: "/(profile-particulier)/category",
-      icon: "grid-outline",
-    },
-    {
-      title: "Sécurité",
-      route: "/(profile-particulier)/security",
-      icon: "shield-outline",
-    },
-    {
-      title: "Aide",
-      route: "/(profile-particulier)/help",
-      icon: "help-circle-outline",
-    },
-    {
-      title: "À propos",
-      route: "/(profile-particulier)/about",
-      icon: "information-circle-outline",
-    },
+    // {
+    //   title: "Notifications",
+    //   route: "/(profile-particulier)/notifications",
+    //   icon: "notifications-outline",
+    // },
+    // {
+    //   title: "Catégories",
+    //   route: "/(profile-particulier)/category",
+    //   icon: "grid-outline",
+    // },
+    // {
+    //   title: "Aide",
+    //   route: "/(profile-particulier)/help",
+    //   icon: "help-circle-outline",
+    // },
+    // {
+    //   title: "À propos",
+    //   route: "/(profile-particulier)/about",
+    //   icon: "information-circle-outline",
+    // },
   ];
 
   const renderMenuItem = ({
@@ -185,7 +186,14 @@ const ProfilePage = () => {
         <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Profil</Text>
+            <Text
+              style={styles.headerTitle}
+              numberOfLines={1} // 🔥 Truncate long titles
+              ellipsizeMode="tail" // 🔥 Add ellipsis for overflow
+              accessibilityLabel="Profil utilisateur" // 🔥 Accessibility
+            >
+              Profil
+            </Text>
           </View>
 
           <ScrollView
@@ -271,19 +279,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: width * 0.05,
+    paddingHorizontal: width * 0.05, // 🔥 Responsive padding (already present)
     paddingVertical: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
     alignItems: "center",
     justifyContent: "center",
+    // 🔥 Add shadow for depth
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitle: {
     fontSize: isTablet ? 22 : 18,
     fontWeight: "700",
     color: "#333",
     letterSpacing: 0.3,
+    maxWidth: width * 0.9, // 🔥 Constrain title width (accounting for padding)
+    textAlign: "center", // 🔥 Ensure text is centered
   },
   content: {
     flex: 1,
