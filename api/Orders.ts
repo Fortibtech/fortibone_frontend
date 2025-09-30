@@ -59,7 +59,7 @@ export const getMyOrders = async (params?: {
 }): Promise<MyOrdersResponse> => {
   try {
     const response = await axiosInstance.get<MyOrdersResponse>(
-      "/orders/orders/my-orders",
+      "/orders/my-orders",
       { params: { page: 1, limit: 10, ...params } } // Valeurs par défaut
     );
     // Validation basique de la réponse
@@ -148,7 +148,7 @@ export const updateOrderStatus = async (
 ): Promise<OrderResponse> => {
   try {
     const { data } = await axiosInstance.patch<OrderResponse>(
-      `/orders/orders/${orderId}/status`,
+      `/orders/${orderId}/status`,
       payload
     );
     return data;

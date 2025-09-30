@@ -1,18 +1,18 @@
+import { resendOtp, verifyEmail } from "@/api/authService";
 import BackButton from "@/components/BackButton";
 import CustomButton from "@/components/CustomButton";
-import React, { useEffect, useRef, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  Alert,
-  TextInput,
-  TouchableOpacity,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useUserStore } from "@/store/userStore";
 import { useRouter } from "expo-router";
-import { resendOtp, verifyEmail } from "@/api/authService";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const OtpVerify = () => {
   const email = useUserStore((state) => state.email); // récupère l'email depuis le store

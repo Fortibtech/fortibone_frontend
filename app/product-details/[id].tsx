@@ -1,4 +1,3 @@
-import { createOrder } from "@/api/Orders";
 import { addToFavorite, deleteFavoris, getProductById } from "@/api/Products";
 import BackButton from "@/components/BackButton";
 import AddProductReviewModal from "@/components/produit/AddProductReviewModal";
@@ -9,14 +8,11 @@ import ReviewActions from "@/components/produit/ReviewActions";
 import { useCartStore } from "@/stores/useCartStore";
 import { Products } from "@/types/Product";
 import { Variant } from "@/types/v";
-import { useStripe } from "@stripe/stripe-react-native";
-import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   ScrollView,
@@ -30,21 +26,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 const { width: screenWidth } = Dimensions.get("window");
-
 const ProductDetails = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { toggleItem, isInCart } = useCartStore();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [product, setProduct] = useState<Products | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSlide, setActiveSlide] = useState(0);
   const [favLoading, setFavLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
-    "STRIPE" | "MVOLA" | "MANUAL"
-  >("STRIPE");
   const [showAddReview, setShowAddReview] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
 
@@ -129,117 +119,6 @@ const ProductDetails = () => {
         ? "Produit retiré du panier"
         : "✅ Le produit a été ajouté au panier avec succès !",
     });
-  };
-
-  const handleBuyNow = async () => {
-    if (!product) return;
-
-    const variant = selectedVariant || product.variants?.[0];
-    if (!variant) {
-      Toast.show({
-        type: "error",
-        text1: "Veuillez sélectionner une variante",
-      });
-      return;
-    }
-
-    setPaymentLoading(true);
-
-    try {
-      // 1. Créer une commande via l'API
-      const orderResponse = await createOrder({
-        type: "PENDING", // Type pour un achat immédiat, ajuster si nécessaire
-        businessId: product.businessId,
-        lines: [
-          {
-            variantId: variant.id,
-            quantity: 1,
-          },
-        ],
-      });
-
-      const orderId = orderResponse.id; // Utiliser l'id de CreateOrderResponse
-
-      // 2. Appeler l'endpoint de paiement
-      const requestBody: any = {
-        method: selectedPaymentMethod,
-        metadata: {},
-      };
-
-      if (selectedPaymentMethod === "STRIPE") {
-        requestBody.metadata.paymentMethodId = "pm_xxx"; // À remplacer par une méthode de paiement réelle
-      }
-      // Pour MVOLA ou MANUAL, metadata peut être vide ou contenir des données spécifiques
-      // Exemple : requestBody.metadata.mvolaPhone = 'numero_telephone' pour MVOLA
-
-      const paymentResponse = await axios.post(
-        `https://votre-api.com/payments/orders/${orderId}/pay`,
-        requestBody,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            // Ajoutez ici tout en-tête d'authentification si nécessaire
-          },
-        }
-      );
-
-      const paymentData = paymentResponse.data;
-
-      if (paymentResponse.status === 200) {
-        if (selectedPaymentMethod === "STRIPE") {
-          const { clientSecret } = paymentData;
-
-          // 3. Initialiser le PaymentSheet pour Stripe
-          const { error: initError } = await initPaymentSheet({
-            paymentIntentClientSecret: clientSecret,
-            merchantDisplayName: "Votre Entreprise",
-          });
-
-          if (initError) {
-            Alert.alert("Erreur", initError.message);
-            setPaymentLoading(false);
-            return;
-          }
-
-          // 4. Présenter le PaymentSheet
-          const { error: paymentError } = await presentPaymentSheet();
-
-          if (paymentError) {
-            Alert.alert("Erreur de paiement", paymentError.message);
-          } else {
-            Alert.alert("Succès", "Le paiement a été effectué avec succès !");
-          }
-        } else if (selectedPaymentMethod === "MVOLA") {
-          Alert.alert(
-            "Paiement Mvola",
-            "Veuillez suivre les instructions envoyées à votre numéro Mvola."
-          );
-        } else if (selectedPaymentMethod === "MANUAL") {
-          Alert.alert(
-            "Paiement Manuel",
-            "Votre commande est enregistrée. Veuillez procéder au paiement hors ligne."
-          );
-        }
-      } else if (paymentResponse.status === 400) {
-        Alert.alert(
-          "Erreur",
-          "Commande non trouvée ou non éligible au paiement."
-        );
-      } else if (paymentResponse.status === 401) {
-        Alert.alert("Erreur", "Non autorisé.");
-      } else if (paymentResponse.status === 403) {
-        Alert.alert("Erreur", "Accès interdit.");
-      }
-    } catch (error: any) {
-      Alert.alert(
-        "Erreur",
-        error.message || "Une erreur est survenue lors du paiement."
-      );
-
-      console.error(error);
-    } finally {
-      setPaymentLoading(false);
-    }
   };
 
   const renderStars = (val: number) =>
@@ -380,37 +259,6 @@ const ProductDetails = () => {
           />
           <CategoryInfo category={product.category} />
 
-          <Text style={styles.paymentMethodTitle}>Moyen de paiement</Text>
-          <View style={styles.paymentMethodContainer}>
-            {["STRIPE", "MVOLA", "MANUAL"].map((method) => (
-              <TouchableOpacity
-                key={method}
-                style={[
-                  styles.paymentMethodButton,
-                  selectedPaymentMethod === method
-                    ? styles.paymentMethodButtonSelected
-                    : null,
-                ]}
-                onPress={() =>
-                  setSelectedPaymentMethod(
-                    method as "STRIPE" | "MVOLA" | "MANUAL"
-                  )
-                }
-              >
-                <Text
-                  style={[
-                    styles.paymentMethodText,
-                    selectedPaymentMethod === method
-                      ? styles.paymentMethodTextSelected
-                      : null,
-                  ]}
-                >
-                  {method === "STRIPE" ? "Carte bancaire (Stripe)" : method}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
               style={[
@@ -426,20 +274,6 @@ const ProductDetails = () => {
                 {inCart(selectedVariant?.id)
                   ? "Retirer du panier"
                   : "Ajouter au panier"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.buyButton,
-                paymentLoading ? styles.buyButtonDisabled : null,
-              ]}
-              onPress={handleBuyNow}
-              disabled={paymentLoading}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.buyButtonText}>
-                {paymentLoading ? "Chargement..." : "Acheter maintenant"}
               </Text>
             </TouchableOpacity>
           </View>

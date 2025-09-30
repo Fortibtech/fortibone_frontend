@@ -85,3 +85,81 @@ export async function deleteFavoris(productId: string) {
     throw error;
   }
 }
+
+
+
+
+// Type pour une variante de produit
+export interface ProductVariant {
+  id: string;
+  sku: string;
+  barcode: string | null;
+  price: string;
+  purchasePrice: string;
+  quantityInStock: number;
+  alertThreshold: number | null;
+  itemsPerLot: number | null;
+  lotPrice: number | null;
+  imageUrl: string | null;
+  productId: string;
+  attributeValues: {
+    id: string;
+    value: string;
+    variantId: string;
+    attributeId: string;
+    attribute: {
+      id: string;
+      name: string;
+      categoryId: string;
+    };
+  }[];
+}
+
+// Type pour un produit
+export interface Produit {
+  id: string;
+  name: string;
+  description: string;
+  salesUnit: string;
+  imageUrl: string;
+  averageRating: number;
+  reviewCount: number;
+  businessId: string;
+  categoryId: string;
+  variants: ProductVariant[];
+  category: {
+    id: string;
+    name: string;
+  };
+}
+
+// Type de la réponse API
+export interface GetProductsByBusinessResponse {
+  data: Produit[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+// Fonction pour récupérer les produits d’un business
+export const getProductsByBusiness = async (
+  businessId: string,
+  options: { page?: number; limit?: number } = {}
+): Promise<GetProductsByBusinessResponse> => {
+  try {
+    const { page = 1, limit = 10 } = options;
+
+    const response = await axiosInstance.get<GetProductsByBusinessResponse>(
+      `/businesses/${businessId}/products`,
+      {
+        params: { page, limit },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("❌ Erreur getProductsByBusiness:", error.response || error);
+    throw error;
+  }
+};

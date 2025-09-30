@@ -1,7 +1,7 @@
 import CustomButton from "@/components/CustomButton";
 import { useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, View, Text, Image } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const SuccessScreen = () => {
