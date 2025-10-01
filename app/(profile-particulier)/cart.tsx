@@ -1,11 +1,16 @@
 import { createOrder } from "@/api/Orders";
+import paymentService from "@/api/services/paiement";
+import { PaymentMethod } from "@/api/types/payment";
 import BackButton from "@/components/BackButton";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
 import { CreateOrderPayload } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
+import { CardField, useStripe } from "@stripe/stripe-react-native";
 import { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -33,15 +38,19 @@ interface CartItem {
 const Cart = () => {
   const { items, removeItem } = useCartStore();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPaymentUI, setShowPaymentUI] = useState(false);
+  const [cardDetails, setCardDetails] = useState<any>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const { confirmPayment, createPaymentMethod } = useStripe();
 
-  const handleCheckout = async () => {
-    if (isLoading) return;
+  // Fonction pour créer la commande
+  const handleCreateOrder = async () => {
     if (items.length === 0) {
       Toast.show({
         type: "info",
         text1: "Votre panier est vide",
       });
-      return;
+      return null;
     }
 
     // Vérification du premier item pour businessId / supplierBusinessId
@@ -53,7 +62,7 @@ const Cart = () => {
         text2: "Fournisseur ou business manquant pour le produit",
       });
       console.error("🛑 Premier item invalide:", firstItem);
-      return;
+      return null;
     }
 
     // Vérification que tous les items ont le même businessId et supplierBusinessId
@@ -71,7 +80,7 @@ const Cart = () => {
         text2: "Tous les articles doivent provenir du même fournisseur.",
       });
       console.error("🛑 Articles de fournisseurs différents:", invalidBusiness);
-      return;
+      return null;
     }
 
     // Vérification que tous les items ont un variantId
@@ -83,7 +92,7 @@ const Cart = () => {
         text2: invalidItem.name,
       });
       console.error("🛑 Item sans variantId:", invalidItem);
-      return;
+      return null;
     }
 
     // Construction du payload
@@ -98,20 +107,12 @@ const Cart = () => {
       })),
     };
 
-    console.log("📦 Payload envoyé à l’API:", JSON.stringify(payload, null, 2));
+    console.log("📦 Payload envoyé à l'API:", JSON.stringify(payload, null, 2));
 
     try {
-      setIsLoading(true);
       const res = await createOrder(payload);
-      console.log("✅ Commande réussie:", res);
-
-      // Vider le panier après succès
-      useCartStore.setState({ items: [] });
-
-      Toast.show({
-        type: "success",
-        text1: "Commande passée avec succès 🎉",
-      });
+      console.log("✅ Commande créée avec succès:", res);
+      return res.id; // Retourner l'ID de la commande créée
     } catch (err: any) {
       console.error(
         "❌ Erreur lors de la création de la commande:",
@@ -122,9 +123,127 @@ const Cart = () => {
         text1: "Erreur lors de la commande",
         text2: err.response?.data?.message?.join?.(", ") || err.message,
       });
+      return null;
+    }
+  };
+
+  // Fonction principale de checkout (affiche l'écran de paiement)
+  const handleCheckout = async () => {
+    if (isLoading) return;
+    
+    setShowPaymentUI(true);
+  };
+
+  // Fonction pour finaliser le paiement
+  const handleFinalizePayment = async () => {
+    if (!cardDetails?.complete) {
+      Alert.alert("Erreur", "Veuillez entrer des détails de carte valides.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // Étape 1: Créer la commande
+      console.log("📦 Création de la commande...");
+      const orderId = await handleCreateOrder();
+      
+      if (!orderId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setCreatedOrderId(orderId);
+
+      // Étape 2: Créer la méthode de paiement Stripe
+      console.log("💳 Création de la méthode de paiement Stripe...");
+      const { paymentMethod, error: pmError } = await createPaymentMethod({
+        paymentMethodType: "Card",
+      });
+
+      if (pmError) {
+        console.error("Erreur Stripe PaymentMethod:", pmError);
+        Alert.alert(
+          "Erreur Carte",
+          pmError.message || "Impossible de traiter les informations de la carte."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      if (!paymentMethod || !paymentMethod.id) {
+        Alert.alert("Erreur Carte", "Impossible de créer la méthode de paiement.");
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("✅ PaymentMethod créé:", paymentMethod.id);
+
+      // Étape 3: Créer l'intention de paiement en utilisant le service
+      console.log("🔐 Création de l'intention de paiement...");
+      const paymentIntentData = await paymentService.createPaymentIntent(
+        orderId, 
+        { method:PaymentMethod.STRIPE,
+          paymentMethodId:paymentMethod.id
+        }
+      );
+
+      // Étape 4: Confirmer le paiement avec Stripe
+      if (paymentIntentData.clientSecret) {
+        console.log("🔓 Confirmation du paiement...");
+        const { error: confirmError, paymentIntent } = await confirmPayment(
+          paymentIntentData.clientSecret,
+          {
+            paymentMethodType: "Card",
+          }
+        );
+
+        if (confirmError) {
+          console.error("❌ Erreur lors de la confirmation:", confirmError);
+          Alert.alert(
+            "Erreur de paiement",
+            confirmError.message || "Le paiement a échoué"
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        console.log("✅ Paiement confirmé:", paymentIntent);
+        
+        // Succès !
+        Toast.show({
+          type: "success",
+          text1: "Paiement réussi ! 🎉",
+          text2: `Transaction: ${paymentIntentData.transactionId}`,
+        });
+
+        // Vider le panier
+        useCartStore.setState({ items: [] });
+        setShowPaymentUI(false);
+        setCardDetails(null);
+        setCreatedOrderId(null);
+      } else if (paymentIntentData.redirectUrl) {
+        // Si une redirection est nécessaire (3D Secure, etc.)
+        Alert.alert(
+          "Action requise",
+          "Vous allez être redirigé pour finaliser le paiement"
+        );
+        // Ici, vous pouvez ouvrir le redirectUrl dans un navigateur ou WebView
+      }
+
+    } catch (error: any) {
+      console.error("❌ Erreur globale:", error);
+      Alert.alert("Erreur", error.message || "Une erreur est survenue");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fonction pour retourner à la vue du panier
+  const handleGoBackFromPayment = () => {
+    setShowPaymentUI(false);
+    setCardDetails(null);
+    setCreatedOrderId(null);
   };
 
   // Fonction pour incrémenter/décrémenter la quantité
@@ -137,7 +256,7 @@ const Cart = () => {
       if (index !== -1) {
         const newQuantity = updatedItems[index].quantity + delta;
         if (newQuantity <= 0) {
-          return { items: updatedItems.filter((_, i) => i !== index) }; // Supprime si quantité = 0
+          return { items: updatedItems.filter((_, i) => i !== index) };
         }
         updatedItems[index].quantity = newQuantity;
       }
@@ -202,39 +321,118 @@ const Cart = () => {
     <ProtectedRoute>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <BackButton />
-          <Text style={styles.headerTitle}>Votre Panier ({totalItems})</Text>
+          <TouchableOpacity onPress={showPaymentUI ? handleGoBackFromPayment : undefined}>
+            <BackButton />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {showPaymentUI ? "Paiement" : `Votre Panier (${totalItems})`}
+          </Text>
         </View>
-        {items.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="cart-outline" size={80} color="#ccc" />
-            <Text style={styles.emptyText}>Votre panier est vide</Text>
-          </View>
+
+        {showPaymentUI ? (
+          <ScrollView
+            style={styles.paymentContainer}
+            contentContainerStyle={styles.paymentContent}
+          >
+            <View style={styles.paymentHeader}>
+              <Ionicons name="card-outline" size={48} color="#059669" />
+              <Text style={styles.paymentTitle}>Paiement sécurisé</Text>
+              <Text style={styles.paymentSubtitle}>
+                Propulsé par Stripe
+              </Text>
+            </View>
+
+            <View style={styles.totalSection}>
+              <Text style={styles.totalSectionLabel}>Montant total à payer</Text>
+              <Text style={styles.totalSectionAmount}>{totalPrice} €</Text>
+            </View>
+
+            <View style={styles.cardSection}>
+              <Text style={styles.cardLabel}>Informations de carte</Text>
+              <CardField
+                style={styles.cardField}
+                postalCodeEnabled={false}
+                placeholders={{ number: "4242 4242 4242 4242" }}
+                cardStyle={{
+                  backgroundColor: "#f9fafb",
+                  textColor: "#333",
+                  borderColor: "#e5e7eb",
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  fontSize: 16,
+                }}
+                onCardChange={(details) => {
+                  console.log("Card details:", details);
+                  setCardDetails(details);
+                }}
+              />
+              <Text style={styles.cardHint}>
+                Pour tester: 4242 4242 4242 4242
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleFinalizePayment}
+              style={[
+                styles.payButton,
+                (!cardDetails?.complete || isLoading) && styles.payButtonDisabled,
+              ]}
+              disabled={!cardDetails?.complete || isLoading}
+              accessibilityLabel="Finaliser le paiement"
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="lock-closed" size={20} color="#fff" />
+                  <Text style={styles.payButtonText}>
+                    Payer {totalPrice} €
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.securityBadge}>
+              <Ionicons name="shield-checkmark" size={16} color="#059669" />
+              <Text style={styles.securityText}>
+                Paiement sécurisé SSL/TLS
+              </Text>
+            </View>
+          </ScrollView>
         ) : (
           <>
-            <ScrollView
-              style={styles.content}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}
-            >
-              {items.map(renderCartItem)}
-            </ScrollView>
-            <View style={styles.footer}>
-              <View style={styles.totalContainer}>
-                <Text style={styles.totalLabel}>Total :</Text>
-                <Text style={styles.totalPrice}>{totalPrice} €</Text>
+            {items.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="cart-outline" size={80} color="#ccc" />
+                <Text style={styles.emptyText}>Votre panier est vide</Text>
               </View>
-              <TouchableOpacity
-                onPress={handleCheckout}
-                style={[styles.checkoutButton, isLoading && { opacity: 0.6 }]}
-                disabled={isLoading}
-                accessibilityLabel="Passer la commande"
-              >
-                <Text style={styles.checkoutButtonText}>
-                  {isLoading ? "En cours..." : "Passer la commande"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            ) : (
+              <>
+                <ScrollView
+                  style={styles.content}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.scrollContent}
+                >
+                  {items.map(renderCartItem)}
+                </ScrollView>
+                <View style={styles.footer}>
+                  <View style={styles.totalContainer}>
+                    <Text style={styles.totalLabel}>Total :</Text>
+                    <Text style={styles.totalPrice}>{totalPrice} €</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleCheckout}
+                    style={[styles.checkoutButton, isLoading && { opacity: 0.6 }]}
+                    disabled={isLoading}
+                    accessibilityLabel="Passer la commande"
+                  >
+                    <Text style={styles.checkoutButtonText}>
+                      {isLoading ? "En cours..." : "Passer la commande"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </>
         )}
       </SafeAreaView>
@@ -369,6 +567,102 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  // Styles pour l'écran de paiement
+  paymentContainer: {
+    flex: 1,
+  },
+  paymentContent: {
+    paddingBottom: 30,
+  },
+  paymentHeader: {
+    alignItems: "center",
+    paddingVertical: 24,
+    backgroundColor: "#f9fafb",
+    borderRadius: 12,
+    marginBottom: 24,
+  },
+  paymentTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#333",
+    marginTop: 12,
+  },
+  paymentSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  totalSection: {
+    backgroundColor: "#059669",
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  totalSectionLabel: {
+    fontSize: 14,
+    color: "#fff",
+    opacity: 0.9,
+    marginBottom: 8,
+  },
+  totalSectionAmount: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  cardSection: {
+    marginBottom: 24,
+  },
+  cardLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 12,
+  },
+  cardField: {
+    height: 50,
+    width: "100%",
+    marginBottom: 8,
+  },
+  cardHint: {
+    fontSize: 12,
+    color: "#666",
+    fontStyle: "italic",
+  },
+  payButton: {
+    backgroundColor: "#059669",
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#059669",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  payButtonDisabled: {
+    backgroundColor: "#d1d5db",
+    opacity: 0.6,
+  },
+  payButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  securityBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 16,
+  },
+  securityText: {
+    fontSize: 12,
+    color: "#666",
   },
 });
 
