@@ -149,13 +149,7 @@ export interface UpdateTablePayload {
   capacity?: number;
   isAvailable?: boolean;
 }
-export interface TableResponse {
-  id: string;
-  name: string;
-  capacity: number;
-  isAvailable: boolean;
-  businessId: string;
-}
+
 export const updateRestaurantTable = async (
   businessId: string,
   tableId: string,
@@ -194,6 +188,60 @@ export const deleteRestaurantTable = async (
     return data;
   } catch (error: any) {
     console.error("❌ Erreur lors de la suppression de la table :", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+
+export interface MenuItemInput {
+  variantId: string;
+  quantity: number;
+}
+
+export interface CreateMenuInput {
+  name: string;
+  description: string;
+  price: number;
+  isActive: boolean;
+  items: MenuItemInput[];
+}
+
+// Response type si tu veux typer la réponse
+export interface MenuItemResponse {
+  id: string;
+  quantity: number;
+  menuId: string;
+  variantId: string;
+}
+
+export interface CreateMenuResponse {
+  id: string;
+  name: string;
+  description: string;
+  price: string; // le backend renvoie string
+  isActive: boolean;
+  businessId: string;
+  menuItems: MenuItemResponse[];
+}
+
+/**
+ * Crée un nouveau menu pour un restaurant
+ * @param businessId L'id du restaurant
+ * @param data Données du menu
+ * @returns Le menu créé
+ */
+export const createMenu = async (
+  businessId: string,
+  data: CreateMenuInput
+): Promise<CreateMenuResponse> => {
+  try {
+    const response = await axiosInstance.post<CreateMenuResponse>(
+      `/restaurants/${businessId}/menus`,
+      data
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("❌ Erreur création menu :", error.response?.data || error);
     throw error;
   }
 };
