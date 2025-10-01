@@ -1,8 +1,5 @@
 // app/(tabs)/index.tsx
-import { SalesData } from "@/components/GraphCard";
 import Sidebar from "@/components/sidebar";
-import { DashboardData } from "@/components/StatCard";
-import { AnalyticsData } from "@/components/yearSelector";
 import { Ionicons } from "@expo/vector-icons";
 import { Route, router } from "expo-router";
 import { Bell } from "lucide-react-native";
@@ -23,6 +20,15 @@ import { Float } from "react-native/Libraries/Types/CodegenTypes";
 
 // Import des services API
 import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
+import {
+  getSales,
+  SalesByPeriod,
+  SalesByProductCategory,
+  TopSellingProduct,
+} from "@/api/analytics";
+import SalesBarChart from "@/components/Chart/SalesBarChart";
+import { SalesByPeriodChart } from "@/components/Chart/SalesByPeriodChart";
+import SalesPieChart from "@/components/SalesPieChart";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Types
@@ -43,34 +49,6 @@ interface BusinessAction {
   color: string;
 }
 
-const enterprises: Enterprise[] = [
-  {
-    id: 1,
-    name: "Chiffre de vente",
-    rating: 10289,
-    compare: "Compared to ($21340 last year)",
-  },
-  {
-    id: 2,
-    name: "Nombre de clients",
-    rating: 20921,
-    compare: "Compared to ($19000 last year)",
-  },
-  {
-    id: 3,
-    name: "Commandes",
-    rating: 149,
-    compare: "Compared to ($165 last year)",
-  },
-  {
-    id: 4,
-    name: "Marketing",
-    rating: 17390,
-    compare: "Compared to ($10500 last year)",
-    discount: 2.5,
-  },
-];
-
 const HomePage: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
@@ -78,7 +56,13 @@ const HomePage: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [salesByPeriod, setSalesByPeriod] = useState<SalesByPeriod[]>([]);
+  const [topSellingProducts, setTopSellingProducts] = useState<
+    TopSellingProduct[]
+  >([]);
+  const [salesByProductCategory, setSalesByProductCategory] = useState<
+    SalesByProductCategory[]
+  >([]);
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -107,6 +91,24 @@ const HomePage: React.FC = () => {
       setLoading(false);
     }
   };
+  // Charger les ventes pour l'entreprise sélectionnée
+  useEffect(() => {
+    if (!selectedBusiness) return;
+
+    const fetchSales = async () => {
+      try {
+        const data = await getSales(selectedBusiness.id);
+
+        setSalesByPeriod(data.salesByPeriod);
+        setTopSellingProducts(data.topSellingProducts); // ✅ ajouté
+        setSalesByProductCategory(data.salesByProductCategory); // ✅ ajouté
+      } catch (error) {
+        console.error("Erreur fetch sales:", error);
+      }
+    };
+
+    fetchSales();
+  }, [selectedBusiness]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -181,55 +183,6 @@ const HomePage: React.FC = () => {
     }
 
     return actions;
-  };
-
-  const sampleData: SalesData = {
-    id: "1",
-    title: "Sales Chart",
-    amount: "$27632",
-    period: "August",
-    marketingData: [500, 520, 480, 600, 550, 450],
-    casesData: [600, 580, 650, 750, 700, 580],
-    months: ["May", "Jun", "Jul", "Aug", "Sep", "Oct"],
-  };
-
-  const dashboardData: DashboardData = {
-    hitRate: 68,
-    deals: 76,
-    visitors: 10254,
-    visitorsChange: 1.5,
-    onlineSales: [500, 800, 900, 750, 850, 950],
-    offlineSales: [450, 780, 600, 500, 720, 480],
-    months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    year: "2017-2018",
-  };
-
-  const analyticsData: AnalyticsData = {
-    year: 2017,
-    totalVisitors: 22870,
-    visitorsLabel: "Visitors this year",
-    platforms: [
-      { name: "Amazon", visitors: "2.1k", color: "#4F46E5", percentage: 25 },
-      { name: "Alibaba", visitors: "1k", color: "#F97316", percentage: 15 },
-      { name: "Ebay", visitors: "1.9k", color: "#10B981", percentage: 20 },
-      { name: "Shopify", visitors: "15.7k", color: "#EAB308", percentage: 40 },
-    ],
-    topLocation: {
-      country: "United States",
-      flag: "🇺🇸",
-      visitors: "19.870",
-      description: "Our most customers in U",
-    },
-    salesCategories: [
-      { name: "Massive", visitors: "15.7k", color: "#4F46E5", size: "massive" },
-      { name: "Large", visitors: "4.9k", color: "#F97316", size: "large" },
-      { name: "Medium", visitors: "2.4k", color: "#EAB308", size: "medium" },
-      { name: "Small", visitors: "980", color: "#D1D5DB", size: "small" },
-    ],
-  };
-
-  const handlePress = (id: string) => {
-    console.log("Graph card pressed:", id);
   };
 
   const renderHeader = (): JSX.Element => (
@@ -470,7 +423,30 @@ const HomePage: React.FC = () => {
             </Text>
           )}
         </View>
+        {selectedBusiness && salesByPeriod.length > 0 && (
+          <View style={{ marginVertical: 16 }}>
+            <SalesByPeriodChart data={salesByPeriod} />
+            {/* Graphique par produit - Quantités */}
+            <SalesPieChart
+              data={topSellingProducts}
+              metric="totalQuantitySold"
+            />
 
+            {/* Graphique par produit - Revenus */}
+            <SalesPieChart data={topSellingProducts} metric="totalRevenue" />
+            {/* ✅ Bar chart par catégorie - produits vendus */}
+            <SalesBarChart
+              data={salesByProductCategory}
+              metric="totalItemsSold"
+            />
+
+            {/* ✅ Bar chart par catégorie - revenus */}
+            <SalesBarChart
+              data={salesByProductCategory}
+              metric="totalRevenue"
+            />
+          </View>
+        )}
         {/* <View style={styles.grid}>{enterprises.map(renderEnterpriseCard)}</View>
 
         <GraphCard salesData={sampleData} onPress={handlePress} />

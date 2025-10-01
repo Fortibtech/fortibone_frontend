@@ -1,3 +1,6 @@
+// D:\0000\Hodos\comHodosapp>
+// https://expo.dev/accounts/fortibtechteam/projects/comHodos/builds/ca10c80c-e349-4e61-afac-a29b3fc54fd6
+
 export interface Attribute {
   id: string;
   name: string;
