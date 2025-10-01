@@ -1,4 +1,5 @@
 import { getBusinessOrders, updateOrderStatus } from "@/api/Orders";
+import paymentService from "@/api/services/paiement";
 import BackButton from "@/components/BackButton";
 import { OrderResponse, UpdateOrderStatusPayload } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,6 +7,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -24,6 +26,7 @@ const BusinessOrders = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refundingOrderId, setRefundingOrderId] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const MAX_RETRIES = 2;
   const LIMIT = 10;
@@ -58,6 +61,71 @@ const BusinessOrders = () => {
       });
       console.error("🛑 Erreur updateOrderStatus:", err);
     }
+  };
+
+  // ---------------------------
+  // API: Remboursement
+  // ---------------------------
+  const handleRefund = async (order: OrderResponse) => {
+    // Vérification que la commande est COMPLETED
+    if (order.status !== "COMPLETED") {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Seules les commandes terminées peuvent être remboursées",
+      });
+      return;
+    }
+
+    // Confirmation avant remboursement
+    Alert.alert(
+      "Confirmer le remboursement",
+      `Voulez-vous vraiment rembourser la commande #${order.orderNumber} d'un montant de ${parseFloat(order.totalAmount).toFixed(2)} € ?`,
+      [
+        {
+          text: "Annuler",
+          style: "cancel",
+        },
+        {
+          text: "Rembourser",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setRefundingOrderId(order.id);
+
+              console.log(`🔄 Remboursement de la commande ${order.id}`);
+              
+              // Appel au service de remboursement
+              const updatedOrder = await paymentService.refundOrder(order.id, {
+                amount: parseFloat(order.totalAmount),
+              });
+
+              console.log("✅ Remboursement effectué:", updatedOrder);
+
+              // Mettre à jour la liste localement
+              setOrders((prev) =>
+                prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
+              );
+
+              Toast.show({
+                type: "success",
+                text1: "Remboursement effectué",
+                text2: `La commande #${order.orderNumber} a été remboursée`,
+              });
+            } catch (err: any) {
+              console.error("❌ Erreur lors du remboursement:", err);
+              Toast.show({
+                type: "error",
+                text1: "Erreur de remboursement",
+                text2: err.message || "Impossible de rembourser la commande",
+              });
+            } finally {
+              setRefundingOrderId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // ---------------------------
@@ -154,70 +222,87 @@ const BusinessOrders = () => {
   // ---------------------------
   // Rendu d'une commande
   // ---------------------------
-  const renderOrderItem = ({ item }: { item: OrderResponse }) => (
-    <Animated.View
-      entering={FadeInUp.delay(100 * orders.indexOf(item)).duration(300)}
-      layout={Layout.springify()}
-    >
-      <TouchableOpacity
-        style={styles.orderItem}
-        onPress={() => handleOrderPress(item)}
-        accessibilityLabel={`Voir les détails de la commande ${item.orderNumber}`}
+  const renderOrderItem = ({ item }: { item: OrderResponse }) => {
+    const isRefunding = refundingOrderId === item.id;
+    
+    return (
+      <Animated.View
+        entering={FadeInUp.delay(100 * orders.indexOf(item)).duration(300)}
+        layout={Layout.springify()}
       >
-        <View style={styles.orderDetails}>
-          <Text style={styles.orderNumber}>Commande #{item.orderNumber}</Text>
-          <View style={styles.orderInfoContainer}>
-            <Text style={styles.orderInfo}>Type: {item.type}</Text>
-            <View
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor: getStatusStyle(item.status).backgroundColor,
-                },
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {getStatusStyle(item.status).text}
-              </Text>
+        <TouchableOpacity
+          style={styles.orderItem}
+          onPress={() => handleOrderPress(item)}
+          accessibilityLabel={`Voir les détails de la commande ${item.orderNumber}`}
+        >
+          <View style={styles.orderDetails}>
+            <Text style={styles.orderNumber}>Commande #{item.orderNumber}</Text>
+            <View style={styles.orderInfoContainer}>
+              <Text style={styles.orderInfo}>Type: {item.type}</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: getStatusStyle(item.status).backgroundColor,
+                  },
+                ]}
+              >
+                <Text style={styles.statusText}>
+                  {getStatusStyle(item.status).text}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.orderInfo}>
+              Total: {parseFloat(item.totalAmount).toFixed(2)} €
+            </Text>
+            <Text style={styles.orderInfo}>
+              Client: {item.customer?.firstName || "Inconnu"}
+            </Text>
+            <Text style={styles.orderInfo}>
+              Date: {new Date(item.createdAt).toLocaleDateString("fr-FR")}
+            </Text>
+            {item.notes && (
+              <Text style={styles.orderNotes}>Notes: {item.notes}</Text>
+            )}
+
+            {/* Boutons d'action */}
+            <View style={styles.actionButtonsContainer}>
+              {/* Bouton Annuler - visible si pas déjà annulé */}
+              {item.status !== "CANCELLED" && item.status !== "REFUNDED" && (
+                <TouchableOpacity
+                  style={[styles.statusAction, styles.cancelButton]}
+                  onPress={() => handleUpdateStatus(item.id, "CANCELLED")}
+                  disabled={isRefunding}
+                >
+                  <Text style={styles.statusActionText}>Annuler</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Bouton Rembourser - visible uniquement si COMPLETED */}
+              {item.status === "COMPLETED" && (
+                <TouchableOpacity
+                  style={[
+                    styles.statusAction,
+                    styles.refundButton,
+                    isRefunding && styles.refundButtonDisabled,
+                  ]}
+                  onPress={() => handleRefund(item)}
+                  disabled={isRefunding}
+                >
+                  {isRefunding ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.statusActionText}>Rembourser</Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
-          <Text style={styles.orderInfo}>
-            Total: {parseFloat(item.totalAmount).toFixed(2)} €
-          </Text>
-          <Text style={styles.orderInfo}>
-            Client: {item.customer?.firstName || "Inconnu"}
-          </Text>
-          <Text style={styles.orderInfo}>
-            Date: {new Date(item.createdAt).toLocaleDateString("fr-FR")}
-          </Text>
-          {item.notes && (
-            <Text style={styles.orderNotes}>Notes: {item.notes}</Text>
-          )}
-
-          {/* Boutons statut */}
-          <View style={{ flexDirection: "row", marginTop: 8, gap: 10 }}>
-            {/* {item.status !== "CONFIRMED" && (
-              <TouchableOpacity
-                style={[styles.statusAction, { backgroundColor: "#3B82F6" }]}
-                onPress={() => handleUpdateStatus(item.id, "CONFIRMED")}
-              >
-                <Text style={styles.statusActionText}>Confirmer</Text>
-              </TouchableOpacity>
-            )} */}
-            {item.status !== "CANCELLED" && (
-              <TouchableOpacity
-                style={[styles.statusAction, { backgroundColor: "#EF4444" }]}
-                onPress={() => handleUpdateStatus(item.id, "CANCELLED")}
-              >
-                <Text style={styles.statusActionText}>Annuler</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={24} color="#333" />
-      </TouchableOpacity>
-    </Animated.View>
-  );
+          <Ionicons name="chevron-forward" size={24} color="#333" />
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -225,7 +310,7 @@ const BusinessOrders = () => {
         <View style={styles.backButtonContainer}>
           <BackButton />
         </View>
-        <Text style={styles.headerTitle}>Commandes de l&lsquo;entreprise</Text>
+        <Text style={styles.headerTitle}>Commandes de l&apos;entreprise</Text>
       </View>
       {orders.length === 0 && !isLoading ? (
         <View style={styles.emptyContainer}>
@@ -256,6 +341,7 @@ const BusinessOrders = () => {
     </SafeAreaView>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -285,7 +371,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 20,
-    paddingTop: 20, // Espacement entre le header et la liste
+    paddingTop: 20,
   },
   orderItem: {
     flexDirection: "row",
@@ -350,10 +436,28 @@ const styles = StyleSheet.create({
   loader: {
     marginVertical: 20,
   },
+  actionButtonsContainer: {
+    flexDirection: "row",
+    marginTop: 8,
+    gap: 10,
+  },
   statusAction: {
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
+    minWidth: 90,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#EF4444",
+  },
+  refundButton: {
+    backgroundColor: "#F97316",
+  },
+  refundButtonDisabled: {
+    backgroundColor: "#D1D5DB",
+    opacity: 0.7,
   },
   statusActionText: {
     color: "#fff",
