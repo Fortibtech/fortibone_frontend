@@ -6,6 +6,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
 import { CreateOrderPayload } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
+import { CardField, createPaymentMethod } from "@stripe/stripe-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -26,6 +27,20 @@ const fallbackImage = require("@/assets/images/store-placeholder.png");
 const Cart = () => {
   const { items, removeItem } = useCartStore();
   const [isLoading, setIsLoading] = useState(false);
+<<<<<<< HEAD
+=======
+  const [showPaymentUI, setShowPaymentUI] = useState(false);
+  const [cardDetails, setCardDetails] = useState<any>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+<<<<<<< HEAD
+  const { confirmPayment, createPaymentMethod } =
+    Platform.OS !== "web"
+      ? // eslint-disable-next-line react-hooks/rules-of-hooks
+        useStripe()
+      : { confirmPayment: null, createPaymentMethod: null };
+=======
+>>>>>>> 2507e2c (correction PR)
+>>>>>>> 5b73c83 (correction PR)
 
   // 🔹 Créer la commande
   const handleCreateOrder = async () => {
@@ -106,7 +121,16 @@ const Cart = () => {
         }
       );
 
+<<<<<<< HEAD
       console.log("✅ Paiement manuel créé:", paymentIntentData);
+=======
+<<<<<<< HEAD
+      if (paymentIntentData.clientSecret) {
+        const { error: confirmError, paymentIntent } = await confirmPayment(
+          paymentIntentData.clientSecret,
+          { paymentMethodType: "Card" }
+        );
+>>>>>>> 5b73c83 (correction PR)
 
       Toast.show({
         type: "success",
@@ -114,11 +138,77 @@ const Cart = () => {
         text2: "Le paiement sera traité manuellement.",
       });
 
+<<<<<<< HEAD
       // 🔹 Nettoyage
       useCartStore.setState({ items: [] });
     } catch (err: any) {
       console.error("❌ Erreur paiement manuel:", err);
       Alert.alert("Erreur", err.message || "Une erreur est survenue");
+=======
+=======
+      // Étape 4: Confirmer le paiement avec Stripe
+      // if (paymentIntentData.clientSecret) {
+      //   console.log("🔓 Confirmation du paiement...");
+      //   const { error: confirmError, paymentIntent } = await confirmPayment(
+      //     paymentIntentData.clientSecret,
+      //     {
+      //       paymentMethodType: "Card",
+      //     }
+      //   );
+
+      //   if (confirmError) {
+      //     console.error("❌ Erreur lors de la confirmation:", confirmError);
+      //     Alert.alert(
+      //       "Erreur de paiement",
+      //       confirmError.message || "Le paiement a échoué"
+      //     );
+      //     setIsLoading(false);
+      //     return;
+      //   }
+
+      //   console.log("✅ Paiement confirmé:", paymentIntent);
+        
+      //   // Succès !
+      //   Toast.show({
+      //     type: "success",
+      //     text1: "Paiement réussi ! 🎉",
+      //     text2: `Transaction: ${paymentIntentData.transactionId}`,
+      //   });
+
+      //   // Vider le panier
+      //   useCartStore.setState({ items: [] });
+      //   setShowPaymentUI(false);
+      //   setCardDetails(null);
+      //   setCreatedOrderId(null);
+      // } else if (paymentIntentData.redirectUrl) {
+      //   // Si une redirection est nécessaire (3D Secure, etc.)
+      //   Alert.alert(
+      //     "Action requise",
+      //     "Vous allez être redirigé pour finaliser le paiement"
+      //   );
+      //   // Ici, vous pouvez ouvrir le redirectUrl dans un navigateur ou WebView
+      // }
+      console.log("✅ Paiement confirmé:", paymentIntentData);
+        
+        // Succès !
+>>>>>>> 2507e2c (correction PR)
+        Toast.show({
+          type: "success",
+          text1: "Paiement réussi ! 🎉",
+          text2: `Transaction: ${paymentIntentData.transactionId}`,
+        });
+
+<<<<<<< HEAD
+        useCartStore.setState({ items: [] });
+        setShowPaymentUI(false);
+        setCardDetails(null);
+        setCreatedOrderId(null);
+      }
+=======
+>>>>>>> 2507e2c (correction PR)
+    } catch (error: any) {
+      Alert.alert("Erreur", error.message || "Une erreur est survenue");
+>>>>>>> 5b73c83 (correction PR)
     } finally {
       setIsLoading(false);
     }
@@ -153,11 +243,124 @@ const Cart = () => {
           <Text style={styles.headerTitle}>Votre Panier ({totalItems})</Text>
         </View>
 
+<<<<<<< HEAD
         {items.length === 0 ? (
+=======
+        {showPaymentUI ? (
+          Platform.OS === "web" ? (
+            <View style={styles.webPlaceholder}>
+              <Ionicons name="card-outline" size={64} color="#ccc" />
+              <Text style={styles.webText}>
+                Paiement par carte disponible uniquement sur l’app mobile.
+              </Text>
+            </View>
+<<<<<<< HEAD
+          ) : (
+            <ScrollView
+              style={styles.paymentContainer}
+              contentContainerStyle={styles.paymentContent}
+=======
+
+            <View style={styles.totalSection}>
+              <Text style={styles.totalSectionLabel}>Montant total à payer</Text>
+              <Text style={styles.totalSectionAmount}>{totalPrice} €</Text>
+            </View>
+
+            <View style={styles.cardSection}>
+              <Text style={styles.cardLabel}>Informations de carte</Text>
+              <CardField
+                style={styles.cardField}
+                postalCodeEnabled={false}
+                placeholders={{ number: "4242 4242 4242 4242" }}
+                cardStyle={{
+                  backgroundColor: "#f9fafb",
+                  textColor: "#333",
+                  borderColor: "#e5e7eb",
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  fontSize: 16,
+                }}
+                onCardChange={(details) => {
+                  console.log("Card details:", details);
+                  setCardDetails(details);
+                }}
+              />
+              {/* <Text style={styles.cardHint}>
+                Pour tester: 4242 4242 4242 4242
+              </Text> */}
+            </View>
+
+            <TouchableOpacity
+              onPress={handleFinalizePayment}
+              style={[
+                styles.payButton,
+                (!cardDetails?.complete || isLoading) && styles.payButtonDisabled,
+              ]}
+              disabled={!cardDetails?.complete || isLoading}
+              accessibilityLabel="Finaliser le paiement"
+>>>>>>> 2507e2c (correction PR)
+            >
+              <View style={styles.paymentHeader}>
+                <Ionicons name="card-outline" size={48} color="#059669" />
+                <Text style={styles.paymentTitle}>Paiement sécurisé</Text>
+              </View>
+
+<<<<<<< HEAD
+              <View style={styles.totalSection}>
+                <Text style={styles.totalSectionLabel}>Montant total</Text>
+                <Text style={styles.totalSectionAmount}>{totalPrice} €</Text>
+              </View>
+
+              <View style={styles.cardSection}>
+                <Text style={styles.cardLabel}>Informations de carte</Text>
+                <CardField
+                  style={styles.cardField}
+                  postalCodeEnabled={false}
+                  placeholders={{ number: "4242 4242 4242 4242" }}
+                  onCardChange={setCardDetails}
+                />
+                <Text style={styles.cardHint}>
+                  Carte test : 4242 4242 4242 4242
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleFinalizePayment}
+                style={[
+                  styles.payButton,
+                  (!cardDetails?.complete || isLoading) &&
+                    styles.payButtonDisabled,
+                ]}
+                disabled={!cardDetails?.complete || isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="lock-closed" size={20} color="#fff" />
+                    <Text style={styles.payButtonText}>
+                      Payer {totalPrice} €
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          )
+        ) : items.length === 0 ? (
+>>>>>>> 5b73c83 (correction PR)
           <View style={styles.emptyContainer}>
             <Ionicons name="cart-outline" size={80} color="#ccc" />
             <Text style={styles.emptyText}>Votre panier est vide</Text>
           </View>
+=======
+            {/* <View style={styles.securityBadge}>
+              <Ionicons name="shield-checkmark" size={16} color="#059669" />
+              <Text style={styles.securityText}>
+                Paiement sécurisé SSL/TLS
+              </Text>
+            </View> */}
+          </ScrollView>
+>>>>>>> 2507e2c (correction PR)
         ) : (
           <>
             <ScrollView style={styles.content}>
