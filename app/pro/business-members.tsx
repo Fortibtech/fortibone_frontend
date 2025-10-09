@@ -170,7 +170,7 @@ const BusinessMembersScreen: React.FC = () => {
       <View style={styles.memberInfo}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
-            {item.firstName[0]?.toUpperCase()}{item.lastName[0]?.toUpperCase()}
+            {item.firstName?.toUpperCase()}{item.lastName?.toUpperCase()}
           </Text>
         </View>
         

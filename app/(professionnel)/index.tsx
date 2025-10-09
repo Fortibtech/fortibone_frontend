@@ -147,7 +147,7 @@ const HomePage: React.FC = () => {
         title: "Détails & Modifier",
         icon: "business-outline",
         description: "Voir et modifier les informations",
-        route: `(business-details)?id=${selectedBusiness.id}`,
+        route: `/pro/business-details?id=${selectedBusiness.id}`,
         color: "#059669",
       },
       {
@@ -155,7 +155,7 @@ const HomePage: React.FC = () => {
         title: "Gérer les membres",
         icon: "people-outline",
         description: "Ajouter, modifier, supprimer des membres",
-        route: `(business-members)?id=${selectedBusiness.id}`,
+        route: `/pro/business-members?id=${selectedBusiness.id}`,
         color: "#2563eb",
       },
       {
@@ -163,7 +163,7 @@ const HomePage: React.FC = () => {
         title: "Horaires d'ouverture",
         icon: "time-outline",
         description: "Définir les horaires d'ouverture",
-        route: `(opening-hours)?id=${selectedBusiness.id}`,
+        route: `/pro/opening-hours?id=${selectedBusiness.id}`,
         color: "#dc2626",
       },
     ];
