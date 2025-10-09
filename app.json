@@ -10,12 +10,15 @@
     "newArchEnabled": true,
 
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Nous avons besoin de votre position pour localiser votre entreprise."
+      }
     },
 
     "android": {
       "package": "com.fortibone",
-      "permissions": [],
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo/green.png",
         "backgroundColor": "#E6F4FE"
