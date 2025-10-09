@@ -6,12 +6,12 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
 import { CreateOrderPayload } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
-import { CardField, useStripe } from "@stripe/stripe-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,10 +21,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
-// 🔹 Image par défaut si produit sans image
+// ✅ Charger Stripe uniquement sur mobile
+let StripeModule: any = {};
+if (Platform.OS !== "web") {
+  StripeModule = require("@stripe/stripe-react-native");
+}
+
+const { CardField, useStripe } = StripeModule;
+
+// 🔹 Image par défaut
 const fallbackImage = require("@/assets/images/store-placeholder.png");
 
-// 🔹 Interface explicite pour CartItem
 interface CartItem {
   variantId: string;
   businessId: string;
@@ -41,19 +48,19 @@ const Cart = () => {
   const [showPaymentUI, setShowPaymentUI] = useState(false);
   const [cardDetails, setCardDetails] = useState<any>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const { confirmPayment, createPaymentMethod } = useStripe();
+  const { confirmPayment, createPaymentMethod } =
+    Platform.OS !== "web"
+      ? // eslint-disable-next-line react-hooks/rules-of-hooks
+        useStripe()
+      : { confirmPayment: null, createPaymentMethod: null };
 
-  // Fonction pour créer la commande
+  // --- LOGIQUE COMMANDE ---
   const handleCreateOrder = async () => {
     if (items.length === 0) {
-      Toast.show({
-        type: "info",
-        text1: "Votre panier est vide",
-      });
+      Toast.show({ type: "info", text1: "Votre panier est vide" });
       return null;
     }
 
-    // Vérification du premier item pour businessId / supplierBusinessId
     const firstItem = items[0];
     if (!firstItem.businessId || !firstItem.supplierBusinessId) {
       Toast.show({
@@ -61,11 +68,9 @@ const Cart = () => {
         text1: "Impossible de passer la commande",
         text2: "Fournisseur ou business manquant pour le produit",
       });
-      console.error("🛑 Premier item invalide:", firstItem);
       return null;
     }
 
-    // Vérification que tous les items ont le même businessId et supplierBusinessId
     const businessId = firstItem.businessId;
     const supplierBusinessId = firstItem.supplierBusinessId;
     const invalidBusiness = items.find(
@@ -73,17 +78,16 @@ const Cart = () => {
         item.businessId !== businessId ||
         item.supplierBusinessId !== supplierBusinessId
     );
+
     if (invalidBusiness) {
       Toast.show({
         type: "error",
         text1: "Erreur",
         text2: "Tous les articles doivent provenir du même fournisseur.",
       });
-      console.error("🛑 Articles de fournisseurs différents:", invalidBusiness);
       return null;
     }
 
-    // Vérification que tous les items ont un variantId
     const invalidItem = items.find((i) => !i.variantId);
     if (invalidItem) {
       Toast.show({
@@ -91,15 +95,13 @@ const Cart = () => {
         text1: "Produit invalide dans le panier",
         text2: invalidItem.name,
       });
-      console.error("🛑 Item sans variantId:", invalidItem);
       return null;
     }
 
-    // Construction du payload
     const payload: CreateOrderPayload = {
       type: "SALE",
-      businessId: firstItem.businessId,
-      supplierBusinessId: firstItem.supplierBusinessId,
+      businessId,
+      supplierBusinessId,
       notes: "Commande depuis l'app mobile",
       lines: items.map((item) => ({
         variantId: item.variantId,
@@ -107,17 +109,10 @@ const Cart = () => {
       })),
     };
 
-    console.log("📦 Payload envoyé à l'API:", JSON.stringify(payload, null, 2));
-
     try {
       const res = await createOrder(payload);
-      console.log("✅ Commande créée avec succès:", res);
-      return res.id; // Retourner l'ID de la commande créée
+      return res.id;
     } catch (err: any) {
-      console.error(
-        "❌ Erreur lors de la création de la commande:",
-        err.response?.data || err.message
-      );
       Toast.show({
         type: "error",
         text1: "Erreur lors de la commande",
@@ -127,15 +122,21 @@ const Cart = () => {
     }
   };
 
-  // Fonction principale de checkout (affiche l'écran de paiement)
+  // --- CHECKOUT ---
   const handleCheckout = async () => {
     if (isLoading) return;
-    
     setShowPaymentUI(true);
   };
 
-  // Fonction pour finaliser le paiement
   const handleFinalizePayment = async () => {
+    if (Platform.OS === "web") {
+      Alert.alert(
+        "Paiement non disponible",
+        "Le paiement par carte n’est pas encore disponible sur la version web."
+      );
+      return;
+    }
+
     if (!cardDetails?.complete) {
       Alert.alert("Erreur", "Veuillez entrer des détails de carte valides.");
       return;
@@ -143,110 +144,62 @@ const Cart = () => {
 
     try {
       setIsLoading(true);
-
-      // Étape 1: Créer la commande
-      console.log("📦 Création de la commande...");
       const orderId = await handleCreateOrder();
-      
-      if (!orderId) {
-        setIsLoading(false);
-        return;
-      }
+      if (!orderId) return;
 
-      setCreatedOrderId(orderId);
-
-      // Étape 2: Créer la méthode de paiement Stripe
-      console.log("💳 Création de la méthode de paiement Stripe...");
       const { paymentMethod, error: pmError } = await createPaymentMethod({
         paymentMethodType: "Card",
       });
 
-      if (pmError) {
-        console.error("Erreur Stripe PaymentMethod:", pmError);
-        Alert.alert(
-          "Erreur Carte",
-          pmError.message || "Impossible de traiter les informations de la carte."
-        );
+      if (pmError || !paymentMethod?.id) {
+        Alert.alert("Erreur Carte", pmError?.message || "Carte invalide.");
         setIsLoading(false);
         return;
       }
 
-      if (!paymentMethod || !paymentMethod.id) {
-        Alert.alert("Erreur Carte", "Impossible de créer la méthode de paiement.");
-        setIsLoading(false);
-        return;
-      }
-
-      console.log("✅ PaymentMethod créé:", paymentMethod.id);
-
-      // Étape 3: Créer l'intention de paiement en utilisant le service
-      console.log("🔐 Création de l'intention de paiement...");
       const paymentIntentData = await paymentService.createPaymentIntent(
-        orderId, 
-        { method:PaymentMethod.STRIPE,
-          paymentMethodId:paymentMethod.id
+        orderId,
+        {
+          method: PaymentMethod.STRIPE,
+          paymentMethodId: paymentMethod.id,
         }
       );
 
-      // Étape 4: Confirmer le paiement avec Stripe
       if (paymentIntentData.clientSecret) {
-        console.log("🔓 Confirmation du paiement...");
         const { error: confirmError, paymentIntent } = await confirmPayment(
           paymentIntentData.clientSecret,
-          {
-            paymentMethodType: "Card",
-          }
+          { paymentMethodType: "Card" }
         );
 
         if (confirmError) {
-          console.error("❌ Erreur lors de la confirmation:", confirmError);
-          Alert.alert(
-            "Erreur de paiement",
-            confirmError.message || "Le paiement a échoué"
-          );
-          setIsLoading(false);
+          Alert.alert("Erreur de paiement", confirmError.message);
           return;
         }
 
-        console.log("✅ Paiement confirmé:", paymentIntent);
-        
-        // Succès !
         Toast.show({
           type: "success",
           text1: "Paiement réussi ! 🎉",
           text2: `Transaction: ${paymentIntentData.transactionId}`,
         });
 
-        // Vider le panier
         useCartStore.setState({ items: [] });
         setShowPaymentUI(false);
         setCardDetails(null);
         setCreatedOrderId(null);
-      } else if (paymentIntentData.redirectUrl) {
-        // Si une redirection est nécessaire (3D Secure, etc.)
-        Alert.alert(
-          "Action requise",
-          "Vous allez être redirigé pour finaliser le paiement"
-        );
-        // Ici, vous pouvez ouvrir le redirectUrl dans un navigateur ou WebView
       }
-
     } catch (error: any) {
-      console.error("❌ Erreur globale:", error);
       Alert.alert("Erreur", error.message || "Une erreur est survenue");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fonction pour retourner à la vue du panier
   const handleGoBackFromPayment = () => {
     setShowPaymentUI(false);
     setCardDetails(null);
     setCreatedOrderId(null);
   };
 
-  // Fonction pour incrémenter/décrémenter la quantité
   const updateQuantity = (variantId: string, delta: number) => {
     useCartStore.setState((state) => {
       const updatedItems = [...state.items];
@@ -264,18 +217,12 @@ const Cart = () => {
     });
   };
 
-  // Calcul du total
   const totalPrice = items
-    .reduce((sum, item) => {
-      const price = parseFloat(item.price);
-      return isNaN(price) ? sum : sum + price * item.quantity;
-    }, 0)
+    .reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0)
     .toFixed(2);
 
-  // Calcul du nombre total d'articles
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Rendu d'un item du panier
   const renderCartItem = (item: CartItem) => (
     <View key={item.variantId} style={styles.cartItem}>
       <Image
@@ -283,9 +230,7 @@ const Cart = () => {
         style={styles.itemImage}
       />
       <View style={styles.itemDetails}>
-        <Text style={styles.itemName} numberOfLines={2}>
-          {item.name}
-        </Text>
+        <Text style={styles.itemName}>{item.name}</Text>
         <Text style={styles.itemPrice}>
           {parseFloat(item.price).toFixed(2)} € x {item.quantity}
         </Text>
@@ -293,7 +238,6 @@ const Cart = () => {
           <TouchableOpacity
             onPress={() => updateQuantity(item.variantId, -1)}
             style={styles.quantityButton}
-            accessibilityLabel="Diminuer la quantité"
           >
             <Ionicons name="remove" size={20} color="#333" />
           </TouchableOpacity>
@@ -301,7 +245,6 @@ const Cart = () => {
           <TouchableOpacity
             onPress={() => updateQuantity(item.variantId, 1)}
             style={styles.quantityButton}
-            accessibilityLabel="Augmenter la quantité"
           >
             <Ionicons name="add" size={20} color="#333" />
           </TouchableOpacity>
@@ -310,7 +253,6 @@ const Cart = () => {
       <TouchableOpacity
         onPress={() => removeItem(item.variantId)}
         style={styles.removeButton}
-        accessibilityLabel="Supprimer l'article"
       >
         <Ionicons name="trash-outline" size={24} color="#FF3B30" />
       </TouchableOpacity>
@@ -321,7 +263,9 @@ const Cart = () => {
     <ProtectedRoute>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={showPaymentUI ? handleGoBackFromPayment : undefined}>
+          <TouchableOpacity
+            onPress={showPaymentUI ? handleGoBackFromPayment : undefined}
+          >
             <BackButton />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
@@ -330,109 +274,88 @@ const Cart = () => {
         </View>
 
         {showPaymentUI ? (
-          <ScrollView
-            style={styles.paymentContainer}
-            contentContainerStyle={styles.paymentContent}
-          >
-            <View style={styles.paymentHeader}>
-              <Ionicons name="card-outline" size={48} color="#059669" />
-              <Text style={styles.paymentTitle}>Paiement sécurisé</Text>
-              <Text style={styles.paymentSubtitle}>
-                Propulsé par Stripe
+          Platform.OS === "web" ? (
+            <View style={styles.webPlaceholder}>
+              <Ionicons name="card-outline" size={64} color="#ccc" />
+              <Text style={styles.webText}>
+                Paiement par carte disponible uniquement sur l’app mobile.
               </Text>
             </View>
-
-            <View style={styles.totalSection}>
-              <Text style={styles.totalSectionLabel}>Montant total à payer</Text>
-              <Text style={styles.totalSectionAmount}>{totalPrice} €</Text>
-            </View>
-
-            <View style={styles.cardSection}>
-              <Text style={styles.cardLabel}>Informations de carte</Text>
-              <CardField
-                style={styles.cardField}
-                postalCodeEnabled={false}
-                placeholders={{ number: "4242 4242 4242 4242" }}
-                cardStyle={{
-                  backgroundColor: "#f9fafb",
-                  textColor: "#333",
-                  borderColor: "#e5e7eb",
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  fontSize: 16,
-                }}
-                onCardChange={(details) => {
-                  console.log("Card details:", details);
-                  setCardDetails(details);
-                }}
-              />
-              <Text style={styles.cardHint}>
-                Pour tester: 4242 4242 4242 4242
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={handleFinalizePayment}
-              style={[
-                styles.payButton,
-                (!cardDetails?.complete || isLoading) && styles.payButtonDisabled,
-              ]}
-              disabled={!cardDetails?.complete || isLoading}
-              accessibilityLabel="Finaliser le paiement"
+          ) : (
+            <ScrollView
+              style={styles.paymentContainer}
+              contentContainerStyle={styles.paymentContent}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="lock-closed" size={20} color="#fff" />
-                  <Text style={styles.payButtonText}>
-                    Payer {totalPrice} €
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+              <View style={styles.paymentHeader}>
+                <Ionicons name="card-outline" size={48} color="#059669" />
+                <Text style={styles.paymentTitle}>Paiement sécurisé</Text>
+              </View>
 
-            <View style={styles.securityBadge}>
-              <Ionicons name="shield-checkmark" size={16} color="#059669" />
-              <Text style={styles.securityText}>
-                Paiement sécurisé SSL/TLS
-              </Text>
-            </View>
-          </ScrollView>
+              <View style={styles.totalSection}>
+                <Text style={styles.totalSectionLabel}>Montant total</Text>
+                <Text style={styles.totalSectionAmount}>{totalPrice} €</Text>
+              </View>
+
+              <View style={styles.cardSection}>
+                <Text style={styles.cardLabel}>Informations de carte</Text>
+                <CardField
+                  style={styles.cardField}
+                  postalCodeEnabled={false}
+                  placeholders={{ number: "4242 4242 4242 4242" }}
+                  onCardChange={setCardDetails}
+                />
+                <Text style={styles.cardHint}>
+                  Carte test : 4242 4242 4242 4242
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleFinalizePayment}
+                style={[
+                  styles.payButton,
+                  (!cardDetails?.complete || isLoading) &&
+                    styles.payButtonDisabled,
+                ]}
+                disabled={!cardDetails?.complete || isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="lock-closed" size={20} color="#fff" />
+                    <Text style={styles.payButtonText}>
+                      Payer {totalPrice} €
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          )
+        ) : items.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="cart-outline" size={80} color="#ccc" />
+            <Text style={styles.emptyText}>Votre panier est vide</Text>
+          </View>
         ) : (
           <>
-            {items.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="cart-outline" size={80} color="#ccc" />
-                <Text style={styles.emptyText}>Votre panier est vide</Text>
+            <ScrollView style={styles.content}>
+              {items.map(renderCartItem)}
+            </ScrollView>
+            <View style={styles.footer}>
+              <View style={styles.totalContainer}>
+                <Text style={styles.totalLabel}>Total :</Text>
+                <Text style={styles.totalPrice}>{totalPrice} €</Text>
               </View>
-            ) : (
-              <>
-                <ScrollView
-                  style={styles.content}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.scrollContent}
-                >
-                  {items.map(renderCartItem)}
-                </ScrollView>
-                <View style={styles.footer}>
-                  <View style={styles.totalContainer}>
-                    <Text style={styles.totalLabel}>Total :</Text>
-                    <Text style={styles.totalPrice}>{totalPrice} €</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={handleCheckout}
-                    style={[styles.checkoutButton, isLoading && { opacity: 0.6 }]}
-                    disabled={isLoading}
-                    accessibilityLabel="Passer la commande"
-                  >
-                    <Text style={styles.checkoutButtonText}>
-                      {isLoading ? "En cours..." : "Passer la commande"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+              <TouchableOpacity
+                onPress={handleCheckout}
+                style={[styles.checkoutButton, isLoading && { opacity: 0.6 }]}
+                disabled={isLoading}
+              >
+                <Text style={styles.checkoutButtonText}>
+                  {isLoading ? "En cours..." : "Passer la commande"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
       </SafeAreaView>
@@ -664,6 +587,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
   },
+  webPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  webText: { textAlign: "center", color: "#777", fontSize: 16, marginTop: 10 },
 });
 
 export default Cart;

@@ -59,6 +59,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     toggleSidebar();
     router.push("/pro/profile");
   };
+  const navigateToWallet = () => {
+    toggleSidebar();
+    router.push("/(transactions)/WalletScreen");
+  };
 
   const handleBusinessSelect = (business: Business) => {
     onBusinessSelect(business);
@@ -245,6 +249,13 @@ const Sidebar: React.FC<SidebarProps> = ({
             <View style={styles.buttonContainer}>
               <TouchableOpacity
                 style={styles.sidebarButton}
+                onPress={navigateToWallet}
+              >
+                <Ionicons name="wallet-outline" size={24} color="#fff" />
+                <Text style={styles.buttonText}>Portefeuille</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sidebarButton}
                 onPress={navigateToCreateBusiness}
               >
                 <Ionicons name="add-circle-outline" size={24} color="#fff" />
@@ -257,22 +268,22 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Ionicons name="person-outline" size={24} color="#fff" />
                 <Text style={styles.buttonText}>Profil</Text>
               </TouchableOpacity>
-            </View>
 
-            {/* Logout Button */}
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
-              accessible={true}
-              accessibilityLabel="Se déconnecter"
-            >
-              <Ionicons
-                name="log-out-outline"
-                size={isTablet ? 24 : 20}
-                color="#FF5722"
-              />
-              <Text style={styles.logoutText}>Se déconnecter</Text>
-            </TouchableOpacity>
+              {/* Logout Button */}
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+                accessible={true}
+                accessibilityLabel="Se déconnecter"
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={isTablet ? 24 : 20}
+                  color="#FF5722"
+                />
+                <Text style={styles.logoutText}>Se déconnecter</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity

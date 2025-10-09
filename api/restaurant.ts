@@ -18,7 +18,7 @@ export const getStatRestaurant = async (
 ): Promise<RestaurantStats> => {
   try {
     const response = await axiosInstance.get<RestaurantStats>(
-      `/businesses/${businessId}/analytics/restaurant`
+      `/restaurants/${businessId}/analytics/restaurant`
     );
     return response.data;
   } catch (error: any) {
@@ -170,9 +170,6 @@ export const updateRestaurantTable = async (
   }
 };
 
-
-
-
 export interface DeleteTableResponse {
   message: string; // "Table supprimée avec succès."
 }
@@ -187,11 +184,13 @@ export const deleteRestaurantTable = async (
     );
     return data;
   } catch (error: any) {
-    console.error("❌ Erreur lors de la suppression de la table :", error.response?.data || error.message);
+    console.error(
+      "❌ Erreur lors de la suppression de la table :",
+      error.response?.data || error.message
+    );
     throw error;
   }
 };
-
 
 export interface MenuItemInput {
   variantId: string;
@@ -224,24 +223,184 @@ export interface CreateMenuResponse {
   menuItems: MenuItemResponse[];
 }
 
+export const getVariants = async (businessId: string) => {
+  try {
+    const res = await axiosInstance.get(`/restaurants/${businessId}/menus`);
+
+    const menus = res.data;
+    const variantsMap = new Map<string, string>();
+
+    menus.forEach((menu: any) => {
+      menu.menuItems.forEach((item: any) => {
+        const variantId = item?.variantId;
+        const name = item?.variant?.product?.name || "Produit inconnu";
+        if (variantId && !variantsMap.has(variantId)) {
+          variantsMap.set(variantId, name);
+        }
+      });
+    });
+
+    // conversion en tableau exploitable côté UI
+    const variants = Array.from(variantsMap, ([variantId, name]) => ({
+      variantId,
+      name,
+    }));
+
+    return variants;
+  } catch (error: any) {
+    console.error(
+      "❌ Erreur getVariants :",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
 /**
  * Crée un nouveau menu pour un restaurant
  * @param businessId L'id du restaurant
  * @param data Données du menu
  * @returns Le menu créé
  */
-export const createMenu = async (
-  businessId: string,
-  data: CreateMenuInput
-): Promise<CreateMenuResponse> => {
+/**
+ * 🔹 Crée un nouveau menu avec un variantId existant
+ * Exemple d’utilisation :
+ * await createMenu({ name: "Menu du Soir", description: "Couscous royal", price: 25, variantId })
+ */
+export const createMenu = async ({
+  name,
+  description,
+  price,
+  variantId,
+  businessId,
+}: {
+  name: string;
+  description: string;
+  price: number;
+  variantId: string;
+  businessId: string;
+}) => {
   try {
-    const response = await axiosInstance.post<CreateMenuResponse>(
+    const body = {
+      name,
+      description,
+      price,
+      isActive: true,
+      items: [
+        {
+          variantId,
+          quantity: 1,
+        },
+      ],
+    };
+
+    const res = await axiosInstance.post(
       `/restaurants/${businessId}/menus`,
+      body
+    );
+
+    console.log("✅ Menu créé avec succès :", res.data);
+    return res.data;
+  } catch (error: any) {
+    console.error(
+      "❌ Erreur createMenu :",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+/**
+ * 🔹 Supprime un menu spécifique d’un restaurant
+ * @param businessId ID du restaurant
+ * @param menuId ID du menu à supprimer
+ * @returns Message de confirmation
+ */
+export const deleteMenu = async (businessId: string, menuId: string) => {
+  try {
+    const res = await axiosInstance.delete(
+      `/restaurants/${businessId}/menus/${menuId}`
+    );
+
+    console.log("✅ Menu supprimé :", res.data);
+    return res.data; // { message: "Menu supprimé avec succès." }
+  } catch (error: any) {
+    console.error(
+      "❌ Erreur deleteMenu :",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
+
+/** ---------- Types ---------- */
+export interface Variant {
+  id: string;
+  sku: string;
+  barcode: string | null;
+  price: string;
+  purchasePrice: string | null;
+  quantityInStock: number;
+  alertThreshold: number | null;
+  itemsPerLot: number | null;
+  lotPrice: number | null;
+  imageUrl: string | null;
+  productId: string;
+  product: {
+    name: string;
+  };
+}
+
+export interface UpdatedMenuResponse {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  isActive: boolean;
+  businessId: string;
+  menuItems: MenuItem[];
+}
+
+/** ---------- Fonction principale ---------- */
+/**
+ * Met à jour un menu existant
+ * @param businessId ID du restaurant
+ * @param menuId ID du menu
+ * @param data Champs à modifier
+ * @throws Error si les paramètres sont invalides ou si la requête échoue
+ * @returns Menu mis à jour avec ses variantes
+ */
+export const updateMenu = async (
+  businessId: string,
+  menuId: string,
+  data: {
+    name?: string;
+    description?: string;
+    price?: number;
+    isActive?: boolean;
+  }
+): Promise<UpdatedMenuResponse> => {
+  if (!businessId || !menuId) {
+    throw new Error("businessId et menuId sont requis");
+  }
+  if (Object.keys(data).length === 0) {
+    throw new Error("Aucun champ à mettre à jour");
+  }
+
+  try {
+    // Validation du prix si présent
+    if (data.price !== undefined && isNaN(Number(data.price))) {
+      throw new Error("Le prix doit être un nombre valide");
+    }
+
+    const res = await axiosInstance.patch(
+      `/restaurants/${businessId}/menus/${menuId}`,
       data
     );
-    return response.data;
+
+    console.log("✅ Menu mis à jour :", res.data);
+    return res.data as UpdatedMenuResponse;
   } catch (error: any) {
-    console.error("❌ Erreur création menu :", error.response?.data || error);
-    throw error;
+    const errorMessage = error.response?.data?.message || error.message;
+    console.error("❌ Erreur updateMenu :", errorMessage);
+    throw new Error(`Échec de la mise à jour du menu : ${errorMessage}`);
   }
 };
