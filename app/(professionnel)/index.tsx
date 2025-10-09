@@ -17,7 +17,6 @@ import {
   View,
 } from "react-native";
 import { Float } from "react-native/Libraries/Types/CodegenTypes";
-
 // Import des services API
 import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
 import {
@@ -94,11 +93,9 @@ const HomePage: React.FC = () => {
   // Charger les ventes pour l'entreprise sélectionnée
   useEffect(() => {
     if (!selectedBusiness) return;
-
     const fetchSales = async () => {
       try {
         const data = await getSales(selectedBusiness.id);
-
         setSalesByPeriod(data.salesByPeriod);
         setTopSellingProducts(data.topSellingProducts); // ✅ ajouté
         setSalesByProductCategory(data.salesByProductCategory); // ✅ ajouté
@@ -106,7 +103,6 @@ const HomePage: React.FC = () => {
         console.error("Erreur fetch sales:", error);
       }
     };
-
     fetchSales();
   }, [selectedBusiness]);
 
@@ -119,7 +115,6 @@ const HomePage: React.FC = () => {
   const navigateToEnterpriseDetails = (enterpriseId: number): void => {
     router.push(`/enterprise-details?id=${enterpriseId}` as Route);
   };
-
   const handleBusinessSelect = async (business: Business) => {
     try {
       console.log("Sélection de l'entreprise:", business.name);
@@ -144,30 +139,30 @@ const HomePage: React.FC = () => {
         route: `(analytics)?id=${selectedBusiness.id}`,
         color: "#7c3aed",
       },
-      {
-        id: "details",
-        title: "Détails & Modifier",
-        icon: "business-outline",
-        description: "Voir et modifier les informations",
-        route: `(business-details)?id=${selectedBusiness.id}`,
-        color: "#059669",
-      },
-      {
-        id: "members",
-        title: "Gérer les membres",
-        icon: "people-outline",
-        description: "Ajouter, modifier, supprimer des membres",
-        route: `(business-members)?id=${selectedBusiness.id}`,
-        color: "#2563eb",
-      },
-      {
-        id: "hours",
-        title: "Horaires d'ouverture",
-        icon: "time-outline",
-        description: "Définir les horaires d'ouverture",
-        route: `(opening-hours)?id=${selectedBusiness.id}`,
-        color: "#dc2626",
-      },
+      // {
+      //   id: "details",
+      //   title: "Détails & Modifier",
+      //   icon: "business-outline",
+      //   description: "Voir et modifier les informations",
+      //   route: `(business-details)?id=${selectedBusiness.id}`,
+      //   color: "#059669",
+      // },
+      // {
+      //   id: "members",
+      //   title: "Gérer les membres",
+      //   icon: "people-outline",
+      //   description: "Ajouter, modifier, supprimer des membres",
+      //   route: `(business-members)?id=${selectedBusiness.id}`,
+      //   color: "#2563eb",
+      // },
+      // {
+      //   id: "hours",
+      //   title: "Horaires d'ouverture",
+      //   icon: "time-outline",
+      //   description: "Définir les horaires d'ouverture",
+      //   route: `(opening-hours)?id=${selectedBusiness.id}`,
+      //   color: "#dc2626",
+      // },
     ];
 
     // On ajoute l'onglet Restaurants seulement pour les restaurateurs

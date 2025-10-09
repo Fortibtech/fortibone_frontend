@@ -1,14 +1,17 @@
-import axiosInstance from "@/api/axiosInstance";
 import {
+  MenuItem,
+  Table,
+  TablePayload,
+  UpdateTablePayload,
+  createMenu,
   createRestaurantTable,
+  deleteMenu,
   deleteRestaurantTable,
   getMenus,
   getTables,
-  Menu,
-  Table,
-  TablePayload,
+  getVariants,
+  updateMenu, // Ajout de l'import pour updateMenu
   updateRestaurantTable,
-  UpdateTablePayload,
 } from "@/api/restaurant";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -47,6 +50,17 @@ interface Section {
   data: SectionData[];
 }
 
+// Update Menu interface to match UpdatedMenuResponse
+interface Menu {
+  id: string;
+  name: string;
+  description: string;
+  price: string; // Changed to string to match API response
+  isActive: boolean;
+  businessId: string;
+  menuItems: MenuItem[];
+}
+
 const AdminRestaurantDashboard = () => {
   const { id: businessId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -55,13 +69,28 @@ const AdminRestaurantDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [menuModalVisible, setMenuModalVisible] = useState(false);
   const [editingTable, setEditingTable] = useState<Table | null>(null);
+  const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
   const [tableName, setTableName] = useState("");
   const [tableCapacity, setTableCapacity] = useState("");
   const [tableAvailable, setTableAvailable] = useState(true);
+  const [menuName, setMenuName] = useState("");
+  const [menuDescription, setMenuDescription] = useState("");
+  const [menuPrice, setMenuPrice] = useState("");
+  const [menuVariantId, setMenuVariantId] = useState("");
+  const [menuActive, setMenuActive] = useState(true);
+  const [variants, setVariants] = useState<
+    { variantId: string; name: string }[]
+  >([]);
+  const [loadingVariants, setLoadingVariants] = useState(false);
 
   const loadData = async () => {
-    if (!businessId) return;
+    if (!businessId) {
+      setError("ID du restaurant manquant");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -70,7 +99,9 @@ const AdminRestaurantDashboard = () => {
         getMenus(businessId),
       ]);
       setTables(tablesData);
-      setMenus(menusData);
+      setMenus(
+        menusData.map((menu) => ({ ...menu, price: String(menu.price) }))
+      );
     } catch (error) {
       console.error("❌ Erreur chargement données:", error);
       setError("Échec du chargement des données. Veuillez réessayer.");
@@ -91,7 +122,45 @@ const AdminRestaurantDashboard = () => {
     setModalVisible(true);
   };
 
-  const openEditModal = (table: Table) => {
+  const openCreateMenuModal = async () => {
+    setEditingMenu(null);
+    setMenuName("");
+    setMenuDescription("");
+    setMenuPrice("");
+    setMenuVariantId("");
+    setMenuActive(true);
+    setMenuModalVisible(true);
+    setLoadingVariants(true);
+    try {
+      const variantsData = await getVariants(businessId!);
+      setVariants(variantsData);
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de charger les variantes");
+    } finally {
+      setLoadingVariants(false);
+    }
+  };
+
+  const openEditMenuModal = async (menu: Menu) => {
+    setEditingMenu(menu);
+    setMenuName(menu.name);
+    setMenuDescription(menu.description || "");
+    setMenuPrice(String(menu.price));
+    setMenuVariantId(menu.menuItems[0]?.variantId || "");
+    setMenuActive(menu.isActive);
+    setMenuModalVisible(true);
+    setLoadingVariants(true);
+    try {
+      const variantsData = await getVariants(businessId!);
+      setVariants(variantsData);
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de charger les variantes");
+    } finally {
+      setLoadingVariants(false);
+    }
+  };
+
+  const openEditTableModal = (table: Table) => {
     setEditingTable(table);
     setTableName(table.name);
     setTableCapacity(String(table.capacity));
@@ -135,6 +204,85 @@ const AdminRestaurantDashboard = () => {
     }
   };
 
+  const handleCreateMenu = async () => {
+    if (!menuName || !menuPrice || !menuVariantId) {
+      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+    const price = Number(menuPrice);
+    if (isNaN(price) || price <= 0) {
+      Alert.alert("Erreur", "Le prix doit être un nombre positif");
+      return;
+    }
+    try {
+      const newMenu = await createMenu({
+        name: menuName,
+        description: menuDescription,
+        price,
+        variantId: menuVariantId,
+        businessId: businessId!,
+      });
+      setMenus((prev) => [
+        ...prev,
+        { ...newMenu, price: String(newMenu.price) },
+      ]);
+      Alert.alert("Succès", `Menu "${newMenu.name}" créé !`);
+      setMenuModalVisible(false);
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de créer le menu");
+    }
+  };
+
+  const handleUpdateMenu = async () => {
+    if (!editingMenu) {
+      Alert.alert("Erreur", "Aucun menu en édition");
+      return;
+    }
+    if (!menuName || !menuPrice) {
+      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+    const price = Number(menuPrice);
+    if (isNaN(price) || price <= 0) {
+      Alert.alert("Erreur", "Le prix doit être un nombre positif");
+      return;
+    }
+    try {
+      // Préparation des données pour updateMenu (seulement les champs modifiables)
+      const data = {
+        name: menuName,
+        description: menuDescription || undefined, // Optionnel, envoi seulement si non vide
+        price, // Envoi comme number pour cohérence
+        isActive: menuActive,
+      };
+
+      // Note: Le variant n'est pas mis à jour ici car updateMenu ne le supporte pas.
+      // Si besoin, ajoutez une logique séparée ou étendez l'API.
+
+      const updatedMenu = await updateMenu(businessId!, editingMenu.id, data);
+
+      // Mise à jour de l'état local (conversion price en string pour cohérence)
+      setMenus((prev) =>
+        prev.map((m) =>
+          m.id === updatedMenu.id
+            ? { ...updatedMenu, price: String(updatedMenu.price) }
+            : m
+        )
+      );
+
+      console.log("✅ Menu mis à jour :", updatedMenu);
+      Alert.alert("Succès", `Menu "${updatedMenu.name}" mis à jour !`);
+      setMenuModalVisible(false);
+    } catch (error: any) {
+      console.error("❌ Erreur mise à jour menu :", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Impossible de mettre à jour le menu";
+      Alert.alert("Erreur", errorMessage);
+    }
+  };
+
   const handleDeleteTable = (tableId: string, tableName: string) => {
     Alert.alert(
       "Confirmer la suppression",
@@ -169,13 +317,15 @@ const AdminRestaurantDashboard = () => {
           style: "destructive",
           onPress: async () => {
             try {
-              await axiosInstance.delete(
-                `/restaurants/${businessId}/menus/${menuId}`
-              );
+              await deleteMenu(businessId!, menuId);
               setMenus(menus.filter((m) => m.id !== menuId));
               Alert.alert("Succès", `Menu "${menuName}" supprimé !`);
-            } catch (error) {
-              Alert.alert("Erreur", "Impossible de supprimer le menu");
+            } catch (error: any) {
+              const errorMessage =
+                error.message === "Menu non trouvé"
+                  ? "Le menu spécifié n'existe pas"
+                  : "Impossible de supprimer le menu";
+              Alert.alert("Erreur", errorMessage);
             }
           },
         },
@@ -238,7 +388,7 @@ const AdminRestaurantDashboard = () => {
               actions: [
                 {
                   label: "Modifier",
-                  onPress: () => openEditModal(table),
+                  onPress: () => openEditTableModal(table),
                   color: "#059669",
                 },
                 {
@@ -252,7 +402,7 @@ const AdminRestaurantDashboard = () => {
     {
       title: "Menus",
       icon: "restaurant-outline",
-      action: () => Alert.alert("Info", "Ajout de menu à implémenter"),
+      action: openCreateMenuModal,
       actionIcon: "add-circle-outline",
       actionLabel: "Ajouter un menu",
       data:
@@ -268,15 +418,16 @@ const AdminRestaurantDashboard = () => {
           : menus.map((menu) => ({
               id: menu.id,
               label: menu.name,
-              value: `${menu.description || "Pas de description"} | Prix: ${
-                menu.price
-              } FCFA | Actif: ${menu.isActive ? "✅ Oui" : "❌ Non"}`,
+              value: `${
+                menu.description || "Pas de description"
+              } | Prix: ${Number(menu.price).toFixed(2)} EURO | Produit: ${
+                menu.menuItems[0]?.variant?.product?.name || "Inconnu"
+              } | Actif: ${menu.isActive ? "✅ Oui" : "❌ Non"}`,
               icon: "fast-food-outline",
               actions: [
                 {
                   label: "Modifier",
-                  onPress: () =>
-                    Alert.alert("Info", `Modifier ${menu.name} à implémenter`),
+                  onPress: () => openEditMenuModal(menu),
                   color: "#059669",
                 },
                 {
@@ -351,7 +502,7 @@ const AdminRestaurantDashboard = () => {
                 <Text style={styles.addButtonText}>{item.actionLabel}</Text>
               </TouchableOpacity>
             </View>
-            {item.data.map((dataItem, dataIndex) => (
+            {item.data.map((dataItem) => (
               <View key={dataItem.id} style={styles.dataRow}>
                 <Ionicons
                   name={dataItem.icon}
@@ -364,31 +515,22 @@ const AdminRestaurantDashboard = () => {
                   <Text style={styles.dataValue}>{dataItem.value}</Text>
                   {dataItem.actions && (
                     <View style={styles.actionsRow}>
-                      {dataItem.actions.map(
-                        (
-                          action: {
-                            label: string;
-                            onPress: () => void;
-                            color: string;
-                          },
-                          actionIndex: number
-                        ) => (
-                          <TouchableOpacity
-                            key={actionIndex}
-                            style={[
-                              styles.actionButton,
-                              { backgroundColor: action.color },
-                            ]}
-                            onPress={action.onPress}
-                            accessibilityLabel={action.label}
-                            accessibilityRole="button"
-                          >
-                            <Text style={styles.actionButtonText}>
-                              {action.label}
-                            </Text>
-                          </TouchableOpacity>
-                        )
-                      )}
+                      {dataItem.actions.map((action, actionIndex) => (
+                        <TouchableOpacity
+                          key={actionIndex}
+                          style={[
+                            styles.actionButton,
+                            { backgroundColor: action.color },
+                          ]}
+                          onPress={action.onPress}
+                          accessibilityLabel={action.label}
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.actionButtonText}>
+                            {action.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
                   )}
                 </View>
@@ -473,6 +615,127 @@ const AdminRestaurantDashboard = () => {
                 <Text style={styles.modalButtonText}>Annuler</Text>
               </TouchableOpacity>
             </View>
+          </Animated.View>
+        </View>
+      </Modal>
+      <Modal visible={menuModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            entering={FadeInUp.springify()}
+            style={styles.modalContent}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingMenu ? "Modifier Menu" : "Nouveau Menu"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setMenuModalVisible(false)}
+                accessibilityLabel="Fermer la fenêtre"
+                accessibilityRole="button"
+              >
+                <Ionicons name="close" size={24} color="#1f2937" />
+              </TouchableOpacity>
+            </View>
+            {loadingVariants ? (
+              <ActivityIndicator size="large" color="#3b82f6" />
+            ) : (
+              <>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nom du menu"
+                  value={menuName}
+                  onChangeText={setMenuName}
+                  accessibilityLabel="Nom du menu"
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Description (optionnel)"
+                  value={menuDescription}
+                  onChangeText={setMenuDescription}
+                  accessibilityLabel="Description du menu"
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Prix (FCFA)"
+                  keyboardType="numeric"
+                  value={menuPrice}
+                  onChangeText={setMenuPrice}
+                  accessibilityLabel="Prix du menu"
+                />
+                <View style={styles.input}>
+                  <Text style={styles.toggleLabel}>
+                    Sélectionner une variante
+                  </Text>
+                  <FlatList
+                    data={variants}
+                    keyExtractor={(item) => item.variantId}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={[
+                          styles.toggle,
+                          {
+                            backgroundColor:
+                              menuVariantId === item.variantId
+                                ? "#059669"
+                                : "#6b7280",
+                          },
+                        ]}
+                        onPress={() => setMenuVariantId(item.variantId)}
+                        accessibilityLabel={`Sélectionner la variante ${item.name}`}
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.toggleText}>{item.name}</Text>
+                      </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={
+                      <Text style={styles.errorText}>
+                        Aucune variante disponible
+                      </Text>
+                    }
+                  />
+                </View>
+                <View style={styles.toggleRow}>
+                  <Text style={styles.toggleLabel}>Actif</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggle,
+                      { backgroundColor: menuActive ? "#059669" : "#6b7280" },
+                    ]}
+                    onPress={() => setMenuActive(!menuActive)}
+                    accessibilityLabel={
+                      menuActive ? "Désactiver le menu" : "Activer le menu"
+                    }
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.toggleText}>
+                      {menuActive ? "Oui" : "Non"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, { backgroundColor: "#3b82f6" }]}
+                    onPress={editingMenu ? handleUpdateMenu : handleCreateMenu}
+                    accessibilityLabel={
+                      editingMenu ? "Sauvegarder le menu" : "Créer le menu"
+                    }
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.modalButtonText}>
+                      {editingMenu ? "Sauvegarder" : "Créer"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, { backgroundColor: "#dc2626" }]}
+                    onPress={() => setMenuModalVisible(false)}
+                    accessibilityLabel="Annuler"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.modalButtonText}>Annuler</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </Animated.View>
         </View>
       </Modal>
@@ -670,6 +933,7 @@ const styles = StyleSheet.create({
   },
   toggle: {
     paddingVertical: 8,
+    marginVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: "center",

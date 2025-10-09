@@ -16,7 +16,7 @@ export default function RootLayout() {
       setLoading(false);
     };
     hydrate();
-  }, []);
+  }, [hydrateTokenAndProfile]);
 
   if (loading) {
     return <ActivityIndicator size="large" color="#fff" />;
