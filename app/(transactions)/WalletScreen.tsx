@@ -1,6 +1,7 @@
 import BackButton from "@/components/BackButton";
 import CreatDepositWallet from "@/components/Wallet/CreatDepositWallet";
-import Historique from "@/components/Wallet/Historique";
+import WalletDepositsList from "@/components/Wallet/GetWalletDeposits";
+import MockWalletBalanceComponent from "@/components/Wallet/MockWalletBalanceComponent";
 import React, { Fragment, JSX, useState } from "react";
 import {
   Keyboard,
@@ -43,12 +44,7 @@ const cardStyle = {
 };
 
 // Define TypeScript type for wallet actions
-type WalletActionType =
-  | "Dépôt"
-  | "Retrait"
-  | "Transfert"
-  | "Historique"
-  | "Statistiques";
+type WalletActionType = "Dépôt" | "Historique";
 
 // Define TypeScript interface for component props
 interface WalletActionsProps {
@@ -56,78 +52,12 @@ interface WalletActionsProps {
   selectedAction: WalletActionType;
 }
 
-interface BottomTabBarProps {
-  activeTab: string;
-  onTabPress: (tabName: string) => void;
-}
-
-// Mock components adapted to light theme
-const MockWalletBalanceComponent: React.FC = () => (
-  <View style={styles.mockComponent}>
-    <Text style={[styles.mockText, { fontSize: 24, fontWeight: "700" }]}>
-      Solde: 5,000 EUR
-    </Text>
-  </View>
-);
-
-const MockDepositForm: React.FC = () => (
-  <View style={styles.mockComponent}>
-    <Text style={styles.mockText}>Formulaire de dépôt</Text>
-  </View>
-);
-
-const MockWithdrawForm: React.FC = () => (
-  <View style={styles.mockComponent}>
-    <Text style={styles.mockText}>Formulaire de retrait</Text>
-  </View>
-);
-
-const MockTransfertForm: React.FC = () => (
-  <View style={styles.mockComponent}>
-    <Text style={styles.mockText}>Formulaire de transfert</Text>
-  </View>
-);
-
-const MockWalletRecord: React.FC = () => (
-  <View style={styles.mockComponent}>
-    <Text style={[styles.mockText, { fontWeight: "600", marginBottom: 8 }]}>
-      Historique des transactions
-    </Text>
-    <Text style={[styles.mockTextSecondary, { marginBottom: 4 }]}>
-      - Dépôt: 1,000 EUR (01/10/2025)
-    </Text>
-    <Text style={styles.mockTextSecondary}>
-      - Retrait: 500 EUR (02/10/2025)
-    </Text>
-  </View>
-);
-
-const MockExchangeStats: React.FC = () => (
-  <View style={styles.mockComponent}>
-    <Text style={[styles.mockText, { fontWeight: "600", marginBottom: 8 }]}>
-      Statistiques
-    </Text>
-    <Text style={[styles.mockTextSecondary, { marginBottom: 4 }]}>
-      - Transactions ce mois: 10
-    </Text>
-    <Text style={styles.mockTextSecondary}>- Solde moyen: 4,800 EUR</Text>
-  </View>
-);
-
 const MockWalletActions: React.FC<WalletActionsProps> = ({
   onSelect,
   selectedAction,
 }) => (
   <View style={styles.mockActions}>
-    {(
-      [
-        "Dépôt",
-        "Retrait",
-        "Transfert",
-        "Historique",
-        "Statistiques",
-      ] as WalletActionType[]
-    ).map((action) => (
+    {(["Dépôt", "Historique"] as WalletActionType[]).map((action) => (
       <TouchableWithoutFeedback key={action} onPress={() => onSelect(action)}>
         <View
           style={[
@@ -168,16 +98,10 @@ const StaticWalletScreen: React.FC = () => {
     switch (selectedAction) {
       case "Dépôt":
         return <CreatDepositWallet />;
-      case "Retrait":
-        return <MockWithdrawForm />;
-      case "Transfert":
-        return <Historique />;
       case "Historique":
-        return <MockWalletRecord />;
-      case "Statistiques":
-        return <MockExchangeStats />;
+        return <WalletDepositsList />;
       default:
-        return <MockDepositForm />;
+        return <WalletDepositsList />;
     }
   };
 

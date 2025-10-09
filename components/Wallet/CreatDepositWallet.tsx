@@ -1,85 +1,148 @@
-import { DepositMethodEnum, DepositWallet } from "@/api/wallet"; // adapte le chemin selon ton projet
+import { DepositMethodEnum, DepositWallet } from "@/api/wallet";
 import { Picker } from "@react-native-picker/picker";
 import { useState } from "react";
-import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+// Define colors to match the light UI/UX theme from StaticWalletScreen
+const colors = {
+  background: "#fafafb",
+  surface: "#ffffff",
+  primary: "#059669",
+  primaryVariant: "#047857",
+  secondary: "#FFD60A",
+  error: "#ef4444",
+  textPrimary: "#333333",
+  textSecondary: "#666666",
+  textDisabled: "#9ca3af",
+  border: "#e5e7eb",
+  success: "#10b981",
+  warning: "#f59e0b",
+};
+
+// Common card style for consistency
+const cardStyle = {
+  backgroundColor: colors.surface,
+  borderRadius: 12,
+  padding: 16,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+  elevation: 3,
+};
+
 const CreatDepositWallet = () => {
   const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState<DepositMethodEnum>(
-    DepositMethodEnum.STRIPE
-  );
+  const [method] = useState<DepositMethodEnum>(DepositMethodEnum.MANUAL);
   const [loading, setLoading] = useState(false);
-  const handleDeposit = async () => {
-    if (!amount || Number(amount) <= 0) {
-      Alert.alert("Erreur", "Veuillez entrer un montant valide");
-      return;
-    }
-    setLoading(true);
-    const res = await DepositWallet({
-      amount: Number(amount),
-      method,
-    });
-    setLoading(false);
-    if (res.status === "FAILED") {
-      Alert.alert("Échec", res.message || "Erreur inconnue");
-      return;
-    }
-    Alert.alert(
-      "Succès",
-      `Dépôt ${
-        res.status === "PENDING" ? "en attente" : "terminé"
-      } via ${method}`
-    );
 
-    // Ici, tu peux rediriger selon la méthode
-    if (method === "STRIPE" && res.clientSecret) {
-      console.log(
-        "🔹 Rediriger vers paiement Stripe avec clientSecret :",
-        res.clientSecret
+  const handleDeposit = async () => {
+    const parsedAmount = Number(amount);
+    if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      Alert.alert("Erreur", "Veuillez entrer un montant valide supérieur à 0");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await DepositWallet({
+        amount: parsedAmount,
+        method: DepositMethodEnum.MANUAL,
+      });
+
+      if (res.status === "FAILED") {
+        Alert.alert("Échec", res.message || "Erreur inconnue lors du dépôt");
+        return;
+      }
+
+      Alert.alert(
+        "Succès",
+        `Dépôt ${
+          res.status === "PENDING" ? "en attente de validation" : "effectué"
+        }`
       );
-    } else if (method === "MVOLA") {
-      console.log("🔹 Afficher instructions MVOLA ou interface mobile money");
-    } else if (method === "MANUAL") {
-      console.log("🔹 Le dépôt manuel sera validé par un administrateur");
+    } catch (err: any) {
+      Alert.alert("Erreur", err.message || "Une erreur est survenue");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>💰 Recharger mon portefeuille</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={[cardStyle, styles.cardContainer]}>
+        <Text style={styles.title}>💰 Recharger mon portefeuille</Text>
 
-      <Text style={styles.label}>Montant</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: 5000"
-        keyboardType="numeric"
-        value={amount}
-        onChangeText={setAmount}
-      />
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Montant</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: 5000"
+            placeholderTextColor={colors.textDisabled}
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={(text) => setAmount(text.replace(/[^0-9]/g, ""))}
+            accessibilityLabel="Montant du dépôt"
+            accessibilityHint="Entrez le montant à déposer en chiffres"
+            editable={!loading}
+          />
+        </View>
 
-      <Text style={styles.label}>Méthode de paiement</Text>
-      <View style={styles.pickerContainer}>
-        <Picker selectedValue={method} onValueChange={(val) => setMethod(val)}>
-          <Picker.Item
-            label="Stripe (Carte bancaire)"
-            value={DepositMethodEnum.STRIPE}
-          />
-          <Picker.Item
-            label="Mvola (Mobile Money)"
-            value={DepositMethodEnum.MVOLA}
-          />
-          <Picker.Item
-            label="Manuel (Validation admin)"
-            value={DepositMethodEnum.MANUAL}
-          />
-        </Picker>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Méthode de paiement</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              enabled={false}
+              selectedValue={method}
+              style={styles.picker}
+              accessibilityLabel="Méthode de paiement"
+              accessibilityHint="Méthode de dépôt, actuellement fixé à Manuel"
+            >
+              <Picker.Item
+                label="Manuel (Validation par un administrateur)"
+                value={DepositMethodEnum.MANUAL}
+              />
+              <Picker.Item
+                label="Stripe (Bientôt disponible)"
+                value={DepositMethodEnum.STRIPE}
+                enabled={false}
+              />
+              <Picker.Item
+                label="Mvola (En conception)"
+                value={DepositMethodEnum.MVOLA}
+                enabled={false}
+              />
+            </Picker>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+          onPress={handleDeposit}
+          disabled={loading}
+          activeOpacity={0.7}
+          accessibilityLabel="Soumettre le dépôt"
+          accessibilityRole="button"
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Text style={styles.submitButtonText}>
+              Soumettre un dépôt manuel
+            </Text>
+          )}
+        </TouchableOpacity>
       </View>
-
-      <Button
-        title={loading ? "Traitement..." : "Initier le dépôt"}
-        onPress={handleDeposit}
-        disabled={loading}
-      />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -88,32 +151,69 @@ export default CreatDepositWallet;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.background,
+    paddingHorizontal: 16,
+  },
+  cardContainer: {
+    marginTop: 16,
     padding: 20,
-    justifyContent: "center",
   },
   title: {
     fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
+    fontWeight: "700",
+    color: colors.textPrimary,
     textAlign: "center",
+    marginBottom: 24,
+  },
+  inputGroup: {
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
-    marginTop: 10,
+    fontWeight: "600",
+    color: colors.textPrimary,
+    marginBottom: 8,
   },
   input: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 5,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    color: colors.textPrimary,
   },
   pickerContainer: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    marginTop: 5,
-    marginBottom: 20,
+    borderColor: colors.border,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  picker: {
+    width: "100%",
+    color: colors.textPrimary,
+  },
+  submitButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  submitButtonDisabled: {
+    backgroundColor: colors.textDisabled,
+    opacity: 0.7,
+  },
+  submitButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
