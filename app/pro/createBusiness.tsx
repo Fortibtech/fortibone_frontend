@@ -1,12 +1,14 @@
-// app/pro/createBusiness.tsx - Version améliorée avec sélecteurs iOS
+// app/pro/createBusiness.tsx - Version avec carte Leaflet (WebView)
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { Banknote, Building, ChevronDown } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { Banknote, Building, ChevronDown, MapPin } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -18,9 +20,255 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 
 // Import des services API
 import { BusinessesService, CreateBusinessData, Currency, CurrencyService } from '@/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Composant de sélection de position sur la carte avec Leaflet
+interface MapPickerProps {
+  initialLatitude: number;
+  initialLongitude: number;
+  onLocationSelect: (latitude: number, longitude: number) => void;
+}
+
+const MapPicker: React.FC<MapPickerProps> = ({
+  initialLatitude,
+  initialLongitude,
+  onLocationSelect,
+}) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState({
+    latitude: initialLatitude,
+    longitude: initialLongitude,
+  });
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const webViewRef = useRef<WebView>(null);
+
+  const getCurrentLocation = async () => {
+    try {
+      setLoadingLocation(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission refusée',
+          'Vous devez autoriser l\'accès à la localisation pour utiliser cette fonctionnalité.'
+        );
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const newLocation = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+
+      setSelectedLocation(newLocation);
+      
+      // Mettre à jour la carte
+      webViewRef.current?.injectJavaScript(`
+        moveToLocation(${newLocation.latitude}, ${newLocation.longitude});
+        true;
+      `);
+    } catch (error) {
+      console.error('Erreur lors de la récupération de la position:', error);
+      Alert.alert('Erreur', 'Impossible de récupérer votre position actuelle.');
+    } finally {
+      setLoadingLocation(false);
+    }
+  };
+
+  const handleConfirm = () => {
+    onLocationSelect(selectedLocation.latitude, selectedLocation.longitude);
+    setModalVisible(false);
+  };
+
+  const handleMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'locationSelected') {
+        setSelectedLocation({
+          latitude: data.latitude,
+          longitude: data.longitude,
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors du parsing du message:', error);
+    }
+  };
+
+  // HTML avec Leaflet pour la carte interactive
+  const mapHTML = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #map { height: 100vh; width: 100vw; }
+        .custom-marker {
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="map"></div>
+      <script>
+        // Initialiser la carte
+        const map = L.map('map', {
+          zoomControl: true,
+          attributionControl: false
+        }).setView([${initialLatitude}, ${initialLongitude}], 15);
+
+        // Ajouter le layer OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+        }).addTo(map);
+
+        // Icône personnalisée pour le marqueur
+        const customIcon = L.divIcon({
+          className: 'custom-marker',
+          html: '<svg width="32" height="32" viewBox="0 0 24 24" fill="#059669" stroke="#fff" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3" fill="#fff"></circle></svg>',
+          iconSize: [32, 32],
+          iconAnchor: [16, 32]
+        });
+
+        // Marqueur initial
+        let marker = L.marker([${initialLatitude}, ${initialLongitude}], {
+          icon: customIcon,
+          draggable: true
+        }).addTo(map);
+
+        // Fonction pour envoyer les coordonnées à React Native
+        function sendLocation(lat, lng) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'locationSelected',
+            latitude: lat,
+            longitude: lng
+          }));
+        }
+
+        // Événement de déplacement du marqueur
+        marker.on('dragend', function(e) {
+          const position = marker.getLatLng();
+          sendLocation(position.lat, position.lng);
+        });
+
+        // Clic sur la carte
+        map.on('click', function(e) {
+          marker.setLatLng(e.latlng);
+          sendLocation(e.latlng.lat, e.latlng.lng);
+        });
+
+        // Fonction pour déplacer la carte (appelée depuis React Native)
+        function moveToLocation(lat, lng) {
+          marker.setLatLng([lat, lng]);
+          map.setView([lat, lng], 15);
+          sendLocation(lat, lng);
+        }
+
+        // Envoyer la position initiale
+        sendLocation(${initialLatitude}, ${initialLongitude});
+      </script>
+    </body>
+    </html>
+  `;
+
+  return (
+    <>
+      <TouchableOpacity
+        style={styles.mapPickerButton}
+        onPress={() => setModalVisible(true)}
+      >
+        <MapPin size={20} color="#059669" />
+        <Text style={styles.mapPickerButtonText}>
+          Sélectionner sur la carte
+        </Text>
+      </TouchableOpacity>
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <SafeAreaView style={styles.mapModalContainer}>
+          <View style={styles.mapModalHeader}>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={styles.modalCancelButton}>Annuler</Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.modalTitle}>Sélectionner la position</Text>
+            
+            <TouchableOpacity onPress={handleConfirm}>
+              <Text style={styles.modalDoneButton}>Confirmer</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.mapContainer}>
+            <WebView
+              ref={webViewRef}
+              source={{ html: mapHTML }}
+              style={styles.webView}
+              onMessage={handleMessage}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+            />
+
+            <View style={styles.mapInfoContainer}>
+              <View style={styles.coordinatesDisplay}>
+                <Text style={styles.coordinatesLabel}>Coordonnées sélectionnées</Text>
+                <Text style={styles.coordinatesText}>
+                  Lat: {selectedLocation.latitude.toFixed(6)}
+                </Text>
+                <Text style={styles.coordinatesText}>
+                  Long: {selectedLocation.longitude.toFixed(6)}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.currentLocationButton}
+                onPress={getCurrentLocation}
+                disabled={loadingLocation}
+              >
+                {loadingLocation ? (
+                  <ActivityIndicator size="small" color="#059669" />
+                ) : (
+                  <>
+                    <Ionicons name="locate" size={20} color="#059669" />
+                    <Text style={styles.currentLocationButtonText}>
+                      Ma position actuelle
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.mapInstructions}>
+              <Ionicons name="information-circle" size={18} color="#8b5cf6" />
+              <Text style={styles.mapInstructionsText}>
+                Touchez la carte ou déplacez le marqueur pour sélectionner la position
+              </Text>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
+    </>
+  );
+};
 
 // Composant de sélection iOS-friendly
 interface IOSPickerProps {
@@ -371,6 +619,10 @@ const CreateBusiness: React.FC = () => {
     setBusiness(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleLocationSelect = (latitude: number, longitude: number) => {
+    setBusiness(prev => ({ ...prev, latitude, longitude }));
+  };
+
   const renderImagePicker = (
     field: 'logo' | 'cover',
     uri: string,
@@ -520,37 +772,64 @@ const CreateBusiness: React.FC = () => {
               />
             </View>
 
-            <View style={styles.coordinatesContainer}>
-              <View style={styles.coordinateInput}>
-                <Text style={styles.label}>Latitude *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={business.latitude?.toString()}
-                  onChangeText={(text) => updateBusiness('latitude', parseFloat(text) || 0)}
-                  placeholder="4.0511"
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                />
-              </View>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Position géographique *</Text>
               
-              <View style={styles.coordinateInput}>
-                <Text style={styles.label}>Longitude *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={business.longitude?.toString()}
-                  onChangeText={(text) => updateBusiness('longitude', parseFloat(text) || 0)}
-                  placeholder="9.7679"
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
+              {/* Bouton pour ouvrir la carte */}
+              <MapPicker
+                initialLatitude={business.latitude || 4.0511}
+                initialLongitude={business.longitude || 9.7679}
+                onLocationSelect={handleLocationSelect}
+              />
 
-            <View style={styles.coordinatesHint}>
-              <Ionicons name="information-circle" size={16} color="#8b5cf6" />
-              <Text style={styles.hintText}>
-                Utilisez Google Maps pour obtenir les coordonnées exactes de votre entreprise
-              </Text>
+              {/* Affichage des coordonnées actuelles */}
+              <View style={styles.currentCoordinates}>
+                <View style={styles.coordinateDisplay}>
+                  <Text style={styles.coordinateLabel}>Latitude:</Text>
+                  <Text style={styles.coordinateValue}>
+                    {business.latitude?.toFixed(6) || '—'}
+                  </Text>
+                </View>
+                <View style={styles.coordinateDisplay}>
+                  <Text style={styles.coordinateLabel}>Longitude:</Text>
+                  <Text style={styles.coordinateValue}>
+                    {business.longitude?.toFixed(6) || '—'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Saisie manuelle optionnelle */}
+              <View style={styles.manualCoordinatesToggle}>
+                <Text style={styles.manualCoordinatesText}>
+                  Ou saisir manuellement:
+                </Text>
+              </View>
+
+              <View style={styles.coordinatesContainer}>
+                <View style={styles.coordinateInput}>
+                  <Text style={styles.label}>Latitude</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={business.latitude?.toString()}
+                    onChangeText={(text) => updateBusiness('latitude', parseFloat(text) || 0)}
+                    placeholder="4.0511"
+                    placeholderTextColor="#999"
+                    keyboardType="numeric"
+                  />
+                </View>
+                
+                <View style={styles.coordinateInput}>
+                  <Text style={styles.label}>Longitude</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={business.longitude?.toString()}
+                    onChangeText={(text) => updateBusiness('longitude', parseFloat(text) || 0)}
+                    placeholder="9.7679"
+                    placeholderTextColor="#999"
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
             </View>
           </View>
 
@@ -700,7 +979,6 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     marginLeft: 44,
   },
-  // Styles pour les sélecteurs iOS
   iosPickerButton: {
     backgroundColor: '#f9fafb',
     borderRadius: 12,
@@ -719,6 +997,53 @@ const styles = StyleSheet.create({
   iosPickerPlaceholder: {
     color: '#9ca3af',
   },
+  mapPickerButton: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#059669',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  mapPickerButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  currentCoordinates: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  coordinateDisplay: {
+    flex: 1,
+  },
+  coordinateLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  coordinateValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  manualCoordinatesToggle: {
+    marginVertical: 8,
+  },
+  manualCoordinatesText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontStyle: 'italic',
+  },
   coordinatesContainer: {
     flexDirection: 'row',
     gap: 12,
@@ -726,23 +1051,93 @@ const styles = StyleSheet.create({
   coordinateInput: {
     flex: 1,
   },
-  coordinatesHint: {
+  mapModalContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  mapModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  mapContainer: {
+    flex: 1,
+  },
+  webView: {
+    flex: 1,
+  },
+  mapInfoContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  coordinatesDisplay: {
+    marginBottom: 12,
+  },
+  coordinatesLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  coordinatesText: {
+    fontSize: 15,
+    color: '#1f2937',
+  },
+  currentLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0fdf4',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#059669',
+    gap: 8,
+  },
+  currentLocationButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  mapInstructions: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 12,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#f8f9ff',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e7ff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  hintText: {
-    fontSize: 14,
+  mapInstructionsText: {
+    fontSize: 13,
     color: '#6366f1',
     flex: 1,
     lineHeight: 18,
   },
-  // Styles des images
   imageSection: {
     marginBottom: 20,
   },
@@ -795,7 +1190,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // Modal styles
   modalContainer: {
     flex: 1,
     backgroundColor: '#fafafb',
