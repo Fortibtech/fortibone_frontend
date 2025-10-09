@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import { Filter, Heart, Plus, Search } from "lucide-react-native";
+import { Heart, Plus, Search } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -174,7 +174,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
         );
       }
 
-      setPagination(response.pagination);
+      setPagination(response.page);
     } catch (error) {
       console.error("❌ Erreur lors du chargement des produits:", error);
       Alert.alert("Erreur", "Impossible de charger les produits");
@@ -263,12 +263,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
             </Text>
             <Text style={styles.productUnit}>Unité: {product.salesUnit}</Text>
           </View>
-
-          {product.price && (
-            <Text style={styles.productPrice}>
-              {product.price.toFixed(2)} XAF
-            </Text>
-          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -325,7 +319,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
 
       <View style={styles.statItem}>
         <Text style={styles.statNumber}>
-          {products.filter((p) => p.price && p.price > 0).length}
+          {products.filter((p) => p.variants.filter((v)=>v.price && parseInt(v.price) > 0)).length}
         </Text>
         <Text style={styles.statLabel}>Avec prix</Text>
       </View>

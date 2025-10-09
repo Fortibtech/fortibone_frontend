@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
+import { StripeProvider } from "@stripe/stripe-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator } from "react-native";
 import Toast from "react-native-toast-message";
@@ -23,6 +24,11 @@ export default function RootLayout() {
   }
   return (
     <>
+    <StripeProvider
+      publishableKey="pk_test_51PBf5wRqgxgrSOxzkT3CoAj3wnYQKPSKxZLmtaH9lt8XXO8NoIknakl1nMxj14Mj25f3VC56dchbm7E4ATNXco2200dXM6svtP"
+      urlScheme="your-app-scheme" // Replace with your URL scheme
+      merchantIdentifier="merchant.com.your-app" // Optional
+    >
       <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(analytics)" />
@@ -41,6 +47,7 @@ export default function RootLayout() {
       </Stack>
       <StatusBar style="auto" />
       <Toast />
+    </StripeProvider>
     </>
   );
 }
