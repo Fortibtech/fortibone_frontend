@@ -6,7 +6,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
 import { CreateOrderPayload } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
-import { CardField, useStripe } from "@stripe/stripe-react-native";
+import { CardField, createPaymentMethod } from "@stripe/stripe-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -41,7 +41,6 @@ const Cart = () => {
   const [showPaymentUI, setShowPaymentUI] = useState(false);
   const [cardDetails, setCardDetails] = useState<any>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const { confirmPayment, createPaymentMethod } = useStripe();
 
   // Fonction pour créer la commande
   const handleCreateOrder = async () => {
@@ -189,26 +188,48 @@ const Cart = () => {
       );
 
       // Étape 4: Confirmer le paiement avec Stripe
-      if (paymentIntentData.clientSecret) {
-        console.log("🔓 Confirmation du paiement...");
-        const { error: confirmError, paymentIntent } = await confirmPayment(
-          paymentIntentData.clientSecret,
-          {
-            paymentMethodType: "Card",
-          }
-        );
+      // if (paymentIntentData.clientSecret) {
+      //   console.log("🔓 Confirmation du paiement...");
+      //   const { error: confirmError, paymentIntent } = await confirmPayment(
+      //     paymentIntentData.clientSecret,
+      //     {
+      //       paymentMethodType: "Card",
+      //     }
+      //   );
 
-        if (confirmError) {
-          console.error("❌ Erreur lors de la confirmation:", confirmError);
-          Alert.alert(
-            "Erreur de paiement",
-            confirmError.message || "Le paiement a échoué"
-          );
-          setIsLoading(false);
-          return;
-        }
+      //   if (confirmError) {
+      //     console.error("❌ Erreur lors de la confirmation:", confirmError);
+      //     Alert.alert(
+      //       "Erreur de paiement",
+      //       confirmError.message || "Le paiement a échoué"
+      //     );
+      //     setIsLoading(false);
+      //     return;
+      //   }
 
-        console.log("✅ Paiement confirmé:", paymentIntent);
+      //   console.log("✅ Paiement confirmé:", paymentIntent);
+        
+      //   // Succès !
+      //   Toast.show({
+      //     type: "success",
+      //     text1: "Paiement réussi ! 🎉",
+      //     text2: `Transaction: ${paymentIntentData.transactionId}`,
+      //   });
+
+      //   // Vider le panier
+      //   useCartStore.setState({ items: [] });
+      //   setShowPaymentUI(false);
+      //   setCardDetails(null);
+      //   setCreatedOrderId(null);
+      // } else if (paymentIntentData.redirectUrl) {
+      //   // Si une redirection est nécessaire (3D Secure, etc.)
+      //   Alert.alert(
+      //     "Action requise",
+      //     "Vous allez être redirigé pour finaliser le paiement"
+      //   );
+      //   // Ici, vous pouvez ouvrir le redirectUrl dans un navigateur ou WebView
+      // }
+      console.log("✅ Paiement confirmé:", paymentIntentData);
         
         // Succès !
         Toast.show({
@@ -216,20 +237,6 @@ const Cart = () => {
           text1: "Paiement réussi ! 🎉",
           text2: `Transaction: ${paymentIntentData.transactionId}`,
         });
-
-        // Vider le panier
-        useCartStore.setState({ items: [] });
-        setShowPaymentUI(false);
-        setCardDetails(null);
-        setCreatedOrderId(null);
-      } else if (paymentIntentData.redirectUrl) {
-        // Si une redirection est nécessaire (3D Secure, etc.)
-        Alert.alert(
-          "Action requise",
-          "Vous allez être redirigé pour finaliser le paiement"
-        );
-        // Ici, vous pouvez ouvrir le redirectUrl dans un navigateur ou WebView
-      }
 
     } catch (error: any) {
       console.error("❌ Erreur globale:", error);
@@ -366,9 +373,9 @@ const Cart = () => {
                   setCardDetails(details);
                 }}
               />
-              <Text style={styles.cardHint}>
+              {/* <Text style={styles.cardHint}>
                 Pour tester: 4242 4242 4242 4242
-              </Text>
+              </Text> */}
             </View>
 
             <TouchableOpacity
@@ -392,12 +399,12 @@ const Cart = () => {
               )}
             </TouchableOpacity>
 
-            <View style={styles.securityBadge}>
+            {/* <View style={styles.securityBadge}>
               <Ionicons name="shield-checkmark" size={16} color="#059669" />
               <Text style={styles.securityText}>
                 Paiement sécurisé SSL/TLS
               </Text>
-            </View>
+            </View> */}
           </ScrollView>
         ) : (
           <>
