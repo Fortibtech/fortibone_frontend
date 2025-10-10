@@ -5,6 +5,7 @@ export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="LoginType" options={{ headerShown: false }} />
       <Stack.Screen name="NewPassword" options={{ headerShown: false }} />
       <Stack.Screen
         name="OtpVerifyResetPassword"

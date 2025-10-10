@@ -1,11 +1,20 @@
-// app/index.tsx
-import CustomButton from "@/components/CustomButton";
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
+import * as Progress from "react-native-progress";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const Index = () => {
   const router = useRouter();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.push("/onboarding");
+    }, 5000); // Navigate after 5 seconds
+
+    return () => clearTimeout(timer); // Cleanup timer on unmount
+  }, [router]);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Image de fond en haut à gauche */}
@@ -28,20 +37,18 @@ const Index = () => {
         <Text style={styles.title}>FortibOne</Text>
       </View>
 
-      <View style={styles.button}>
-        <CustomButton
-          title="Démarrer"
-          backgroundColor="#fff"
-          textColor="#059669"
-          width="100%"
-          borderRadius={15}
-          fontSize={16}
-          onPress={() => router.push("/onboarding")}
+      <View style={styles.loader}>
+        <Progress.Circle
+          size={50}
+          indeterminate={true}
+          color="#fff"
+          borderWidth={4}
         />
       </View>
     </SafeAreaView>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -68,9 +75,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginBottom: 10,
   },
-  button: {
+  loader: {
     marginTop: 20,
     width: "100%",
+    alignItems: "center",
   },
   bgImage: {
     position: "absolute",
@@ -79,4 +87,5 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
 });
+
 export default Index;
