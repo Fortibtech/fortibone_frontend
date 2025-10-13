@@ -1,11 +1,11 @@
 // app/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
 import {
-  BookOpen,
   CreditCard,
+  Cuboid,
   Home,
   Send,
-  ShoppingCart,
+  ShoppingCart
 } from "lucide-react-native";
 
 export default function RootLayout() {
@@ -50,7 +50,7 @@ export default function RootLayout() {
         options={{
           title: "Catalogue",
           tabBarIcon: ({ color, size }) => (
-            <BookOpen size={size} color={color} fill={color} />
+            <Cuboid size={size} color={color}  />
           ),
         }}
       />

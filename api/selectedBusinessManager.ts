@@ -7,7 +7,7 @@ export class SelectedBusinessManager {
   static async setSelectedBusiness(business: Business): Promise<void> {
     try {
       await AsyncStorage.setItem(SELECTED_BUSINESS_KEY, JSON.stringify(business));
-      console.log("✅ Entreprise sélectionnée stockée:", business.name);
+      console.log("✅ Entreprise sélectionnée stockée:", business);
     } catch (error) {
       console.error("❌ Erreur lors du stockage de l'entreprise:", error);
       throw error;
@@ -19,7 +19,7 @@ export class SelectedBusinessManager {
       const businessData = await AsyncStorage.getItem(SELECTED_BUSINESS_KEY);
       if (businessData) {
         const business = JSON.parse(businessData) as Business;
-        console.log("✅ Entreprise récupérée:", business.name);
+        console.log("✅ Entreprise récupérée:", business);
         return business;
       }
       return null;
