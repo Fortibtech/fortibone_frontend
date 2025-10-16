@@ -29,6 +29,13 @@ interface DatePickerModalProps {
   selectedDate?: Date;
 }
 
+interface CommercantTypeModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (type: string) => void;
+  selectedCommerceType?: string;
+}
+
 interface GenderSelectionModalProps {
   visible: boolean;
   onClose: () => void;
@@ -54,6 +61,13 @@ interface FormData {
   motDePasse: string;
   phoneNumber: string;
   profileType: string;
+  commerceType?: string;
+  addressCommerce?: string;
+  address?: string;
+  matricule?: string;
+  webLink?: string;
+  description?: string;
+  secteurActivite: string;
 }
 
 // --- Modal Date Picker ---
@@ -139,6 +153,83 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
   }
 
   return null;
+};
+
+// --Commercant types
+const CommercantTypeModal: React.FC<CommercantTypeModalProps> = ({
+  visible,
+  onClose,
+  onSelect,
+  selectedCommerceType,
+}) => {
+  const [tempSelectedCommerceType, setTempSelectedCommerceType] =
+    useState<string>(selectedCommerceType ?? "");
+
+  const handleSave = () => {
+    if (tempSelectedCommerceType) {
+      onSelect(tempSelectedCommerceType);
+      onClose();
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Sélectionnez le sexe</Text>
+          <View style={styles.genderOptions}>
+            {["Boutique physique", "Boutique online"].map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.genderOption,
+                  tempSelectedCommerceType === type && styles.selectedOption,
+                ]}
+                onPress={() => setTempSelectedCommerceType(type)}
+              >
+                <Text
+                  style={[
+                    styles.genderText,
+                    tempSelectedCommerceType === type && styles.selectedText,
+                  ]}
+                >
+                  {type}
+                </Text>
+                <View
+                  style={[
+                    styles.radioButton,
+                    tempSelectedCommerceType === type &&
+                      styles.radioButtonSelected,
+                  ]}
+                >
+                  {tempSelectedCommerceType === type && (
+                    <Ionicons name="checkmark" size={16} color="#fff" />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={styles.modalButtonContainer}>
+            <CustomButton
+              title="Enregistrer"
+              onPress={handleSave}
+              backgroundColor={tempSelectedCommerceType ? "#00C851" : "#E0E0E0"}
+              textColor={tempSelectedCommerceType ? "#fff" : "#999"}
+              width="100%"
+              height={40}
+              borderRadius={20}
+              fontSize={14}
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 };
 
 // --- Modal Gender ---
@@ -307,10 +398,17 @@ const Register: React.FC = () => {
     motDePasse: "",
     phoneNumber: "",
     profileType: "",
+    commerceType: "",
+    address: "",
+    matricule: "",
+    webLink: "",
+    description: "",
+    secteurActivite: "",
   });
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showComercantTypeModal, setshowComercantTypeModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showProfileTypeModal, setShowProfileTypeModal] = useState(false);
   const router = useRouter();
@@ -358,6 +456,10 @@ const Register: React.FC = () => {
       email: formData.email.trim(),
       password: formData.motDePasse,
       phoneNumber: formData.phoneNumber.trim(),
+      commerceType:
+        formData.commerceType === "Boutique physique"
+          ? "Boutique physique"
+          : "Boutique online",
     };
 
     try {
@@ -377,6 +479,12 @@ const Register: React.FC = () => {
     }
   };
 
+  const handleCommerceSelect = useCallback(
+    (type: string) => {
+      updateField("commerceType", type); // Assuming "commerceType" is a valid key of the FormData type
+    },
+    [updateField]
+  );
   const handleGenderSelect = useCallback(
     (gender: string) => {
       updateField("sexe", gender);
@@ -421,6 +529,69 @@ const Register: React.FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.formContainer}>
+            {/* --------------------Bussiness infos en dessous */}
+            <InputField
+              label="Nom du commercant"
+              placeholder="Ex:Boutique de bob"
+              value={formData.prenom}
+              onChangeText={(text) => updateField("prenom", text)}
+            />
+
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Type de commercant</Text>
+              <TouchableOpacity
+                style={styles.selectField}
+                onPress={() => setshowComercantTypeModal(true)}
+              >
+                <Text
+                  style={[
+                    styles.selectFieldText,
+                    !formData.commerceType && styles.placeholderText,
+                  ]}
+                >
+                  {formData.commerceType ||
+                    "Sélectionnez le type de commercant"}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <InputField
+              label="Adresse du commerce"
+              placeholder="Entrer une adresse"
+              value={formData.addressCommerce || ""}
+              onChangeText={(text) => updateField("addressCommerce", text)}
+            />
+
+            <InputField
+              label="SIRET/NUI (Optionnel)"
+              placeholder="Entrer le matricule SIRET/NUI"
+              value={formData.matricule || ""}
+              onChangeText={(text) => updateField("matricule", text)}
+            />
+
+            <InputField
+              label="Site web (Optionnel)"
+              placeholder="Ajouter un lien"
+              value={formData.matricule || ""}
+              onChangeText={(text) => updateField("webLink", text)}
+            />
+            <InputField
+              label="Secteur d'activité *"
+              placeholder="Ajouter votre secteur d'activité"
+              value={formData.matricule || ""}
+              onChangeText={(text) => updateField("secteurActivite", text)}
+            />
+
+            <InputField
+              label="Description"
+              placeholder="Décris ton produit..."
+              value={formData.description || ""}
+              onChangeText={(text) => updateField("description", text)}
+              type="description"
+            />
+
+            {/* --------------------user infos en dessous */}
             <InputField
               label="Prénom"
               placeholder="Prénom"
@@ -552,6 +723,13 @@ const Register: React.FC = () => {
             </View>
           </View>
         </ScrollView>
+
+        <CommercantTypeModal
+          visible={showComercantTypeModal}
+          onClose={() => setshowComercantTypeModal(false)} // ✅ CORRECTION
+          onSelect={handleCommerceSelect}
+          selectedCommerceType={formData.commerceType}
+        />
 
         <GenderSelectionModal
           visible={showGenderModal}
