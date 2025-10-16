@@ -9,6 +9,9 @@ export interface RegisterPayload {
   city: string;
   gender: "MALE" | "FEMALE";
   profileType: "PARTICULIER" | "PRO";
+  // NEW DATA
+  commerceType?: "Boutique physique" | "Boutique online";
+  secteurActivite: string;
 }
 export interface ResetPasswordPayload {
   email: string;
