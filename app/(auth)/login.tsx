@@ -7,13 +7,11 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-
   // Fonction pour gérer la soumission du formulaire
   const handleLogin = async () => {
     const setEmail = useUserStore.getState().setEmail;
@@ -29,10 +27,8 @@ const Login = () => {
       if (result.success && result.token) {
         // ✅ Stocke le token dans le store et AsyncStorage
         await useUserStore.getState().setToken(result.token);
-
         // ✅ Charge le profil depuis l'API
         await useUserStore.getState().refreshProfile();
-
         const profile = useUserStore.getState().userProfile;
         if (!profile) {
           Alert.alert("Erreur", "Impossible de charger votre profil.");
@@ -82,9 +78,7 @@ const Login = () => {
       <View style={styles.header}>
         <BackButton />
       </View>
-
       <Text style={styles.title}>Se connecter</Text>
-
       <View style={styles.form}>
         <InputField
           label="Email"

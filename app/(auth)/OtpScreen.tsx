@@ -3,7 +3,7 @@ import BackButton from "@/components/BackButton";
 import CustomButton from "@/components/CustomButton";
 import { useUserStore } from "@/store/userStore";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   StyleSheet,
@@ -53,14 +53,31 @@ const OtpVerify = () => {
     try {
       console.log("Code OTP saisi:", code, "pour email:", email);
 
-      // 🔹 Appel API verify-email
+      // 🔹 Vérification du code + récupération du token et du profil
       const data = await verifyEmail(email!, code);
 
-      // 🔑 Sauvegarde token dans store
-      await useUserStore.getState().setToken(data.access_token);
+      // 🔑 Sauvegarde du token
+      const store = useUserStore.getState();
+      await store.setToken(data.access_token);
+
+      // 🟢 Met à jour directement le profil dans le store
+      if (data.userProfile) {
+        store.setUserProfile(data.userProfile);
+        console.log("✅ Profil mis à jour après OTP:", data.userProfile);
+      } else {
+        // fallback : rafraîchit depuis l'API si le profil n'est pas renvoyé
+        await store.refreshProfile();
+      }
 
       Alert.alert("✅ Succès", "Votre compte est vérifié !");
-      router.replace("/(tabs)");
+
+      // 🎯 Redirection selon le type de compte
+      const profileType = store.userProfile?.profileType;
+      if (profileType === "PRO") {
+        router.replace("/(professionnel)");
+      } else {
+        router.replace("/(tabs)");
+      }
     } catch (error: any) {
       console.error("Erreur vérification OTP:", error);
       Alert.alert("Erreur", error.message || "OTP invalide ou expiré");
@@ -68,7 +85,6 @@ const OtpVerify = () => {
       setLoading(false);
     }
   };
-
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
       .toString()

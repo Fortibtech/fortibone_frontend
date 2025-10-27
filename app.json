@@ -8,14 +8,10 @@
     "scheme": "fortibonefrontend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "supportsTablet": true,
-      "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Nous avons besoin de votre position pour localiser votre entreprise."
-      }
+      "bundleIdentifier": "com.fortibone"
     },
-
     "android": {
       "package": "com.fortibone",
       "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
@@ -26,12 +22,10 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-
     "plugins": [
       [
         "expo-splash-screen",
@@ -46,23 +40,19 @@
         }
       ]
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
-
     "extra": {
       "router": {},
       "eas": {
         "projectId": "8c93c007-b15e-4eee-a841-970eed9490bb"
       }
     },
-
     "runtimeVersion": {
       "policy": "appVersion"
     },
-
     "updates": {
       "url": "https://u.expo.dev/8c93c007-b15e-4eee-a841-970eed9490bb"
     }
