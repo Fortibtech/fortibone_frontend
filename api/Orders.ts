@@ -126,7 +126,7 @@ export const getBusinessOrders = async (
 ): Promise<OrdersPaginatedResponse> => {
   try {
     const { data } = await axiosInstance.get<OrdersPaginatedResponse>(
-      `/orders/businesses/${businessId}/orders`,
+      `/businesses/${businessId}/orders`,
       { params }
     );
     return data;
