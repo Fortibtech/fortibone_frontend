@@ -5,21 +5,22 @@ import InputField from "@/components/InputField";
 import { useUserStore } from "@/store/userStore";
 import { RegisterPayload } from "@/types/auth";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // --- Types ---
 interface DatePickerModalProps {
@@ -63,7 +64,6 @@ interface FormData {
   profileType: string;
   commerceType?: string;
   addressCommerce?: string;
-  address?: string;
   matricule?: string;
   webLink?: string;
   description?: string;
@@ -97,9 +97,11 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
     onClose();
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible && Platform.OS === "android") setShowAndroidPicker(true);
   }, [visible]);
+
+  if (!visible) return null;
 
   if (Platform.OS === "android" && showAndroidPicker) {
     return (
@@ -155,7 +157,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
   return null;
 };
 
-// --Commercant types
+// --- Commercant Type Modal ---
 const CommercantTypeModal: React.FC<CommercantTypeModalProps> = ({
   visible,
   onClose,
@@ -181,7 +183,9 @@ const CommercantTypeModal: React.FC<CommercantTypeModalProps> = ({
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Sélectionnez le sexe</Text>
+          <Text style={styles.modalTitle}>
+            Sélectionnez le type de commerce
+          </Text>
           <View style={styles.genderOptions}>
             {["Boutique physique", "Boutique online"].map((type) => (
               <TouchableOpacity
@@ -399,19 +403,35 @@ const Register: React.FC = () => {
     phoneNumber: "",
     profileType: "",
     commerceType: "",
-    address: "",
+    addressCommerce: "",
     matricule: "",
     webLink: "",
     description: "",
     secteurActivite: "",
   });
-
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showComercantTypeModal, setshowComercantTypeModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showProfileTypeModal, setShowProfileTypeModal] = useState(false);
+  const [profileType, setProfileType] = useState<string | null>(null);
   const router = useRouter();
+
+  // Charger le profil depuis AsyncStorage
+  useEffect(() => {
+    const loadProfileType = async () => {
+      try {
+        const storedProfile = await AsyncStorage.getItem("userProfile");
+        if (storedProfile) {
+          setProfileType(storedProfile);
+          setFormData((prev) => ({ ...prev, profileType: storedProfile }));
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement du profil:", error);
+      }
+    };
+    loadProfileType();
+  }, []);
 
   const updateField = useCallback((field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -431,18 +451,40 @@ const Register: React.FC = () => {
   }, []);
 
   const isFormValid = useCallback(() => {
+    const requiredFields: string[] = [
+      formData.prenom,
+      formData.nom,
+      formData.sexe,
+      formData.pays,
+      formData.ville,
+      formData.dateNaissance,
+      formData.email,
+      formData.motDePasse,
+      formData.phoneNumber,
+      formData.profileType,
+    ];
+
+    if (profileType === "professionnel") {
+      if (formData.commerceType) requiredFields.push(formData.commerceType);
+      if (formData.addressCommerce)
+        requiredFields.push(formData.addressCommerce);
+      if (formData.secteurActivite)
+        requiredFields.push(formData.secteurActivite);
+    }
+
     return (
-      Object.values(formData).every((v) => v.trim() !== "") &&
+      requiredFields.every((v) => v.trim() !== "") &&
       validateEmail(formData.email) &&
       validatePassword(formData.motDePasse)
     );
-  }, [formData, validateEmail, validatePassword]);
+  }, [formData, validateEmail, validatePassword, profileType]);
 
   const handleCreateAccount = async () => {
     if (!isFormValid()) {
       Alert.alert("Erreur", "Veuillez remplir tous les champs correctement.");
       return;
     }
+
     const payload: RegisterPayload = {
       firstName: formData.prenom.trim(),
       lastName: formData.nom.trim(),
@@ -456,10 +498,17 @@ const Register: React.FC = () => {
       email: formData.email.trim(),
       password: formData.motDePasse,
       phoneNumber: formData.phoneNumber.trim(),
-      commerceType:
-        formData.commerceType === "Boutique physique"
-          ? "Boutique physique"
-          : "Boutique online",
+      ...(profileType === "professionnel" && {
+        commerceType:
+          formData.commerceType === "Boutique physique"
+            ? "Boutique physique"
+            : "Boutique online",
+        addressCommerce: formData.addressCommerce?.trim(),
+        matricule: formData.matricule?.trim(),
+        webLink: formData.webLink?.trim(),
+        description: formData.description?.trim(),
+        secteurActivite: formData.secteurActivite?.trim(),
+      }),
     };
 
     try {
@@ -468,11 +517,7 @@ const Register: React.FC = () => {
 
       if (result.success) {
         Alert.alert("Succès", result.message);
-        router.push(
-          formData.profileType === "PRO"
-            ? "/(auth)/OtpScreen"
-            : "/(auth)/OtpScreen"
-        );
+        router.push("/(auth)/OtpScreen");
       }
     } catch (error: any) {
       Alert.alert("Erreur", error.message || "Une erreur est survenue.");
@@ -481,10 +526,11 @@ const Register: React.FC = () => {
 
   const handleCommerceSelect = useCallback(
     (type: string) => {
-      updateField("commerceType", type); // Assuming "commerceType" is a valid key of the FormData type
+      updateField("commerceType", type);
     },
     [updateField]
   );
+
   const handleGenderSelect = useCallback(
     (gender: string) => {
       updateField("sexe", gender);
@@ -495,6 +541,7 @@ const Register: React.FC = () => {
   const handleProfileTypeSelect = useCallback(
     (type: "PARTICULIER" | "PRO") => {
       updateField("profileType", type);
+      setProfileType(type === "PARTICULIER" ? "particulier" : "professionnel");
     },
     [updateField]
   );
@@ -529,69 +576,68 @@ const Register: React.FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.formContainer}>
-            {/* --------------------Bussiness infos en dessous */}
-            <InputField
-              label="Nom du commercant"
-              placeholder="Ex:Boutique de bob"
-              value={formData.prenom}
-              onChangeText={(text) => updateField("prenom", text)}
-            />
+            {/* -------------------- Informations professionnelles -------------------- */}
+            {profileType === "professionnel" && (
+              <>
+                <InputField
+                  label="Nom du commerçant"
+                  placeholder="Ex: Boutique de Bob"
+                  value={formData.prenom}
+                  onChangeText={(text) => updateField("prenom", text)}
+                />
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.label}>Type de commerçant</Text>
+                  <TouchableOpacity
+                    style={styles.selectField}
+                    onPress={() => setshowComercantTypeModal(true)}
+                  >
+                    <Text
+                      style={[
+                        styles.selectFieldText,
+                        !formData.commerceType && styles.placeholderText,
+                      ]}
+                    >
+                      {formData.commerceType ||
+                        "Sélectionnez le type de commerçant"}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#666" />
+                  </TouchableOpacity>
+                </View>
+                <InputField
+                  label="Adresse du commerce"
+                  placeholder="Entrer une adresse"
+                  value={formData.addressCommerce || ""}
+                  onChangeText={(text) => updateField("addressCommerce", text)}
+                />
+                <InputField
+                  label="SIRET/NUI (Optionnel)"
+                  placeholder="Entrer le matricule SIRET/NUI"
+                  value={formData.matricule || ""}
+                  onChangeText={(text) => updateField("matricule", text)}
+                />
+                <InputField
+                  label="Site web (Optionnel)"
+                  placeholder="Ajouter un lien"
+                  value={formData.webLink || ""}
+                  onChangeText={(text) => updateField("webLink", text)}
+                />
+                <InputField
+                  label="Secteur d'activité *"
+                  placeholder="Ajouter votre secteur d'activité"
+                  value={formData.secteurActivite || ""}
+                  onChangeText={(text) => updateField("secteurActivite", text)}
+                />
+                <InputField
+                  label="Description"
+                  placeholder="Décris ton produit..."
+                  value={formData.description || ""}
+                  onChangeText={(text) => updateField("description", text)}
+                  type="description"
+                />
+              </>
+            )}
 
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Type de commercant</Text>
-              <TouchableOpacity
-                style={styles.selectField}
-                onPress={() => setshowComercantTypeModal(true)}
-              >
-                <Text
-                  style={[
-                    styles.selectFieldText,
-                    !formData.commerceType && styles.placeholderText,
-                  ]}
-                >
-                  {formData.commerceType ||
-                    "Sélectionnez le type de commercant"}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <InputField
-              label="Adresse du commerce"
-              placeholder="Entrer une adresse"
-              value={formData.addressCommerce || ""}
-              onChangeText={(text) => updateField("addressCommerce", text)}
-            />
-
-            <InputField
-              label="SIRET/NUI (Optionnel)"
-              placeholder="Entrer le matricule SIRET/NUI"
-              value={formData.matricule || ""}
-              onChangeText={(text) => updateField("matricule", text)}
-            />
-
-            <InputField
-              label="Site web (Optionnel)"
-              placeholder="Ajouter un lien"
-              value={formData.matricule || ""}
-              onChangeText={(text) => updateField("webLink", text)}
-            />
-            <InputField
-              label="Secteur d'activité *"
-              placeholder="Ajouter votre secteur d'activité"
-              value={formData.matricule || ""}
-              onChangeText={(text) => updateField("secteurActivite", text)}
-            />
-
-            <InputField
-              label="Description"
-              placeholder="Décris ton produit..."
-              value={formData.description || ""}
-              onChangeText={(text) => updateField("description", text)}
-              type="description"
-            />
-
-            {/* --------------------user infos en dessous */}
+            {/* -------------------- Informations personnelles -------------------- */}
             <InputField
               label="Prénom"
               placeholder="Prénom"
@@ -604,7 +650,6 @@ const Register: React.FC = () => {
               value={formData.nom}
               onChangeText={(text) => updateField("nom", text)}
             />
-
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Sexe</Text>
               <TouchableOpacity
@@ -622,7 +667,6 @@ const Register: React.FC = () => {
                 <Ionicons name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
             </View>
-
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Type de profil</Text>
               <TouchableOpacity
@@ -640,7 +684,6 @@ const Register: React.FC = () => {
                 <Ionicons name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
             </View>
-
             <InputField
               label="Pays"
               placeholder="Pays"
@@ -660,7 +703,6 @@ const Register: React.FC = () => {
               onChangeText={(text) => updateField("phoneNumber", text)}
               keyboardType="phone-pad"
             />
-
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Date de naissance</Text>
               <TouchableOpacity
@@ -678,7 +720,6 @@ const Register: React.FC = () => {
                 <Ionicons name="calendar-outline" size={20} color="#666" />
               </TouchableOpacity>
             </View>
-
             <InputField
               label="Email"
               placeholder="Email"
@@ -698,9 +739,9 @@ const Register: React.FC = () => {
             <Text
               style={[
                 styles.passwordInfo,
-                formData.motDePasse &&
-                  !validatePassword(formData.motDePasse) &&
-                  styles.errorText,
+                formData.motDePasse && !validatePassword(formData.motDePasse)
+                  ? styles.errorText
+                  : null,
               ]}
             >
               Le mot de passe doit comporter au moins 8 caractères et inclure
@@ -709,7 +750,6 @@ const Register: React.FC = () => {
                 !validatePassword(formData.motDePasse) &&
                 " - Mot de passe insuffisant"}
             </Text>
-
             <View style={styles.createButtonContainer}>
               <CustomButton
                 title="Créer un compte"
@@ -726,11 +766,10 @@ const Register: React.FC = () => {
 
         <CommercantTypeModal
           visible={showComercantTypeModal}
-          onClose={() => setshowComercantTypeModal(false)} // ✅ CORRECTION
+          onClose={() => setshowComercantTypeModal(false)}
           onSelect={handleCommerceSelect}
           selectedCommerceType={formData.commerceType}
         />
-
         <GenderSelectionModal
           visible={showGenderModal}
           onClose={() => setShowGenderModal(false)}
