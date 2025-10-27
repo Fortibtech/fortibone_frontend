@@ -345,7 +345,6 @@ const Register: React.FC = () => {
       Alert.alert("Erreur", "Veuillez remplir tous les champs correctement.");
       return;
     }
-
     const payload: RegisterPayload = {
       firstName: formData.prenom.trim(),
       lastName: formData.nom.trim(),
@@ -369,7 +368,7 @@ const Register: React.FC = () => {
         Alert.alert("Succès", result.message);
         router.push(
           formData.profileType === "PRO"
-            ? "/(professionnel)"
+            ? "/(auth)/OtpScreen"
             : "/(auth)/OtpScreen"
         );
       }
