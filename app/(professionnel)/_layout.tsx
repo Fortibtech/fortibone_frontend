@@ -1,12 +1,6 @@
 // app/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
-import {
-  BookOpen,
-  CreditCard,
-  Home,
-  Send,
-  ShoppingCart,
-} from "lucide-react-native";
+import { BookOpen, CircleDollarSign, CreditCard, Home, Send } from "lucide-react-native";
 
 export default function RootLayout() {
   return (
@@ -57,9 +51,9 @@ export default function RootLayout() {
       <Tabs.Screen
         name="commande"
         options={{
-          title: "Commande",
+          title: "Ventes",
           tabBarIcon: ({ color, size }) => (
-            <ShoppingCart size={size} color={color} fill={color} />
+            <CircleDollarSign size={size} color={color} strokeWidth={2} />
           ),
         }}
       />

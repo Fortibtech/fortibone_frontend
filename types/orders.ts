@@ -67,6 +67,8 @@ export interface OrderLine {
 }
 
 export interface Customer {
+  lastName: any;
+  profileImageUrl: any;
   id: string;
   firstName: string;
 }
@@ -203,6 +205,7 @@ export interface Business {
 
 export interface OrderResponse {
   id: string;
+  profileImageUrl: string | null;
   orderNumber: string;
   type: "SALE" | "PURCHASE" | "RESERVATION";
   status:
