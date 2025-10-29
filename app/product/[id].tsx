@@ -1,8 +1,17 @@
 // screens/ProductDetailScreen.tsx - Version complète avec gestion des variantes
-import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Edit, Heart, MapPin, Package, Plus, Share, Tag, Trash2 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
+import {
+  Edit,
+  Heart,
+  MapPin,
+  Package,
+  Plus,
+  Share,
+  Tag,
+  Trash2,
+} from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -47,16 +56,17 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 }) => {
   const params = useLocalSearchParams();
   const productId = propProductId || (params.id as string);
-  
   const [product, setProduct] = useState<Product | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // États pour les variantes
   const [showVariantModal, setShowVariantModal] = useState(false);
-  const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(null);
+  const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(
+    null
+  );
   const [showEditProductModal, setShowEditProductModal] = useState(false);
 
   useEffect(() => {
@@ -67,38 +77,38 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const loadProductDetails = async () => {
     if (!productId) {
-      Alert.alert('Erreur', 'ID du produit manquant');
+      Alert.alert("Erreur", "ID du produit manquant");
       router.back();
       return;
     }
 
     try {
       setLoading(true);
-      
+
       // Charger les détails du produit avec variantes
       const productData = await ProductService.getProductById(productId);
       setProduct(productData);
-      
+
       // Charger les détails de l'entreprise
       try {
-        const businessData = await BusinessesService.getBusinessById(productData.businessId);
+        const businessData = await BusinessesService.getBusinessById(
+          productData.businessId
+        );
         setBusiness(businessData);
       } catch (businessError) {
-        console.warn('Impossible de charger les détails de l\'entreprise:', businessError);
+        console.warn(
+          "Impossible de charger les détails de l'entreprise:",
+          businessError
+        );
       }
-      
     } catch (error) {
-      console.error('Erreur lors du chargement du produit:', error);
-      Alert.alert(
-        'Erreur', 
-        'Impossible de charger les détails du produit',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      );
+      console.error("Erreur lors du chargement du produit:", error);
+      Alert.alert("Erreur", "Impossible de charger les détails du produit", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -112,16 +122,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     if (!product) return;
 
     Alert.alert(
-      'Supprimer le produit',
+      "Supprimer le produit",
       `Êtes-vous sûr de vouloir supprimer "${product.name}" et toutes ses variantes ? Cette action est irréversible.`,
       [
         {
-          text: 'Annuler',
-          style: 'cancel',
+          text: "Annuler",
+          style: "cancel",
         },
         {
-          text: 'Supprimer',
-          style: 'destructive',
+          text: "Supprimer",
+          style: "destructive",
           onPress: confirmDeleteProduct,
         },
       ]
@@ -133,27 +143,22 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
     try {
       setIsDeleting(true);
-      
+
       await ProductService.deleteProduct(product.id);
-      
+
       if (onDelete) {
         onDelete(product.id);
       }
-      
-      Alert.alert(
-        'Succès',
-        'Produit et ses variantes supprimés avec succès',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      );
-      
+
+      Alert.alert("Succès", "Produit et ses variantes supprimés avec succès", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
     } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
-      Alert.alert('Erreur', 'Impossible de supprimer le produit');
+      console.error("Erreur lors de la suppression:", error);
+      Alert.alert("Erreur", "Impossible de supprimer le produit");
     } finally {
       setIsDeleting(false);
     }
@@ -171,16 +176,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const handleDeleteVariant = (variant: ProductVariant) => {
     Alert.alert(
-      'Supprimer la variante',
+      "Supprimer la variante",
       `Êtes-vous sûr de vouloir supprimer la variante "${variant.sku}" ?`,
       [
         {
-          text: 'Annuler',
-          style: 'cancel',
+          text: "Annuler",
+          style: "cancel",
         },
         {
-          text: 'Supprimer',
-          style: 'destructive',
+          text: "Supprimer",
+          style: "destructive",
           onPress: () => confirmDeleteVariant(variant),
         },
       ]
@@ -190,14 +195,14 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const confirmDeleteVariant = async (variant: ProductVariant) => {
     try {
       await ProductService.deleteVariant(variant.id);
-      
+
       // Recharger les détails du produit
       await loadProductDetails();
-      
-      Alert.alert('Succès', 'Variante supprimée avec succès');
+
+      Alert.alert("Succès", "Variante supprimée avec succès");
     } catch (error) {
-      console.error('Erreur lors de la suppression de la variante:', error);
-      Alert.alert('Erreur', 'Impossible de supprimer la variante');
+      console.error("Erreur lors de la suppression de la variante:", error);
+      Alert.alert("Erreur", "Impossible de supprimer la variante");
     }
   };
 
@@ -214,7 +219,10 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const handleShare = () => {
     if (product) {
-      Alert.alert('Partager', `Partage du produit "${product.name}" (fonctionnalité à implémenter)`);
+      Alert.alert(
+        "Partager",
+        `Partage du produit "${product.name}" (fonctionnalité à implémenter)`
+      );
     }
   };
 
@@ -224,30 +232,20 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => router.back()}
         style={styles.headerButton}
       >
         <Ionicons name="arrow-back" size={24} color="white" />
       </TouchableOpacity>
-      
+
       <View style={styles.headerActions}>
-        <TouchableOpacity 
-          onPress={handleShare}
-          style={styles.headerButton}
-        >
+        <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
           <Share size={24} color="white" />
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={toggleLike}
-          style={styles.headerButton}
-        >
-          <Heart 
-            size={24} 
-            color="white" 
-            fill={isLiked ? "white" : "none"} 
-          />
+
+        <TouchableOpacity onPress={toggleLike} style={styles.headerButton}>
+          <Heart size={24} color="white" fill={isLiked ? "white" : "none"} />
         </TouchableOpacity>
       </View>
     </View>
@@ -256,8 +254,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const renderImageSection = () => (
     <View style={styles.imageContainer}>
       {product?.imageUrl ? (
-        <Image 
-          source={{ uri: product.imageUrl }} 
+        <Image
+          source={{ uri: product.imageUrl }}
           style={styles.productImage}
           resizeMode="cover"
         />

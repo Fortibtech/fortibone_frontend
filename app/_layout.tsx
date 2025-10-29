@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
+// import { StripeProvider } from "@stripe/stripe-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform } from "react-native";
 import Toast from "react-native-toast-message";
@@ -42,7 +43,7 @@ export default function RootLayout() {
       merchantIdentifier="merchant.com.your-app"
     >
       <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(analytics)" />
         <Stack.Screen name="(opening-hours)" />
         <Stack.Screen name="(business-details)" />
@@ -51,7 +52,7 @@ export default function RootLayout() {
         <Stack.Screen name="(orders)" />
         <Stack.Screen name="(restaurants)" />
         <Stack.Screen name="(transactions)" />
-        <Stack.Screen name="(professionnel)" />
+        <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
         <Stack.Screen name="product-details/[id]" />
         <Stack.Screen name="(profile-particulier)" />
         <Stack.Screen name="onboarding" />

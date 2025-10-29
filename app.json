@@ -14,7 +14,12 @@
     },
     "android": {
       "package": "com.fortibone",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo/green.png",
         "backgroundColor": "#E6F4FE"
@@ -47,14 +52,15 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "8c93c007-b15e-4eee-a841-970eed9490bb"
+        "projectId": "b7da2f66-eca9-453c-a258-a6497461509c"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/8c93c007-b15e-4eee-a841-970eed9490bb"
-    }
+      "url": "https://u.expo.dev/b7da2f66-eca9-453c-a258-a6497461509c"
+    },
+    "owner": "fortibtechteam"
   }
 }
