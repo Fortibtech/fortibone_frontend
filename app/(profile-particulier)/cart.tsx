@@ -6,16 +6,17 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
 import { CreateOrderPayload } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
-<<<<<<< HEAD
-import { CardField, createPaymentMethod } from "@stripe/stripe-react-native";
-=======
-import { createPaymentMethod } from "@stripe/stripe-react-native";
->>>>>>> 68b1938 (reinitialisation du depot expo)
+import {
+  CardField,
+  createPaymentMethod,
+  useStripe,
+} from "@stripe/stripe-react-native";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,23 +32,16 @@ const fallbackImage = require("@/assets/images/store-placeholder.png");
 const Cart = () => {
   const { items, removeItem } = useCartStore();
   const [isLoading, setIsLoading] = useState(false);
-<<<<<<< HEAD
-=======
+
   const [showPaymentUI, setShowPaymentUI] = useState(false);
   const [cardDetails, setCardDetails] = useState<any>(null);
-  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-<<<<<<< HEAD
-<<<<<<< HEAD
+  // const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+
   const { confirmPayment, createPaymentMethod } =
     Platform.OS !== "web"
       ? // eslint-disable-next-line react-hooks/rules-of-hooks
         useStripe()
       : { confirmPayment: null, createPaymentMethod: null };
-=======
->>>>>>> 2507e2c (correction PR)
->>>>>>> 5b73c83 (correction PR)
-=======
->>>>>>> 68b1938 (reinitialisation du depot expo)
 
   // 🔹 Créer la commande
   const handleCreateOrder = async () => {
@@ -124,21 +118,17 @@ const Cart = () => {
         orderId,
         {
           method: PaymentMethod.CASH,
-          paymentMethodId: ""
+          paymentMethodId: "",
         }
       );
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-      console.log("✅ Paiement manuel créé:", paymentIntentData);
-=======
-<<<<<<< HEAD
-      if (paymentIntentData.clientSecret) {
-        const { error: confirmError, paymentIntent } = await confirmPayment(
-          paymentIntentData.clientSecret,
-          { paymentMethodType: "Card" }
-        );
->>>>>>> 5b73c83 (correction PR)
+      // if (paymentIntentData && paymentIntentData.clientSecret) {
+      //   const { error: confirmError, paymentIntent } = await confirmPayment(
+      //     paymentIntentData.clientSecret,
+      //     { paymentMethodType: "Card" }
+      //   );
+      //   // Rest of your code...
+      // }
 
       Toast.show({
         type: "success",
@@ -146,16 +136,6 @@ const Cart = () => {
         text2: "Le paiement sera traité manuellement.",
       });
 
-<<<<<<< HEAD
-      // 🔹 Nettoyage
-      useCartStore.setState({ items: [] });
-    } catch (err: any) {
-      console.error("❌ Erreur paiement manuel:", err);
-      Alert.alert("Erreur", err.message || "Une erreur est survenue");
-=======
-=======
-=======
->>>>>>> 68b1938 (reinitialisation du depot expo)
       // Étape 4: Confirmer le paiement avec Stripe
       // if (paymentIntentData.clientSecret) {
       //   console.log("🔓 Confirmation du paiement...");
@@ -177,7 +157,7 @@ const Cart = () => {
       //   }
 
       //   console.log("✅ Paiement confirmé:", paymentIntent);
-        
+
       //   // Succès !
       //   Toast.show({
       //     type: "success",
@@ -199,17 +179,15 @@ const Cart = () => {
       //   // Ici, vous pouvez ouvrir le redirectUrl dans un navigateur ou WebView
       // }
       console.log("✅ Paiement confirmé:", paymentIntentData);
-        
-        // Succès !
-        Toast.show({
-          type: "success",
-          text1: "Paiement réussi ! 🎉",
-          text2: `Transaction: ${paymentIntentData.transactionId}`,
-        });
 
+      // Succès !
+      Toast.show({
+        type: "success",
+        text1: "Paiement réussi ! 🎉",
+        text2: `Transaction: ${paymentIntentData.transactionId}`,
+      });
     } catch (error: any) {
       Alert.alert("Erreur", error.message || "Une erreur est survenue");
->>>>>>> 5b73c83 (correction PR)
     } finally {
       setIsLoading(false);
     }
@@ -244,9 +222,6 @@ const Cart = () => {
           <Text style={styles.headerTitle}>Votre Panier ({totalItems})</Text>
         </View>
 
-<<<<<<< HEAD
-        {items.length === 0 ? (
-=======
         {showPaymentUI ? (
           Platform.OS === "web" ? (
             <View style={styles.webPlaceholder}>
@@ -284,7 +259,7 @@ const Cart = () => {
               </View>
 
               <TouchableOpacity
-                onPress={handleFinalizePayment}
+                onPress={handleManualPayment}
                 style={[
                   styles.payButton,
                   (!cardDetails?.complete || isLoading) &&
@@ -306,7 +281,6 @@ const Cart = () => {
             </ScrollView>
           )
         ) : items.length === 0 ? (
->>>>>>> 5b73c83 (correction PR)
           <View style={styles.emptyContainer}>
             <Ionicons name="cart-outline" size={80} color="#ccc" />
             <Text style={styles.emptyText}>Votre panier est vide</Text>
@@ -381,6 +355,127 @@ const Cart = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 20 },
+  webText: {
+    fontSize: 16,
+    color: "#4b5563", // gris doux
+    textAlign: "center",
+    marginTop: 8,
+    lineHeight: 22,
+    paddingHorizontal: 20,
+    fontWeight: "500",
+  },
+  webPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  webIcon: {
+    marginBottom: 16,
+  },
+  webTextTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#059669",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  webTextSubtitle: {
+    fontSize: 16,
+    color: "#555",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+
+  paymentContainer: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  paymentContent: {
+    paddingBottom: 32,
+  },
+  paymentHeader: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  paymentTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#059669",
+    marginTop: 8,
+  },
+  totalSection: {
+    backgroundColor: "#f0fdf4",
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  totalSectionLabel: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "600",
+  },
+  totalSectionAmount: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  cardSection: {
+    marginBottom: 24,
+  },
+  cardLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 12,
+  },
+  cardField: {
+    height: 50,
+    marginVertical: 10,
+  },
+  cardHint: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 4,
+    textAlign: "center",
+  },
+  payButton: {
+    backgroundColor: "#059669",
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: "#059669",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  payButtonDisabled: {
+    backgroundColor: "#a7f3d0",
+  },
+  payButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",

@@ -2,6 +2,7 @@
 import { Tabs } from "expo-router";
 import {
   BookOpen,
+  CircleDollarSign,
   CreditCard,
   Home,
   Send
