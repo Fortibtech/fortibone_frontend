@@ -27,7 +27,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import Animated, { FadeInUp, Layout } from "react-native-reanimated";
 
