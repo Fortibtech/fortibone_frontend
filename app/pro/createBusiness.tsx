@@ -1,10 +1,10 @@
 // app/pro/createBusiness.tsx - Version avec carte Leaflet (WebView)
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
-import { router } from 'expo-router';
-import { Banknote, Building, ChevronDown, MapPin } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import { router } from "expo-router";
+import { Banknote, Building, ChevronDown, MapPin } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,13 +19,18 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { WebView } from 'react-native-webview';
+} from "react-native";
+import { WebView } from "react-native-webview";
 
 // Import des services API
-import { BusinessesService, CreateBusinessData, Currency, CurrencyService } from '@/api';
+import {
+  BusinessesService,
+  CreateBusinessData,
+  Currency,
+  CurrencyService,
+} from "@/api";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Composant de sélection de position sur la carte avec Leaflet
 interface MapPickerProps {
@@ -51,11 +56,11 @@ const MapPicker: React.FC<MapPickerProps> = ({
     try {
       setLoadingLocation(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
-      if (status !== 'granted') {
+
+      if (status !== "granted") {
         Alert.alert(
-          'Permission refusée',
-          'Vous devez autoriser l\'accès à la localisation pour utiliser cette fonctionnalité.'
+          "Permission refusée",
+          "Vous devez autoriser l'accès à la localisation pour utiliser cette fonctionnalité."
         );
         return;
       }
@@ -70,15 +75,15 @@ const MapPicker: React.FC<MapPickerProps> = ({
       };
 
       setSelectedLocation(newLocation);
-      
+
       // Mettre à jour la carte
       webViewRef.current?.injectJavaScript(`
         moveToLocation(${newLocation.latitude}, ${newLocation.longitude});
         true;
       `);
     } catch (error) {
-      console.error('Erreur lors de la récupération de la position:', error);
-      Alert.alert('Erreur', 'Impossible de récupérer votre position actuelle.');
+      console.error("Erreur lors de la récupération de la position:", error);
+      Alert.alert("Erreur", "Impossible de récupérer votre position actuelle.");
     } finally {
       setLoadingLocation(false);
     }
@@ -92,14 +97,14 @@ const MapPicker: React.FC<MapPickerProps> = ({
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'locationSelected') {
+      if (data.type === "locationSelected") {
         setSelectedLocation({
           latitude: data.latitude,
           longitude: data.longitude,
         });
       }
     } catch (error) {
-      console.error('Erreur lors du parsing du message:', error);
+      console.error("Erreur lors du parsing du message:", error);
     }
   };
 
@@ -210,9 +215,9 @@ const MapPicker: React.FC<MapPickerProps> = ({
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancelButton}>Annuler</Text>
             </TouchableOpacity>
-            
+
             <Text style={styles.modalTitle}>Sélectionner la position</Text>
-            
+
             <TouchableOpacity onPress={handleConfirm}>
               <Text style={styles.modalDoneButton}>Confirmer</Text>
             </TouchableOpacity>
@@ -230,7 +235,9 @@ const MapPicker: React.FC<MapPickerProps> = ({
 
             <View style={styles.mapInfoContainer}>
               <View style={styles.coordinatesDisplay}>
-                <Text style={styles.coordinatesLabel}>Coordonnées sélectionnées</Text>
+                <Text style={styles.coordinatesLabel}>
+                  Coordonnées sélectionnées
+                </Text>
                 <Text style={styles.coordinatesText}>
                   Lat: {selectedLocation.latitude.toFixed(6)}
                 </Text>
@@ -260,7 +267,8 @@ const MapPicker: React.FC<MapPickerProps> = ({
             <View style={styles.mapInstructions}>
               <Ionicons name="information-circle" size={18} color="#8b5cf6" />
               <Text style={styles.mapInstructionsText}>
-                Touchez la carte ou déplacez le marqueur pour sélectionner la position
+                Touchez la carte ou déplacez le marqueur pour sélectionner la
+                position
               </Text>
             </View>
           </View>
@@ -280,36 +288,42 @@ interface IOSPickerProps {
   searchable?: boolean;
 }
 
-const IOSPicker: React.FC<IOSPickerProps> = ({ 
-  title, 
-  options, 
-  selectedValue, 
-  onValueChange, 
+const IOSPicker: React.FC<IOSPickerProps> = ({
+  title,
+  options,
+  selectedValue,
+  onValueChange,
   placeholder = "Sélectionner...",
-  searchable = false
+  searchable = false,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  
-  const selectedOption = options.find(option => option.value === selectedValue);
+  const [searchText, setSearchText] = useState("");
 
-  const filteredOptions = searchable && searchText 
-    ? options.filter(option => 
-        option.label.toLowerCase().includes(searchText.toLowerCase()) ||
-        option.value.toLowerCase().includes(searchText.toLowerCase())
-      )
-    : options;
+  const selectedOption = options.find(
+    (option) => option.value === selectedValue
+  );
+
+  const filteredOptions =
+    searchable && searchText
+      ? options.filter(
+          (option) =>
+            option.label.toLowerCase().includes(searchText.toLowerCase()) ||
+            option.value.toLowerCase().includes(searchText.toLowerCase())
+        )
+      : options;
 
   return (
     <>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.iosPickerButton}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={[
-          styles.iosPickerText,
-          !selectedOption && styles.iosPickerPlaceholder
-        ]}>
+        <Text
+          style={[
+            styles.iosPickerText,
+            !selectedOption && styles.iosPickerPlaceholder,
+          ]}
+        >
           {selectedOption ? selectedOption.label : placeholder}
         </Text>
         <ChevronDown size={20} color="#666" />
@@ -326,9 +340,9 @@ const IOSPicker: React.FC<IOSPickerProps> = ({
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancelButton}>Annuler</Text>
             </TouchableOpacity>
-            
+
             <Text style={styles.modalTitle}>{title}</Text>
-            
+
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalDoneButton}>OK</Text>
             </TouchableOpacity>
@@ -336,7 +350,12 @@ const IOSPicker: React.FC<IOSPickerProps> = ({
 
           {searchable && (
             <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+              <Ionicons
+                name="search"
+                size={20}
+                color="#666"
+                style={styles.searchIcon}
+              />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Rechercher..."
@@ -354,18 +373,20 @@ const IOSPicker: React.FC<IOSPickerProps> = ({
               <TouchableOpacity
                 style={[
                   styles.optionItem,
-                  selectedValue === item.value && styles.selectedOptionItem
+                  selectedValue === item.value && styles.selectedOptionItem,
                 ]}
                 onPress={() => {
                   onValueChange(item.value);
                   setModalVisible(false);
-                  setSearchText('');
+                  setSearchText("");
                 }}
               >
-                <Text style={[
-                  styles.optionText,
-                  selectedValue === item.value && styles.selectedOptionText
-                ]}>
+                <Text
+                  style={[
+                    styles.optionText,
+                    selectedValue === item.value && styles.selectedOptionText,
+                  ]}
+                >
                   {item.label}
                 </Text>
                 {selectedValue === item.value && (
@@ -376,7 +397,7 @@ const IOSPicker: React.FC<IOSPickerProps> = ({
             ListEmptyComponent={() => (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
-                  Aucun résultat pour "{searchText}"
+                  Aucun résultat pour &quot;{searchText}&quot;
                 </Text>
               </View>
             )}
@@ -389,38 +410,38 @@ const IOSPicker: React.FC<IOSPickerProps> = ({
 
 const CreateBusiness: React.FC = () => {
   const [business, setBusiness] = useState<Partial<CreateBusinessData>>({
-    name: '',
-    description: '',
-    type: 'COMMERCANT',
-    address: '',
-    phoneNumber: '',
+    name: "",
+    description: "",
+    type: "COMMERCANT",
+    address: "",
+    phoneNumber: "",
     latitude: 4.0511, // Douala par défaut
     longitude: 9.7679,
-    currencyId: '',
+    currencyId: "",
   });
 
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingCurrencies, setLoadingCurrencies] = useState(true);
-  const [logoUri, setLogoUri] = useState<string>('');
-  const [coverUri, setCoverUri] = useState<string>('');
+  const [logoUri, setLogoUri] = useState<string>("");
+  const [coverUri, setCoverUri] = useState<string>("");
 
   // Options pour les types d'entreprise
   const businessTypeOptions = [
-    { 
-      label: '🏪 Commerçant', 
-      value: 'COMMERCANT',
-      description: 'Vente de produits au détail'
+    {
+      label: "🏪 Commerçant",
+      value: "COMMERCANT",
+      description: "Vente de produits au détail",
     },
-    { 
-      label: '🏭 Fournisseur', 
-      value: 'FOURNISSEUR',
-      description: 'Approvisionnement en gros'
+    {
+      label: "🏭 Fournisseur",
+      value: "FOURNISSEUR",
+      description: "Approvisionnement en gros",
     },
-    { 
-      label: '🍽️ Restaurateur', 
-      value: 'RESTAURATEUR',
-      description: 'Services de restauration'
+    {
+      label: "🍽️ Restaurateur",
+      value: "RESTAURATEUR",
+      description: "Services de restauration",
     },
   ];
 
@@ -433,38 +454,42 @@ const CreateBusiness: React.FC = () => {
       setLoadingCurrencies(true);
       const currenciesData = await CurrencyService.getCurrencies();
       setCurrencies(currenciesData);
-      
+
       // Sélectionner XAF par défaut si disponible
-      const xafCurrency = currenciesData.find(c => c.code === 'XAF');
+      const xafCurrency = currenciesData.find((c) => c.code === "XAF");
       if (xafCurrency) {
-        setBusiness(prev => ({ ...prev, currencyId: xafCurrency.id }));
+        setBusiness((prev) => ({ ...prev, currencyId: xafCurrency.id }));
       } else if (currenciesData.length > 0) {
-        setBusiness(prev => ({ ...prev, currencyId: currenciesData[0].id }));
+        setBusiness((prev) => ({ ...prev, currencyId: currenciesData[0].id }));
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des devises:', error);
-      Alert.alert('Erreur', 'Impossible de charger les devises');
+      console.error("Erreur lors du chargement des devises:", error);
+      Alert.alert("Erreur", "Impossible de charger les devises");
     } finally {
       setLoadingCurrencies(false);
     }
   };
 
-  const pickImage = async (field: 'logo' | 'cover') => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const pickImage = async (field: "logo" | "cover") => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la bibliothèque de photos.');
+      Alert.alert(
+        "Permission refusée",
+        "Vous devez autoriser l'accès à la bibliothèque de photos."
+      );
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: field === 'logo' ? [1, 1] : [16, 9],
+      aspect: field === "logo" ? [1, 1] : [16, 9],
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      if (field === 'logo') {
+      if (field === "logo") {
         setLogoUri(result.assets[0].uri);
       } else {
         setCoverUri(result.assets[0].uri);
@@ -472,21 +497,24 @@ const CreateBusiness: React.FC = () => {
     }
   };
 
-  const takePhoto = async (field: 'logo' | 'cover') => {
+  const takePhoto = async (field: "logo" | "cover") => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la caméra.');
+      Alert.alert(
+        "Permission refusée",
+        "Vous devez autoriser l'accès à la caméra."
+      );
       return;
     }
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      aspect: field === 'logo' ? [1, 1] : [16, 9],
+      aspect: field === "logo" ? [1, 1] : [16, 9],
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      if (field === 'logo') {
+      if (field === "logo") {
         setLogoUri(result.assets[0].uri);
       } else {
         setCoverUri(result.assets[0].uri);
@@ -494,54 +522,51 @@ const CreateBusiness: React.FC = () => {
     }
   };
 
-  const showImageOptions = (field: 'logo' | 'cover') => {
-    const title = field === 'logo' ? 'Logo de l\'entreprise' : 'Image de couverture';
-    
-    Alert.alert(
-      title,
-      'Choisissez une option',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Galerie', onPress: () => pickImage(field) },
-        { text: 'Caméra', onPress: () => takePhoto(field) },
-      ]
-    );
+  const showImageOptions = (field: "logo" | "cover") => {
+    const title =
+      field === "logo" ? "Logo de l'entreprise" : "Image de couverture";
+
+    Alert.alert(title, "Choisissez une option", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Galerie", onPress: () => pickImage(field) },
+      { text: "Caméra", onPress: () => takePhoto(field) },
+    ]);
   };
 
   const validateForm = (): boolean => {
     if (!business.name?.trim()) {
-      Alert.alert('Erreur', 'Le nom de l\'entreprise est obligatoire.');
+      Alert.alert("Erreur", "Le nom de l'entreprise est obligatoire.");
       return false;
     }
     if (!business.description?.trim()) {
-      Alert.alert('Erreur', 'La description est obligatoire.');
+      Alert.alert("Erreur", "La description est obligatoire.");
       return false;
     }
     if (!business.address?.trim()) {
-      Alert.alert('Erreur', 'L\'adresse est obligatoire.');
+      Alert.alert("Erreur", "L'adresse est obligatoire.");
       return false;
     }
     if (!business.phoneNumber?.trim()) {
-      Alert.alert('Erreur', 'Le numéro de téléphone est obligatoire.');
+      Alert.alert("Erreur", "Le numéro de téléphone est obligatoire.");
       return false;
     }
     if (!business.currencyId) {
-      Alert.alert('Erreur', 'Veuillez sélectionner une devise.');
+      Alert.alert("Erreur", "Veuillez sélectionner une devise.");
       return false;
     }
     if (!business.latitude || !business.longitude) {
-      Alert.alert('Erreur', 'Les coordonnées géographiques sont obligatoires.');
+      Alert.alert("Erreur", "Les coordonnées géographiques sont obligatoires.");
       return false;
     }
     if (business.latitude < -90 || business.latitude > 90) {
-      Alert.alert('Erreur', 'La latitude doit être entre -90 et 90.');
+      Alert.alert("Erreur", "La latitude doit être entre -90 et 90.");
       return false;
     }
     if (business.longitude < -180 || business.longitude > 180) {
-      Alert.alert('Erreur', 'La longitude doit être entre -180 et 180.');
+      Alert.alert("Erreur", "La longitude doit être entre -180 et 180.");
       return false;
     }
-    
+
     return true;
   };
 
@@ -555,7 +580,7 @@ const CreateBusiness: React.FC = () => {
       const newBusiness = await BusinessesService.createBusiness({
         name: business.name!,
         description: business.description!,
-        type: business.type as 'COMMERCANT' | 'FOURNISSEUR' | 'RESTAURATEUR',
+        type: business.type as "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR",
         address: business.address!,
         phoneNumber: business.phoneNumber!,
         latitude: business.latitude!,
@@ -563,18 +588,18 @@ const CreateBusiness: React.FC = () => {
         currencyId: business.currencyId!,
       });
 
-      console.log('✅ Entreprise créée:', newBusiness);
+      console.log("✅ Entreprise créée:", newBusiness);
 
       // Upload du logo si présent
       if (logoUri) {
         try {
           await BusinessesService.uploadLogo(newBusiness.id, {
             uri: logoUri,
-            type: 'image/jpeg',
-            name: 'logo.jpg',
+            type: "image/jpeg",
+            name: "logo.jpg",
           } as any);
         } catch (uploadError) {
-          console.warn('⚠️ Erreur lors de l\'upload du logo:', uploadError);
+          console.warn("⚠️ Erreur lors de l'upload du logo:", uploadError);
         }
       }
 
@@ -583,11 +608,14 @@ const CreateBusiness: React.FC = () => {
         try {
           await BusinessesService.uploadCover(newBusiness.id, {
             uri: coverUri,
-            type: 'image/jpeg',
-            name: 'cover.jpg',
+            type: "image/jpeg",
+            name: "cover.jpg",
           } as any);
         } catch (uploadError) {
-          console.warn('⚠️ Erreur lors de l\'upload de la couverture:', uploadError);
+          console.warn(
+            "⚠️ Erreur lors de l'upload de la couverture:",
+            uploadError
+          );
         }
       }
 
@@ -595,47 +623,49 @@ const CreateBusiness: React.FC = () => {
       await BusinessesService.selectBusiness(newBusiness);
 
       Alert.alert(
-        'Succès', 
+        "Succès",
         `Entreprise "${newBusiness.name}" créée avec succès !`,
         [
           {
-            text: 'OK',
+            text: "OK",
             onPress: () => {
-              router.replace('/(professionnel)');
-            }
-          }
+              router.replace("/(professionnel)");
+            },
+          },
         ]
       );
-      
     } catch (error) {
-      console.error('❌ Erreur lors de la création:', error);
-      Alert.alert('Erreur', 'Impossible de créer l\'entreprise. Veuillez réessayer.');
+      console.error("❌ Erreur lors de la création:", error);
+      Alert.alert(
+        "Erreur",
+        "Impossible de créer l'entreprise. Veuillez réessayer."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const updateBusiness = (field: keyof CreateBusinessData, value: any) => {
-    setBusiness(prev => ({ ...prev, [field]: value }));
+    setBusiness((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleLocationSelect = (latitude: number, longitude: number) => {
-    setBusiness(prev => ({ ...prev, latitude, longitude }));
+    setBusiness((prev) => ({ ...prev, latitude, longitude }));
   };
 
   const renderImagePicker = (
-    field: 'logo' | 'cover',
+    field: "logo" | "cover",
     uri: string,
     label: string,
     aspectRatio: string
   ) => (
     <View style={styles.imageSection}>
       <Text style={styles.label}>{label}</Text>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[
           styles.imagePicker,
-          field === 'cover' && styles.coverImagePicker
-        ]} 
+          field === "cover" && styles.coverImagePicker,
+        ]}
         onPress={() => showImageOptions(field)}
         activeOpacity={0.7}
       >
@@ -651,7 +681,7 @@ const CreateBusiness: React.FC = () => {
           <View style={styles.imagePickerContent}>
             <Ionicons name="camera-outline" size={32} color="#666" />
             <Text style={styles.imagePickerText}>
-              {field === 'logo' ? 'Ajouter un logo' : 'Ajouter une couverture'}
+              {field === "logo" ? "Ajouter un logo" : "Ajouter une couverture"}
             </Text>
             <Text style={styles.imagePickerSubtext}>
               Ratio {aspectRatio} • Touchez pour sélectionner
@@ -663,9 +693,9 @@ const CreateBusiness: React.FC = () => {
   );
 
   // Préparer les options de devises
-  const currencyOptions = currencies.map(currency => ({
+  const currencyOptions = currencies.map((currency) => ({
     label: `${currency.name} (${currency.code}) ${currency.symbol}`,
-    value: currency.id
+    value: currency.id,
   }));
 
   if (loadingCurrencies) {
@@ -689,7 +719,7 @@ const CreateBusiness: React.FC = () => {
         <View style={styles.headerPlaceholder} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -698,13 +728,13 @@ const CreateBusiness: React.FC = () => {
           {/* Informations de base */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>📝 Informations de base</Text>
-            
+
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Nom de l'entreprise *</Text>
+              <Text style={styles.label}>Nom de l&quot;entreprise *</Text>
               <TextInput
                 style={styles.input}
                 value={business.name}
-                onChangeText={(text) => updateBusiness('name', text)}
+                onChangeText={(text) => updateBusiness("name", text)}
                 placeholder="Entrez le nom de votre entreprise"
                 placeholderTextColor="#999"
               />
@@ -715,7 +745,7 @@ const CreateBusiness: React.FC = () => {
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={business.description}
-                onChangeText={(text) => updateBusiness('description', text)}
+                onChangeText={(text) => updateBusiness("description", text)}
                 placeholder="Décrivez votre entreprise, ses activités et ses spécialités..."
                 placeholderTextColor="#999"
                 multiline
@@ -725,18 +755,18 @@ const CreateBusiness: React.FC = () => {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Type d'entreprise *</Text>
+              <Text style={styles.label}>Type d&quot;entreprise *</Text>
               <View style={styles.inputWithIcon}>
                 <Building size={16} color="#666" style={styles.inputIcon} />
                 <View style={styles.pickerWrapper}>
                   <IOSPicker
                     title="Sélectionner le type d'entreprise"
-                    options={businessTypeOptions.map(type => ({
+                    options={businessTypeOptions.map((type) => ({
                       label: type.label,
-                      value: type.value
+                      value: type.value,
                     }))}
-                    selectedValue={business.type || ''}
-                    onValueChange={(value) => updateBusiness('type', value)}
+                    selectedValue={business.type || ""}
+                    onValueChange={(value) => updateBusiness("type", value)}
                     placeholder="Choisir le type d'activité"
                   />
                 </View>
@@ -747,13 +777,13 @@ const CreateBusiness: React.FC = () => {
           {/* Contact et localisation */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>📍 Contact et localisation</Text>
-            
+
             <View style={styles.formGroup}>
               <Text style={styles.label}>Adresse *</Text>
               <TextInput
                 style={styles.input}
                 value={business.address}
-                onChangeText={(text) => updateBusiness('address', text)}
+                onChangeText={(text) => updateBusiness("address", text)}
                 placeholder="Adresse complète de votre entreprise"
                 placeholderTextColor="#999"
                 multiline
@@ -765,7 +795,7 @@ const CreateBusiness: React.FC = () => {
               <TextInput
                 style={styles.input}
                 value={business.phoneNumber}
-                onChangeText={(text) => updateBusiness('phoneNumber', text)}
+                onChangeText={(text) => updateBusiness("phoneNumber", text)}
                 placeholder="+237 123 456 789"
                 placeholderTextColor="#999"
                 keyboardType="phone-pad"
@@ -774,7 +804,7 @@ const CreateBusiness: React.FC = () => {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Position géographique *</Text>
-              
+
               {/* Bouton pour ouvrir la carte */}
               <MapPicker
                 initialLatitude={business.latitude || 4.0511}
@@ -787,13 +817,13 @@ const CreateBusiness: React.FC = () => {
                 <View style={styles.coordinateDisplay}>
                   <Text style={styles.coordinateLabel}>Latitude:</Text>
                   <Text style={styles.coordinateValue}>
-                    {business.latitude?.toFixed(6) || '—'}
+                    {business.latitude?.toFixed(6) || "—"}
                   </Text>
                 </View>
                 <View style={styles.coordinateDisplay}>
                   <Text style={styles.coordinateLabel}>Longitude:</Text>
                   <Text style={styles.coordinateValue}>
-                    {business.longitude?.toFixed(6) || '—'}
+                    {business.longitude?.toFixed(6) || "—"}
                   </Text>
                 </View>
               </View>
@@ -811,19 +841,23 @@ const CreateBusiness: React.FC = () => {
                   <TextInput
                     style={styles.input}
                     value={business.latitude?.toString()}
-                    onChangeText={(text) => updateBusiness('latitude', parseFloat(text) || 0)}
+                    onChangeText={(text) =>
+                      updateBusiness("latitude", parseFloat(text) || 0)
+                    }
                     placeholder="4.0511"
                     placeholderTextColor="#999"
                     keyboardType="numeric"
                   />
                 </View>
-                
+
                 <View style={styles.coordinateInput}>
                   <Text style={styles.label}>Longitude</Text>
                   <TextInput
                     style={styles.input}
                     value={business.longitude?.toString()}
-                    onChangeText={(text) => updateBusiness('longitude', parseFloat(text) || 0)}
+                    onChangeText={(text) =>
+                      updateBusiness("longitude", parseFloat(text) || 0)
+                    }
                     placeholder="9.7679"
                     placeholderTextColor="#999"
                     keyboardType="numeric"
@@ -836,9 +870,9 @@ const CreateBusiness: React.FC = () => {
           {/* Devise */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>💰 Configuration financière</Text>
-            
+
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Devise de l'entreprise *</Text>
+              <Text style={styles.label}>Devise de l&quot;entreprise *</Text>
               <View style={styles.inputWithIcon}>
                 <Banknote size={16} color="#666" style={styles.inputIcon} />
                 <View style={styles.pickerWrapper}>
@@ -846,10 +880,12 @@ const CreateBusiness: React.FC = () => {
                     title="Sélectionner la devise"
                     options={[
                       { label: "Sélectionner une devise", value: "" },
-                      ...currencyOptions
+                      ...currencyOptions,
                     ]}
-                    selectedValue={business.currencyId || ''}
-                    onValueChange={(value) => updateBusiness('currencyId', value)}
+                    selectedValue={business.currencyId || ""}
+                    onValueChange={(value) =>
+                      updateBusiness("currencyId", value)
+                    }
                     placeholder="Choisir la devise principale"
                     searchable={true}
                   />
@@ -860,25 +896,39 @@ const CreateBusiness: React.FC = () => {
 
           {/* Images */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🖼️ Images de l'entreprise</Text>
-            {renderImagePicker('logo', logoUri, 'Logo de l\'entreprise', '1:1')}
-            {renderImagePicker('cover', coverUri, 'Image de couverture', '16:9')}
+            <Text style={styles.sectionTitle}>
+              🖼️ Images de l&quot;entreprise
+            </Text>
+            {renderImagePicker("logo", logoUri, "Logo de l'entreprise", "1:1")}
+            {renderImagePicker(
+              "cover",
+              coverUri,
+              "Image de couverture",
+              "16:9"
+            )}
           </View>
 
-          <TouchableOpacity 
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]} 
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              loading && styles.submitButtonDisabled,
+            ]}
             onPress={handleSubmit}
             disabled={loading}
           >
             {loading ? (
               <View style={styles.submitButtonContent}>
                 <ActivityIndicator color="white" size="small" />
-                <Text style={styles.submitButtonText}>Création en cours...</Text>
+                <Text style={styles.submitButtonText}>
+                  Création en cours...
+                </Text>
               </View>
             ) : (
               <View style={styles.submitButtonContent}>
                 <Building size={20} color="white" />
-                <Text style={styles.submitButtonText}>Créer l'entreprise</Text>
+                <Text style={styles.submitButtonText}>
+                  Créer l&quot;entreprise
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -891,32 +941,32 @@ const CreateBusiness: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafb',
+    backgroundColor: "#fafafb",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: 12,
   },
   loadingText: {
     fontSize: 16,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
     paddingVertical: 15,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: "700",
+    color: "#1f2937",
   },
   headerPlaceholder: {
     width: 28,
@@ -929,11 +979,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   section: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -941,8 +991,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: "700",
+    color: "#1f2937",
     marginBottom: 20,
   },
   formGroup: {
@@ -950,28 +1000,28 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#1f2937',
+    color: "#1f2937",
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   textArea: {
     height: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   inputWithIcon: {
-    position: 'relative',
+    position: "relative",
   },
   inputIcon: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
     top: 18,
     zIndex: 1,
@@ -980,44 +1030,44 @@ const styles = StyleSheet.create({
     marginLeft: 44,
   },
   iosPickerButton: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderColor: "#e5e7eb",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     minHeight: 56,
   },
   iosPickerText: {
     fontSize: 16,
-    color: '#1f2937',
+    color: "#1f2937",
   },
   iosPickerPlaceholder: {
-    color: '#9ca3af',
+    color: "#9ca3af",
   },
   mapPickerButton: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: "#f0fdf4",
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
-    borderColor: '#059669',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#059669",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     marginBottom: 16,
   },
   mapPickerButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: "600",
+    color: "#059669",
   },
   currentCoordinates: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#f9fafb',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
     padding: 16,
     marginTop: 12,
@@ -1028,24 +1078,24 @@ const styles = StyleSheet.create({
   },
   coordinateLabel: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
     marginBottom: 4,
   },
   coordinateValue: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontWeight: "600",
+    color: "#1f2937",
   },
   manualCoordinatesToggle: {
     marginVertical: 8,
   },
   manualCoordinatesText: {
     fontSize: 14,
-    color: '#6b7280',
-    fontStyle: 'italic',
+    color: "#6b7280",
+    fontStyle: "italic",
   },
   coordinatesContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   coordinateInput: {
@@ -1053,17 +1103,17 @@ const styles = StyleSheet.create({
   },
   mapModalContainer: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   mapModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   mapContainer: {
     flex: 1,
@@ -1072,14 +1122,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mapInfoContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 20,
     left: 20,
     right: 20,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -1090,43 +1140,43 @@ const styles = StyleSheet.create({
   },
   coordinatesLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontWeight: "600",
+    color: "#6b7280",
     marginBottom: 4,
   },
   coordinatesText: {
     fontSize: 15,
-    color: '#1f2937',
+    color: "#1f2937",
   },
   currentLocationButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0fdf4',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f0fdf4",
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#059669',
+    borderColor: "#059669",
     gap: 8,
   },
   currentLocationButtonText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#059669',
+    fontWeight: "600",
+    color: "#059669",
   },
   mapInstructions: {
-    position: 'absolute',
+    position: "absolute",
     top: 20,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
     borderRadius: 12,
     padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -1134,7 +1184,7 @@ const styles = StyleSheet.create({
   },
   mapInstructionsText: {
     fontSize: 13,
-    color: '#6366f1',
+    color: "#6366f1",
     flex: 1,
     lineHeight: 18,
   },
@@ -1142,92 +1192,92 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   imagePicker: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
     borderRadius: 12,
     height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderStyle: 'dashed',
-    overflow: 'hidden',
-    position: 'relative',
+    borderColor: "#e5e7eb",
+    borderStyle: "dashed",
+    overflow: "hidden",
+    position: "relative",
   },
   coverImagePicker: {
     height: 150,
   },
   imagePickerContent: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 8,
   },
   imagePickerText: {
     fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '600',
+    color: "#6b7280",
+    fontWeight: "600",
   },
   imagePickerSubtext: {
     fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
+    color: "#9ca3af",
+    textAlign: "center",
   },
   imagePreview: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imageOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
   },
   changeImageText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fafafb',
+    backgroundColor: "#fafafb",
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: "700",
+    color: "#1f2937",
   },
   modalCancelButton: {
     fontSize: 16,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   modalDoneButton: {
     fontSize: 16,
-    color: '#059669',
-    fontWeight: '600',
+    color: "#059669",
+    fontWeight: "600",
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f9fafb",
     marginHorizontal: 20,
     marginVertical: 15,
     borderRadius: 12,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   searchIcon: {
     marginRight: 8,
@@ -1235,69 +1285,69 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
+    color: "#1f2937",
     paddingVertical: 12,
   },
   optionItem: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderBottomColor: "#f3f4f6",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   selectedOptionItem: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: "#f0f9ff",
   },
   optionText: {
     fontSize: 16,
-    color: '#1f2937',
+    color: "#1f2937",
     flex: 1,
   },
   selectedOptionText: {
-    color: '#059669',
-    fontWeight: '600',
+    color: "#059669",
+    fontWeight: "600",
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
     paddingHorizontal: 40,
   },
   emptyText: {
     fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
+    color: "#6b7280",
+    textAlign: "center",
   },
   submitButton: {
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
     paddingVertical: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 20,
-    shadowColor: '#059669',
+    shadowColor: "#059669",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
   submitButtonDisabled: {
-    backgroundColor: '#9ca3af',
+    backgroundColor: "#9ca3af",
     shadowOpacity: 0,
     elevation: 0,
   },
   submitButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
   submitButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });
 

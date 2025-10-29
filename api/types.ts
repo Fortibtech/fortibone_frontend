@@ -25,7 +25,7 @@ export interface Business {
   export interface CreateBusinessData {
     name: string;
     description: string;
-    type: 'COMMERCANT' | 'FOURNISSEUR' | 'RESTAURATEUR';
+    type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
     address: string;
     phoneNumber: string;
     logoUrl?: string;
@@ -33,6 +33,9 @@ export interface Business {
     latitude: number;
     longitude: number;
     currencyId: string;
+    siret?: string;
+    websiteUrl?: string;
+    activitySector: string;
   }
   
   export interface BusinessFilters {

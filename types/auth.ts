@@ -11,8 +11,38 @@ export interface RegisterPayload {
   profileType: "PARTICULIER" | "PRO";
   // NEW DATA
   commerceType?: "Boutique physique" | "Boutique online";
-  secteurActivite: string;
 }
+
+// export interface RegisterUserPayload {
+//   firstName: string;
+//   lastName: string;
+//   gender: "MALE" | "FEMALE";
+//   profileType: "PARTICULIER" | "PRO";
+//   country: string;
+//   city: string;
+//   dateOfBirth: string;
+//   email: string;
+//   password: string;
+//   phoneNumber: string;
+// }
+
+export interface CreateBusinessPayload {
+  name: string;
+  description?: string;
+  type: "COMMERCANT";
+  address: string;
+  phoneNumber: string;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  currencyId?: string;
+  siret?: string;
+  websiteUrl?: string;
+  activitySector: string;
+  commerceType: "PHYSICAL" | "ONLINE";
+}
+
 export interface ResetPasswordPayload {
   email: string;
   otp: string;
