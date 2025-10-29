@@ -25,8 +25,7 @@ import {
   SalesByProductCategory,
   TopSellingProduct,
 } from "@/api/analytics";
-import SalesBarChart from "@/components/Chart/SalesBarChart";
-import { SalesByPeriodChart } from "@/components/Chart/SalesByPeriodChart";
+
 import SalesPieChart from "@/components/SalesPieChart";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -420,7 +419,7 @@ const HomePage: React.FC = () => {
         </View>
         {selectedBusiness && salesByPeriod.length > 0 && (
           <View style={{ marginVertical: 16 }}>
-            <SalesByPeriodChart data={salesByPeriod} />
+            {/* <SalesByPeriodChart data={salesByPeriod} /> */}
             {/* Graphique par produit - Quantités */}
             <SalesPieChart
               data={topSellingProducts}
@@ -430,16 +429,16 @@ const HomePage: React.FC = () => {
             {/* Graphique par produit - Revenus */}
             <SalesPieChart data={topSellingProducts} metric="totalRevenue" />
             {/* ✅ Bar chart par catégorie - produits vendus */}
-            <SalesBarChart
+            {/* <SalesBarChart
               data={salesByProductCategory}
               metric="totalItemsSold"
-            />
+            /> */}
 
             {/* ✅ Bar chart par catégorie - revenus */}
-            <SalesBarChart
+            {/* <SalesBarChart
               data={salesByProductCategory}
               metric="totalRevenue"
-            />
+            /> */}
           </View>
         )}
         {/* <View style={styles.grid}>{enterprises.map(renderEnterpriseCard)}</View>
