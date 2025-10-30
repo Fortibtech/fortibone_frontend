@@ -4,6 +4,9 @@ import {
   SalesByProductCategory,
   TopSellingProduct,
 } from "@/api/analytics";
+import CashFlowChart from "@/components/Chart/CashFlowChart";
+import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
+import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router"; // Ajoute cette ligne en haut
 import { useEffect, useState } from "react";
@@ -172,7 +175,7 @@ export default function StatistiquesScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Revenue Cards */}
-        <View style={styles.cardsRow}>
+        {/* <View style={styles.cardsRow}>
           <View style={styles.card}>
             <Text style={styles.cardLabel}>Revenus du mois</Text>
             <Text style={styles.cardValue}>
@@ -185,188 +188,16 @@ export default function StatistiquesScreen() {
               990 000,00 <Text style={styles.currency}>XAF</Text>
             </Text>
           </View>
-        </View>
+        </View> */}
 
         {/* Flux de trésorerie */}
-        <View style={styles.chartCard}>
-          <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>Flux de trésorerie</Text>
-            <View style={styles.filterButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.filterBtn,
-                  tresorerieFilter === "Jan" && styles.filterBtnActive,
-                ]}
-                onPress={() => setTresorerieFilter("Jan")}
-              >
-                <Text
-                  style={[
-                    styles.filterBtnText,
-                    tresorerieFilter === "Jan" && styles.filterBtnTextActive,
-                  ]}
-                >
-                  Jan
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.filterBtn}
-                onPress={() => setTresorerieFilter("Mensuel")}
-              >
-                <Text style={styles.filterBtnText}>Mensuel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <BarChart
-            data={tresorerieData}
-            width={width - 48}
-            height={220}
-            yAxisLabel=""
-            yAxisSuffix=""
-            chartConfig={chartConfig}
-            style={styles.chart}
-            withInnerLines={true}
-            showBarTops={false}
-            fromZero={true}
-          />
-
-          <View style={styles.legend}>
-            {tresorerieLegend.map((item, index) => (
-              <View key={index} style={styles.legendItem}>
-                <View
-                  style={[styles.legendDot, { backgroundColor: item.color }]}
-                />
-                <Text style={styles.legendText}>{item.name}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <CashFlowChart businessId={id} />
 
         {/* Répartition des Revenus */}
-        <View style={styles.chartCard}>
-          <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>Répartition des Revenus</Text>
-            <View style={styles.filterButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.filterBtn,
-                  revenuFilter === "Jan" && styles.filterBtnActive,
-                ]}
-                onPress={() => setRevenuFilter("Jan")}
-              >
-                <Text
-                  style={[
-                    styles.filterBtnText,
-                    revenuFilter === "Jan" && styles.filterBtnTextActive,
-                  ]}
-                >
-                  Jan
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.filterBtn}
-                onPress={() => setRevenuFilter("Mensuel")}
-              >
-                <Text style={styles.filterBtnText}>Mensuel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.donutContainer}>
-            <PieChart
-              data={revenusDonutData}
-              width={width - 48}
-              height={200}
-              chartConfig={chartConfig}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              absolute={false}
-              hasLegend={false}
-            />
-            <View style={styles.donutCenter}>
-              <Text style={styles.donutCenterLabel}>CA Général</Text>
-              <Text style={styles.donutCenterValue}>239 990 000,00</Text>
-              <Text style={styles.donutCenterCurrency}>XAF</Text>
-            </View>
-          </View>
-
-          <View style={styles.revenusLegend}>
-            {revenusDonutData.map((item, index) => (
-              <View key={index} style={styles.revenuLegendItem}>
-                <View style={styles.revenuLegendLeft}>
-                  <View
-                    style={[styles.legendDot, { backgroundColor: item.color }]}
-                  />
-                  <Text style={styles.revenuLegendText}>{item.name}</Text>
-                </View>
-                <Text style={styles.revenuLegendAmount}>
-                  {item.amount.toLocaleString("fr-FR")} XAF
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <RevenueDistributionChart businessId={id} />
 
         {/* Répartition des dépenses */}
-        <View style={styles.chartCard}>
-          <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>Répartition des dépenses</Text>
-            <View style={styles.filterButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.filterBtn,
-                  depenseFilter === "Jan" && styles.filterBtnActive,
-                ]}
-                onPress={() => setDepenseFilter("Jan")}
-              >
-                <Text
-                  style={[
-                    styles.filterBtnText,
-                    depenseFilter === "Jan" && styles.filterBtnTextActive,
-                  ]}
-                >
-                  Jan
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.filterBtn}
-                onPress={() => setDepenseFilter("Mensuel")}
-              >
-                <Text style={styles.filterBtnText}>Mensuel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <BarChart
-            data={depensesData}
-            width={width - 48}
-            height={220}
-            yAxisLabel=""
-            yAxisSuffix=""
-            chartConfig={chartConfig}
-            style={styles.chart}
-            withInnerLines={true}
-            showBarTops={false}
-            fromZero={true}
-          />
-
-          <View style={styles.depensesLegend}>
-            {depensesLegend.map((item, index) => (
-              <View key={index} style={styles.depenseLegendItem}>
-                <View style={styles.depenseLegendLeft}>
-                  <View
-                    style={[styles.legendDot, { backgroundColor: item.color }]}
-                  />
-                  <Text style={styles.depenseLegendText}>{item.name}</Text>
-                </View>
-                <Text style={styles.depenseLegendAmount}>
-                  {item.amount} XAF
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <ExpenseDistributionChart businessId={id} />
 
         <View style={{ height: 30 }} />
       </ScrollView>
@@ -386,6 +217,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: "#fff",
+    marginBottom: 16,
   },
   backButton: {
     width: 40,
