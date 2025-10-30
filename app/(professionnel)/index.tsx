@@ -29,7 +29,7 @@ import {
 
 import SalesPieChart from "@/components/SalesPieChart";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { SalesTrendChart } from "@/components/Chart/SalesByPeriodChart";
 // Types
 interface Enterprise {
   id: number;
@@ -55,13 +55,7 @@ const HomePage: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [salesByPeriod, setSalesByPeriod] = useState<SalesByPeriod[]>([]);
-  const [topSellingProducts, setTopSellingProducts] = useState<
-    TopSellingProduct[]
-  >([]);
-  const [salesByProductCategory, setSalesByProductCategory] = useState<
-    SalesByProductCategory[]
-  >([]);
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -91,20 +85,6 @@ const HomePage: React.FC = () => {
     }
   };
   // Charger les ventes pour l'entreprise sélectionnée
-  useEffect(() => {
-    if (!selectedBusiness) return;
-    const fetchSales = async () => {
-      try {
-        const data = await getSales(selectedBusiness.id);
-        setSalesByPeriod(data.salesByPeriod);
-        setTopSellingProducts(data.topSellingProducts); // ✅ ajouté
-        setSalesByProductCategory(data.salesByProductCategory); // ✅ ajouté
-      } catch (error) {
-        console.error("Erreur fetch sales:", error);
-      }
-    };
-    fetchSales();
-  }, [selectedBusiness]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -165,8 +145,7 @@ const HomePage: React.FC = () => {
       },
     ];
 
-    
-   // On ajoute l'onglet Restaurants seulement pour les restaurateurs
+    // On ajoute l'onglet Restaurants seulement pour les restaurateurs
     if (selectedBusiness.type === "RESTAURATEUR") {
       actions.unshift({
         id: "restaurants",
@@ -384,9 +363,7 @@ const HomePage: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#00C851" barStyle="light-content" />
-
       {renderHeader()}
-
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
@@ -409,47 +386,6 @@ const HomePage: React.FC = () => {
         ) : (
           renderNoBusinessSelected()
         )}
-
-        <View style={styles.headerSection2}>
-          <Text style={styles.bannerTitle}>Statistiques générales</Text>
-          {selectedBusiness && (
-            <Text style={styles.businessCount}>
-              {businesses.length} entreprise{businesses.length > 1 ? "s" : ""}{" "}
-              disponible{businesses.length > 1 ? "s" : ""}
-            </Text>
-          )}
-        </View>
-        {selectedBusiness && salesByPeriod.length > 0 && (
-          <View style={{ marginVertical: 16 }}>
-            {/* <SalesByPeriodChart data={salesByPeriod} /> */}
-            {/* Graphique par produit - Quantités */}
-            <SalesPieChart
-              data={topSellingProducts}
-              metric="totalQuantitySold"
-            />
-
-            {/* Graphique par produit - Revenus */}
-            <SalesPieChart data={topSellingProducts} metric="totalRevenue" />
-            {/* ✅ Bar chart par catégorie - produits vendus */}
-            {/* <SalesBarChart
-              data={salesByProductCategory}
-              metric="totalItemsSold"
-            /> */}
-
-            {/* ✅ Bar chart par catégorie - revenus */}
-            {/* <SalesBarChart
-              data={salesByProductCategory}
-              metric="totalRevenue"
-            /> */}
-          </View>
-        )}
-        {/* <View style={styles.grid}>{enterprises.map(renderEnterpriseCard)}</View>
-
-        <GraphCard salesData={sampleData} onPress={handlePress} />
-
-        <SalesDashboard data={dashboardData} />
-
-        <AnalyticsDashboard data={analyticsData} /> */}
       </ScrollView>
     </SafeAreaView>
   );
