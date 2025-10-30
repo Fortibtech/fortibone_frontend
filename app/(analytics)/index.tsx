@@ -1,18 +1,9 @@
-import {
-  getSales,
-  SalesByPeriod,
-  SalesByProductCategory,
-  TopSellingProduct,
-} from "@/api/analytics";
 import CashFlowChart from "@/components/Chart/CashFlowChart";
 import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
 import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router"; // Ajoute cette ligne en haut
-import { useEffect, useState } from "react";
-
 import {
-  Dimensions,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -20,141 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BarChart, PieChart } from "react-native-chart-kit";
-import { AbstractChartConfig } from "react-native-chart-kit/dist/AbstractChart";
+
 import { SafeAreaView } from "react-native-safe-area-context";
-const { width } = Dimensions.get("window");
-type FilterType = "Jan" | "Mensuel";
-
-interface LegendItem {
-  name: string;
-  color: string;
-}
-
-interface RevenueItem {
-  name: string;
-  amount: number;
-  color: string;
-  legendFontColor: string;
-  legendFontSize: number;
-}
-
-interface DepenseItem {
-  name: string;
-  amount: string;
-  color: string;
-}
 
 export default function StatistiquesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter(); // Déclare le router
-  const [tresorerieFilter, setTresorerieFilter] = useState<FilterType>("Jan");
-  const [revenuFilter, setRevenuFilter] = useState<FilterType>("Jan");
-  const [depenseFilter, setDepenseFilter] = useState<FilterType>("Jan");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [salesByPeriod, setSalesByPeriod] = useState<SalesByPeriod[]>([]);
-  const [topSellingProducts, setTopSellingProducts] = useState<
-    TopSellingProduct[]
-  >([]);
-  const [salesByProductCategory, setSalesByProductCategory] = useState<
-    SalesByProductCategory[]
-  >([]);
-  // Charger les ventes pour l'entreprise sélectionnée
-  useEffect(() => {
-    const fetchSales = async () => {
-      try {
-        const data = await getSales(id);
-        setSalesByPeriod(data.salesByPeriod);
-        setTopSellingProducts(data.topSellingProducts); // ✅ ajouté
-        setSalesByProductCategory(data.salesByProductCategory); // ✅ ajouté
-      } catch (error) {
-        console.error("Erreur fetch sales:", error);
-      }
-    };
-    fetchSales();
-  }, [id]);
-  // Configuration commune des graphiques
-  const chartConfig: AbstractChartConfig = {
-    backgroundColor: "#fff",
-    backgroundGradientFrom: "#fff",
-    backgroundGradientTo: "#fff",
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    style: { borderRadius: 16 },
-    propsForBackgroundLines: {
-      strokeDasharray: "",
-      stroke: "#E5E5E5",
-      strokeWidth: 1,
-    },
-  };
-
-  // Données fake pour les graphiques
-  const tresorerieLegend: LegendItem[] = [
-    { name: "Revenus", color: "#00D09C" },
-    { name: "Dépenses", color: "#FF6B6B" },
-  ];
-
-  const tresorerieData = {
-    labels: ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun"],
-    datasets: [
-      {
-        data: [30, 45, 28, 80, 99, 43],
-        color: (opacity = 1) => `rgba(0, 208, 156, ${opacity})`,
-      },
-      {
-        data: [20, 35, 60, 50, 70, 55],
-        color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
-      },
-    ],
-  };
-
-  const revenusDonutData: RevenueItem[] = [
-    {
-      name: "iPhone 16",
-      amount: 119900000,
-      color: "#4169E1",
-      legendFontColor: "#7F7F7F",
-      legendFontSize: 12,
-    },
-    {
-      name: "iPhone 14 Pro",
-      amount: 67180000,
-      color: "#FFA500",
-      legendFontColor: "#7F7F7F",
-      legendFontSize: 12,
-    },
-    {
-      name: "Casque",
-      amount: 52899990,
-      color: "#00D09C",
-      legendFontColor: "#7F7F7F",
-      legendFontSize: 12,
-    },
-  ];
-
-  const depensesData = {
-    labels: ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun"],
-    datasets: [
-      {
-        data: [250, 280, 320, 310, 380, 350],
-      },
-      {
-        data: [150, 120, 180, 140, 160, 170],
-      },
-    ],
-  };
-
-  const depensesLegend: DepenseItem[] = [
-    { name: "Réapprovisionnement", amount: "920 000,00", color: "#FF6B6B" },
-    { name: "Salaires", amount: "140 000,00", color: "#FFD700" },
-  ];
-
-  const totalRevenus = revenusDonutData.reduce(
-    (sum, item) => sum + item.amount,
-    0
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -174,22 +36,6 @@ export default function StatistiquesScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Revenue Cards */}
-        {/* <View style={styles.cardsRow}>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Revenus du mois</Text>
-            <Text style={styles.cardValue}>
-              990 000,00 <Text style={styles.currency}>XAF</Text>
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Dépenses du mois</Text>
-            <Text style={styles.cardValue}>
-              990 000,00 <Text style={styles.currency}>XAF</Text>
-            </Text>
-          </View>
-        </View> */}
-
         {/* Flux de trésorerie */}
         <CashFlowChart businessId={id} />
 

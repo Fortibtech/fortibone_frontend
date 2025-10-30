@@ -74,7 +74,7 @@ const OtpVerify = () => {
       // 🎯 Redirection selon le type de compte
       const profileType = store.userProfile?.profileType;
       if (profileType === "PRO") {
-        router.replace("/(professionnel)");
+        router.replace("/pro/createBusiness");
       } else {
         router.replace("/(tabs)");
       }

@@ -1,11 +1,11 @@
 // app/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
 import {
-  BookOpen,
   CircleDollarSign,
   CreditCard,
+  Cuboid,
   Home,
-  Send
+  Send,
 } from "lucide-react-native";
 
 export default function RootLayout() {
@@ -49,9 +49,7 @@ export default function RootLayout() {
         name="catalogue"
         options={{
           title: "Catalogue",
-          tabBarIcon: ({ color, size }) => (
-            <BookOpen size={size} color={color} fill={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Cuboid size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -59,7 +57,7 @@ export default function RootLayout() {
         options={{
           title: "Ventes",
           tabBarIcon: ({ color, size }) => (
-            <CircleDollarSign size={size} color={color} strokeWidth={2} />
+            <CircleDollarSign size={size} color={color} />
           ),
         }}
       />
@@ -70,11 +68,11 @@ export default function RootLayout() {
           tabBarIcon: ({ color, size }) => <Send size={size} color={color} />,
         }}
       />
-      {/* ✅ Nouvel onglet Transactions */}
+      {/* ✅ Nouvel onglet Finance */}
       <Tabs.Screen
-        name="transactions"
+        name="finance"
         options={{
-          title: "Transactions",
+          title: "Finance",
           tabBarIcon: ({ color, size }) => (
             <CreditCard size={size} color={color} />
           ),
