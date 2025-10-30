@@ -393,6 +393,8 @@ function ClientsList({
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 }) {
+  const { businessId } = useLocalSearchParams(); // ← Récupère businessId
+  const router = useRouter();
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.searchRow}>
@@ -468,7 +470,15 @@ function ClientsList({
 
                 {/* Bouton "Voir détails" */}
                 <TouchableOpacity
-                  onPress={() => onCustomerPress(item.originalOrder)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/custumer-order-details/[id]",
+                      params: {
+                        id: item.id, // obligatoire
+                        businessId: businessId as string,
+                      },
+                    })
+                  }
                 >
                   <Text style={styles.detailsLink}>Voir détails</Text>
                 </TouchableOpacity>

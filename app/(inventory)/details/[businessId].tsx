@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Toast from "react-native-toast-message";
 import {
   View,
@@ -39,7 +39,6 @@ const BusinessId = () => {
   const [reason, setReason] = useState("");
   const [type, setType] = useState<"LOSS" | "GAIN" | "ADJUSTMENT">("LOSS");
   const [submitting, setSubmitting] = useState(false);
-
   // Modal states pour ajout lot
   const [batchModalVisible, setBatchModalVisible] = useState(false);
   const [batchQuantity, setBatchQuantity] = useState("");
