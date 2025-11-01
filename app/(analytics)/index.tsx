@@ -1,15 +1,9 @@
-import {
-  getSales,
-  SalesByPeriod,
-  SalesByProductCategory,
-  TopSellingProduct,
-} from "@/api/analytics";
+import CashFlowChart from "@/components/Chart/CashFlowChart";
+import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
+import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router"; // Ajoute cette ligne en haut
-import { useEffect, useState } from "react";
-
 import {
-  Dimensions,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -17,141 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { BarChart, PieChart } from "react-native-chart-kit";
-import { AbstractChartConfig } from "react-native-chart-kit/dist/AbstractChart";
+
 import { SafeAreaView } from "react-native-safe-area-context";
-const { width } = Dimensions.get("window");
-type FilterType = "Jan" | "Mensuel";
-
-interface LegendItem {
-  name: string;
-  color: string;
-}
-
-interface RevenueItem {
-  name: string;
-  amount: number;
-  color: string;
-  legendFontColor: string;
-  legendFontSize: number;
-}
-
-interface DepenseItem {
-  name: string;
-  amount: string;
-  color: string;
-}
 
 export default function StatistiquesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter(); // Déclare le router
-  const [tresorerieFilter, setTresorerieFilter] = useState<FilterType>("Jan");
-  const [revenuFilter, setRevenuFilter] = useState<FilterType>("Jan");
-  const [depenseFilter, setDepenseFilter] = useState<FilterType>("Jan");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [salesByPeriod, setSalesByPeriod] = useState<SalesByPeriod[]>([]);
-  const [topSellingProducts, setTopSellingProducts] = useState<
-    TopSellingProduct[]
-  >([]);
-  const [salesByProductCategory, setSalesByProductCategory] = useState<
-    SalesByProductCategory[]
-  >([]);
-  // Charger les ventes pour l'entreprise sélectionnée
-  useEffect(() => {
-    const fetchSales = async () => {
-      try {
-        const data = await getSales(id);
-        setSalesByPeriod(data.salesByPeriod);
-        setTopSellingProducts(data.topSellingProducts); // ✅ ajouté
-        setSalesByProductCategory(data.salesByProductCategory); // ✅ ajouté
-      } catch (error) {
-        console.error("Erreur fetch sales:", error);
-      }
-    };
-    fetchSales();
-  }, [id]);
-  // Configuration commune des graphiques
-  const chartConfig: AbstractChartConfig = {
-    backgroundColor: "#fff",
-    backgroundGradientFrom: "#fff",
-    backgroundGradientTo: "#fff",
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    style: { borderRadius: 16 },
-    propsForBackgroundLines: {
-      strokeDasharray: "",
-      stroke: "#E5E5E5",
-      strokeWidth: 1,
-    },
-  };
-
-  // Données fake pour les graphiques
-  const tresorerieLegend: LegendItem[] = [
-    { name: "Revenus", color: "#00D09C" },
-    { name: "Dépenses", color: "#FF6B6B" },
-  ];
-
-  const tresorerieData = {
-    labels: ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun"],
-    datasets: [
-      {
-        data: [30, 45, 28, 80, 99, 43],
-        color: (opacity = 1) => `rgba(0, 208, 156, ${opacity})`,
-      },
-      {
-        data: [20, 35, 60, 50, 70, 55],
-        color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
-      },
-    ],
-  };
-
-  const revenusDonutData: RevenueItem[] = [
-    {
-      name: "iPhone 16",
-      amount: 119900000,
-      color: "#4169E1",
-      legendFontColor: "#7F7F7F",
-      legendFontSize: 12,
-    },
-    {
-      name: "iPhone 14 Pro",
-      amount: 67180000,
-      color: "#FFA500",
-      legendFontColor: "#7F7F7F",
-      legendFontSize: 12,
-    },
-    {
-      name: "Casque",
-      amount: 52899990,
-      color: "#00D09C",
-      legendFontColor: "#7F7F7F",
-      legendFontSize: 12,
-    },
-  ];
-
-  const depensesData = {
-    labels: ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun"],
-    datasets: [
-      {
-        data: [250, 280, 320, 310, 380, 350],
-      },
-      {
-        data: [150, 120, 180, 140, 160, 170],
-      },
-    ],
-  };
-
-  const depensesLegend: DepenseItem[] = [
-    { name: "Réapprovisionnement", amount: "920 000,00", color: "#FF6B6B" },
-    { name: "Salaires", amount: "140 000,00", color: "#FFD700" },
-  ];
-
-  const totalRevenus = revenusDonutData.reduce(
-    (sum, item) => sum + item.amount,
-    0
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -171,202 +36,14 @@ export default function StatistiquesScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Revenue Cards */}
-        <View style={styles.cardsRow}>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Revenus du mois</Text>
-            <Text style={styles.cardValue}>
-              990 000,00 <Text style={styles.currency}>XAF</Text>
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Dépenses du mois</Text>
-            <Text style={styles.cardValue}>
-              990 000,00 <Text style={styles.currency}>XAF</Text>
-            </Text>
-          </View>
-        </View>
-
         {/* Flux de trésorerie */}
-        <View style={styles.chartCard}>
-          <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>Flux de trésorerie</Text>
-            <View style={styles.filterButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.filterBtn,
-                  tresorerieFilter === "Jan" && styles.filterBtnActive,
-                ]}
-                onPress={() => setTresorerieFilter("Jan")}
-              >
-                <Text
-                  style={[
-                    styles.filterBtnText,
-                    tresorerieFilter === "Jan" && styles.filterBtnTextActive,
-                  ]}
-                >
-                  Jan
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.filterBtn}
-                onPress={() => setTresorerieFilter("Mensuel")}
-              >
-                <Text style={styles.filterBtnText}>Mensuel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <BarChart
-            data={tresorerieData}
-            width={width - 48}
-            height={220}
-            yAxisLabel=""
-            yAxisSuffix=""
-            chartConfig={chartConfig}
-            style={styles.chart}
-            withInnerLines={true}
-            showBarTops={false}
-            fromZero={true}
-          />
-
-          <View style={styles.legend}>
-            {tresorerieLegend.map((item, index) => (
-              <View key={index} style={styles.legendItem}>
-                <View
-                  style={[styles.legendDot, { backgroundColor: item.color }]}
-                />
-                <Text style={styles.legendText}>{item.name}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <CashFlowChart businessId={id} />
 
         {/* Répartition des Revenus */}
-        <View style={styles.chartCard}>
-          <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>Répartition des Revenus</Text>
-            <View style={styles.filterButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.filterBtn,
-                  revenuFilter === "Jan" && styles.filterBtnActive,
-                ]}
-                onPress={() => setRevenuFilter("Jan")}
-              >
-                <Text
-                  style={[
-                    styles.filterBtnText,
-                    revenuFilter === "Jan" && styles.filterBtnTextActive,
-                  ]}
-                >
-                  Jan
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.filterBtn}
-                onPress={() => setRevenuFilter("Mensuel")}
-              >
-                <Text style={styles.filterBtnText}>Mensuel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.donutContainer}>
-            <PieChart
-              data={revenusDonutData}
-              width={width - 48}
-              height={200}
-              chartConfig={chartConfig}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              absolute={false}
-              hasLegend={false}
-            />
-            <View style={styles.donutCenter}>
-              <Text style={styles.donutCenterLabel}>CA Général</Text>
-              <Text style={styles.donutCenterValue}>239 990 000,00</Text>
-              <Text style={styles.donutCenterCurrency}>XAF</Text>
-            </View>
-          </View>
-
-          <View style={styles.revenusLegend}>
-            {revenusDonutData.map((item, index) => (
-              <View key={index} style={styles.revenuLegendItem}>
-                <View style={styles.revenuLegendLeft}>
-                  <View
-                    style={[styles.legendDot, { backgroundColor: item.color }]}
-                  />
-                  <Text style={styles.revenuLegendText}>{item.name}</Text>
-                </View>
-                <Text style={styles.revenuLegendAmount}>
-                  {item.amount.toLocaleString("fr-FR")} XAF
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <RevenueDistributionChart businessId={id} />
 
         {/* Répartition des dépenses */}
-        <View style={styles.chartCard}>
-          <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>Répartition des dépenses</Text>
-            <View style={styles.filterButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.filterBtn,
-                  depenseFilter === "Jan" && styles.filterBtnActive,
-                ]}
-                onPress={() => setDepenseFilter("Jan")}
-              >
-                <Text
-                  style={[
-                    styles.filterBtnText,
-                    depenseFilter === "Jan" && styles.filterBtnTextActive,
-                  ]}
-                >
-                  Jan
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.filterBtn}
-                onPress={() => setDepenseFilter("Mensuel")}
-              >
-                <Text style={styles.filterBtnText}>Mensuel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <BarChart
-            data={depensesData}
-            width={width - 48}
-            height={220}
-            yAxisLabel=""
-            yAxisSuffix=""
-            chartConfig={chartConfig}
-            style={styles.chart}
-            withInnerLines={true}
-            showBarTops={false}
-            fromZero={true}
-          />
-
-          <View style={styles.depensesLegend}>
-            {depensesLegend.map((item, index) => (
-              <View key={index} style={styles.depenseLegendItem}>
-                <View style={styles.depenseLegendLeft}>
-                  <View
-                    style={[styles.legendDot, { backgroundColor: item.color }]}
-                  />
-                  <Text style={styles.depenseLegendText}>{item.name}</Text>
-                </View>
-                <Text style={styles.depenseLegendAmount}>
-                  {item.amount} XAF
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <ExpenseDistributionChart businessId={id} />
 
         <View style={{ height: 30 }} />
       </ScrollView>
@@ -386,6 +63,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: "#fff",
+    marginBottom: 16,
   },
   backButton: {
     width: 40,
