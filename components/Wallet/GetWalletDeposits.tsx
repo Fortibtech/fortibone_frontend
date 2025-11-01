@@ -1,4 +1,5 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 const BalanceCard = ({
@@ -9,7 +10,7 @@ const BalanceCard = ({
   onDepositPress: () => void; // <- prop pour gérer le clic
 }) => {
   const [hidden, setHidden] = useState(false);
-
+  const router = useRouter();
   return (
     <View style={styles.container}>
       {/* Ligne 1 */}
@@ -32,14 +33,20 @@ const BalanceCard = ({
         </TouchableOpacity>
       </View>
 
-      {/* Ligne 3 */}
+      {/* Ligne 3  onPress={onDepositPress} */}
       <View style={styles.rowBetween}>
-        <TouchableOpacity style={styles.depositBtn} onPress={onDepositPress}>
+        <TouchableOpacity
+          style={styles.depositBtn}
+          onPress={() => router.push("/finance/DepositScreen")}
+        >
           <Feather name="arrow-down-left" size={20} color="#fff" />
           <Text style={styles.depositText}>Dépôt</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.withdrawBtn}>
+        <TouchableOpacity
+          style={styles.withdrawBtn}
+          onPress={() => router.push("/finance/RetraitArgent")}
+        >
           <Feather name="arrow-up-right" size={20} color="#00af66" />
           <Text style={styles.withdrawText}>Retrait</Text>
         </TouchableOpacity>
