@@ -7,9 +7,11 @@ import {
   TextInput,
   TouchableOpacity,
   StatusBar,
-  SafeAreaView,
+
+  
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Types
 interface Transaction {
