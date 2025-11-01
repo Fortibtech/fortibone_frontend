@@ -6,22 +6,24 @@ import { useUserStore } from "@/store/userStore";
 import { RegisterPayload } from "@/types/auth";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-// --- Types ---
 interface DatePickerModalProps {
   visible: boolean;
   onClose: () => void;
@@ -36,13 +38,6 @@ interface GenderSelectionModalProps {
   selectedGender: string;
 }
 
-interface ProfileTypeModalProps {
-  visible: boolean;
-  onClose: () => void;
-  onSelect: (type: "PARTICULIER" | "PRO") => void;
-  selectedType: string;
-}
-
 interface FormData {
   prenom: string;
   nom: string;
@@ -53,7 +48,7 @@ interface FormData {
   email: string;
   motDePasse: string;
   phoneNumber: string;
-  profileType: string;
+  // profileType retiré
 }
 
 // --- Modal Date Picker ---
@@ -69,9 +64,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
   const handleDateChange = (event: any, date?: Date) => {
     if (Platform.OS === "android") {
       setShowAndroidPicker(false);
-      if (event.type === "set" && date) {
-        onSelect(date);
-      }
+      if (event.type === "set" && date) onSelect(date);
       onClose();
     } else if (date) {
       setTempDate(date);
@@ -217,84 +210,7 @@ const GenderSelectionModal: React.FC<GenderSelectionModalProps> = ({
   );
 };
 
-// --- Modal Profile Type ---
-const ProfileTypeModal: React.FC<ProfileTypeModalProps> = ({
-  visible,
-  onClose,
-  onSelect,
-  selectedType,
-}) => {
-  const [tempType, setTempType] = useState<string>(selectedType);
-  const options: { value: "PARTICULIER" | "PRO"; label: string }[] = [
-    { value: "PARTICULIER", label: "Particulier" },
-    { value: "PRO", label: "Professionnel" },
-  ];
-
-  const handleSave = () => {
-    if (tempType) {
-      onSelect(tempType as "PARTICULIER" | "PRO");
-      onClose();
-    }
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Type de profil</Text>
-          {options.map((opt) => (
-            <TouchableOpacity
-              key={opt.value}
-              style={[
-                styles.genderOption,
-                tempType === opt.value && styles.selectedOption,
-              ]}
-              onPress={() => setTempType(opt.value)}
-            >
-              <Text
-                style={[
-                  styles.genderText,
-                  tempType === opt.value && styles.selectedText,
-                ]}
-              >
-                {opt.label}
-              </Text>
-              <View
-                style={[
-                  styles.radioButton,
-                  tempType === opt.value && styles.radioButtonSelected,
-                ]}
-              >
-                {tempType === opt.value && (
-                  <Ionicons name="checkmark" size={16} color="#fff" />
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
-          <View style={styles.modalButtonContainer}>
-            <CustomButton
-              title="Enregistrer"
-              onPress={handleSave}
-              backgroundColor={tempType ? "#00C851" : "#E0E0E0"}
-              textColor={tempType ? "#fff" : "#999"}
-              width="100%"
-              height={40}
-              borderRadius={20}
-              fontSize={14}
-            />
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-// --- Register Screen ---
+// --- Register Screen (Particulier uniquement) ---
 const Register: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     prenom: "",
@@ -306,14 +222,30 @@ const Register: React.FC = () => {
     email: "",
     motDePasse: "",
     phoneNumber: "",
-    profileType: "",
   });
 
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
-  const [showProfileTypeModal, setShowProfileTypeModal] = useState(false);
   const router = useRouter();
+
+  // Vérification que l'utilisateur vient bien du bon flux
+  useEffect(() => {
+    const checkProfile = async () => {
+      try {
+        const saved = await AsyncStorage.getItem("userProfile");
+        if (saved !== "particulier") {
+          router.replace("/onboarding"); // sécurité
+        }
+      } catch (error) {
+        console.error("Erreur vérification profil:", error);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+    checkProfile();
+  }, [router]);
 
   const updateField = useCallback((field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -350,7 +282,7 @@ const Register: React.FC = () => {
       firstName: formData.prenom.trim(),
       lastName: formData.nom.trim(),
       gender: formData.sexe === "Masculin" ? "MALE" : "FEMALE",
-      profileType: formData.profileType as "PARTICULIER" | "PRO",
+      profileType: "PARTICULIER", // FORCÉ
       country: formData.pays.trim(),
       city: formData.ville.trim(),
       dateOfBirth: selectedDate
@@ -367,11 +299,7 @@ const Register: React.FC = () => {
 
       if (result.success) {
         Alert.alert("Succès", result.message);
-        router.push(
-          formData.profileType === "PRO"
-            ? "/(professionnel)"
-            : "/(auth)/OtpScreen"
-        );
+        router.push("/(auth)/OtpScreen"); // Particulier → OTP
       }
     } catch (error: any) {
       Alert.alert("Erreur", error.message || "Une erreur est survenue.");
@@ -381,13 +309,6 @@ const Register: React.FC = () => {
   const handleGenderSelect = useCallback(
     (gender: string) => {
       updateField("sexe", gender);
-    },
-    [updateField]
-  );
-
-  const handleProfileTypeSelect = useCallback(
-    (type: "PARTICULIER" | "PRO") => {
-      updateField("profileType", type);
     },
     [updateField]
   );
@@ -403,6 +324,15 @@ const Register: React.FC = () => {
     [updateField]
   );
 
+  if (isLoadingProfile) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#059669" />
+        <Text style={styles.loadingText}>Préparation...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -410,10 +340,33 @@ const Register: React.FC = () => {
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
       <SafeAreaView style={styles.container}>
+        {/* === HEADER DYNAMIQUE === */}
         <View style={styles.header}>
           <BackButton />
-          <Text style={styles.headerTitle}>Créer un compte</Text>
         </View>
+
+        <View style={styles.newTitle}>
+          <Image
+            source={require("@/assets/images/logo/green.png")}
+            style={styles.logo}
+          />
+          <View style={styles.titleText}>
+            <Text style={styles.mainTitle}>
+              Création de compte{" "}
+              <Text style={styles.subTitle}>Particulier</Text>
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.resgister}>
+          <Text>Vous avez déjà un compte ?</Text>
+          <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+            <Text style={{ color: "#059669", fontWeight: "600" }}>
+              connectez-vous
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {/* === FIN HEADER === */}
 
         <ScrollView
           style={styles.scrollContent}
@@ -448,24 +401,6 @@ const Register: React.FC = () => {
                   ]}
                 >
                   {formData.sexe || "Sélectionnez le sexe"}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Type de profil</Text>
-              <TouchableOpacity
-                style={styles.selectField}
-                onPress={() => setShowProfileTypeModal(true)}
-              >
-                <Text
-                  style={[
-                    styles.selectFieldText,
-                    !formData.profileType && styles.placeholderText,
-                  ]}
-                >
-                  {formData.profileType || "Sélectionnez le type de profil"}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
@@ -560,12 +495,6 @@ const Register: React.FC = () => {
           onSelect={handleGenderSelect}
           selectedGender={formData.sexe}
         />
-        <ProfileTypeModal
-          visible={showProfileTypeModal}
-          onClose={() => setShowProfileTypeModal(false)}
-          onSelect={handleProfileTypeSelect}
-          selectedType={formData.profileType}
-        />
         <DatePickerModal
           visible={showDateModal}
           onClose={() => setShowDateModal(false)}
@@ -579,18 +508,51 @@ const Register: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  header: { marginHorizontal: 30, marginTop: 30 },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#111",
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  loadingText: {
     marginTop: 16,
+    fontSize: 16,
+    color: "#059669",
+  },
+  header: { marginBottom: 30, paddingHorizontal: 20 },
+  newTitle: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingLeft: 30,
+  },
+  logo: {
+    width: 50,
+    height: 50,
+    marginRight: 15,
+    resizeMode: "contain",
+  },
+  titleText: { flex: 1 },
+  mainTitle: {
+    fontSize: 24,
+    color: "#121f3e",
+    fontWeight: "600",
+  },
+  subTitle: {
+    fontSize: 24,
+    color: "#059669",
+  },
+  resgister: {
+    flexDirection: "row",
+    gap: 5,
+    paddingLeft: 30,
+    marginBottom: 20,
   },
   scrollContent: { flex: 1 },
   scrollContainer: { flexGrow: 1, paddingBottom: 20 },
   formContainer: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 10,
     paddingBottom: 40,
     alignItems: "center",
   },
@@ -632,10 +594,6 @@ const styles = StyleSheet.create({
     width: "90%",
     maxWidth: 350,
     elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
   },
   modalTitle: {
     fontSize: 18,
@@ -679,10 +637,6 @@ const styles = StyleSheet.create({
     width: "90%",
     maxWidth: 350,
     elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
   },
   datePicker: { width: "100%", marginBottom: 20 },
   dateModalButtons: {
