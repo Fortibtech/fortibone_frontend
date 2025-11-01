@@ -1,15 +1,6 @@
 // app/(tabs)/index.tsx
 import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
-import {
-  getSales,
-  SalesByPeriod,
-  SalesByProductCategory,
-  TopSellingProduct,
-} from "@/api/analytics";
 import BusinessSelector from "@/components/Business/BusinessSelector";
-import SalesBarChart from "@/components/Chart/SalesBarChart";
-import { SalesByPeriodChart } from "@/components/Chart/SalesByPeriodChart";
-import SalesPieChart from "@/components/SalesPieChart";
 import { Ionicons } from "@expo/vector-icons";
 import { Route, router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -23,18 +14,16 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 const HomePage: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [salesByPeriod, setSalesByPeriod] = useState<SalesByPeriod[]>([]);
-  const [topSellingProducts, setTopSellingProducts] = useState<TopSellingProduct[]>([]);
-  const [salesByProductCategory, setSalesByProductCategory] = useState<SalesByProductCategory[]>([]);
 
   useEffect(() => {
     loadInitialData();
@@ -45,10 +34,8 @@ const HomePage: React.FC = () => {
       setLoading(true);
       const businessesResponse = await BusinessesService.getBusinesses();
       setBusinesses(businessesResponse);
-
       const selected = await SelectedBusinessManager.getSelectedBusiness();
       setSelectedBusiness(selected);
-
       if (selected && !businessesResponse.find((b) => b.id === selected.id)) {
         await BusinessesService.clearSelectedBusiness();
         setSelectedBusiness(null);
@@ -60,21 +47,6 @@ const HomePage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!selectedBusiness) return;
-    const fetchSales = async () => {
-      try {
-        const data = await getSales(selectedBusiness.id);
-        setSalesByPeriod(data.salesByPeriod);
-        setTopSellingProducts(data.topSellingProducts);
-        setSalesByProductCategory(data.salesByProductCategory);
-      } catch (error) {
-        console.error("Erreur fetch sales:", error);
-      }
-    };
-    fetchSales();
-  }, [selectedBusiness]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -130,8 +102,8 @@ const HomePage: React.FC = () => {
 
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Vue d'Ensemble</Text>
-        
+        <Text style={styles.sectionTitle}>Vue d&apos;Ensemble</Text>
+
         <View style={styles.cardsRow}>
           {/* CA Mensuel - Jaune */}
           <View style={[styles.overviewCard, styles.cardYellow]}>
@@ -144,14 +116,14 @@ const HomePage: React.FC = () => {
             </View>
             <View>
               <Text style={styles.cardLabel}>CA Mensuel</Text>
-              <View style={{ flex: 1, flexDirection:'row' }}>
+              <View style={{ flex: 1, flexDirection: "row" }}>
                 <Text style={styles.cardValue}>90 000</Text>
                 <Text style={styles.cardUnit}>KMF</Text>
               </View>
             </View>
           </View>
           <View style={styles.cardFull}>
-              {/* En attente - Violet */}
+            {/* En attente - Violet */}
             <View style={[styles.overviewCard, styles.cardPurple]}>
               <View style={styles.cardIcon}>
                 {/* <Text style={styles.cardEmoji}>🛍️</Text> */}
@@ -165,14 +137,14 @@ const HomePage: React.FC = () => {
                 <Text style={styles.cardValue}>20 commandes clients</Text>
               </View>
             </View>
-              {/* Achats en cours - Vert (pleine largeur) */}
+            {/* Achats en cours - Vert (pleine largeur) */}
             <View style={[styles.overviewCard, styles.cardGreen]}>
               <View style={styles.cardIcon}>
                 {/* <Text style={styles.cardEmoji}>🛒</Text> */}
                 <Image
                   source={require("@/assets/images/money-recive.png")}
                   style={styles.cardEmojiDouble}
-              />
+                />
               </View>
               <View>
                 <Text style={styles.cardLabel}>Achats en cours</Text>
@@ -181,8 +153,6 @@ const HomePage: React.FC = () => {
             </View>
           </View>
         </View>
-
-        
       </View>
     );
   };
@@ -193,75 +163,77 @@ const HomePage: React.FC = () => {
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Accès Rapide</Text>
-        
+
         <View style={styles.quickAccessRow}>
           {/* Ventes */}
           <TouchableOpacity
             style={styles.quickAccessCard}
-            onPress={() => router.push(`(analytics)?id=${selectedBusiness.id}` as Route)}
+            onPress={() =>
+              router.push(`(analytics)?id=${selectedBusiness.id}` as Route)
+            }
             activeOpacity={0.8}
           >
             <View style={styles.quickAccessIconContainer}>
               <Ionicons name="trending-up" size={40} color="#7C3AED" />
             </View>
             <Text style={styles.quickAccessTitle}>Ventes</Text>
-            <Text style={styles.quickAccessSubtitle}>Statistiques des ventes</Text>
+            <Text style={styles.quickAccessSubtitle}>
+              Statistiques des ventes
+            </Text>
           </TouchableOpacity>
 
           {/* Achats */}
           <TouchableOpacity
             style={styles.quickAccessCard}
-            onPress={() => router.push(`(analytics)?id=${selectedBusiness.id}` as Route)}
+            onPress={() =>
+              router.push(`(analytics)?id=${selectedBusiness.id}` as Route)
+            }
             activeOpacity={0.8}
           >
             <View style={styles.quickAccessIconContainer}>
               <Ionicons name="cart" size={40} color="#7C3AED" />
             </View>
             <Text style={styles.quickAccessTitle}>Achats</Text>
-            <Text style={styles.quickAccessSubtitle}>Taux de rotation, gestion d...</Text>
+            <Text style={styles.quickAccessSubtitle}>
+              Taux de rotation, gestion d...
+            </Text>
           </TouchableOpacity>
         </View>
         <View style={styles.quickAccessRow}>
           {/* Ventes */}
           <TouchableOpacity
             style={styles.quickAccessCard}
-            onPress={() => router.push(`(analytics)?id=${selectedBusiness.id}` as Route)}
+            onPress={() =>
+              router.push(`(analytics)?id=${selectedBusiness.id}` as Route)
+            }
             activeOpacity={0.8}
           >
             <View style={styles.quickAccessIconContainer}>
               <Ionicons name="trending-up" size={40} color="#7C3AED" />
             </View>
             <Text style={styles.quickAccessTitle}>Ventes</Text>
-            <Text style={styles.quickAccessSubtitle}>Statistiques des ventes</Text>
+            <Text style={styles.quickAccessSubtitle}>
+              Statistiques des ventes
+            </Text>
           </TouchableOpacity>
 
           {/* Achats */}
           <TouchableOpacity
             style={styles.quickAccessCard}
-            onPress={() => router.push(`(analytics)?id=${selectedBusiness.id}` as Route)}
+            onPress={() =>
+              router.push(`(analytics)?id=${selectedBusiness.id}` as Route)
+            }
             activeOpacity={0.8}
           >
             <View style={styles.quickAccessIconContainer}>
               <Ionicons name="cart" size={40} color="#7C3AED" />
             </View>
             <Text style={styles.quickAccessTitle}>Achats</Text>
-            <Text style={styles.quickAccessSubtitle}>Taux de rotation, gestion d...</Text>
+            <Text style={styles.quickAccessSubtitle}>
+              Taux de rotation, gestion d...
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
-    );
-  };
-
-  const renderChartsSection = () => {
-    if (!selectedBusiness || salesByPeriod.length === 0) return null;
-
-    return (
-      <View style={styles.chartsSection}>
-        <SalesByPeriodChart data={salesByPeriod} />
-        <SalesPieChart data={topSellingProducts} metric="totalQuantitySold" />
-        <SalesPieChart data={topSellingProducts} metric="totalRevenue" />
-        <SalesBarChart data={salesByProductCategory} metric="totalItemsSold" />
-        <SalesBarChart data={salesByProductCategory} metric="totalRevenue" />
       </View>
     );
   };
@@ -292,13 +264,16 @@ const HomePage: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
       {renderHeader()}
-
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#00C851"]} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#00C851"]}
+          />
         }
       >
         {selectedBusiness ? (
@@ -385,16 +360,15 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 24,
-    alignContent: 'center',
-    justifyContent: 'center',
-    alignItems: 'center'
+    alignContent: "center",
+    justifyContent: "center",
+    alignItems: "center",
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#000",
     marginBottom: 16,
-    
   },
   cardsRow: {
     flexDirection: "row",
@@ -406,8 +380,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     minHeight: 100,
-    alignContent:'space-between',
-    justifyContent: 'space-between'
+    alignContent: "space-between",
+    justifyContent: "space-between",
   },
   cardFull: {
     width: "50%",
@@ -418,22 +392,21 @@ const styles = StyleSheet.create({
   cardYellow: {
     backgroundColor: "#F1E9C7FF",
     borderWidth: 2,
-    borderColor: '#FACC15',
-    alignContent: 'space-between'
+    borderColor: "#FACC15",
+    alignContent: "space-between",
   },
   cardPurple: {
     backgroundColor: "#E5E9FFFF",
     borderWidth: 2,
     marginBottom: 10,
-    borderColor: '#506EFF',
+    borderColor: "#506EFF",
     padding: 10,
   },
   cardGreen: {
     backgroundColor: "#F2FCF1FF",
     borderWidth: 2,
-    borderColor: '#68F755',
+    borderColor: "#68F755",
     padding: 10,
-
   },
   cardIcon: {
     // marginBottom: 12,
@@ -470,7 +443,7 @@ const styles = StyleSheet.create({
   quickAccessRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 10
+    marginBottom: 10,
   },
   quickAccessCard: {
     flex: 1,
@@ -528,7 +501,7 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     lineHeight: 20,
-  }
+  },
 });
 
 export default HomePage;
