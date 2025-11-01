@@ -12,6 +12,7 @@ export default function RootLayout() {
         options={{ headerShown: false }}
       />
       <Stack.Screen name="register" options={{ headerShown: false }} />
+      <Stack.Screen name="CommerrcantSignup" options={{ headerShown: false }} />
       <Stack.Screen name="ResetPassword" options={{ headerShown: false }} />
       <Stack.Screen name="success-screen" options={{ headerShown: false }} />
       <Stack.Screen name="OtpScreen" options={{ headerShown: false }} />

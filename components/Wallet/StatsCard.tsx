@@ -18,7 +18,7 @@ export const StatsCard = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Statistiques</Text>
         <TouchableOpacity
-          onPress={() => router.push("/")}
+          onPress={() => router.push("/finance/Stats")}
           style={styles.seeMore}
         >
           <Text style={styles.seeMoreText}>Voir plus</Text>
