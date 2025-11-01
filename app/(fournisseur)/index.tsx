@@ -18,7 +18,7 @@ import {
   Image
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Circle, G, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, G, Path, Text as SvgText } from "react-native-svg";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MOCK_Notif = [
@@ -316,7 +316,7 @@ const HomePage: React.FC = () => {
     );
   };
 
-   const renderTopProducts = () => {
+  const renderTopProducts = () => {
     const totalLots = MOCK_TOP_PRODUCTS.reduce(
       (sum, product) => sum + product.lots,
       0
@@ -327,17 +327,19 @@ const HomePage: React.FC = () => {
     const strokeWidth = 45;
     const center = size / 2;
     const radius = (size - strokeWidth) / 2;
-    const gapAngle = 3; // Gap between segments in degrees
+    const outerRadius = radius + strokeWidth / 2;
+    const innerRadius = radius - strokeWidth / 2;
+    const gapAngle = 2; // Gap between segments in degrees
 
     // Calculate segments with proper angles and gaps
-    let cumulativePercentage = 0;
+    let cumulativeAngle = 0;
     const segments = MOCK_TOP_PRODUCTS.map((product) => {
       const segmentAngle = (product.percentage / 100) * 360;
-      const startAngle = (cumulativePercentage / 100) * 360 - 90 + gapAngle / 2; // Start from top with gap
-      const endAngle = startAngle + segmentAngle - gapAngle; // End before gap
+      const startAngle = cumulativeAngle + gapAngle / 2;
+      const endAngle = cumulativeAngle + segmentAngle - gapAngle / 2;
       const middleAngle = (startAngle + endAngle) / 2;
       
-      cumulativePercentage += product.percentage;
+      cumulativeAngle += segmentAngle;
       
       return {
         ...product,
@@ -349,12 +351,32 @@ const HomePage: React.FC = () => {
     });
 
     // Helper function to convert polar to cartesian coordinates
-    const polarToCartesian = (angle: number, r: number) => {
-      const angleInRadians = (angle * Math.PI) / 180;
+    const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
+      const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
       return {
-        x: center + r * Math.cos(angleInRadians),
-        y: center + r * Math.sin(angleInRadians),
+        x: centerX + radius * Math.cos(angleInRadians),
+        y: centerY + radius * Math.sin(angleInRadians),
       };
+    };
+
+    // Helper function to create donut arc path
+    const describeArc = (startAngle: number, endAngle: number) => {
+      const outerStart = polarToCartesian(center, center, outerRadius, endAngle);
+      const outerEnd = polarToCartesian(center, center, outerRadius, startAngle);
+      const innerStart = polarToCartesian(center, center, innerRadius, endAngle);
+      const innerEnd = polarToCartesian(center, center, innerRadius, startAngle);
+
+      const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+      const pathData = [
+        "M", outerStart.x, outerStart.y,
+        "A", outerRadius, outerRadius, 0, largeArcFlag, 0, outerEnd.x, outerEnd.y,
+        "L", innerEnd.x, innerEnd.y,
+        "A", innerRadius, innerRadius, 0, largeArcFlag, 1, innerStart.x, innerStart.y,
+        "Z"
+      ].join(" ");
+
+      return pathData;
     };
 
     return (
@@ -399,42 +421,23 @@ const HomePage: React.FC = () => {
           <View style={styles.donutChartWrapper}>
             <Svg width={size} height={size}>
               {segments.map((segment, index) => {
-                // Calculate the arc length for this segment with gap
-                const circumference = 2 * Math.PI * radius;
-                const arcLength = (circumference * (segment.segmentAngle - gapAngle)) / 360;
-                const dashArray = `${arcLength} ${circumference}`;
+                const pathData = describeArc(segment.startAngle, segment.endAngle);
                 
-                // Calculate offset based on previous segments
-                const previousAngles = segments.slice(0, index).reduce(
-                  (sum, s) => sum + (s.segmentAngle / 360),
-                  0
-                );
-                const offset = -circumference * previousAngles;
-                
-                // Calculate label position (centered on segment)
-                const labelRadius = radius + strokeWidth / 2;
-                const labelPos = polarToCartesian(segment.middleAngle, labelRadius);
+                // Calculate label position (centered on segment at middle radius)
+                const labelRadius = radius;
+                const labelPos = polarToCartesian(center, center, labelRadius, segment.middleAngle);
 
                 return (
                   <G key={index}>
-                    {/* Arc segment with gap */}
-                    <Circle
-                      cx={center}
-                      cy={center}
-                      r={radius}
-                      stroke={segment.color}
-                      strokeWidth={strokeWidth}
-                      fill="none"
-                      strokeDasharray={dashArray}
-                      strokeDashoffset={offset}
-                      rotation={-90}
-                      origin={`${center}, ${center}`}
-                      strokeLinecap="round"
+                    {/* Arc segment as a path */}
+                    <Path
+                      d={pathData}
+                      fill={segment.color}
                     />
                     {/* Percentage label - centered */}
                     <SvgText
                       x={labelPos.x}
-                      y={labelPos.y + 1}
+                      y={labelPos.y}
                       fontSize="16"
                       fontWeight="700"
                       fill="#FFFFFF"
@@ -448,7 +451,7 @@ const HomePage: React.FC = () => {
               })}
             </Svg>
             
-            {/* Center Text - Reduced size */}
+            {/* Center Text */}
             <View style={styles.donutCenter}>
               <Text style={styles.donutCenterValue}>{totalLots}</Text>
               <Text style={styles.donutCenterLabel}>Lots</Text>
