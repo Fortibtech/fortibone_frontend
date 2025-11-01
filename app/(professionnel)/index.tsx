@@ -36,6 +36,9 @@ const HomePage: React.FC = () => {
       setBusinesses(businessesResponse);
       const selected = await SelectedBusinessManager.getSelectedBusiness();
       setSelectedBusiness(selected);
+      if(selected?.type==="FOURNISSEUR"){
+        router.push('/(fournisseur)')
+      }
       if (selected && !businessesResponse.find((b) => b.id === selected.id)) {
         await BusinessesService.clearSelectedBusiness();
         setSelectedBusiness(null);
