@@ -113,7 +113,7 @@ export const RecentTransactions = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Transactions Récentes</Text>
         <TouchableOpacity
-          onPress={() => router.push("/transactions")} // Remplacez par le chemin approprié
+          onPress={() => router.push("/finance/Transactions")} // Remplacez par le chemin approprié
           style={styles.seeMore}
         >
           <Text style={styles.seeMoreText}>Voir plus</Text>

@@ -15,6 +15,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -24,22 +25,78 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [profileType, setProfileType] = useState<string | null>(null);
+  const [isCheckingProfile, setIsCheckingProfile] = useState(true); // État de chargement
   const router = useRouter();
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
+  // Vérification du profil au montage
   useEffect(() => {
-    const loadProfile = async () => {
+    const checkProfileAndRedirect = async () => {
       try {
         const savedProfile = await AsyncStorage.getItem("userProfile");
+
+        if (!savedProfile) {
+          // Aucun profil choisi → rediriger vers le bon écran d'inscription
+          setIsCheckingProfile(false);
+          return;
+        }
+
         setProfileType(savedProfile);
+
+        // Vérifie si l'utilisateur est déjà connecté
+        const token = await AsyncStorage.getItem("authToken"); // ou useUserStore.getState().token
+        const user = useUserStore.getState().userProfile;
+
+        if (token && user) {
+          // Déjà connecté → rediriger selon le type
+          if (user.profileType === "PRO") {
+            router.replace("/(professionnel)");
+          } else {
+            router.replace("/(tabs)");
+          }
+          return;
+        }
+
+        // Profil choisi, mais pas connecté → on reste sur login
+        setIsCheckingProfile(false);
       } catch (error) {
         console.error("Erreur lors du chargement du profil:", error);
+        setIsCheckingProfile(false);
       }
     };
-    loadProfile();
-  }, []);
+
+    checkProfileAndRedirect();
+  }, [router]);
+
+  // Redirection automatique si profil connu mais pas connecté
+  useEffect(() => {
+    if (!isCheckingProfile && !profileType) {
+      if (profileType === null) {
+        // On attend que le profil soit lu
+      } else if (profileType === "particulier") {
+        router.replace("/(auth)/register");
+      } else if (profileType === "professionnel") {
+        router.replace("/(auth)/CommerrcantSignup");
+      }
+    }
+  }, [isCheckingProfile, profileType, router]);
+
+  // Si on est en train de vérifier ou rediriger
+  if (isCheckingProfile || (!profileType && profileType !== null)) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#059669" />
+        <Text style={styles.loadingText}>Préparation de votre espace...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Si aucun profil → on ne devrait pas arriver ici (redirigé)
+  if (!profileType) {
+    return null;
+  }
 
   const handleLogin = async () => {
     const setUserEmail = useUserStore.getState().setEmail;
@@ -118,12 +175,19 @@ const Login = () => {
 
       <View style={styles.resgister}>
         <Text>Vous êtes nouveau ?</Text>
-        <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+        <TouchableOpacity
+          onPress={() =>
+            profileType === "particulier"
+              ? router.push("/(auth)/register")
+              : router.push("/(auth)/CommerrcantSignup")
+          }
+        >
           <Text style={{ color: "#059669", fontWeight: "600" }}>
             inscrivez-vous
           </Text>
         </TouchableOpacity>
       </View>
+
       <View style={styles.form}>
         <InputField
           label="Email"
@@ -132,10 +196,7 @@ const Login = () => {
           onChangeText={setEmail}
           ref={emailRef}
           returnKeyType="next"
-          onSubmitEditing={() => {
-            console.log("Email field submitted, focusing password");
-            passwordRef.current?.focus();
-          }}
+          onSubmitEditing={() => passwordRef.current?.focus()}
           autoCapitalize="none"
           keyboardType="email-address"
         />
@@ -148,10 +209,7 @@ const Login = () => {
           onChangeText={setPassword}
           ref={passwordRef}
           returnKeyType="done"
-          onSubmitEditing={() => {
-            console.log("Password field submitted, triggering login");
-            handleLogin();
-          }}
+          onSubmitEditing={handleLogin}
         />
 
         <View style={styles.forgotRow}>
@@ -198,6 +256,17 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#059669",
+  },
   header: {
     marginBottom: 30,
   },
@@ -224,7 +293,6 @@ const styles = StyleSheet.create({
   subTitle: {
     fontSize: 24,
     color: "#059669",
-    marginTop: 5,
   },
   form: {
     flex: 1,
