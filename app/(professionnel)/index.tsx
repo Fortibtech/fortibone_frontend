@@ -59,6 +59,9 @@ const HomePage: React.FC = () => {
       await BusinessesService.selectBusiness(business);
       setSelectedBusiness(business);
       Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
+      if(business.type==="FOURNISSEUR"){
+        router.push('/(fournisseur)')
+      }
     } catch (error) {
       console.error("Erreur lors de la sélection:", error);
       Alert.alert("Erreur", "Impossible de sélectionner l'entreprise");

@@ -15,6 +15,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Image
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, G, Text as SvgText } from "react-native-svg";
@@ -127,6 +128,9 @@ const HomePage: React.FC = () => {
       await BusinessesService.selectBusiness(business);
       setSelectedBusiness(business);
       Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
+      if(business.type==="COMMERCANT"){
+              router.push('/(professionnel)')
+            }
     } catch (error) {
       console.error("Erreur lors de la sélection:", error);
       Alert.alert("Erreur", "Impossible de sélectionner l'entreprise");
@@ -190,8 +194,10 @@ const HomePage: React.FC = () => {
     </View>
   );
   const renderAlerts = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Alertes Prioritaires</Text>
+    <View style={styles.sectionAlerts}>
+      <View style={styles.sectionViewTitle}>
+        <Text style={styles.sectionTitle}>Alertes Prioritaires</Text>
+      </View>
       {MOCK_ALERTS.map((alert) => (
         <View
           key={alert.id}
@@ -221,13 +227,15 @@ const HomePage: React.FC = () => {
 
   const renderQuickSummary = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Résumé Rapide</Text>
+      <View style={styles.sectionViewTitle}>
+        <Text style={styles.sectionTitle}>Résumé Rapide</Text>
+      </View>
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
           <Text style={[styles.summaryValue, { color: "#FBBF24" }]}>90k</Text>
           <Text style={styles.summaryLabel}>CA du mois</Text>
         </View>
-        <View style={styles.summaryCard}>
+        <View style={styles.summaryCardCA}>
           <Text style={[styles.summaryValue, { color: "#8B5CF6" }]}>8</Text>
           <Text style={styles.summaryLabel}>Commandes en attente</Text>
         </View>
@@ -244,7 +252,7 @@ const HomePage: React.FC = () => {
           router.push(`(analytics)?id=${selectedBusiness.id}` as Route)
         }
       >
-        <Ionicons name="stats-chart" size={24} color="#8B5CF6" />
+         <Image source={require('@/assets/images/Analytiques.png')} style={styles.avatarAnalytic} />
         <Text style={styles.analyticsButtonText}>Analytics Avancées</Text>
         <Ionicons name="chevron-forward" size={24} color="#8B5CF6" />
       </TouchableOpacity>
@@ -282,13 +290,13 @@ const HomePage: React.FC = () => {
                         },
                       ]}
                     >
-                      {data.day === "17" && (
+                      {/* {data.day === "17" && (
                         <View style={styles.barTooltip}>
                           <Text style={styles.barTooltipText}>
                             {(data.value / 1000).toFixed(0)}K
                           </Text>
                         </View>
-                      )}
+                      )} */}
                     </View>
                   </View>
                   <Text
@@ -308,7 +316,7 @@ const HomePage: React.FC = () => {
     );
   };
 
-  const renderTopProducts = () => {
+   const renderTopProducts = () => {
     const totalLots = MOCK_TOP_PRODUCTS.reduce(
       (sum, product) => sum + product.lots,
       0
@@ -319,12 +327,14 @@ const HomePage: React.FC = () => {
     const strokeWidth = 45;
     const center = size / 2;
     const radius = (size - strokeWidth) / 2;
+    const gapAngle = 3; // Gap between segments in degrees
 
-    // Calculate segments with proper angles
+    // Calculate segments with proper angles and gaps
     let cumulativePercentage = 0;
     const segments = MOCK_TOP_PRODUCTS.map((product) => {
-      const startAngle = (cumulativePercentage / 100) * 360 - 90; // Start from top
-      const endAngle = ((cumulativePercentage + product.percentage) / 100) * 360 - 90;
+      const segmentAngle = (product.percentage / 100) * 360;
+      const startAngle = (cumulativePercentage / 100) * 360 - 90 + gapAngle / 2; // Start from top with gap
+      const endAngle = startAngle + segmentAngle - gapAngle; // End before gap
       const middleAngle = (startAngle + endAngle) / 2;
       
       cumulativePercentage += product.percentage;
@@ -334,6 +344,7 @@ const HomePage: React.FC = () => {
         startAngle,
         endAngle,
         middleAngle,
+        segmentAngle,
       };
     });
 
@@ -344,15 +355,6 @@ const HomePage: React.FC = () => {
         x: center + r * Math.cos(angleInRadians),
         y: center + r * Math.sin(angleInRadians),
       };
-    };
-
-    // Helper function to create arc path
-    const createArcPath = (startAngle: number, endAngle: number) => {
-      const start = polarToCartesian(startAngle, radius);
-      const end = polarToCartesian(endAngle, radius);
-      const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-      
-      return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
     };
 
     return (
@@ -397,15 +399,25 @@ const HomePage: React.FC = () => {
           <View style={styles.donutChartWrapper}>
             <Svg width={size} height={size}>
               {segments.map((segment, index) => {
-                const pathData = createArcPath(segment.startAngle, segment.endAngle);
+                // Calculate the arc length for this segment with gap
+                const circumference = 2 * Math.PI * radius;
+                const arcLength = (circumference * (segment.segmentAngle - gapAngle)) / 360;
+                const dashArray = `${arcLength} ${circumference}`;
                 
-                // Calculate label position (outside the ring)
+                // Calculate offset based on previous segments
+                const previousAngles = segments.slice(0, index).reduce(
+                  (sum, s) => sum + (s.segmentAngle / 360),
+                  0
+                );
+                const offset = -circumference * previousAngles;
+                
+                // Calculate label position (centered on segment)
                 const labelRadius = radius + strokeWidth / 2;
                 const labelPos = polarToCartesian(segment.middleAngle, labelRadius);
 
                 return (
                   <G key={index}>
-                    {/* Arc segment */}
+                    {/* Arc segment with gap */}
                     <Circle
                       cx={center}
                       cy={center}
@@ -413,17 +425,17 @@ const HomePage: React.FC = () => {
                       stroke={segment.color}
                       strokeWidth={strokeWidth}
                       fill="none"
-                      strokeDasharray={`${(2 * Math.PI * radius * segment.percentage) / 100} ${2 * Math.PI * radius}`}
-                      strokeDashoffset={-2 * Math.PI * radius * segments.slice(0, index).reduce((sum, s) => sum + s.percentage, 0) / 100}
+                      strokeDasharray={dashArray}
+                      strokeDashoffset={offset}
                       rotation={-90}
                       origin={`${center}, ${center}`}
-                      strokeLinecap="butt"
+                      strokeLinecap="round"
                     />
-                    {/* Percentage label */}
+                    {/* Percentage label - centered */}
                     <SvgText
                       x={labelPos.x}
-                      y={labelPos.y}
-                      fontSize="15"
+                      y={labelPos.y + 1}
+                      fontSize="16"
                       fontWeight="700"
                       fill="#FFFFFF"
                       textAnchor="middle"
@@ -436,7 +448,7 @@ const HomePage: React.FC = () => {
               })}
             </Svg>
             
-            {/* Center Text */}
+            {/* Center Text - Reduced size */}
             <View style={styles.donutCenter}>
               <Text style={styles.donutCenterValue}>{totalLots}</Text>
               <Text style={styles.donutCenterLabel}>Lots</Text>
@@ -479,7 +491,9 @@ const HomePage: React.FC = () => {
 
   const renderRecentOrders = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Commandes Récentes</Text>
+      <View style={styles.sectionViewTitle}>
+        <Text style={styles.sectionTitle}>Commandes Récentes</Text>
+      </View>
       <View style={styles.ordersTable}>
         <View style={styles.tableHeader}>
           <Text style={[styles.tableHeaderText, { flex: 1 }]}>#</Text>
@@ -563,7 +577,7 @@ const HomePage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#FFFFFF",
   },
   loadingContainer: {
     flex: 1,
@@ -628,6 +642,16 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  sectionAlerts: {
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#EEF0F4',
+    padding: 10,
+    borderRadius: 25
+  },
+  sectionViewTitle: {
+    alignItems: 'center'
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -642,7 +666,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 12,
     borderRadius: 12,
-    borderWidth: 1,
+    // borderWidth: 1,
     marginBottom: 8,
   },
   alertContent: {
@@ -660,8 +684,27 @@ const styles = StyleSheet.create({
   // Quick Summary
   summaryRow: {
     flexDirection: "row",
-    gap: 12,
+    gap: 7,
     marginBottom: 16,
+    justifyContent: "center",
+    alignContent: 'center',
+    alignItems: 'center'
+  },
+  summaryCardCA: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 120,
+    backgroundColor: "#FFFFFF",
+    borderColor: '#D8D8D8FF',
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   summaryCard: {
     flex: 1,
@@ -669,8 +712,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 100,
+    height: 100,
     backgroundColor: "#FFFFFF",
+    borderColor: '#D8D8D8FF',
+    borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -678,7 +723,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   summaryValue: {
-    fontSize: 36,
+    fontSize: 26,
     fontWeight: "700",
     marginBottom: 8,
   },
@@ -691,7 +736,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F9F9F9",
+    borderWidth: 1,
+    borderColor: '#DAD6D6FF',
     padding: 16,
     borderRadius: 12,
     gap: 8,
@@ -701,6 +748,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  avatarAnalytic: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
   analyticsButtonText: {
     fontSize: 16,
     fontWeight: "600",
@@ -775,6 +823,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     marginBottom: 20,
+    justifyContent: 'space-between'
   },
   periodButton: {
     flexDirection: "row",
