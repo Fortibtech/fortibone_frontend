@@ -70,14 +70,14 @@ const OtpVerify = () => {
       }
 
       Alert.alert("✅ Succès", "Votre compte est vérifié !");
-
+      router.replace("/(tabs)");
       // 🎯 Redirection selon le type de compte
-      const profileType = store.userProfile?.profileType;
-      if (profileType === "PRO") {
-        router.replace("/pro/createBusiness");
-      } else {
-        router.replace("/(tabs)");
-      }
+      // const profileType = store.userProfile?.profileType;
+      // if (profileType === "PRO") {
+      //   router.replace("/pro/createBusiness");
+      // } else {
+       
+      // }
     } catch (error: any) {
       console.error("Erreur vérification OTP:", error);
       Alert.alert("Erreur", error.message || "OTP invalide ou expiré");
@@ -85,15 +85,7 @@ const OtpVerify = () => {
       setLoading(false);
     }
   };
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
-
-  const handleResendOtp = async () => {
+    const handleResendOtp = async () => {
     try {
       const result = await resendOtp(email!, "EMAIL_VERIFICATION");
       console.log("✅ OTP renvoyé:", result.message);
@@ -104,6 +96,15 @@ const OtpVerify = () => {
       Alert.alert("Erreur", error.message || "Impossible de renvoyer l'OTP");
     }
   };
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+
 
   return (
     <SafeAreaView style={styles.container}>
