@@ -276,6 +276,7 @@ function CommandesList({
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 }) {
+  const router = useRouter();
   if (isLoading && orders.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -305,7 +306,10 @@ function CommandesList({
             <Ionicons name="filter-outline" size={18} color="#777" />
           )}
         </View>
-        <TouchableOpacity style={styles.newBtn}>
+        <TouchableOpacity
+          style={styles.newBtn}
+          onPress={() => router.push("/(orders)/screen/NouvelleCommande")}
+        >
           <Ionicons name="add" size={18} color="#00A36C" />
           <Text style={styles.newBtnText}>Nouvelle Commande</Text>
         </TouchableOpacity>
@@ -414,7 +418,10 @@ function ClientsList({
             <Ionicons name="filter-outline" size={18} color="#777" />
           )}
         </View>
-        <TouchableOpacity style={styles.newBtn}>
+        <TouchableOpacity
+          style={styles.newBtn}
+          onPress={() => router.push("/(orders)/screen/NouveauClient")}
+        >
           <Ionicons name="person-add-outline" size={18} color="#00A36C" />
           <Text style={styles.newBtnText}>Nouveau Client</Text>
         </TouchableOpacity>
