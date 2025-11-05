@@ -1,5 +1,11 @@
 // app/(tabs)/index.tsx
-import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
+import { 
+  Business, 
+  BusinessesService, 
+  SelectedBusinessManager,
+
+} from "@/api";
+import { AnalyticsOverview, getAnalyticsOverview, getInventory, getOrders, getPendingOrdersCount, getSales, InventoryResponse, OrdersResponse, SalesResponse } from "@/api/analytics";
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import { Ionicons } from "@expo/vector-icons";
 import { Route, router } from "expo-router";
@@ -15,88 +21,123 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Image
+  Image,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Circle, G, Path, Text as SvgText } from "react-native-svg";
+import Svg, { G, Path, Text as SvgText } from "react-native-svg";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const MOCK_Notif = [
-  {
-    id: 1,
-    type: "warning",
-    message: "Stock faible sur 'Galaxy S23' (5 unités)",
-    color: "#FEF3C7",
-    borderColor: "#FBBF24",
-    alertTextColor: "#FFB700FF",
-    icon: "warning",
-  },]
-// Mock Data
-const MOCK_ALERTS = [
-  {
-    id: 1,
-    type: "warning",
-    message: "Stock faible sur 'Galaxy S23' (5 unités)",
-    color: "#FEF3C7",
-    borderColor: "#FBBF24",
-    alertTextColor: "#FFB700FF",
-    icon: "warning",
-  },
-  {
-    id: 2,
-    type: "info",
-    message: "3 commandes urgentes (prochaine : -14h 43min)",
-    color: "#FEF3C7",
-    borderColor: "#FBBF24",
-    alertTextColor: "#FFB700FF",
-    icon: "time",
-  },
-  {
-    id: 3,
-    type: "error",
-    message: "2 retards de livraison (+4h)",
-    color: "#FEE2E2",
-    borderColor: "#EF4444",
-    alertTextColor: "#F50B0BFF",
-    icon: "alert-circle",
-  },
-];
 
-const MOCK_SALES_DATA = [
-  { day: "21", value: 30000 },
-  { day: "28", value: 28000 },
-  { day: "2", value: 26000 },
-  { day: "7", value: 34000 },
-  { day: "12", value: 24000 },
-  { day: "17", value: 46000 },
-  { day: "22", value: 30000 },
-];
+type PeriodUnit = "DAY" | "WEEK" | "MONTH" | "YEAR";
 
-const MOCK_TOP_PRODUCTS = [
-  { name: "iPhone 14", percentage: 34, color: "#F97316", lots: 420 },
-  { name: "Galaxy S23", percentage: 25, color: "#10B981", lots: 309 },
-  { name: "Pixel 8", percentage: 19, color: "#7C3AED", lots: 235 },
-  { name: "Xiaomi 14", percentage: 11, color: "#C026D3", lots: 136 },
-  { name: "Huawei P20 Pro", percentage: 11, color: "#FBBF24", lots: 136 },
-];
-
-const MOCK_RECENT_ORDERS = [
-  { id: "#CMD-001", client: "Supermarché Central", total: "450k" },
-  { id: "#CMD-002", client: "Boutique de Bob", total: "120k" },
-  { id: "#CMD-003", client: "Épicerie du Coin", total: "380k" },
-  { id: "#CMD-004", client: "Mini-Market Express", total: "95k" },
-];
+interface PeriodSelection {
+  unit: PeriodUnit;
+  year: number;
+  month?: number; // Pour MONTH et DAY
+  label: string;
+}
 
 const HomePage: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<"Juin" | "Mensuel">("Juin");
+  
+  // ✅ État dynamique pour la période des top produits
+  const [topProductsPeriod, setTopProductsPeriod] = useState<PeriodSelection>({
+    unit: "MONTH",
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    label: getMonthName(new Date().getMonth()),
+  });
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
+
+  // ✅ États pour les analytics
+  const [monthlyOverview, setMonthlyOverview] = useState<AnalyticsOverview | null>(null);
+  const [inventoryData, setInventoryData] = useState<InventoryResponse | null>(null);
+  const [salesData30Days, setSalesData30Days] = useState<SalesResponse | null>(null);
+  const [topProductsData, setTopProductsData] = useState<SalesResponse | null>(null);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
+  const [recentOrders, setRecentOrders] = useState<OrdersResponse | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [topProductsLoading, setTopProductsLoading] = useState(false);
 
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  useEffect(() => {
+    if (selectedBusiness) {
+      loadAnalytics();
+    }
+  }, [selectedBusiness]);
+
+  // ✅ Recharger les top produits quand la période change
+  useEffect(() => {
+    if (selectedBusiness && topProductsPeriod) {
+      loadTopProducts();
+    }
+  }, [topProductsPeriod, selectedBusiness]);
+
+  // ✅ Fonction utilitaire pour obtenir le nom du mois
+  function getMonthName(monthIndex: number): string {
+    const months = [
+      "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+      "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+    ];
+    return months[monthIndex];
+  }
+
+  // ✅ Fonction pour obtenir les dates selon la période sélectionnée
+  const getPeriodDates = (period: PeriodSelection): { startDate: string; endDate: string } => {
+    const { unit, year, month } = period;
+
+    if (unit === "YEAR") {
+      return {
+        startDate: `${year}-01-01`,
+        endDate: `${year}-12-31`,
+      };
+    }
+
+    if (unit === "MONTH" && month) {
+      const lastDay = new Date(year, month, 0).getDate();
+      return {
+        startDate: `${year}-${String(month).padStart(2, '0')}-01`,
+        endDate: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+      };
+    }
+
+    // Par défaut, retourner le mois en cours
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+    return {
+      startDate: `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`,
+      endDate: `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+    };
+  };
+
+  // ✅ Fonction pour obtenir les dates du mois en cours
+  const getCurrentMonthDates = (): { startDate: string; endDate: string } => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const startDate = `${year}-${month}-01`;
+    const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+    const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+    return { startDate, endDate };
+  };
+
+  const getLast30DaysDates = (): { startDate: string; endDate: string } => {
+    const now = new Date();
+    const endDate = now.toISOString().split('T')[0];
+    const start = new Date(now);
+    start.setDate(start.getDate() - 30);
+    const startDate = start.toISOString().split('T')[0];
+    return { startDate, endDate };
+  };
 
   const loadInitialData = async () => {
     try {
@@ -117,9 +158,84 @@ const HomePage: React.FC = () => {
     }
   };
 
+  // ✅ Fonction pour charger les analytics (sans top produits)
+  const loadAnalytics = async () => {
+    if (!selectedBusiness) return;
+
+    try {
+      setAnalyticsLoading(true);
+      
+      const { startDate: monthStart, endDate: monthEnd } = getCurrentMonthDates();
+      const { startDate: days30Start, endDate: days30End } = getLast30DaysDates();
+      
+      // Charger toutes les données en parallèle (sauf top produits)
+      const [
+        monthlyData,
+        inventoryResponse,
+        sales30Days,
+        pendingCount,
+        ordersResponse,
+      ] = await Promise.all([
+        getAnalyticsOverview(selectedBusiness.id, monthStart, monthEnd),
+        getInventory(selectedBusiness.id),
+        getSales(selectedBusiness.id, { 
+          startDate: days30Start, 
+          endDate: days30End, 
+          unit: "DAY" 
+        }),
+        getPendingOrdersCount(selectedBusiness.id, "SALE"),
+        getOrders(selectedBusiness.id, { 
+          limit: 4, 
+          page: 1 
+        }),
+      ]);
+
+      setMonthlyOverview(monthlyData);
+      setInventoryData(inventoryResponse);
+      setSalesData30Days(sales30Days);
+      setPendingOrdersCount(pendingCount);
+      setRecentOrders(ordersResponse);
+      
+    } catch (error) {
+      console.error("Erreur lors du chargement des analytics:", error);
+      Alert.alert("Erreur", "Impossible de charger les statistiques");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  // ✅ Fonction séparée pour charger les top produits
+  const loadTopProducts = async () => {
+    if (!selectedBusiness) return;
+
+    try {
+      setTopProductsLoading(true);
+      
+      const { startDate, endDate } = getPeriodDates(topProductsPeriod);
+      
+      const topProducts = await getSales(selectedBusiness.id, { 
+        startDate, 
+        endDate,
+        unit: topProductsPeriod.unit
+      });
+
+      setTopProductsData(topProducts);
+      
+    } catch (error) {
+      console.error("Erreur lors du chargement des top produits:", error);
+      Alert.alert("Erreur", "Impossible de charger les top produits");
+    } finally {
+      setTopProductsLoading(false);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
+    if (selectedBusiness) {
+      await loadAnalytics();
+      await loadTopProducts();
+    }
     setRefreshing(false);
   };
 
@@ -129,12 +245,88 @@ const HomePage: React.FC = () => {
       setSelectedBusiness(business);
       Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
       if(business.type==="COMMERCANT"){
-              router.push('/(professionnel)')
-            }
+        router.push('/(professionnel)')
+      }
     } catch (error) {
       console.error("Erreur lors de la sélection:", error);
       Alert.alert("Erreur", "Impossible de sélectionner l'entreprise");
     }
+  };
+
+  // ✅ Fonction utilitaire pour formater les nombres
+  const formatNumber = (num: number): string => {
+    return new Intl.NumberFormat("fr-FR", {
+      maximumFractionDigits: 0,
+    }).format(num);
+  };
+
+  const formatCurrency = (num: number): string => {
+    if (num >= 1000) {
+      return `${Math.round(num / 1000)}k`;
+    }
+    return formatNumber(num);
+  };
+
+  // ✅ Calculer le nombre total d'alertes
+  const getTotalAlertsCount = (): number => {
+    if (!inventoryData) return 0;
+    return inventoryData.productsLowStock.length + inventoryData.expiringProducts.length;
+  };
+
+  // ✅ Fonction pour changer de mois
+  const handleMonthChange = (direction: 'prev' | 'next') => {
+    const currentMonth = topProductsPeriod.month || new Date().getMonth() + 1;
+    const currentYear = topProductsPeriod.year;
+
+    let newMonth = currentMonth;
+    let newYear = currentYear;
+
+    if (direction === 'prev') {
+      newMonth = currentMonth - 1;
+      if (newMonth < 1) {
+        newMonth = 12;
+        newYear = currentYear - 1;
+      }
+    } else {
+      newMonth = currentMonth + 1;
+      if (newMonth > 12) {
+        newMonth = 1;
+        newYear = currentYear + 1;
+      }
+    }
+
+    setTopProductsPeriod({
+      unit: "MONTH",
+      year: newYear,
+      month: newMonth,
+      label: getMonthName(newMonth - 1),
+    });
+  };
+
+  // ✅ Fonction pour changer d'unité de période
+  const handleUnitChange = (unit: PeriodUnit) => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    let label = "";
+    if (unit === "YEAR") {
+      label = `${currentYear}`;
+    } else if (unit === "MONTH") {
+      label = getMonthName(currentMonth - 1);
+    } else if (unit === "WEEK") {
+      label = "Semaine";
+    } else {
+      label = "Jour";
+    }
+
+    setTopProductsPeriod({
+      unit,
+      year: currentYear,
+      month: unit === "MONTH" ? currentMonth : undefined,
+      label,
+    });
+    setShowPeriodModal(false);
   };
 
   const renderHeader = () => (
@@ -153,9 +345,13 @@ const HomePage: React.FC = () => {
           <Ionicons name="search" size={24} color="#000" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.iconButton}>
-          <View style={styles.notificationBadge}>
-            <Text style={styles.badgeText}>3</Text>
-          </View>
+          {getTotalAlertsCount() > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>
+                {getTotalAlertsCount()}
+              </Text>
+            </View>
+          )}
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.avatar}>
@@ -164,119 +360,224 @@ const HomePage: React.FC = () => {
       </View>
     </View>
   );
-  const renderNotif = () => (
-    <View style={styles.section}>
-      {/* <Text style={styles.sectionTitle}>Alertes Prioritaires</Text> */}
-      {MOCK_Notif.map((alert) => (
-        <View
-          key={alert.id}
-          style={[
-            styles.alertCard,
-            {
-              backgroundColor: alert.color,
-              borderColor: alert.borderColor,
-            },
-          ]}
-        >
-          <View style={styles.alertContent}>
-            <Ionicons
-              name={alert.icon as any}
-              size={20}
-              color={alert.borderColor}
-            />
-            <Text style={[styles.alertText,{color: `${alert.alertTextColor}`}]}>{alert.message}</Text>
-          </View>
-          <TouchableOpacity>
-            <Ionicons name="close" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-      ))}
-    </View>
-  );
-  const renderAlerts = () => (
-    <View style={styles.sectionAlerts}>
-      <View style={styles.sectionViewTitle}>
-        <Text style={styles.sectionTitle}>Alertes Prioritaires</Text>
-      </View>
-      {MOCK_ALERTS.map((alert) => (
-        <View
-          key={alert.id}
-          style={[
-            styles.alertCard,
-            {
-              backgroundColor: alert.color,
-              borderColor: alert.borderColor,
-            },
-          ]}
-        >
-          <View style={styles.alertContent}>
-            <Ionicons
-              name={alert.icon as any}
-              size={20}
-              color={alert.borderColor}
-            />
-            <Text style={[styles.alertText,{color: `${alert.alertTextColor}`,}]}>{alert.message}</Text>
-          </View>
-          <TouchableOpacity>
-            <Ionicons name="close" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-      ))}
-    </View>
-  );
 
-  const renderQuickSummary = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionViewTitle}>
-        <Text style={styles.sectionTitle}>Résumé Rapide</Text>
-      </View>
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { color: "#FBBF24" }]}>90k</Text>
-          <Text style={styles.summaryLabel}>CA du mois</Text>
-        </View>
-        <View style={styles.summaryCardCA}>
-          <Text style={[styles.summaryValue, { color: "#8B5CF6" }]}>8</Text>
-          <Text style={styles.summaryLabel}>Commandes en attente</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { color: "#EC4899" }]}>12</Text>
-          <Text style={styles.summaryLabel}>Stocks faibles</Text>
-        </View>
-      </View>
+  const renderNotif = () => {
+    if (!inventoryData) return null;
 
-      <TouchableOpacity
-        style={styles.analyticsButton}
-        onPress={() =>
-          selectedBusiness &&
-          router.push(`(analytics)?id=${selectedBusiness.id}` as Route)
-        }
-      >
-         <Image source={require('@/assets/images/Analytiques.png')} style={styles.avatarAnalytic} />
-        <Text style={styles.analyticsButtonText}>Analytics Avancées</Text>
-        <Ionicons name="chevron-forward" size={24} color="#8B5CF6" />
-      </TouchableOpacity>
-    </View>
-  );
+    if (inventoryData.expiringProducts.length > 0) {
+      const firstExpiringProduct = inventoryData.expiringProducts[0];
+      const expirationDate = new Date(firstExpiringProduct.expirationDate);
+      const today = new Date();
+      const daysUntilExpiry = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+      return (
+        <View style={styles.section}>
+          <View
+            style={[
+              styles.alertCard,
+              {
+                backgroundColor: "#FEE2E2",
+                borderColor: "#EF4444",
+              },
+            ]}
+          >
+            <View style={styles.alertContent}>
+              <Ionicons name="alert-circle" size={20} color="#EF4444" />
+              <Text style={[styles.alertText, { color: "#F50B0BFF" }]}>
+                '{firstExpiringProduct.productName}' expire dans {daysUntilExpiry} jour{daysUntilExpiry > 1 ? 's' : ''} ({firstExpiringProduct.quantity} unités)
+              </Text>
+            </View>
+            <TouchableOpacity>
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    if (inventoryData.productsLowStock.length > 0) {
+      const firstLowStockProduct = inventoryData.productsLowStock[0];
+
+      return (
+        <View style={styles.section}>
+          <View
+            style={[
+              styles.alertCard,
+              {
+                backgroundColor: "#FEF3C7",
+                borderColor: "#FBBF24",
+              },
+            ]}
+          >
+            <View style={styles.alertContent}>
+              <Ionicons name="warning" size={20} color="#FBBF24" />
+              <Text style={[styles.alertText, { color: "#FFB700FF" }]}>
+                Stock faible sur '{firstLowStockProduct.productName}' ({firstLowStockProduct.quantityInStock} unités)
+              </Text>
+            </View>
+            <TouchableOpacity>
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
+  const renderAlerts = () => {
+    if (!inventoryData) return null;
+
+    const alerts = [];
+
+    if (inventoryData.expiringProducts.length > 0) {
+      const expiringCount = inventoryData.expiringProducts.length;
+      const totalExpiringQuantity = inventoryData.expiringProducts.reduce(
+        (sum, product) => sum + product.quantity, 
+        0
+      );
+
+      alerts.push({
+        id: 1,
+        type: "error",
+        message: `${expiringCount} produit${expiringCount > 1 ? 's' : ''} expire${expiringCount > 1 ? 'nt' : ''} bientôt (${totalExpiringQuantity} unités)`,
+        color: "#FEE2E2",
+        borderColor: "#EF4444",
+        alertTextColor: "#F50B0BFF",
+        icon: "alert-circle",
+      });
+    }
+
+    if (inventoryData.productsLowStock.length > 0) {
+      alerts.push({
+        id: 2,
+        type: "warning",
+        message: `${inventoryData.productsLowStock.length} produit${inventoryData.productsLowStock.length > 1 ? 's' : ''} en stock faible`,
+        color: "#FEF3C7",
+        borderColor: "#FBBF24",
+        alertTextColor: "#FFB700FF",
+        icon: "warning",
+      });
+    }
+
+    if (alerts.length === 0) return null;
+
+    return (
+      <View style={styles.sectionAlerts}>
+        <View style={styles.sectionViewTitle}>
+          <Text style={styles.sectionTitle}>Alertes Prioritaires</Text>
+        </View>
+        {alerts.map((alert) => (
+          <View
+            key={alert.id}
+            style={[
+              styles.alertCard,
+              {
+                backgroundColor: alert.color,
+                borderColor: alert.borderColor,
+              },
+            ]}
+          >
+            <View style={styles.alertContent}>
+              <Ionicons
+                name={alert.icon as any}
+                size={20}
+                color={alert.borderColor}
+              />
+              <Text style={[styles.alertText, { color: alert.alertTextColor }]}>
+                {alert.message}
+              </Text>
+            </View>
+            <TouchableOpacity>
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderQuickSummary = () => {
+    if (analyticsLoading) {
+      return (
+        <View style={styles.section}>
+          <ActivityIndicator size="large" color="#10B981" />
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionViewTitle}>
+          <Text style={styles.sectionTitle}>Résumé Rapide</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryCard}>
+            <Text style={[styles.summaryValue, { color: "#FBBF24" }]}>
+              {monthlyOverview ? formatCurrency(monthlyOverview.totalSalesAmount) : "--"}
+            </Text>
+            <Text style={styles.summaryLabel}>CA du mois</Text>
+          </View>
+          <View style={styles.summaryCardCA}>
+            <Text style={[styles.summaryValue, { color: "#8B5CF6" }]}>
+              {pendingOrdersCount}
+            </Text>
+            <Text style={styles.summaryLabel}>Commandes en attente</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Text style={[styles.summaryValue, { color: "#EC4899" }]}>
+              {inventoryData ? inventoryData.productsLowStock.length : 0}
+            </Text>
+            <Text style={styles.summaryLabel}>Stocks faibles</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.analyticsButton}
+          onPress={() =>
+            selectedBusiness &&
+            router.push(`(analytics)?id=${selectedBusiness.id}` as Route)
+          }
+        >
+          <Image 
+            source={require('@/assets/images/Analytiques.png')} 
+            style={styles.avatarAnalytic} 
+          />
+          <Text style={styles.analyticsButtonText}>Analytics Avancées</Text>
+          <Ionicons name="chevron-forward" size={24} color="#8B5CF6" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderSalesChart = () => {
-    const maxValue = Math.max(...MOCK_SALES_DATA.map((d) => d.value));
+    if (!salesData30Days || salesData30Days.salesByPeriod.length === 0) {
+      return null;
+    }
+
+    const salesByPeriod = salesData30Days.salesByPeriod;
+    const maxValue = Math.max(...salesByPeriod.map((d) => d.totalAmount));
+    const last7Days = salesByPeriod.slice(-7);
 
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>CA des 30 derniers jours</Text>
         <View style={styles.chartContainer}>
           <View style={styles.yAxisLabels}>
-            <Text style={styles.yAxisLabel}>500K</Text>
-            <Text style={styles.yAxisLabel}>400K</Text>
-            <Text style={styles.yAxisLabel}>300K</Text>
-            <Text style={styles.yAxisLabel}>200K</Text>
-            <Text style={styles.yAxisLabel}>100K</Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(maxValue)}</Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(maxValue * 0.8)}</Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(maxValue * 0.6)}</Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(maxValue * 0.4)}</Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(maxValue * 0.2)}</Text>
             <Text style={styles.yAxisLabel}>0</Text>
           </View>
           <View style={styles.chartBars}>
-            {MOCK_SALES_DATA.map((data, index) => {
-              const height = (data.value / maxValue) * 160;
+            {last7Days.map((data, index) => {
+              const height = (data.totalAmount / maxValue) * 160;
+              const day = new Date(data.period).getDate();
+              const isToday = index === last7Days.length - 1;
+
               return (
                 <View key={index} style={styles.barContainer}>
                   <View style={styles.barWrapper}>
@@ -285,27 +586,18 @@ const HomePage: React.FC = () => {
                         styles.bar,
                         {
                           height: height,
-                          backgroundColor:
-                            data.day === "22" ? "#EC4899" : "#EC4899",
+                          backgroundColor: isToday ? "#10B981" : "#EC4899",
                         },
                       ]}
-                    >
-                      {/* {data.day === "17" && (
-                        <View style={styles.barTooltip}>
-                          <Text style={styles.barTooltipText}>
-                            {(data.value / 1000).toFixed(0)}K
-                          </Text>
-                        </View>
-                      )} */}
-                    </View>
+                    />
                   </View>
                   <Text
                     style={[
                       styles.barLabel,
-                      data.day === "22" && styles.barLabelActive,
+                      isToday && styles.barLabelActive,
                     ]}
                   >
-                    {data.day}
+                    {day}
                   </Text>
                 </View>
               );
@@ -316,25 +608,103 @@ const HomePage: React.FC = () => {
     );
   };
 
-  const renderTopProducts = () => {
-    const totalLots = MOCK_TOP_PRODUCTS.reduce(
-      (sum, product) => sum + product.lots,
-      0
-    );
+  // ✅ Modal pour sélectionner le type de période
+  const renderPeriodModal = () => (
+    <Modal
+      visible={showPeriodModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowPeriodModal(false)}
+    >
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowPeriodModal(false)}
+      >
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Sélectionner une période</Text>
+          
+          <TouchableOpacity 
+            style={styles.modalOption}
+            onPress={() => handleUnitChange("DAY")}
+          >
+            <Text style={styles.modalOptionText}>Jour</Text>
+          </TouchableOpacity>
 
-    // Donut chart parameters
+          <TouchableOpacity 
+            style={styles.modalOption}
+            onPress={() => handleUnitChange("WEEK")}
+          >
+            <Text style={styles.modalOptionText}>Semaine</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.modalOption}
+            onPress={() => handleUnitChange("MONTH")}
+          >
+            <Text style={styles.modalOptionText}>Mois</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.modalOption}
+            onPress={() => handleUnitChange("YEAR")}
+          >
+            <Text style={styles.modalOptionText}>Année</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.modalCancelButton}
+            onPress={() => setShowPeriodModal(false)}
+          >
+            <Text style={styles.modalCancelText}>Annuler</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  // ✅ Top produits avec sélecteur de période dynamique
+  const renderTopProducts = () => {
+    if (topProductsLoading) {
+      return (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Top 5 Produits par volume</Text>
+          <View style={styles.donutChartContainer}>
+            <ActivityIndicator size="large" color="#10B981" />
+          </View>
+        </View>
+      );
+    }
+
+    if (!topProductsData || topProductsData.topSellingProducts.length === 0) {
+      return (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Top 5 Produits par volume</Text>
+          <View style={styles.donutChartContainer}>
+            <Text style={styles.noDataText}>Aucune donnée disponible pour cette période</Text>
+          </View>
+        </View>
+      );
+    }
+
+    const topProducts = topProductsData.topSellingProducts.slice(0, 5);
+    const totalQuantity = topProducts.reduce((sum, p) => sum + p.totalQuantitySold, 0);
+
     const size = 240;
     const strokeWidth = 45;
     const center = size / 2;
     const radius = (size - strokeWidth) / 2;
     const outerRadius = radius + strokeWidth / 2;
     const innerRadius = radius - strokeWidth / 2;
-    const gapAngle = 2; // Gap between segments in degrees
+    const gapAngle = 2;
 
-    // Calculate segments with proper angles and gaps
+    const colors = ["#F97316", "#10B981", "#7C3AED", "#C026D3", "#FBBF24"];
+
     let cumulativeAngle = 0;
-    const segments = MOCK_TOP_PRODUCTS.map((product) => {
-      const segmentAngle = (product.percentage / 100) * 360;
+    const segments = topProducts.map((product, index) => {
+      const percentage = product.revenuePercentage || 
+        (product.totalRevenue / topProducts.reduce((sum, p) => sum + p.totalRevenue, 0)) * 100;
+      const segmentAngle = (percentage / 100) * 360;
       const startAngle = cumulativeAngle + gapAngle / 2;
       const endAngle = cumulativeAngle + segmentAngle - gapAngle / 2;
       const middleAngle = (startAngle + endAngle) / 2;
@@ -343,6 +713,8 @@ const HomePage: React.FC = () => {
       
       return {
         ...product,
+        percentage: Math.round(percentage),
+        color: colors[index],
         startAngle,
         endAngle,
         middleAngle,
@@ -350,7 +722,6 @@ const HomePage: React.FC = () => {
       };
     });
 
-    // Helper function to convert polar to cartesian coordinates
     const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
       const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
       return {
@@ -359,7 +730,6 @@ const HomePage: React.FC = () => {
       };
     };
 
-    // Helper function to create donut arc path
     const describeArc = (startAngle: number, endAngle: number) => {
       const outerStart = polarToCartesian(center, center, outerRadius, endAngle);
       const outerEnd = polarToCartesian(center, center, outerRadius, startAngle);
@@ -383,58 +753,63 @@ const HomePage: React.FC = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Top 5 Produits par volume</Text>
 
+        {/* ✅ Sélecteur de période dynamique */}
         <View style={styles.periodSelector}>
-          <TouchableOpacity
-            style={[
-              styles.periodButton,
-              selectedPeriod === "Juin" && styles.periodButtonActive,
-            ]}
-            onPress={() => setSelectedPeriod("Juin")}
-          >
-            <Text
-              style={[
-                styles.periodButtonText,
-                selectedPeriod === "Juin" && styles.periodButtonTextActive,
-              ]}
+          {/* Bouton mois précédent (seulement pour MONTH) */}
+          {topProductsPeriod.unit === "MONTH" && (
+            <TouchableOpacity
+              style={styles.periodNavigationButton}
+              onPress={() => handleMonthChange('prev')}
             >
-              Juin
+              <Ionicons name="chevron-back" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          )}
+
+          {/* Affichage de la période actuelle */}
+          <TouchableOpacity
+            style={[styles.periodButton, styles.periodButtonActive]}
+          >
+            <Text style={[styles.periodButtonText, styles.periodButtonTextActive]}>
+              {topProductsPeriod.label}
             </Text>
           </TouchableOpacity>
+
+          {/* Bouton mois suivant (seulement pour MONTH) */}
+          {topProductsPeriod.unit === "MONTH" && (
+            <TouchableOpacity
+              style={styles.periodNavigationButton}
+              onPress={() => handleMonthChange('next')}
+            >
+              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+            </TouchableOpacity>
+          )}
+
+          {/* Sélecteur de type de période */}
           <TouchableOpacity
-            style={[
-              styles.periodButton,
-              selectedPeriod === "Mensuel" && styles.periodButtonInactive,
-            ]}
-            onPress={() => setSelectedPeriod("Mensuel")}
+            style={[styles.periodButton, styles.periodButtonInactive]}
+            onPress={() => setShowPeriodModal(true)}
           >
-            <Text style={styles.periodButtonText}>Mensuel</Text>
-            <Ionicons 
-              name="chevron-down" 
-              size={16} 
-              color="#6B7280" 
-            />
+            <Text style={styles.periodButtonText}>
+              {topProductsPeriod.unit === "DAY" && "Jour"}
+              {topProductsPeriod.unit === "WEEK" && "Semaine"}
+              {topProductsPeriod.unit === "MONTH" && "Mensuel"}
+              {topProductsPeriod.unit === "YEAR" && "Annuel"}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#6B7280" />
           </TouchableOpacity>
         </View>
 
         <View style={styles.donutChartContainer}>
-          {/* SVG Donut Chart */}
           <View style={styles.donutChartWrapper}>
             <Svg width={size} height={size}>
               {segments.map((segment, index) => {
                 const pathData = describeArc(segment.startAngle, segment.endAngle);
-                
-                // Calculate label position (centered on segment at middle radius)
                 const labelRadius = radius;
                 const labelPos = polarToCartesian(center, center, labelRadius, segment.middleAngle);
 
                 return (
                   <G key={index}>
-                    {/* Arc segment as a path */}
-                    <Path
-                      d={pathData}
-                      fill={segment.color}
-                    />
-                    {/* Percentage label - centered */}
+                    <Path d={pathData} fill={segment.color} />
                     <SvgText
                       x={labelPos.x}
                       y={labelPos.y}
@@ -451,17 +826,15 @@ const HomePage: React.FC = () => {
               })}
             </Svg>
             
-            {/* Center Text */}
             <View style={styles.donutCenter}>
-              <Text style={styles.donutCenterValue}>{totalLots}</Text>
-              <Text style={styles.donutCenterLabel}>Lots</Text>
+              <Text style={styles.donutCenterValue}>{totalQuantity}</Text>
+              <Text style={styles.donutCenterLabel}>Unités</Text>
             </View>
           </View>
 
-          {/* Legend */}
           <View style={styles.productLegend}>
             <View style={styles.legendRow}>
-              {MOCK_TOP_PRODUCTS.slice(0, 3).map((product, index) => (
+              {segments.slice(0, 3).map((product, index) => (
                 <View key={index} style={styles.legendItem}>
                   <View
                     style={[
@@ -469,58 +842,82 @@ const HomePage: React.FC = () => {
                       { backgroundColor: product.color },
                     ]}
                   />
-                  <Text style={styles.legendText}>{product.name}</Text>
+                  <Text style={styles.legendText} numberOfLines={1}>
+                    {product.productName}
+                  </Text>
                 </View>
               ))}
             </View>
-            <View style={styles.legendRow}>
-              {MOCK_TOP_PRODUCTS.slice(3).map((product, index) => (
-                <View key={index + 3} style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendColor,
-                      { backgroundColor: product.color },
-                    ]}
-                  />
-                  <Text style={styles.legendText}>{product.name}</Text>
-                </View>
-              ))}
-            </View>
+            {segments.length > 3 && (
+              <View style={styles.legendRow}>
+                {segments.slice(3).map((product, index) => (
+                  <View key={index + 3} style={styles.legendItem}>
+                    <View
+                      style={[
+                        styles.legendColor,
+                        { backgroundColor: product.color },
+                      ]}
+                    />
+                    <Text style={styles.legendText} numberOfLines={1}>
+                      {product.productName}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         </View>
       </View>
     );
   };
 
-  const renderRecentOrders = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionViewTitle}>
-        <Text style={styles.sectionTitle}>Commandes Récentes</Text>
-      </View>
-      <View style={styles.ordersTable}>
-        <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderText, { flex: 1 }]}>#</Text>
-          <Text style={[styles.tableHeaderText, { flex: 2 }]}>Client</Text>
-          <Text style={[styles.tableHeaderText, { flex: 1, textAlign: "right" }]}>
-            Total
-          </Text>
+  const renderRecentOrders = () => {
+    if (!recentOrders || recentOrders.data.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionViewTitle}>
+          <Text style={styles.sectionTitle}>Commandes Récentes</Text>
         </View>
-        {MOCK_RECENT_ORDERS.map((order, index) => (
-          <View key={index} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 1 }]}>{order.id}</Text>
-            <Text style={[styles.tableCell, { flex: 2 }]}>{order.client}</Text>
-            <Text style={[styles.tableCell, { flex: 1, textAlign: "right" }]}>
-              {order.total}
+        <View style={styles.ordersTable}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderText, { flex: 1 }]}>#</Text>
+            <Text style={[styles.tableHeaderText, { flex: 2 }]}>Client</Text>
+            <Text style={[styles.tableHeaderText, { flex: 1, textAlign: "right" }]}>
+              Total
             </Text>
           </View>
-        ))}
+          {recentOrders.data.map((order, index) => (
+            <View key={index} style={styles.tableRow}>
+              <Text style={[styles.tableCell, { flex: 1 }]}>
+                {order.orderNumber}
+              </Text>
+              <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>
+                {order.customer 
+                  ? `${order.customer.firstName} ${order.customer.lastName}`
+                  : "Client inconnu"
+                }
+              </Text>
+              <Text style={[styles.tableCell, { flex: 1, textAlign: "right" }]}>
+                {formatCurrency(order.totalAmount)}
+              </Text>
+            </View>
+          ))}
+        </View>
+        <TouchableOpacity 
+          style={styles.viewAllButton}
+          onPress={() => {
+            router.push('/commandes')
+          }}
+        >
+          <Text style={styles.viewAllButtonText}>Voir toutes les commandes</Text>
+          <Ionicons name="chevron-forward" size={20} color="#10B981" />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.viewAllButton}>
-        <Text style={styles.viewAllButtonText}>Voir toutes les commandes</Text>
-        <Ionicons name="chevron-forward" size={20} color="#10B981" />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   const renderNoBusinessSelected = () => (
     <View style={styles.noBusinessContainer}>
@@ -573,6 +970,7 @@ const HomePage: React.FC = () => {
           renderNoBusinessSelected()
         )}
       </ScrollView>
+      {renderPeriodModal()}
     </SafeAreaView>
   );
 };
@@ -661,15 +1059,12 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 16,
   },
-
-  // Alerts
   alertCard: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     padding: 12,
     borderRadius: 12,
-    // borderWidth: 1,
     marginBottom: 8,
   },
   alertContent: {
@@ -680,11 +1075,8 @@ const styles = StyleSheet.create({
   },
   alertText: {
     fontSize: 13,
-    
     flex: 1,
   },
-
-  // Quick Summary
   summaryRow: {
     flexDirection: "row",
     gap: 7,
@@ -758,8 +1150,6 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     flex: 1,
   },
-
-  // Sales Chart
   chartContainer: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
@@ -798,19 +1188,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     position: "relative",
   },
-  barTooltip: {
-    position: "absolute",
-    top: -30,
-    backgroundColor: "#1F2937",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  barTooltipText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "600",
-  },
   barLabel: {
     marginTop: 8,
     fontSize: 11,
@@ -820,13 +1197,18 @@ const styles = StyleSheet.create({
     color: "#10B981",
     fontWeight: "600",
   },
-
-  // Top Products
+  // ✅ Styles du sélecteur de période dynamique
   periodSelector: {
     flexDirection: "row",
     gap: 8,
     marginBottom: 20,
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  periodNavigationButton: {
+    padding: 8,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
   },
   periodButton: {
     flexDirection: "row",
@@ -855,6 +1237,48 @@ const styles = StyleSheet.create({
   periodButtonTextActive: {
     color: "#10B981",
     fontWeight: "600",
+  },
+  // ✅ Styles du modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  modalOption: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: "#374151",
+  },
+  modalCancelButton: {
+    marginTop: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6B7280",
   },
   donutChartContainer: {
     backgroundColor: "#FFFFFF",
@@ -909,9 +1333,14 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 14,
     color: "#374151",
+    flex: 1,
   },
-
-  // Recent Orders
+  noDataText: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    textAlign: "center",
+    paddingVertical: 40,
+  },
   ordersTable: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -956,8 +1385,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#10B981",
   },
-
-  // No Business
   noBusinessContainer: {
     alignItems: "center",
     justifyContent: "center",
