@@ -11,6 +11,7 @@ import Toast from "react-native-toast-message";
 // ⚡ Import Stripe uniquement si on est sur mobile
 let StripeProvider: any;
 if (Platform.OS !== "web") {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   StripeProvider = require("@stripe/stripe-react-native").StripeProvider;
 } else {
   // Mock pour le web (évite les erreurs)
@@ -60,8 +61,9 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
       </Stack>
 
-      <StatusBar style="auto" />
-      <Toast />
-    </StripeProvider>
+        <StatusBar style="auto" />
+        <Toast />
+      </StripeProvider>
+  
   );
 }

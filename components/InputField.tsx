@@ -15,7 +15,8 @@ interface InputFieldProps extends TextInputProps {
   secureTextEntry?: boolean;
   value: string;
   onChangeText: (text: string) => void;
-  type?: "text" | "password" | "description"; // 👈 ajout du type
+  type?: "text" | "password" | "description";
+  leftIcon?: React.ReactNode; // AJOUTÉ ICI
 }
 
 const InputField = forwardRef<TextInput, InputFieldProps>(
@@ -28,7 +29,8 @@ const InputField = forwardRef<TextInput, InputFieldProps>(
       onChangeText,
       keyboardType = "default",
       onSubmitEditing,
-      type = "text", // 👈 valeur par défaut
+      type = "text",
+      leftIcon, // AJOUTÉ
       ...rest
     },
     ref
@@ -45,13 +47,20 @@ const InputField = forwardRef<TextInput, InputFieldProps>(
         <View
           style={[
             styles.inputWrapper,
-            isDescription && styles.textareaWrapper, // 👈 styles spécifiques
+            isDescription && styles.textareaWrapper,
             { borderColor: isFocused ? "#059669" : "#ccc" },
           ]}
         >
+          {/* LEFT ICON */}
+          {leftIcon && <View style={styles.leftIconContainer}>{leftIcon}</View>}
+
           <TextInput
             ref={ref}
-            style={[styles.input, isDescription && styles.textareaInput]}
+            style={[
+              styles.input,
+              isDescription && styles.textareaInput,
+              leftIcon ? styles.inputWithLeftIcon : undefined, // CORRIGÉ
+            ]}
             placeholder={placeholder}
             secureTextEntry={!showPassword && secureTextEntry}
             value={value}
@@ -63,12 +72,13 @@ const InputField = forwardRef<TextInput, InputFieldProps>(
               console.log(`${label} onSubmitEditing triggered`);
               onSubmitEditing?.(event);
             }}
-            multiline={isDescription} // 👈 active textarea
-            textAlignVertical={isDescription ? "top" : "center"} // 👈 aligne le texte en haut
+            multiline={isDescription}
+            textAlignVertical={isDescription ? "top" : "center"}
             numberOfLines={isDescription ? 5 : 1}
             {...rest}
           />
 
+          {/* RIGHT ICON (password toggle) */}
           {secureTextEntry && (
             <TouchableOpacity
               style={styles.icon}
@@ -91,6 +101,7 @@ InputField.displayName = "InputField";
 
 export default InputField;
 
+// === STYLES AMÉLIORÉS ===
 const styles = StyleSheet.create({
   container: {
     marginVertical: 10,
@@ -112,16 +123,23 @@ const styles = StyleSheet.create({
   },
   textareaWrapper: {
     alignItems: "flex-start",
-    height: 120, // 👈 plus grand pour la description
+    height: 120,
+  },
+  leftIconContainer: {
+    marginRight: 8,
+    justifyContent: "center",
   },
   input: {
     flex: 1,
     fontSize: 16,
     color: "#111",
   },
+  inputWithLeftIcon: {
+    paddingLeft: 0, // évite double padding
+  },
   textareaInput: {
     height: "100%",
-    textAlignVertical: "top", // 👈 texte en haut
+    textAlignVertical: "top",
     paddingTop: 8,
   },
   icon: {
