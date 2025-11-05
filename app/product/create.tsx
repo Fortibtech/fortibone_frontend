@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { Camera, ChevronDown, Package, Search, Tag } from 'lucide-react-native';
+import { Camera, ChevronDown, Plus, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -39,32 +39,21 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
 }) => {
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(false);
-  const [imageUri, setImageUri] = useState<string>('');
+  const [images, setImages] = useState<string[]>([]);
   
   // États pour les catégories
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
-  const [categorySearchText, setCategorySearchText] = useState('');
-  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
   // États pour l'unité de vente
   const [salesUnitModalVisible, setSalesUnitModalVisible] = useState(false);
-  const [selectedSalesUnit, setSelectedSalesUnit] = useState<{value: string, label: string, description: string} | null>(null);
+  const [selectedSalesUnit, setSelectedSalesUnit] = useState<{value: string, label: string} | null>(null);
 
-  // Options d'unité de vente
   const salesUnitOptions = [
-    {
-      value: 'UNIT',
-      label: 'Unité (pièce)',
-      description: 'Vente à l\'unité ou à la pièce'
-    },
-    {
-      value: 'LOT',
-      label: 'LOT',
-      description: 'Vente par lot ou pack groupé'
-    }
+    { value: 'UNIT', label: 'Unité (pièce)' },
+    { value: 'LOT', label: 'LOT' }
   ];
   
   const [formData, setFormData] = useState<CreateProductData>({
@@ -81,25 +70,11 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
   }, []);
 
   useEffect(() => {
-    // Initialiser l'unité de vente sélectionnée
     const defaultUnit = salesUnitOptions.find(unit => unit.value === formData.salesUnit);
     if (defaultUnit && !selectedSalesUnit) {
       setSelectedSalesUnit(defaultUnit);
     }
   }, [formData.salesUnit]);
-
-  useEffect(() => {
-    // Filtrer les catégories en fonction du texte de recherche
-    if (categorySearchText.trim()) {
-      const filtered = categories.filter(category =>
-        category.name.toLowerCase().includes(categorySearchText.toLowerCase()) ||
-        (category.description && category.description.toLowerCase().includes(categorySearchText.toLowerCase()))
-      );
-      setFilteredCategories(filtered);
-    } else {
-      setFilteredCategories(categories);
-    }
-  }, [categorySearchText, categories]);
 
   const initializeScreen = async () => {
     await Promise.all([
@@ -115,12 +90,7 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
         Alert.alert(
           'Aucune entreprise sélectionnée',
           'Veuillez sélectionner une entreprise avant de créer un produit.',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.back()
-            }
-          ]
+          [{ text: 'OK', onPress: () => router.back() }]
         );
         return;
       }
@@ -137,7 +107,6 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
       setLoadingCategories(true);
       const categoriesData = await CategoryService.getCategories();
       setCategories(categoriesData);
-      setFilteredCategories(categoriesData);
     } catch (error) {
       console.error('Erreur lors du chargement des catégories:', error);
       Alert.alert('Erreur', 'Impossible de charger les catégories');
@@ -147,11 +116,16 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
   };
 
   const pickImage = async () => {
+    if (images.length >= 5) {
+      Alert.alert('Limite atteinte', 'Vous pouvez ajouter maximum 5 images');
+      return;
+    }
+
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
       Alert.alert(
         'Permission refusée', 
-        'Vous devez autoriser l\'accès à la bibliothèque de photos pour ajouter une image.'
+        'Vous devez autoriser l\'accès à la bibliothèque de photos.'
       );
       return;
     }
@@ -164,62 +138,29 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setImageUri(result.assets[0].uri);
+      setImages(prev => [...prev, result.assets[0].uri]);
     }
   };
 
-  const takePhoto = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permissionResult.granted) {
-      Alert.alert(
-        'Permission refusée', 
-        'Vous devez autoriser l\'accès à la caméra pour prendre une photo.'
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setImageUri(result.assets[0].uri);
-    }
-  };
-
-  const showImageOptions = () => {
-    Alert.alert(
-      'Ajouter une image',
-      'Choisissez une option',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Galerie', onPress: pickImage },
-        { text: 'Caméra', onPress: takePhoto },
-      ]
-    );
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleCategorySelect = (category: Category) => {
     setSelectedCategory(category);
     setFormData(prev => ({ ...prev, categoryId: category.id }));
     setCategoryModalVisible(false);
-    setCategorySearchText('');
     
-    // Effacer l'erreur de catégorie si elle existe
     if (formErrors.categoryId) {
       setFormErrors(prev => ({ ...prev, categoryId: '' }));
     }
   };
 
-  // ✅ NOUVELLE FONCTION POUR GÉRER LA SÉLECTION D'UNITÉ DE VENTE
-  const handleSalesUnitSelect = (unit: {value: string, label: string, description: string}) => {
+  const handleSalesUnitSelect = (unit: {value: string, label: string}) => {
     setSelectedSalesUnit(unit);
     setFormData(prev => ({ ...prev, salesUnit: unit.value }));
     setSalesUnitModalVisible(false);
     
-    // Effacer l'erreur d'unité de vente si elle existe
     if (formErrors.salesUnit) {
       setFormErrors(prev => ({ ...prev, salesUnit: '' }));
     }
@@ -244,10 +185,6 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
       errors.categoryId = 'Veuillez sélectionner une catégorie';
     }
 
-    if (!formData.salesUnit) {
-      errors.salesUnit = 'L\'unité de vente est obligatoire';
-    }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -257,20 +194,17 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
 
     try {
       setLoading(true);
-      console.log('mes data',selectedBusiness,formData)
-      // Créer le produit
+      
       const newProduct = await ProductService.createProduct(
         selectedBusiness.id,
         formData
       );
 
-      console.log('✅ Produit créé:', newProduct);
-
-      // Upload de l'image si présente
-      if (imageUri) {
+      // Upload des images
+      if (images.length > 0) {
         try {
           await ProductService.uploadProductImage(newProduct.id, {
-            uri: imageUri,
+            uri: images[0],
             type: 'image/jpeg',
             name: 'product.jpg',
           } as any);
@@ -279,22 +213,14 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
         }
       }
 
-      // Callback si fourni
       if (onProductCreated) {
         onProductCreated(newProduct);
       }
 
       Alert.alert(
         'Succès',
-        `Produit "${newProduct.name}" créé avec succès dans la catégorie "${selectedCategory?.name}" !`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              router.back();
-            }
-          }
-        ]
+        `Produit "${newProduct.name}" créé avec succès !`,
+        [{ text: 'OK', onPress: () => router.back() }]
       );
 
     } catch (error) {
@@ -308,7 +234,6 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
   const updateFormData = (field: keyof CreateProductData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Effacer l'erreur du champ modifié
     if (formErrors[field]) {
       setFormErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -316,18 +241,11 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={28} color="#333" />
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color="#333" />
       </TouchableOpacity>
-      
-      <View style={styles.headerContent}>
-        <Text style={styles.headerTitle}>Nouveau Produit</Text>
-        {selectedBusiness && (
-          <Text style={styles.headerSubtitle}>
-            {selectedBusiness.name}
-          </Text>
-        )}
-      </View>
+
+      <Text style={styles.headerTitle}>Ajouter un Produit</Text>
 
       <View style={styles.headerPlaceholder} />
     </View>
@@ -335,73 +253,38 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
 
   const renderImageSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>📷 Image du produit</Text>
+      <Text style={styles.label}>
+        Images du Produit<Text style={styles.required}>*</Text>
+      </Text>
       
       <TouchableOpacity 
-        style={styles.imageContainer}
-        onPress={showImageOptions}
+        style={styles.imageUploadArea}
+        onPress={pickImage}
         activeOpacity={0.7}
       >
-        {imageUri ? (
-          <>
-            <Image source={{ uri: imageUri }} style={styles.productImage} />
-            <View style={styles.imageOverlay}>
-              <Camera size={24} color="white" />
-              <Text style={styles.changeImageText}>Changer</Text>
-            </View>
-          </>
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <Package size={48} color="#ccc" />
-            <Text style={styles.imagePlaceholderText}>
-              Ajouter une image
-            </Text>
-            <Text style={styles.imagePlaceholderSubtext}>
-              Touchez pour sélectionner
-            </Text>
-          </View>
-        )}
+        <Ionicons name="image-outline" size={32} color="#9CA3AF" />
+        <Text style={styles.imageUploadText}>
+          Touchez pour ajouter (Max 5 images)
+        </Text>
+        <Text style={styles.imageUploadSubtext}>
+          Format: jpg, png, webp. Taille max: 5Mb par image
+        </Text>
       </TouchableOpacity>
-    </View>
-  );
 
-  const renderCategorySelector = () => (
-    <View style={styles.formGroup}>
-      <Text style={styles.label}>Catégorie *</Text>
-      <TouchableOpacity
-        style={[styles.categorySelector, formErrors.categoryId && styles.inputError]}
-        onPress={() => setCategoryModalVisible(true)}
-        disabled={loadingCategories}
-      >
-        {loadingCategories ? (
-          <View style={styles.categorySelectorContent}>
-            <ActivityIndicator size="small" color="#666" />
-            <Text style={styles.categorySelectorText}>Chargement des catégories...</Text>
-          </View>
-        ) : selectedCategory ? (
-          <View style={styles.categorySelectorContent}>
-            <View style={styles.selectedCategoryInfo}>
-              <Tag size={16} color="#059669" />
-              <Text style={styles.selectedCategoryName}>{selectedCategory.name}</Text>
-              {selectedCategory.description && (
-                <Text style={styles.selectedCategoryDesc} numberOfLines={1}>
-                  {selectedCategory.description}
-                </Text>
-              )}
+      {images.length > 0 && (
+        <View style={styles.imagesPreview}>
+          {images.map((uri, index) => (
+            <View key={index} style={styles.imagePreviewItem}>
+              <Image source={{ uri }} style={styles.previewImage} />
+              <TouchableOpacity 
+                style={styles.removeImageButton}
+                onPress={() => removeImage(index)}
+              >
+                <X size={16} color="white" />
+              </TouchableOpacity>
             </View>
-            <ChevronDown size={20} color="#666" />
-          </View>
-        ) : (
-          <View style={styles.categorySelectorContent}>
-            <Text style={styles.categorySelectorPlaceholder}>
-              Sélectionner une catégorie
-            </Text>
-            <ChevronDown size={20} color="#666" />
-          </View>
-        )}
-      </TouchableOpacity>
-      {formErrors.categoryId && (
-        <Text style={styles.errorText}>{formErrors.categoryId}</Text>
+          ))}
+        </View>
       )}
     </View>
   );
@@ -416,94 +299,42 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
       <SafeAreaView style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={() => setCategoryModalVisible(false)}>
-            <Ionicons name="arrow-back" size={28} color="#333" />
+            <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
           
-          <Text style={styles.modalTitle}>Choisir une catégorie</Text>
+          <Text style={styles.modalTitle}>Sélectionner une catégorie</Text>
           
-          <TouchableOpacity onPress={loadCategories}>
-            <Ionicons name="refresh" size={28} color="#059669" />
-          </TouchableOpacity>
+          <View style={styles.headerPlaceholder} />
         </View>
 
-        <View style={styles.searchContainer}>
-          <Search size={20} color="#666" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher une catégorie..."
-            value={categorySearchText}
-            onChangeText={setCategorySearchText}
-            placeholderTextColor="#999"
-          />
-        </View>
-
-        {loadingCategories ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#059669" />
-            <Text style={styles.loadingText}>Chargement des catégories...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredCategories}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item: category }) => (
-              <TouchableOpacity
-                style={[
-                  styles.categoryItem,
-                  selectedCategory?.id === category.id && styles.selectedCategoryItem
-                ]}
-                onPress={() => handleCategorySelect(category)}
-              >
-                <View style={styles.categoryItemContent}>
-                  <Tag 
-                    size={20} 
-                    color={selectedCategory?.id === category.id ? "#059669" : "#666"} 
-                  />
-                  <View style={styles.categoryItemInfo}>
-                    <Text style={[
-                      styles.categoryItemName,
-                      selectedCategory?.id === category.id && styles.selectedCategoryItemText
-                    ]}>
-                      {category.name}
-                    </Text>
-                    {category.description && (
-                      <Text style={[
-                        styles.categoryItemDesc,
-                        selectedCategory?.id === category.id && styles.selectedCategoryItemDesc
-                      ]}>
-                        {category.description}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-                
-                {selectedCategory?.id === category.id && (
-                  <Ionicons name="checkmark" size={24} color="#059669" />
-                )}
-              </TouchableOpacity>
-            )}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={() => (
-              <View style={styles.emptyContainer}>
-                <Tag size={48} color="#ccc" />
-                <Text style={styles.emptyTitle}>
-                  {categorySearchText ? 'Aucune catégorie trouvée' : 'Aucune catégorie disponible'}
-                </Text>
-                <Text style={styles.emptySubtitle}>
-                  {categorySearchText 
-                    ? `Aucun résultat pour "${categorySearchText}"`
-                    : 'Les catégories n\'ont pas encore été configurées'
-                  }
-                </Text>
-              </View>
-            )}
-          />
-        )}
+        <FlatList
+          data={categories}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item: category }) => (
+            <TouchableOpacity
+              style={[
+                styles.modalItem,
+                selectedCategory?.id === category.id && styles.modalItemSelected
+              ]}
+              onPress={() => handleCategorySelect(category)}
+            >
+              <Text style={[
+                styles.modalItemText,
+                selectedCategory?.id === category.id && styles.modalItemTextSelected
+              ]}>
+                {category.name}
+              </Text>
+              {selectedCategory?.id === category.id && (
+                <Ionicons name="checkmark" size={24} color="#10B981" />
+              )}
+            </TouchableOpacity>
+          )}
+          showsVerticalScrollIndicator={false}
+        />
       </SafeAreaView>
     </Modal>
   );
 
-  // ✅ NOUVEAU MODAL POUR LA SÉLECTION D'UNITÉ DE VENTE
   const renderSalesUnitModal = () => (
     <Modal
       visible={salesUnitModalVisible}
@@ -514,10 +345,10 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
       <SafeAreaView style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={() => setSalesUnitModalVisible(false)}>
-            <Ionicons name="arrow-back" size={28} color="#333" />
+            <Ionicons name="close" size={28} color="#333" />
           </TouchableOpacity>
           
-          <Text style={styles.modalTitle}>Choisir l'unité de vente</Text>
+          <Text style={styles.modalTitle}>Unité de vente</Text>
           
           <View style={styles.headerPlaceholder} />
         </View>
@@ -528,41 +359,19 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
           renderItem={({ item: unit }) => (
             <TouchableOpacity
               style={[
-                styles.categoryItem,
-                selectedSalesUnit?.value === unit.value && styles.selectedCategoryItem
+                styles.modalItem,
+                selectedSalesUnit?.value === unit.value && styles.modalItemSelected
               ]}
               onPress={() => handleSalesUnitSelect(unit)}
             >
-              <View style={styles.categoryItemContent}>
-                {unit.value === 'UNIT' ? (
-                  <Package 
-                    size={20} 
-                    color={selectedSalesUnit?.value === unit.value ? "#059669" : "#666"} 
-                  />
-                ) : (
-                  <View style={styles.lotIcon}>
-                    <Package size={16} color={selectedSalesUnit?.value === unit.value ? "#059669" : "#666"} />
-                    <Package size={16} color={selectedSalesUnit?.value === unit.value ? "#059669" : "#666"} style={{ marginLeft: -4 }} />
-                  </View>
-                )}
-                <View style={styles.categoryItemInfo}>
-                  <Text style={[
-                    styles.categoryItemName,
-                    selectedSalesUnit?.value === unit.value && styles.selectedCategoryItemText
-                  ]}>
-                    {unit.label}
-                  </Text>
-                  <Text style={[
-                    styles.categoryItemDesc,
-                    selectedSalesUnit?.value === unit.value && styles.selectedCategoryItemDesc
-                  ]}>
-                    {unit.description}
-                  </Text>
-                </View>
-              </View>
-              
+              <Text style={[
+                styles.modalItemText,
+                selectedSalesUnit?.value === unit.value && styles.modalItemTextSelected
+              ]}>
+                {unit.label}
+              </Text>
               {selectedSalesUnit?.value === unit.value && (
-                <Ionicons name="checkmark" size={24} color="#059669" />
+                <Ionicons name="checkmark" size={24} color="#10B981" />
               )}
             </TouchableOpacity>
           )}
@@ -572,60 +381,35 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
     </Modal>
   );
 
-  // ✅ NOUVEAU SÉLECTEUR D'UNITÉ DE VENTE AVEC MODAL
-  const renderSalesUnitSelector = () => (
-    <View style={styles.formGroup}>
-      <Text style={styles.label}>Unité de vente *</Text>
-      <TouchableOpacity
-        style={[styles.categorySelector, formErrors.salesUnit && styles.inputError]}
-        onPress={() => setSalesUnitModalVisible(true)}
-      >
-        {selectedSalesUnit ? (
-          <View style={styles.categorySelectorContent}>
-            <View style={styles.selectedCategoryInfo}>
-              <Package size={16} color="#059669" />
-              <Text style={styles.selectedCategoryName}>{selectedSalesUnit.label}</Text>
-              <Text style={styles.selectedCategoryDesc} numberOfLines={1}>
-                {selectedSalesUnit.description}
-              </Text>
-            </View>
-            <ChevronDown size={20} color="#666" />
-          </View>
-        ) : (
-          <View style={styles.categorySelectorContent}>
-            <Text style={styles.categorySelectorPlaceholder}>
-              Sélectionner une unité de vente
-            </Text>
-            <ChevronDown size={20} color="#666" />
-          </View>
-        )}
-      </TouchableOpacity>
-      {formErrors.salesUnit && (
-        <Text style={styles.errorText}>{formErrors.salesUnit}</Text>
-      )}
-    </View>
-  );
-
   const renderFormSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>📝 Informations du produit</Text>
-      
+      {/* Libellé */}
       <View style={styles.formGroup}>
-        <Text style={styles.label}>Nom du produit *</Text>
+        <Text style={styles.label}>
+          Libellé<Text style={styles.required}>*</Text>
+        </Text>
         <TextInput
           style={[styles.input, formErrors.name && styles.inputError]}
           value={formData.name}
           onChangeText={(text) => updateFormData('name', text)}
-          placeholder="Ex: T-shirt Logo FortiBone"
-          placeholderTextColor="#999"
+          placeholder="iPhone 17 Pro Max 2To - 32Go - 12MP/12MP - Noir..."
+          placeholderTextColor="#9CA3AF"
         />
+        {formData.name && (
+          <Text style={styles.helperText}>
+            Recommandations: Nom_du_produit - caracteristique_1 --- xtics_2 --- [xtics_X]
+          </Text>
+        )}
         {formErrors.name && (
           <Text style={styles.errorText}>{formErrors.name}</Text>
         )}
       </View>
 
+      {/* Description */}
       <View style={styles.formGroup}>
-        <Text style={styles.label}>Description *</Text>
+        <Text style={styles.label}>
+          Description<Text style={styles.required}>*</Text>
+        </Text>
         <TextInput
           style={[
             styles.input, 
@@ -634,8 +418,8 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
           ]}
           value={formData.description}
           onChangeText={(text) => updateFormData('description', text)}
-          placeholder="Décrivez votre produit en détail..."
-          placeholderTextColor="#999"
+          placeholder="Le tout nouveau iPhone 17 Pro Max enfin disponible avec une capacité incroyable de 2To. Ne manquez pas cette offre exclusive!"
+          placeholderTextColor="#9CA3AF"
           multiline
           numberOfLines={4}
           textAlignVertical="top"
@@ -645,10 +429,58 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
         )}
       </View>
 
-      {renderCategorySelector()}
+      {/* Catégorie */}
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>
+          Catégorie<Text style={styles.required}>*</Text>
+        </Text>
+        <TouchableOpacity
+          style={[styles.dropdown, formErrors.categoryId && styles.inputError]}
+          onPress={() => setCategoryModalVisible(true)}
+          disabled={loadingCategories}
+        >
+          <Text style={[
+            styles.dropdownText,
+            !selectedCategory && styles.dropdownPlaceholder
+          ]}>
+            {loadingCategories 
+              ? 'Chargement...'
+              : selectedCategory?.name || 'Électronique & High-Tech'
+            }
+          </Text>
+          <ChevronDown size={20} color="#6B7280" />
+        </TouchableOpacity>
+        {selectedCategory && (
+          <Text style={styles.helperText}>
+            Veuillez remplir ce champ !
+          </Text>
+        )}
+        {formErrors.categoryId && (
+          <Text style={styles.errorText}>{formErrors.categoryId}</Text>
+        )}
+      </View>
 
-      {/* ✅ REMPLACEMENT DU PICKER PAR LE NOUVEAU SÉLECTEUR */}
-      {renderSalesUnitSelector()}
+      {/* Unité de vente */}
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>
+          Unité de vente<Text style={styles.required}>*</Text>
+        </Text>
+        <TouchableOpacity
+          style={[styles.dropdown, formErrors.salesUnit && styles.inputError]}
+          onPress={() => setSalesUnitModalVisible(true)}
+        >
+          <Text style={[
+            styles.dropdownText,
+            !selectedSalesUnit && styles.dropdownPlaceholder
+          ]}>
+            {selectedSalesUnit?.label || 'Sélectionner une unité'}
+          </Text>
+          <ChevronDown size={20} color="#6B7280" />
+        </TouchableOpacity>
+        {formErrors.salesUnit && (
+          <Text style={styles.errorText}>{formErrors.salesUnit}</Text>
+        )}
+      </View>
     </View>
   );
 
@@ -665,7 +497,7 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
         </View>
       ) : (
         <View style={styles.submitButtonContent}>
-          <Package size={20} color="white" />
+          <Plus size={20} color="white" />
           <Text style={styles.submitButtonText}>Créer le produit</Text>
         </View>
       )}
@@ -701,7 +533,7 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafb',
+    backgroundColor: '#FFFFFF',
   },
   keyboardView: {
     flex: 1,
@@ -710,296 +542,195 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#F3F4F6',
   },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
+  backButton: {
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1f2937',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+    textAlign: 'center',
   },
   headerPlaceholder: {
-    width: 28,
+    width: 32,
   },
   content: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 40,
   },
   section: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 20,
-  },
-  imageContainer: {
-    height: 200,
-    borderRadius: 12,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  productImage: {
-    width: '100%',
-    height: '100%',
-  },
-  imageOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  changeImageText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f9fafb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-    borderStyle: 'dashed',
-    gap: 8,
-  },
-  imagePlaceholderText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  imagePlaceholderSubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
+    marginTop: 24,
   },
   formGroup: {
     marginBottom: 20,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
     marginBottom: 8,
   },
+  required: {
+    color: '#EF4444',
+  },
   input: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: '#1f2937',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 14,
+    color: '#111827',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#E5E7EB',
   },
   inputError: {
-    borderColor: '#ef4444',
-    backgroundColor: '#fef2f2',
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
-  categorySelector: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
-    padding: 16,
+  dropdown: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    minHeight: 56,
-  },
-  categorySelectorContent: {
+    borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  categorySelectorText: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginLeft: 8,
-  },
-  categorySelectorPlaceholder: {
-    fontSize: 16,
-    color: '#9ca3af',
-  },
-  selectedCategoryInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  selectedCategoryName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  selectedCategoryDesc: {
+  dropdownText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#111827',
     flex: 1,
   },
-
-  // ✅ STYLE POUR L'ICÔNE LOT (double package)
-  lotIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  dropdownPlaceholder: {
+    color: '#9CA3AF',
   },
-
-  // Modal styles
+  helperText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 4,
+  },
+  imageUploadArea: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageUploadText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  imageUploadSubtext: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  imagesPreview: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  imagePreviewItem: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    position: 'relative',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fafafb',
+    backgroundColor: '#FFFFFF',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#F3F4F6',
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontWeight: '600',
+    color: '#111827',
   },
-  searchContainer: {
+  modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    marginHorizontal: 20,
-    marginVertical: 15,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1f2937',
-    paddingVertical: 12,
-  },
-  categoryItem: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#F3F4F6',
   },
-  selectedCategoryItem: {
-    backgroundColor: '#f0f9ff',
-    borderColor: '#e0f2fe',
+  modalItemSelected: {
+    backgroundColor: '#F0FDF4',
   },
-  categoryItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  categoryItemInfo: {
-    flex: 1,
-  },
-  categoryItemName: {
+  modalItemText: {
     fontSize: 16,
+    color: '#374151',
+  },
+  modalItemTextSelected: {
+    color: '#10B981',
     fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  selectedCategoryItemText: {
-    color: '#059669',
-  },
-  categoryItemDesc: {
-    fontSize: 14,
-    color: '#6b7280',
-    lineHeight: 18,
-  },
-  selectedCategoryItemDesc: {
-    color: '#047857',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#6b7280',
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#ef4444',
-    marginTop: 4,
   },
   submitButton: {
-    backgroundColor: '#059669',
-    borderRadius: 12,
+    backgroundColor: '#10B981',
+    borderRadius: 16,
     paddingVertical: 16,
-    marginTop: 20,
-    shadowColor: '#059669',
+    marginTop: 32,
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   submitButtonDisabled: {
-    backgroundColor: '#9ca3af',
+    backgroundColor: '#9CA3AF',
     shadowOpacity: 0,
-    elevation: 0,
   },
   submitButtonContent: {
     flexDirection: 'row',
@@ -1009,8 +740,8 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: 'white',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
