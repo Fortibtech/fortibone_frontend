@@ -31,7 +31,7 @@ import {
 } from "@/api/Inventory";
 
 // === Types ===
-interface Product {
+export interface Product {
   id: string;
   name: string;
   sku: string;
@@ -53,24 +53,7 @@ export default function InventoryApp() {
 
   // === Badge expirations (7 jours) ===
   const [expiringCount, setExpiringCount] = useState(0);
-
-  // === Modals ===
-  const [detailModal, setDetailModal] = useState(false);
-  const [adjustModal, setAdjustModal] = useState(false);
-  const [batchModal, setBatchModal] = useState(false);
   const [expiringModal, setExpiringModal] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-  // === Ajuster stock ===
-  const [quantityChange, setQuantityChange] = useState("");
-  const [reason, setReason] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  // === Ajouter lot ===
-  const [batchQuantity, setBatchQuantity] = useState("");
-  const [batchDate, setBatchDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [batchSubmitting, setBatchSubmitting] = useState(false);
 
   // === Modal expirés ===
   const [expiringBatches, setExpiringBatches] = useState<Batch[]>([]);
@@ -199,85 +182,6 @@ export default function InventoryApp() {
     }
   };
 
-  // === Modals ===
-  const openDetail = (p: Product) => {
-    setSelectedProduct(p);
-    setDetailModal(true);
-  };
-
-  const openAdjust = (p: Product) => {
-    setSelectedProduct(p);
-    setQuantityChange("");
-    setReason("");
-    setAdjustModal(true);
-  };
-
-  const openBatch = (p: Product) => {
-    setSelectedProduct(p);
-    setBatchQuantity("");
-    setBatchDate(new Date());
-    setBatchModal(true);
-  };
-
-  // === Ajuster stock ===
-  const handleAdjust = async () => {
-    if (!selectedProduct || !quantityChange) return;
-    setSubmitting(true);
-    try {
-      const change = Number(quantityChange);
-      if (isNaN(change)) throw new Error("Quantité invalide");
-
-      await adjustVariantStock(selectedProduct.id, {
-        quantityChange: change,
-        type: change > 0 ? "GAIN" : "LOSS",
-        reason,
-      });
-
-      Toast.show({ type: "success", text1: "Succès", text2: "Stock ajusté." });
-      setAdjustModal(false);
-      setInventory([]);
-      setPage(1);
-      fetchInventory(1);
-    } catch (err: any) {
-      Toast.show({
-        type: "error",
-        text1: "Erreur",
-        text2: err.message || "Échec ajustement",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // === Ajouter lot ===
-  const handleAddBatch = async () => {
-    if (!selectedProduct || !batchQuantity) return;
-    setBatchSubmitting(true);
-    try {
-      const qty = Number(batchQuantity);
-      if (isNaN(qty) || qty <= 0) throw new Error("Quantité invalide");
-
-      await addVariantBatch(selectedProduct.id, {
-        quantity: qty,
-        expirationDate: batchDate.toISOString().split("T")[0],
-      });
-
-      Toast.show({ type: "success", text1: "Succès", text2: "Lot ajouté." });
-      setBatchModal(false);
-      setInventory([]);
-      setPage(1);
-      fetchInventory(1);
-    } catch (err: any) {
-      Toast.show({
-        type: "error",
-        text1: "Erreur",
-        text2: err.message || "Échec ajout lot",
-      });
-    } finally {
-      setBatchSubmitting(false);
-    }
-  };
-
   // === Export PDF ===
   const exportToPDF = async () => {
     try {
@@ -341,22 +245,14 @@ export default function InventoryApp() {
       <Text style={[styles.tableCellText, styles.colSold]}>{item.sold}</Text>
       <View style={styles.colActions}>
         <TouchableOpacity
-          onPress={() => openDetail(item)}
+          onPress={() => {
+            router.push({
+              pathname: `/(inventory)/StockAdjustment/${businessId}/${item.id}`,
+            });
+          }}
           style={styles.actionBtn}
         >
           <Feather name="eye" size={16} color="#10B981" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => openAdjust(item)}
-          style={styles.actionBtn}
-        >
-          <Feather name="trending-up" size={16} color="#3498db" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => openBatch(item)}
-          style={styles.actionBtn}
-        >
-          <Ionicons name="cube-outline" size={16} color="#8e44ad" />
         </TouchableOpacity>
       </View>
     </View>
@@ -430,7 +326,9 @@ export default function InventoryApp() {
               <Text style={[styles.tableHeaderText, styles.colSold]}>
                 Vendu
               </Text>
-              <Text style={[styles.tableHeaderText, styles.colActions]}></Text>
+              <Text style={[styles.tableHeaderText, styles.colActions]}>
+                Details
+              </Text>
             </View>
 
             <FlatList
@@ -509,172 +407,6 @@ export default function InventoryApp() {
           </View>
         </View>
       </Modal>
-
-      {/* === MODAL DÉTAIL === */}
-      <Modal
-        animationType="slide"
-        transparent
-        visible={detailModal}
-        onRequestClose={() => setDetailModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Détail du produit</Text>
-            {selectedProduct && (
-              <>
-                <Text style={styles.detailLabel}>Nom</Text>
-                <Text style={styles.detailValue}>{selectedProduct.name}</Text>
-                <Text style={styles.detailLabel}>SKU</Text>
-                <Text style={styles.detailValue}>{selectedProduct.sku}</Text>
-                <Text style={styles.detailLabel}>Stock</Text>
-                <Text style={styles.detailValue}>
-                  {selectedProduct.quantityInStock}
-                </Text>
-                <Text style={styles.detailLabel}>Prix</Text>
-                <Text style={styles.detailValue}>
-                  {selectedProduct.price} €
-                </Text>
-              </>
-            )}
-            <TouchableOpacity
-              style={[styles.modalBtn, styles.closeBtn]}
-              onPress={() => setDetailModal(false)}
-            >
-              <Text style={styles.closeText}>Fermer</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* === MODAL AJUSTER STOCK === */}
-      <Modal
-        animationType="slide"
-        transparent
-        visible={adjustModal}
-        onRequestClose={() => setAdjustModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Ionicons
-              name="analytics-outline"
-              size={40}
-              color="#3498db"
-              style={{ alignSelf: "center" }}
-            />
-            <Text style={styles.modalTitle}>Ajuster le stock</Text>
-            <Text style={styles.modalDescription}>
-              Modifiez la quantité pour refléter une perte, un achat ou une
-              vente.
-            </Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Quantité (+ ou -)"
-              keyboardType="numeric"
-              value={quantityChange}
-              onChangeText={setQuantityChange}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Raison"
-              value={reason}
-              onChangeText={setReason}
-            />
-
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleAdjust}
-              disabled={submitting}
-            >
-              <Text style={styles.submitText}>
-                {submitting ? "Enregistrement..." : "Valider"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setAdjustModal(false)}
-              style={{ marginTop: 10 }}
-            >
-              <Text style={{ color: "#e74c3c", textAlign: "center" }}>
-                Annuler
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* === MODAL AJOUTER LOT === */}
-      <Modal
-        animationType="slide"
-        transparent
-        visible={batchModal}
-        onRequestClose={() => setBatchModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Ionicons
-              name="cube-outline"
-              size={40}
-              color="#3498db"
-              style={{ alignSelf: "center" }}
-            />
-            <Text style={styles.modalTitle}>Ajouter un nouveau lot</Text>
-            <Text style={styles.modalDescription}>
-              Entrez la quantité et la date d’expiration du lot.
-            </Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Quantité"
-              keyboardType="numeric"
-              value={batchQuantity}
-              onChangeText={setBatchQuantity}
-            />
-
-            <TouchableOpacity
-              style={styles.datePickerButton}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={styles.datePickerText}>
-                {batchDate.toISOString().split("T")[0]}
-              </Text>
-            </TouchableOpacity>
-
-            {showDatePicker && (
-              <DateTimePicker
-                value={batchDate}
-                mode="date"
-                display="default"
-                onChange={(e, d) => {
-                  setShowDatePicker(false);
-                  if (d) setBatchDate(d);
-                }}
-              />
-            )}
-
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleAddBatch}
-              disabled={batchSubmitting}
-            >
-              <Text style={styles.submitText}>
-                {batchSubmitting ? "Enregistrement..." : "Valider"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setBatchModal(false)}
-              style={{ marginTop: 10 }}
-            >
-              <Text style={{ color: "#e74c3c", textAlign: "center" }}>
-                Annuler
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      <Toast />
     </SafeAreaView>
   );
 }
