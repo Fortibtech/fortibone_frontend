@@ -335,7 +335,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             style={styles.quickAccessCard}
             onPress={() =>
-              router.push('/commandes')
+              router.push('/(professionnel)/commande')
             }
             activeOpacity={0.8}
           >
@@ -352,7 +352,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             style={styles.quickAccessCard}
             onPress={() =>
-              router.push('/inventaire')
+              router.push('/(professionnel)/inventaire')
             }
             activeOpacity={0.8}
           >
@@ -371,7 +371,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             style={styles.quickAccessCard}
             onPress={() =>
-              router.push('/catalogue')
+              router.push('/(professionnel)/catalogue')
             }
             activeOpacity={0.8}
           >
@@ -388,7 +388,7 @@ const HomePage: React.FC = () => {
           <TouchableOpacity
             style={styles.quickAccessCard}
             onPress={() =>
-              router.push('/finance')
+              router.push('/(professionnel)/finance')
             }
             activeOpacity={0.8}
           >

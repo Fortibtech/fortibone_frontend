@@ -143,9 +143,13 @@ const HomePage: React.FC = () => {
     try {
       setLoading(true);
       const businessesResponse = await BusinessesService.getBusinesses();
+      
       setBusinesses(businessesResponse);
       const selected = await SelectedBusinessManager.getSelectedBusiness();
       setSelectedBusiness(selected);
+      if (selected?.type !== "FOURNISSEUR") {
+        router.push("/(professionnel)");
+      }
       if (selected && !businessesResponse.find((b) => b.id === selected.id)) {
         await BusinessesService.clearSelectedBusiness();
         setSelectedBusiness(null);
@@ -244,7 +248,7 @@ const HomePage: React.FC = () => {
       await BusinessesService.selectBusiness(business);
       setSelectedBusiness(business);
       Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
-      if(business.type==="COMMERCANT"){
+      if(business.type !=="FOURNISSEUR"){
         router.push('/(professionnel)')
       }
     } catch (error) {
