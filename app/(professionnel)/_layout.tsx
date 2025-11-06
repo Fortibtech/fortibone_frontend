@@ -6,6 +6,7 @@ import {
   Cuboid,
   Home,
   Send,
+  ShoppingCart, // ← Icône pour les achats
 } from "lucide-react-native";
 
 export default function RootLayout() {
@@ -52,6 +53,16 @@ export default function RootLayout() {
           tabBarIcon: ({ color, size }) => <Cuboid size={size} color={color} />,
         }}
       />
+      {/* Nouvel onglet Achats */}
+      <Tabs.Screen
+        name="achats"
+        options={{
+          title: "Achats",
+          tabBarIcon: ({ color, size }) => (
+            <ShoppingCart size={size} color={color} />
+          ),
+        }}
+      />
       <Tabs.Screen
         name="commande"
         options={{
@@ -68,7 +79,8 @@ export default function RootLayout() {
           tabBarIcon: ({ color, size }) => <Send size={size} color={color} />,
         }}
       />
-      {/* ✅ Nouvel onglet Finance */}
+
+      {/* Onglet Finance (conservé) */}
       <Tabs.Screen
         name="finance"
         options={{
