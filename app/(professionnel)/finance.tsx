@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import BackButtonAdmin from "@/components/Admin/BackButton";
 const WalletScreen = () => {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -53,13 +53,7 @@ const WalletScreen = () => {
         {/* --- HEADER --- */}
         <View style={styles.header}>
           {/* Bouton Retour */}
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back-outline" size={24} color="#000" />
-          </TouchableOpacity>
-
+          <BackButtonAdmin />
           {/* Titre Centré */}
           <Text style={styles.title}>Finances</Text>
 
