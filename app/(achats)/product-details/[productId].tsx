@@ -15,9 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
-
 import BackButtonAdmin from "@/components/Admin/BackButton";
-
 const { width } = Dimensions.get("window");
 
 // === Types ===
@@ -119,7 +117,7 @@ export default function ProductDetailsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
       {/* ==================== HEADER ==================== */}
