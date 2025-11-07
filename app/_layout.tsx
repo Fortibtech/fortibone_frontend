@@ -55,6 +55,7 @@ export default function RootLayout() {
         <Stack.Screen name="(transactions)" />
         <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
         <Stack.Screen name="(fournisseur)" options={{ headerShown: false }} />
+        <Stack.Screen name="fournisseurSetting" options={{ headerShown: false }} />
         <Stack.Screen name="product-details/[id]" />
         <Stack.Screen name="(profile-particulier)" />
         <Stack.Screen name="onboarding" />

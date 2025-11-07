@@ -7,6 +7,7 @@ import {
 } from "@/api";
 import { AnalyticsOverview, getAnalyticsOverview, getInventory, getOrders, getPendingOrdersCount, getSales, InventoryResponse, OrdersResponse, SalesResponse } from "@/api/analytics";
 import BusinessSelector from "@/components/Business/BusinessSelector";
+import { useUserStore } from "@/store/userStore";
 import { Ionicons } from "@expo/vector-icons";
 import { Route, router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -62,6 +63,7 @@ const HomePage: React.FC = () => {
   const [recentOrders, setRecentOrders] = useState<OrdersResponse | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [topProductsLoading, setTopProductsLoading] = useState(false);
+  const user = useUserStore.getState().userProfile;
 
   useEffect(() => {
     loadInitialData();
@@ -358,8 +360,15 @@ const HomePage: React.FC = () => {
           )}
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.avatar}>
-          <Ionicons name="person" size={20} color="#666" />
+        <TouchableOpacity style={styles.avatar} onPress={() => router.push('/fournisseurSetting')}>
+           <Image
+            source={
+              user?.profileImageUrl
+                ? { uri: user.profileImageUrl }
+                : require('@/assets/images/icon.png')
+            }
+            style={styles.avatar}
+          />
         </TouchableOpacity>
       </View>
     </View>
