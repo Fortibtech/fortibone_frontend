@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Modal,
   TextInput,
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // === Types ===
 interface OrderItem {
@@ -36,9 +36,7 @@ interface OrderDetails {
 }
 
 // === Props (reçoit l'ID via route) ===
-interface OrderScreenProps {
-  // Expo Router injecte automatiquement les params
-}
+
 
 export default function OrderScreen() {
   const { orderid } = useLocalSearchParams<{ orderid: string }>();
@@ -78,7 +76,7 @@ export default function OrderScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView style={styles.container} >
       <StatusBar barStyle="dark-content" />
 
       {/* ==================== HEADER ==================== */}
