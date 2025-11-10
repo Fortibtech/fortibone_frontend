@@ -25,7 +25,6 @@ import CompanyProfile from "@/components/Achat/CompanyProfile";
 export default function SupplierStore() {
   const { bussinessId } = useLocalSearchParams<{ bussinessId: string }>();
   const router = useRouter();
-
   const [searchQuery, setSearchQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,22 +202,13 @@ export default function SupplierStore() {
     </>
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      {/* HEADER */}
-      <View style={styles.header}>
-        <BackButtonAdmin />
-        <Text style={styles.title} numberOfLines={1}>
-          Boutique
-        </Text>
-        <List />
-      </View>
-
+  const ListHeader = () => (
+    <>
       {/* COMPANY PROFILE + SEARCH */}
       <CompanyProfile
         onSearch={debouncedSearch}
         onFilterPress={() => setFilterModalVisible(true)}
+        businessId={bussinessId}
       />
 
       {/* RÉSULTATS */}
@@ -240,7 +230,20 @@ export default function SupplierStore() {
           <Ionicons name="chevron-down" size={16} color="#666" />
         </TouchableOpacity>
       </View>
+    </>
+  );
 
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      {/* HEADER */}
+      <View style={styles.header}>
+        <BackButtonAdmin />
+        <Text style={styles.title} numberOfLines={1}>
+          Boutique
+        </Text>
+        <List />
+      </View>
       {/* LISTE PRODUITS */}
       <FlatList
         data={products}
@@ -248,7 +251,10 @@ export default function SupplierStore() {
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={{ paddingHorizontal: 8 }}
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{
+          paddingBottom: 30,
+          flexGrow: 1, // important pour empty state
+        }}
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -257,7 +263,11 @@ export default function SupplierStore() {
         onEndReachedThreshold={0.5}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={loading ? renderSkeleton : renderEmpty}
+        ListHeaderComponent={ListHeader} // ← LA CLÉ !!!
         showsVerticalScrollIndicator={false}
+        // Ajoute un peu de padding top pour éviter que le header soit collé au notch
+        contentInset={{ top: 8 }}
+        contentOffset={{ x: 0, y: -8 }}
       />
 
       {/* MODAL FILTRE */}
@@ -347,7 +357,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 20,
     backgroundColor: "#fff",
   },
   resultsText: { fontSize: 14, color: "#666" },

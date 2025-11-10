@@ -13,9 +13,9 @@ import {
 import { router } from "expo-router";
 import { Business, BusinessesService } from "@/api";
 
-// === Props ===
+// === Props du composant ===
 interface AchatSuppliersProps {
-  searchQuery: string;
+  searchQuery: string; // Reçu du parent (AchatsScreen)
 }
 
 export default function AchatSuppliers({ searchQuery }: AchatSuppliersProps) {
@@ -23,7 +23,7 @@ export default function AchatSuppliers({ searchQuery }: AchatSuppliersProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // === Chargement des données ===
+  // === Chargement des fournisseurs ===
   const loadSuppliers = useCallback(async () => {
     try {
       setLoading(true);
@@ -31,33 +31,39 @@ export default function AchatSuppliers({ searchQuery }: AchatSuppliersProps) {
       setBusinesses(data);
     } catch (error) {
       alert("Erreur de chargement des fournisseurs");
+      console.error(error);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // === Rafraîchissement ===
+  // Rafraîchissement pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadSuppliers();
     setRefreshing(false);
   }, [loadSuppliers]);
 
-  // === Chargement initial ===
+  // Chargement initial
   useEffect(() => {
     loadSuppliers();
   }, [loadSuppliers]);
 
-  // === Filtrage : FOURNISSEUR + recherche ===
+  // === FILTRAGE EN TEMPS RÉEL ===
+  // 1. On garde uniquement les FOURNISSEURS
+  // 2. On filtre par nom (insensible à la casse et aux espaces)
   const filteredSuppliers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
     return businesses
       .filter((b) => b.type === "FOURNISSEUR")
-      .filter((b) =>
-        b.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
-      );
+      .filter((b) => {
+        if (!query) return true; // Si vide → tout afficher
+        return b.name.toLowerCase().includes(query);
+      });
   }, [businesses, searchQuery]);
 
-  // === État de chargement ===
+  // === État de chargement initial ===
   if (loading && businesses.length === 0) {
     return (
       <View style={styles.loadingContainer}>
@@ -80,13 +86,15 @@ export default function AchatSuppliers({ searchQuery }: AchatSuppliersProps) {
         />
       }
     >
+      {/* === Message vide ou pas de résultat === */}
       {filteredSuppliers.length === 0 ? (
         <Text style={styles.emptyText}>
           {searchQuery
-            ? `Aucun fournisseur pour "${searchQuery}"`
+            ? `Aucun fournisseur trouvé pour "${searchQuery}"`
             : "Aucun fournisseur disponible"}
         </Text>
       ) : (
+        /* === Grille de cartes === */
         filteredSuppliers.map((supplier) => (
           <TouchableOpacity
             key={supplier.id}
@@ -95,7 +103,7 @@ export default function AchatSuppliers({ searchQuery }: AchatSuppliersProps) {
             onPress={() =>
               router.push({
                 pathname: "/(achats)/[bussinessId]",
-                params: { bussinessId: supplier.id },
+                params: { bussinessId: supplier.id }, // typo "businessId" → corrigée dans le routeur si besoin
               })
             }
             accessibilityLabel={`Voir ${supplier.name}`}
@@ -128,7 +136,7 @@ export default function AchatSuppliers({ searchQuery }: AchatSuppliersProps) {
   );
 }
 
-// === STYLES COHÉRENTS ===
+// === STYLES (inchangés) ===
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
@@ -136,11 +144,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F5F5F5",
   },
-  loadingText: {
-    marginTop: 12,
-    color: "#6B7280",
-    fontSize: 14,
-  },
+  loadingText: { marginTop: 12, color: "#6B7280", fontSize: 14 },
   grid: {
     padding: 16,
     flexDirection: "row",
@@ -174,14 +178,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
-  logo: {
-    width: 50,
-    height: 50,
-  },
-  logoPlaceholder: {
-    fontSize: 28,
-    color: "#9CA3AF",
-  },
+  logo: { width: 50, height: 50 },
+  logoPlaceholder: { fontSize: 28, color: "#9CA3AF" },
   name: {
     fontSize: 14,
     fontWeight: "600",
@@ -195,10 +193,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 4,
   },
-  reviews: {
-    fontSize: 11,
-    color: "#9CA3AF",
-  },
+  reviews: { fontSize: 11, color: "#9CA3AF" },
   emptyText: {
     width: "100%",
     textAlign: "center",
