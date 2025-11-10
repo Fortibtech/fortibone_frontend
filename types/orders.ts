@@ -29,6 +29,7 @@ export interface CreateOrderPayload {
 // Response types
 // ----------------------
 export interface Product {
+  images: any;
   id: string;
   name: string;
   description: string;
@@ -42,6 +43,7 @@ export interface Product {
 
 // eslint-disable-next-line import/export
 export interface Variant {
+  name: string;
   id: string;
   sku: string;
   barcode: string | null;
@@ -110,6 +112,7 @@ export interface CreateOrderResponse {
   business: Business;
 }
 export interface MyOrder {
+  business: any;
   id: string;
   orderNumber: string;
   type: "SALE" | "PURCHASE" | "RESERVATION";

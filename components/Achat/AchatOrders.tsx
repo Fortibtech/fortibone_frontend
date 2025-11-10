@@ -1,5 +1,4 @@
-// components/Achat/AchatOrders.tsx
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -7,77 +6,65 @@ import {
   FlatList,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-
-// === Type pour une commande ===
-export interface Order {
-  id: string;
-  orderNumber: string;
-  supplier: string;
-  date: string;
-  articles: number;
-  total: number;
-}
+import { getMyOrders } from "@/api/Orders";
+import { MyOrder } from "@/types/orders";
 
 // === Props du composant ===
 interface AchatOrdersProps {
   searchQuery: string;
 }
 
-// === Données mock (à remplacer par API plus tard) ===
-const MOCK_ORDERS: Order[] = [
-  {
-    id: "1",
-    orderNumber: "#CMD-202501",
-    supplier: "iPhone Paris",
-    date: "15/10/2025",
-    articles: 8,
-    total: 37000,
-  },
-  {
-    id: "2",
-    orderNumber: "#CMD-202502",
-    supplier: "BCE Sarl",
-    date: "28/06/2025",
-    articles: 5,
-    total: 8000,
-  },
-  {
-    id: "3",
-    orderNumber: "#CMD-202503",
-    supplier: "Malic Gros Ltd",
-    date: "02/11/2025",
-    articles: 11,
-    total: 5000,
-  },
-];
-
 export default function AchatOrders({ searchQuery }: AchatOrdersProps) {
+  const [orders, setOrders] = useState<MyOrder[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // === Récupération des commandes ===
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const response = await getMyOrders({ type: "PURCHASE" }); // 🔹 type filtré : achats
+        setOrders(response.data);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || "Erreur de chargement des commandes");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
   // === Filtrage en temps réel avec useMemo ===
   const filteredOrders = useMemo(() => {
-    if (!searchQuery.trim()) return MOCK_ORDERS;
-
+    if (!searchQuery.trim()) return orders;
     const query = searchQuery.toLowerCase().trim();
-    return MOCK_ORDERS.filter(
+    return orders.filter(
       (order) =>
         order.orderNumber.toLowerCase().includes(query) ||
-        order.supplier.toLowerCase().includes(query)
+        order.notes?.toLowerCase().includes(query) // tu peux ajuster ici
     );
-  }, [searchQuery]);
+  }, [searchQuery, orders]);
 
   // === Rendu d'une ligne de commande ===
-  const renderOrderItem = ({ item }: { item: Order }) => (
+  const renderOrderItem = ({ item }: { item: MyOrder }) => (
     <View style={styles.row}>
       <Text style={[styles.cell, styles.colOrder]}>{item.orderNumber}</Text>
       <Text style={[styles.cell, styles.colSupplier]} numberOfLines={1}>
-        {item.supplier}
+        {item.business?.name || "—"}
       </Text>
-      <Text style={[styles.cell, styles.colDate]}>{item.date}</Text>
-      <Text style={[styles.cell, styles.colArticles]}>{item.articles}</Text>
+      <Text style={[styles.cell, styles.colDate]}>
+        {new Date(item.createdAt).toLocaleDateString("fr-FR")}
+      </Text>
+      <Text style={[styles.cell, styles.colArticles]}>—</Text>
       <Text style={[styles.cell, styles.colTotal]}>
-        {item.total.toLocaleString("fr-FR")} FCFA
+        {parseFloat(item.totalAmount).toLocaleString("fr-FR")} FCFA
       </Text>
       <View style={styles.colActions}>
         <TouchableOpacity
@@ -97,13 +84,29 @@ export default function AchatOrders({ searchQuery }: AchatOrdersProps) {
     </View>
   );
 
+  // === États de chargement / erreur ===
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color="#00B87C" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.emptyState]}>
+        <Text style={styles.emptyText}>{error}</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* === Tableau responsive avec scroll horizontal === */}
       <View style={styles.tableWrapper}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View>
-            {/* En-tête */}
+            {/* === En-tête === */}
             <View style={styles.header}>
               <Text style={[styles.headerText, styles.colOrder]}>
                 # Commande
@@ -117,7 +120,7 @@ export default function AchatOrders({ searchQuery }: AchatOrdersProps) {
               <Text style={[styles.headerText, styles.colActions]}>Action</Text>
             </View>
 
-            {/* Corps */}
+            {/* === Liste === */}
             <FlatList
               data={filteredOrders}
               keyExtractor={(item) => item.id}
@@ -140,7 +143,7 @@ export default function AchatOrders({ searchQuery }: AchatOrdersProps) {
   );
 }
 
-// === STYLES COHÉRENTS AVEC LE PARENT ===
+// === Styles cohérents avec ton design ===
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -181,7 +184,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#111827",
   },
-  colOrder: { width: 110, fontWeight: "600" },
+  colOrder: { width: 130, fontWeight: "600" },
   colSupplier: { width: 150, flexShrink: 1 },
   colDate: { width: 100, color: "#6B7280" },
   colArticles: { width: 60, textAlign: "center", color: "#6B7280" },
