@@ -1,5 +1,6 @@
 // app/(achats)/product-details/[productId]/index.tsx
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { ProductService } from "@/api";
 import {
   View,
   Text,
@@ -11,116 +12,193 @@ import {
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useCartStore } from "@/stores/achatCartStore"; // ← IMPORT ZUSTAND
+import Toast from "react-native-toast-message"; // ← Installe si pas fait : expo install react-native-toast-message
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import BackButtonAdmin from "@/components/Admin/BackButton";
 const { width } = Dimensions.get("window");
-
 // === Types ===
-interface ProductImage {
-  url: string;
-}
+type Product = import("@/api").Product;
+type ProductVariant = import("@/api").ProductVariant;
 
-interface ProductDescription {
-  brand: string;
-  model: string;
-  state: string;
-  storage: string;
-  ram: string;
-  system: string;
-  processor: string;
-  screenSize: string;
-  simCard: string;
-}
-
-interface Product {
+interface DisplayProduct {
   id: string;
   name: string;
   category: string;
-  subcategory: string;
+  subcategory?: string;
   condition: string;
   availability: string;
   price: number;
   priceUnit: string;
   minimumOrder: number;
   tags: string[];
-  images: ProductImage[];
-  description: ProductDescription;
+  images: { url: string }[];
+  description: Record<string, string>;
+  variant: ProductVariant;
 }
 
 // === Composant principal ===
 export default function ProductDetailsScreen() {
-  const { productId } = useLocalSearchParams<{ productId: string }>();
+  const { productId, bussinessId } = useLocalSearchParams<{
+    productId: string;
+    bussinessId: string;
+  }>();
 
-  // === États locaux ===
-  const [quantity, setQuantity] = useState(10);
+  console.log("Product ID:", productId);
+  console.log("Business ID:", bussinessId);
+
+  const [productData, setProductData] = useState<DisplayProduct | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const addToCart = useCartStore((state) => state.addItem); // ← Hook Zustand
 
-  // === Données mock (à remplacer par API) ===
-  const product: Product = {
-    id: productId || "1",
-    name: "iPhone 14 Pro - 128Go - 8Go - 12MP/12MP - Gris - Reconditionné",
-    category: "Électroniques",
-    subcategory: "Téléphones",
-    condition: "Pièce unique",
-    availability: "Stock dispo: 45 lots",
-    price: 299000,
-    priceUnit: "/pièce",
-    minimumOrder: 10,
-    tags: [
-      "Apple",
-      "iPhone 14",
-      "iOS 17",
-      "Neuf scellé",
-      "128Go",
-      "8Go RAM",
-      "12MP/12MP",
-      "Gris",
-    ],
-    images: [
-      {
-        url: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1678685888221-cda773a3dcdb?w=800",
-      },
-      {
-        url: "https://images.unsplash.com/photo-1696446702780-ae687b49f4c5?w=800",
-      },
-    ],
-    description: {
-      brand: "Apple",
-      model: "iPhone 14",
-      state: "Neuf",
-      storage: "128Go/256Go/512Go",
-      ram: "4Go/8Go",
-      system: "iOS 16",
-      processor: "A15 Bionic chip",
-      screenSize: '6.1"',
-      simCard: "1 nano SIM + eSIM",
-    },
+  const handleAddToCart = () => {
+    if (!productData) return;
+
+    // ──────────────────────────────────────────────────────────────
+    // Ajout au panier avec supplierBusinessId
+    // ──────────────────────────────────────────────────────────────
+    addToCart(
+      productData.id,
+      productData.name,
+      productData.variant,
+      quantity,
+      productData.images[0]?.url,
+      bussinessId
+    );
+
+    Toast.show({
+      type: "success",
+      text1: "Ajouté au panier !",
+      text2: `${quantity} × ${productData.name}`,
+      position: "bottom",
+      visibilityTime: 2000,
+    });
   };
+  const fetchProduct = useCallback(async () => {
+    if (!productId) return;
 
-  // === Gestion de la quantité ===
-  const updateQuantity = (delta: number) => {
-    setQuantity((prev) => Math.max(product.minimumOrder, prev + delta));
-  };
+    setLoading(true);
+    try {
+      const product: Product = await ProductService.getProductById(productId);
+      const variant = product.variants[0];
 
-  // === Gestion du carousel ===
+      if (!variant) throw new Error("Aucune variante trouvée");
+
+      const priceNum = parseFloat(variant.price) || 0;
+      const minOrder = variant.itemsPerLot || variant.alertThreshold || 1;
+      const stock = variant.quantityInStock;
+
+      const images = [
+        ...(variant.imageUrl ? [{ url: variant.imageUrl }] : []),
+        ...(product.imageUrl ? [{ url: product.imageUrl }] : []),
+        { url: "https://via.placeholder.com/800x800.png?text=No+Image" },
+      ].slice(0, 5);
+
+      const tags = [
+        product.category.name || "Sans catégorie",
+        ...variant.attributeValues
+          .map((av) =>
+            av.attribute?.name && av.value
+              ? `${av.attribute.name}: ${av.value}`
+              : ""
+          )
+          .filter(Boolean),
+        variant.sku,
+        stock > 0 ? "En stock" : "Rupture",
+      ];
+
+      const description: Record<string, string> = {
+        Marque: product.name.split(" ")[0] || "Inconnue",
+        Modèle: product.name,
+        État: stock > 10 ? "Neuf" : stock > 0 ? "Dernières pièces" : "Épuisé",
+        Stock: `${stock} disponible`,
+      };
+
+      variant.attributeValues.forEach((av) => {
+        if (av.attribute?.name && av.value) {
+          description[av.attribute.name] = av.value;
+        }
+      });
+
+      const displayProduct: DisplayProduct = {
+        id: product.id,
+        name: product.name,
+        category: product.category.name || "Non classé",
+        subcategory: product.category.parent?.name,
+        condition: variant.lotPrice ? "Vendu par lot" : "À l'unité",
+        availability: `Stock: ${stock} ${
+          variant.itemsPerLot ? `(${variant.itemsPerLot}/lot)` : ""
+        }`,
+        price: priceNum,
+        priceUnit: variant.lotPrice ? "/lot" : "/pièce",
+        minimumOrder: minOrder,
+        tags,
+        images,
+        description,
+        variant,
+      };
+
+      setProductData(displayProduct);
+      setQuantity(minOrder);
+    } catch (err: any) {
+      console.error("Erreur API:", err);
+      Alert.alert("Erreur", err.message || "Impossible de charger le produit");
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
+
+  useEffect(() => {
+    fetchProduct();
+  }, [fetchProduct]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProduct();
+    }, [fetchProduct])
+  );
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(offsetX / width);
     setCurrentImageIndex(index);
   };
 
+  const updateQuantity = (delta: number) => {
+    if (!productData) return;
+    setQuantity((prev) => Math.max(productData.minimumOrder, prev + delta));
+  };
+
+  if (loading || !productData) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <ActivityIndicator size="large" color="#00B87C" />
+        <Text style={{ marginTop: 16, fontSize: 16 }}>
+          Chargement du produit...
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ✅ CORRIGÉ : on utilise directement productData, pas "product"
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* ==================== HEADER ==================== */}
+      {/* HEADER */}
       <View style={styles.header}>
         <BackButtonAdmin />
         <Text style={styles.title}>Détails</Text>
@@ -131,7 +209,7 @@ export default function ProductDetailsScreen() {
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
       >
-        {/* ==================== CAROUSEL D'IMAGES ==================== */}
+        {/* CAROUSEL D'IMAGES */}
         <View style={styles.carousel}>
           <ScrollView
             ref={scrollViewRef}
@@ -141,7 +219,7 @@ export default function ProductDetailsScreen() {
             onScroll={handleScroll}
             scrollEventThrottle={16}
           >
-            {product.images.map((img, index) => (
+            {productData.images.map((img, index) => (
               <View key={index} style={styles.imageWrapper}>
                 <Image
                   source={{ uri: img.url }}
@@ -152,9 +230,8 @@ export default function ProductDetailsScreen() {
             ))}
           </ScrollView>
 
-          {/* Indicateur de page */}
           <View style={styles.dots}>
-            {product.images.map((_, index) => (
+            {productData.images.map((_, index) => (
               <View
                 key={index}
                 style={[
@@ -168,39 +245,39 @@ export default function ProductDetailsScreen() {
           </View>
         </View>
 
-        {/* ==================== INFORMATIONS ==================== */}
+        {/* INFORMATIONS */}
         <View style={styles.infoCard}>
-          {/* Catégories */}
           <View style={styles.categories}>
-            <Text style={styles.category}>{product.category}</Text>
-            <Text style={styles.subcategory}> › {product.subcategory}</Text>
+            <Text style={styles.category}>{productData.category}</Text>
+            {productData.subcategory && (
+              <Text style={styles.subcategory}>
+                {" "}
+                › {productData.subcategory}
+              </Text>
+            )}
           </View>
 
-          {/* Nom */}
-          <Text style={styles.name}>{product.name}</Text>
+          <Text style={styles.name}>{productData.name}</Text>
 
-          {/* Condition & Stock */}
           <View style={styles.statusRow}>
-            <Text style={styles.condition}>{product.condition}</Text>
-            <Text style={styles.stock}>{product.availability}</Text>
+            <Text style={styles.condition}>{productData.condition}</Text>
+            <Text style={styles.stock}>{productData.availability}</Text>
           </View>
 
-          {/* Prix */}
           <View style={styles.priceSection}>
             <View style={styles.priceRow}>
               <Text style={styles.price}>
-                {product.price.toLocaleString("fr-FR")}
+                {productData.price.toLocaleString("fr-FR")}
               </Text>
-              <Text style={styles.unit}>{product.priceUnit}</Text>
+              <Text style={styles.unit}> FCFA {productData.priceUnit}</Text>
             </View>
             <Text style={styles.minimum}>
-              Minimum : {product.minimumOrder} pièces
+              Minimum : {productData.minimumOrder} pièces
             </Text>
           </View>
 
-          {/* Tags */}
           <View style={styles.tags}>
-            {product.tags.map((tag, i) => (
+            {productData.tags.map((tag, i) => (
               <View key={i} style={styles.tag}>
                 <Text style={styles.tagText}>{tag}</Text>
               </View>
@@ -208,12 +285,11 @@ export default function ProductDetailsScreen() {
           </View>
         </View>
 
-        {/* ==================== DESCRIPTION ==================== */}
+        {/* DESCRIPTION */}
         <View style={styles.descriptionCard}>
           <Text style={styles.sectionTitle}>Description</Text>
-
           <View style={styles.descList}>
-            {Object.entries(product.description).map(([key, value]) => (
+            {Object.entries(productData.description).map(([key, value]) => (
               <Text key={key} style={styles.descItem}>
                 <Text style={styles.label}>
                   {key.charAt(0).toUpperCase() +
@@ -223,23 +299,19 @@ export default function ProductDetailsScreen() {
                 <Text style={styles.value}>{value}</Text>
               </Text>
             ))}
-            <TouchableOpacity>
-              <Text style={styles.viewMore}>Voir plus</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Espace bas pour le bouton fixe */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* ==================== BARRE D'ACTION FIXE ==================== */}
+      {/* BARRE D'ACTION */}
       <View style={styles.bottomBar}>
         <View style={styles.quantityControl}>
           <TouchableOpacity
             style={styles.qtyBtn}
             onPress={() => updateQuantity(-1)}
-            disabled={quantity <= product.minimumOrder}
+            disabled={quantity <= productData.minimumOrder}
           >
             <Ionicons name="remove" size={20} color="#00B87C" />
           </TouchableOpacity>
@@ -254,7 +326,7 @@ export default function ProductDetailsScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.addToCartBtn}>
+        <TouchableOpacity style={styles.addToCartBtn} onPress={handleAddToCart}>
           <Text style={styles.addToCartText}>Ajouter au panier</Text>
         </TouchableOpacity>
       </View>
@@ -262,8 +334,9 @@ export default function ProductDetailsScreen() {
   );
 }
 
-// === STYLES COHÉRENTS AVEC L'APP ===
+// === STYLES (identiques) ===
 const styles = StyleSheet.create({
+  // ... (tout ton StyleSheet original, inchangé)
   container: { flex: 1, backgroundColor: "#F5F5F5" },
   header: {
     flexDirection: "row",
@@ -277,10 +350,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: "600", color: "#000" },
   spacer: { width: 32 },
-
   scrollView: { flex: 1 },
-
-  // Carousel
   carousel: { backgroundColor: "#FFFFFF" },
   imageWrapper: {
     width,
@@ -298,8 +368,6 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   dotActive: { backgroundColor: "#00B87C", width: 24 },
   dotInactive: { backgroundColor: "#D1D5DB" },
-
-  // Info Card
   infoCard: { backgroundColor: "#FFFFFF", padding: 16, marginTop: 1 },
   categories: { flexDirection: "row", marginBottom: 8 },
   category: { fontSize: 13, color: "#666" },
@@ -331,8 +399,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   tagText: { fontSize: 12, color: "#4B5563", fontWeight: "500" },
-
-  // Description
   descriptionCard: { backgroundColor: "#FFFFFF", padding: 16, marginTop: 12 },
   sectionTitle: {
     fontSize: 18,
@@ -345,8 +411,6 @@ const styles = StyleSheet.create({
   label: { color: "#666" },
   value: { color: "#000", fontWeight: "500" },
   viewMore: { fontSize: 14, color: "#00B87C", fontWeight: "600", marginTop: 4 },
-
-  // Bottom Bar
   bottomBar: {
     position: "absolute",
     bottom: 0,
@@ -360,6 +424,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E0E0E0",
     gap: 12,
+    height: 130,
   },
   quantityControl: {
     flexDirection: "row",

@@ -6,12 +6,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const Index = () => {
   const router = useRouter();
-
   useEffect(() => {
     const timer = setTimeout(() => {
       router.push("/onboarding");
     }, 5000); // Navigate after 5 seconds
-
     return () => clearTimeout(timer); // Cleanup timer on unmount
   }, [router]);
 
@@ -22,13 +20,11 @@ const Index = () => {
         source={require("../assets/images/logo/Top-logo.png")}
         style={[styles.bgImage, { top: 0, left: 0 }]}
       />
-
       {/* Image de fond en bas à droite */}
       <Image
         source={require("../assets/images/logo/Bottom-logo.png")}
         style={[styles.bgImage, { bottom: 0, right: 0 }]}
       />
-
       <View style={styles.imgLogo}>
         <Image
           source={require("../assets/images/logo/white.png")}
