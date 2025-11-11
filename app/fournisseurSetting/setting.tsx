@@ -58,7 +58,7 @@ const Setting: React.FC = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity style={styles.arrowBack} onPress={() => router.back()}>
           <MaterialIcons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Paramètres</Text>
@@ -181,10 +181,20 @@ const styles = StyleSheet.create({
   },
   flagContainer: {
     marginRight: 8,
+    // borderWidth: 1,
+    borderRadius: 50,
+    borderColor: '#F8F1F1FF',
+    // padding: 5,
   },
   flag: {
     fontSize: 20,
   },
+  arrowBack: {
+      borderWidth: 1,
+    borderRadius: 50,
+    borderColor: '#F8F1F1FF',
+    padding: 5,
+  }
 })
 
 export default Setting

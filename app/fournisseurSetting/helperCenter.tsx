@@ -5,46 +5,36 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-nati
 import { useRouter } from "expo-router"
 import MaterialIcons from "react-native-vector-icons/MaterialIcons"
 
-interface ContactItem {
+interface HelpItem {
   id: string
   icon: string
-  label: string
-  value: string
+  title: string
+  route: string
 }
 
-const Contact: React.FC = () => {
+const HelpCenterScreen: React.FC = () => {
   const router = useRouter()
 
-  const contacts: ContactItem[] = [
+  const helpItems: HelpItem[] = [
     {
-      id: "phone",
-      icon: "phone",
-      label: "Téléphone",
-      value: "+33 7 53 07 08 73",
+      id: "support",
+      icon: "lock",
+      title: "Assistance Technique",
+      route: "/fournisseurSetting/TechnicalSupport",
     },
     {
-      id: "email",
-      icon: "email",
-      label: "Email",
-      value: "contact@fortibiome.com",
+      id: "contacts",
+      icon: "lock",
+      title: "Contacts",
+      route: "/fournisseurSetting/contacts",
     },
     {
-      id: "website",
-      icon: "language",
-      label: "Site web",
-      value: "https://fortibiome.com",
-    },
-    {
-      id: "address",
-      icon: "location-on",
-      label: "Adresse",
-      value: "24 RUE ALEXANDRE, 14000 CAEN",
+      id: "faq",
+      icon: "info",
+      title: "FAQs",
+      route: "/fournisseurSetting/faq",
     },
   ]
-
-  const handleCopyToClipboard = (value: string) => {
-    // Clipboard functionality would be implemented here
-  }
 
   return (
     <View style={styles.container}>
@@ -53,27 +43,20 @@ const Contact: React.FC = () => {
         <TouchableOpacity onPress={() => router.back()}>
           <MaterialIcons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Contacts</Text>
+        <Text style={styles.headerTitle}>Aide & Assistance</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {contacts.map((contact) => (
-          <TouchableOpacity key={contact.id} style={styles.contactCard}>
-            <View style={styles.contactLeft}>
+        {helpItems.map((item) => (
+          <TouchableOpacity key={item.id} style={styles.helpItem} onPress={() => router.push(item.route)}>
+            <View style={styles.helpItemLeft}>
               <View style={styles.iconContainer}>
-                <MaterialIcons name={contact.icon} size={22} color="#1BB874" />
+                <MaterialIcons name={item.icon} size={20} color="#1BB874" />
               </View>
-              <View style={styles.contactInfo}>
-                <Text style={styles.contactLabel}>{contact.label}</Text>
-                <Text style={styles.contactValue} numberOfLines={2}>
-                  {contact.value}
-                </Text>
-              </View>
+              <Text style={styles.helpItemText}>{item.title}</Text>
             </View>
-            <TouchableOpacity onPress={() => handleCopyToClipboard(contact.value)}>
-              <MaterialIcons name="content-copy" size={20} color="#CCCCCC" />
-            </TouchableOpacity>
+            <MaterialIcons name="chevron-right" size={24} color="#CCCCCC" />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -92,7 +75,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    borderBottomWidth: 1,
+    // borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
   headerTitle: {
@@ -105,7 +88,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-  contactCard: {
+  helpItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -117,7 +100,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E8E8E8",
   },
-  contactLeft: {
+  helpItemLeft: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
@@ -125,26 +108,17 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: "#F0F0F0",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 14,
   },
-  contactInfo: {
-    flex: 1,
-  },
-  contactLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#666666",
-    marginBottom: 4,
-  },
-  contactValue: {
+  helpItemText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
     color: "#000000",
   },
 })
 
-export default Contact
+export default HelpCenterScreen
