@@ -73,7 +73,7 @@ const SettingsMenu: React.FC = () => {
         text: "Déconnecter",
         style: "destructive",
         onPress: () => {
-          router.dismissAll()
+          router.replace('/')
         },
       },
     ])
