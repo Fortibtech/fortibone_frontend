@@ -83,6 +83,7 @@ export interface Business {
   }
   
   export interface ProductCategory {
+    parent: any;
     id: string;
     name: string;
   }
