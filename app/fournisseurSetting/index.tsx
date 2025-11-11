@@ -32,7 +32,7 @@ const SettingsMenu: React.FC = () => {
   }
 
   const handleMyBusiness = () => {
-    router.push("/MyBusiness")
+    router.push("/fournisseurSetting/companyProfile")
   }
 
   const handleAppSettings = () => {
