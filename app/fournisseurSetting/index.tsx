@@ -6,6 +6,8 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert } fr
 import { useUserStore } from "@/store/userStore"
 import { router } from "expo-router"
 import MaterialIcons from "react-native-vector-icons/MaterialIcons"
+import LogoutModal from "./logoutModal"
+import ShareAppModal from "./shareAppModal"
 
 interface MenuItem {
   id: string
@@ -17,6 +19,8 @@ interface MenuItem {
 
 const SettingsMenu: React.FC = () => {
   const [loading, setLoading] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const user = useUserStore.getState().userProfile
 
   const handleViewProfile = () => {
@@ -36,23 +40,23 @@ const SettingsMenu: React.FC = () => {
   }
 
   const handleHelpCenter = () => {
-    router.push("/HelpCenter")
+    router.push("/fournisseurSetting/helperCenter")
   }
 
   const handlePrivacyPolicy = () => {
-    router.push("/PrivacyPolicy")
+    router.push("/fournisseurSetting/privacyPolicy")
   }
 
   const handleTermsConditions = () => {
-    router.push("/TermsConditions")
+    router.push("/fournisseurSetting/TermsAndConditions")
   }
 
   const handleAbout = () => {
-    router.push("/About")
+    router.push("/fournisseurSetting/about")
   }
 
   const handleInviteUsers = () => {
-    Alert.alert("Inviter", "Fonctionnalité de partage à venir")
+    setShowShareModal(true)
   }
 
   const handleRateApp = () => {
@@ -73,6 +77,7 @@ const SettingsMenu: React.FC = () => {
         },
       },
     ])
+    
   }
 
   const menuItems: MenuItem[] = [
@@ -190,11 +195,14 @@ const SettingsMenu: React.FC = () => {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} disabled={loading}>
+        <TouchableOpacity style={styles.logoutButton} onPress={()=> setShowLogoutModal(true)} disabled={loading}>
           <MaterialIcons name="logout" size={20} color="#FFFFFF" />
           <Text style={styles.logoutButtonText}>Se Déconnecter</Text>
         </TouchableOpacity>
       </View>
+
+       <LogoutModal visible={showLogoutModal} onCancel={()=> setShowLogoutModal(false)} onLogout={handleLogout} />
+      <ShareAppModal visible={showShareModal} onClose={() => setShowShareModal(false)} />
     </View>
   )
 }
