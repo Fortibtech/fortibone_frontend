@@ -578,13 +578,16 @@ const HomePage: React.FC = () => {
         <View style={styles.statisticsRow}>
           {stats.map((stat) => (
             <TouchableOpacity key={stat.id} style={styles.statisticsCard}>
+            <View>
               <View style={styles.statisticsIconContainer}>
                 <Ionicons name={stat.icon as any} size={28} color="#1BB874" />
               </View>
               <View style={styles.statisticsContent}>
                 <Text style={styles.statisticsLabel}>{stat.label}</Text>
-                <Ionicons name="chevron-forward" size={20} color="#1BB874" />
+                <Ionicons name="chevron-forward" size={12} color="#1BB874" />
               </View>
+            </View>
+              
             </TouchableOpacity>
           ))}
         </View>
@@ -995,7 +998,7 @@ const styles = StyleSheet.create({
   statisticsIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: 24,
     backgroundColor: "#E8F5E9",
     justifyContent: "center",
     alignItems: "center",
@@ -1004,12 +1007,14 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
+    marginTop: 26,
   },
   statisticsLabel: {
     fontSize: 14,
     fontWeight: "600",
     color: "#1F2937",
+    marginRight: 20,
   },
   container: {
     flex: 1,
