@@ -51,6 +51,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(inventory)" />
         <Stack.Screen name="(orders)" />
+        <Stack.Screen name="(accueil)" />
         <Stack.Screen name="(restaurants)" />
         <Stack.Screen name="(transactions)" />
         <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
@@ -62,9 +63,8 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
       </Stack>
 
-        <StatusBar style="auto" />
-        <Toast />
-      </StripeProvider>
-  
+      <StatusBar style="auto" />
+      <Toast />
+    </StripeProvider>
   );
 }

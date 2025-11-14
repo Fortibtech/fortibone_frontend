@@ -1,14 +1,15 @@
 // app/(tabs)/index.tsx
-import { 
-  Business, 
-  BusinessesService, 
-  SelectedBusinessManager,
- 
-} from "@/api";
-import { AnalyticsOverview, getAnalyticsOverview, getPendingOrdersCount, getProcessingPurchasesCount } from "@/api/analytics";
+import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
+import {
+  AnalyticsOverview,
+  getAnalyticsOverview,
+  getPendingOrdersCount,
+  getProcessingPurchasesCount,
+} from "@/api/analytics";
+import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import { Ionicons } from "@expo/vector-icons";
-import { Route, router } from "expo-router";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,7 +24,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 const HomePage: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
@@ -31,12 +31,17 @@ const HomePage: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // ✅ États pour les analytics
-  const [monthlyOverview, setMonthlyOverview] = useState<AnalyticsOverview | null>(null);
-  const [overallOverview, setOverallOverview] = useState<AnalyticsOverview | null>(null);
+  const [monthlyOverview, setMonthlyOverview] =
+    useState<AnalyticsOverview | null>(null);
+  const [overallOverview, setOverallOverview] =
+    useState<AnalyticsOverview | null>(null);
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
-  const [processingPurchases, setProcessingPurchases] = useState<{ count: number; totalItems: number }>({ count: 0, totalItems: 0 });
+  const [processingPurchases, setProcessingPurchases] = useState<{
+    count: number;
+    totalItems: number;
+  }>({ count: 0, totalItems: 0 });
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useEffect(() => {
@@ -54,15 +59,15 @@ const HomePage: React.FC = () => {
   const getCurrentMonthDates = (): { startDate: string; endDate: string } => {
     const now = new Date();
     const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+
     // Premier jour du mois
     const startDate = `${year}-${month}-01`;
-    
+
     // Dernier jour du mois
     const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-    const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-    
+    const endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+
     return { startDate, endDate };
   };
 
@@ -73,11 +78,11 @@ const HomePage: React.FC = () => {
       setBusinesses(businessesResponse);
       const selected = await SelectedBusinessManager.getSelectedBusiness();
       setSelectedBusiness(selected);
-      
+
       if (selected?.type === "FOURNISSEUR") {
         router.push("/(fournisseur)");
       }
-      
+
       if (selected && !businessesResponse.find((b) => b.id === selected.id)) {
         await BusinessesService.clearSelectedBusiness();
         setSelectedBusiness(null);
@@ -96,26 +101,33 @@ const HomePage: React.FC = () => {
 
     try {
       setAnalyticsLoading(true);
-      
+
       // Obtenir les dates du mois en cours
       const { startDate, endDate } = getCurrentMonthDates();
-      
       // Charger l'overview du mois en cours
-      const monthlyData = await getAnalyticsOverview(selectedBusiness.id, startDate, endDate);
+      const monthlyData = await getAnalyticsOverview(
+        selectedBusiness.id,
+        startDate,
+        endDate
+      );
       setMonthlyOverview(monthlyData);
-      
+
       // Charger l'overview global (sans dates)
       const overallData = await getAnalyticsOverview(selectedBusiness.id);
       setOverallOverview(overallData);
-      
+
       // Charger le nombre de commandes en attente
-      const pendingCount = await getPendingOrdersCount(selectedBusiness.id, "SALE");
+      const pendingCount = await getPendingOrdersCount(
+        selectedBusiness.id,
+        "SALE"
+      );
       setPendingOrdersCount(pendingCount);
-      
+
       // Charger les achats en cours
-      const purchasesData = await getProcessingPurchasesCount(selectedBusiness.id);
+      const purchasesData = await getProcessingPurchasesCount(
+        selectedBusiness.id
+      );
       setProcessingPurchases(purchasesData);
-      
     } catch (error) {
       console.error("Erreur lors du chargement des analytics:", error);
       Alert.alert("Erreur", "Impossible de charger les statistiques");
@@ -138,7 +150,6 @@ const HomePage: React.FC = () => {
       await BusinessesService.selectBusiness(business);
       setSelectedBusiness(business);
       Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
-      
       if (business.type === "FOURNISSEUR") {
         router.push("/(fournisseur)");
       }
@@ -193,7 +204,9 @@ const HomePage: React.FC = () => {
           <Text style={styles.sectionTitle}>Vue d&apos;Ensemble</Text>
           <View style={styles.analyticsLoadingContainer}>
             <ActivityIndicator size="large" color="#7C3AED" />
-            <Text style={styles.analyticsLoadingText}>Chargement des statistiques...</Text>
+            <Text style={styles.analyticsLoadingText}>
+              Chargement des statistiques...
+            </Text>
           </View>
         </View>
       );
@@ -214,9 +227,17 @@ const HomePage: React.FC = () => {
             </View>
             <View>
               <Text style={styles.cardLabel}>CA Mensuel</Text>
-              <View style={{ flex: 1, flexDirection: "row", alignItems: "baseline" }}>
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                }}
+              >
                 <Text style={styles.cardValue}>
-                  {monthlyOverview ? formatNumber(monthlyOverview.totalSalesAmount) : "--"}
+                  {monthlyOverview
+                    ? formatNumber(monthlyOverview.totalSalesAmount)
+                    : "--"}
                 </Text>
                 <Text style={styles.cardUnit}> KMF</Text>
               </View>
@@ -235,7 +256,9 @@ const HomePage: React.FC = () => {
               <View>
                 <Text style={styles.cardLabel}>En attente</Text>
                 <Text style={styles.cardValue}>
-                  {pendingOrdersCount} commande{pendingOrdersCount > 1 ? 's' : ''} client{pendingOrdersCount > 1 ? 's' : ''}
+                  {pendingOrdersCount} commande
+                  {pendingOrdersCount > 1 ? "s" : ""} client
+                  {pendingOrdersCount > 1 ? "s" : ""}
                 </Text>
               </View>
             </View>
@@ -251,158 +274,22 @@ const HomePage: React.FC = () => {
               <View>
                 <Text style={styles.cardLabel}>Achats en cours</Text>
                 <Text style={styles.cardValue}>
-                  {processingPurchases.totalItems} article{processingPurchases.totalItems > 1 ? 's' : ''} commandé{processingPurchases.totalItems > 1 ? 's' : ''}
+                  {processingPurchases.totalItems} article
+                  {processingPurchases.totalItems > 1 ? "s" : ""} commandé
+                  {processingPurchases.totalItems > 1 ? "s" : ""}
                 </Text>
               </View>
             </View>
           </View>
         </View>
-
-        {/* ✅ Cartes supplémentaires avec données globales */}
-        {/* <View style={styles.cardsRow}> */}
-          {/* Total Ventes */}
-          {/* <View style={[styles.overviewCard, styles.cardBlue]}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="trending-up" size={32} color="#3B82F6" />
-            </View>
-            <View>
-              <Text style={styles.cardLabel}>Total Ventes</Text>
-              <Text style={styles.cardValue}>
-                {overallOverview ? formatNumber(overallOverview.totalSalesOrders) : "--"}
-              </Text>
-              <Text style={styles.cardUnit}>commandes</Text>
-            </View>
-          </View> */}
-
-          {/* Valeur Stock */}
-          {/* <View style={[styles.overviewCard, styles.cardOrange]}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="cube" size={32} color="#F97316" />
-            </View>
-            <View>
-              <Text style={styles.cardLabel}>Valeur Stock</Text>
-              <View style={{ flex: 1, flexDirection: "row", alignItems: "baseline" }}>
-                <Text style={styles.cardValue}>
-                  {overallOverview ? formatNumber(overallOverview.currentInventoryValue) : "--"}
-                </Text>
-                <Text style={styles.cardUnit}> KMF</Text>
-              </View>
-            </View>
-          </View>
-        </View> */}
-
-        {/* <View style={styles.cardsRow}> */}
-          {/* Clients Uniques */}
-          {/* <View style={[styles.overviewCard, styles.cardPink]}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="people" size={32} color="#EC4899" />
-            </View>
-            <View>
-              <Text style={styles.cardLabel}>Clients Uniques</Text>
-              <Text style={styles.cardValue}>
-                {overallOverview ? formatNumber(overallOverview.uniqueCustomers) : "--"}
-              </Text>
-            </View>
-          </View> */}
-
-          {/* Produits Vendus */}
-          {/* <View style={[styles.overviewCard, styles.cardTeal]}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="cart" size={32} color="#14B8A6" />
-            </View>
-            <View>
-              <Text style={styles.cardLabel}>Produits Vendus</Text>
-              <Text style={styles.cardValue}>
-                {overallOverview ? formatNumber(overallOverview.totalProductsSold) : "--"}
-              </Text>
-              <Text style={styles.cardUnit}>unités</Text>
-            </View>
-          </View> */}
-        {/* </View> */}
       </View>
     );
   };
 
   const renderQuickAccessSection = () => {
     if (!selectedBusiness) return null;
-
-    return (
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Accès Rapide</Text>
-
-        <View style={styles.quickAccessRow}>
-          {/* Ventes */}
-          <TouchableOpacity
-            style={styles.quickAccessCard}
-            onPress={() =>
-              router.push('/(professionnel)/commande')
-            }
-            activeOpacity={0.8}
-          >
-            <View style={styles.quickAccessIconContainer}>
-              <Ionicons name="trending-up" size={40} color="#7C3AED" />
-            </View>
-            <Text style={styles.quickAccessTitle}>Ventes</Text>
-            <Text style={styles.quickAccessSubtitle}>
-              Statistiques des ventes
-            </Text>
-          </TouchableOpacity>
-
-          {/* Achats */}
-          <TouchableOpacity
-            style={styles.quickAccessCard}
-            onPress={() =>
-              router.push('/(professionnel)/inventaire')
-            }
-            activeOpacity={0.8}
-          >
-            <View style={styles.quickAccessIconContainer}>
-              <Ionicons name="cart" size={40} color="#7C3AED" />
-            </View>
-            <Text style={styles.quickAccessTitle}>Achats</Text>
-            <Text style={styles.quickAccessSubtitle}>
-              Taux de rotation, gestion d...
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.quickAccessRow}>
-          {/* Inventaire */}
-          <TouchableOpacity
-            style={styles.quickAccessCard}
-            onPress={() =>
-              router.push('/(professionnel)/catalogue')
-            }
-            activeOpacity={0.8}
-          >
-            <View style={styles.quickAccessIconContainer}>
-              <Ionicons name="cube-outline" size={40} color="#7C3AED" />
-            </View>
-            <Text style={styles.quickAccessTitle}>Catalogue</Text>
-            <Text style={styles.quickAccessSubtitle}>
-              Stock et mouvements
-            </Text>
-          </TouchableOpacity>
-
-          {/* Clients */}
-          <TouchableOpacity
-            style={styles.quickAccessCard}
-            onPress={() =>
-              router.push('/(professionnel)/finance')
-            }
-            activeOpacity={0.8}
-          >
-            <View style={styles.quickAccessIconContainer}>
-              <Ionicons name="wallet" size={40} color="#7C3AED" />
-            </View>
-            <Text style={styles.quickAccessTitle}>Finances</Text>
-            <Text style={styles.quickAccessSubtitle}>
-              Meilleurs clients
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
+    const { id } = selectedBusiness;
+    return <AnalyticsCard id={id} />;
   };
 
   const renderNoBusinessSelected = () => (
