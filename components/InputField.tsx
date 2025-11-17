@@ -105,7 +105,7 @@ export default InputField;
 const styles = StyleSheet.create({
   container: {
     marginVertical: 10,
-    width: 343,
+    width: "100%",
   },
   label: {
     marginBottom: 5,
