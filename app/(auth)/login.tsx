@@ -239,7 +239,6 @@ const Login = () => {
             title={loading ? "Connexion..." : "Se connecter"}
             backgroundColor="#059669"
             textColor="#fff"
-            width={343}
             borderRadius={50}
             fontSize={16}
             onPress={handleLogin}
@@ -328,6 +327,7 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 20,
+    width: "100%",
   },
 });
 

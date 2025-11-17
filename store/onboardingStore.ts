@@ -14,10 +14,12 @@ export interface FormData {
   confirmPassword: string;
 }
 
+export type AccountType = "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+
 export interface CreateBusinessData {
   name: string;
   description: string;
-  type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+  type: AccountType;
   address: string;
   phoneNumber: string;
   logoUrl?: string;
@@ -40,7 +42,7 @@ export interface Country {
 
 interface OnboardingState {
   step: number;
-  accountType: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR" | "";
+  accountType: AccountType | "";
   personalData: FormData;
   businessData: CreateBusinessData;
   logoImage: string | null;
@@ -58,9 +60,7 @@ interface OnboardingState {
 
   // Actions
   setStep: (step: number) => void;
-  setAccountType: (
-    type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR" | ""
-  ) => void;
+  setAccountType: (type: AccountType | "") => void;
   updatePersonalData: (data: Partial<FormData>) => void;
   updateBusinessData: (data: Partial<CreateBusinessData>) => void;
   setLogoImage: (uri: string | null) => void;
@@ -125,10 +125,17 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
 
   setStep: (step) => set({ step }),
   setAccountType: (type) =>
-    set((state) => ({
-      accountType: type,
-      businessData: { ...state.businessData, type },
-    })),
+    set((state) => {
+      // Si type est vide, on ne met pas à jour businessData.type
+      if (type === "") {
+        return { accountType: type };
+      }
+      // Sinon on met à jour les deux
+      return {
+        accountType: type,
+        businessData: { ...state.businessData, type },
+      };
+    }),
   updatePersonalData: (data) =>
     set((state) => ({
       personalData: { ...state.personalData, ...data },

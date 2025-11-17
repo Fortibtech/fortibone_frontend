@@ -23,7 +23,6 @@ type ButtonProps = {
 export default function CustomButton({
   title,
   onPress,
-  width = "80%",
   height = 50,
   backgroundColor = "#0A84FF",
   textColor = "#fff",
@@ -37,7 +36,6 @@ export default function CustomButton({
       style={[
         styles.button,
         {
-          width,
           height,
           backgroundColor: disabled ? "#aeb3b3" : backgroundColor, // style visuel
           borderRadius,
@@ -65,8 +63,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginVertical: 10,
+    width: "100%",
   },
   text: {
     fontWeight: "600",
   },
+
 });

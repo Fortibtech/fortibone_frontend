@@ -1,9 +1,17 @@
-import React from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import BackButtonAdmin from "@/components/Admin/BackButton";
 import { StockCard } from "@/components/accueil/StockCard";
 import { useLocalSearchParams } from "expo-router";
+import { getInventory, InventoryResponse } from "@/api/analytics";
 // Composant Header
 const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   return (
@@ -16,77 +24,91 @@ const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
 };
 const StockTrackingScreen: React.FC = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
-  console.log("ID de l'entreprise:", id);
+  const [data, setData] = useState<InventoryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const fetchData = async () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getInventory(id);
+      setData(result);
+    } catch (error) {
+      console.error("❌ Erreur lors du fetch overview:", error);
+      setError("Échec du chargement des données. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchData();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>Chargement...</Text>
+      </View>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorText}>
+          {error || "Aucune donnée trouvée."}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryButtonText}>Réessayer</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const stockData = [
     {
-      icon: "package" as keyof typeof Feather.glyphMap,
-      iconColor: "#10B981",
-      iconBgColor: "#D1FAE5",
-      title: "Produits en Stock",
-      value: "56",
-    },
-    {
+      title: "Valeur du stock",
+      value: data.currentInventoryValue,
       icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#10B981",
       iconBgColor: "#D1FAE5",
-      title: "Valeur du Stock",
-      value: "32 463 000 KMF",
     },
     {
-      icon: "alert-triangle" as keyof typeof Feather.glyphMap,
+      title: "Unités en stock",
+      value: data.totalUnitsInStock,
+      icon: "package" as keyof typeof Feather.glyphMap,
       iconColor: "#F59E0B",
       iconBgColor: "#FEF3C7",
-      title: "Stock Faible",
-      value: "7",
     },
     {
-      icon: "box" as keyof typeof Feather.glyphMap,
-      iconColor: "#6B7280",
-      iconBgColor: "#F3F4F6",
-      title: "Rupture de Stock",
-      value: "1",
+      title: "Produits en rupture",
+      value: data.productsLowStock.length,
+      icon: "alert-triangle" as keyof typeof Feather.glyphMap,
+      iconColor: "#EF4444",
+      iconBgColor: "#FEE2E2",
     },
     {
+      title: "Produits expirants",
+      value: data.expiringProducts.length,
       icon: "clock" as keyof typeof Feather.glyphMap,
       iconColor: "#3B82F6",
       iconBgColor: "#DBEAFE",
-      title: "En Voie d'Expiration",
-      value: "3",
     },
     {
-      icon: "x-circle" as keyof typeof Feather.glyphMap,
-      iconColor: "#EF4444",
-      iconBgColor: "#FEE2E2",
-      title: "Expiré",
-      value: "4",
-    },
-    {
-      icon: "trending-down" as keyof typeof Feather.glyphMap,
-      iconColor: "#EF4444",
-      iconBgColor: "#FEE2E2",
-      title: "Total Pertes",
-      value: "9",
-    },
-    {
-      icon: "image" as keyof typeof Feather.glyphMap,
-      iconColor: "#EF4444",
-      iconBgColor: "#FEE2E2",
-      title: "Valeur Pertes",
-      value: "766 500 KMF",
-    },
-    {
-      icon: "refresh-cw" as keyof typeof Feather.glyphMap,
-      iconColor: "#10B981",
-      iconBgColor: "#D1FAE5",
-      title: "Taux de Rotation",
-      value: "11.6",
+      title: "Pertes enregistrées",
+      value: data.lossesByMovementType.length,
+      icon: "activity" as keyof typeof Feather.glyphMap,
+      iconColor: "#8B5CF6",
+      iconBgColor: "#EDE9FE",
     },
   ];
 
   const handleCardPress = (title: string) => {
     console.log(`Pressed: ${title}`);
   };
-
+  console.log(data);
   return (
     <View style={styles.container}>
       <Header onBackPress={() => console.log("Back pressed")} />
@@ -119,6 +141,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F9FAFB",
   },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#dc2626",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: "#3b82f6",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -146,6 +191,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: "#1f2937",
   },
   grid: {
     flexDirection: "row",

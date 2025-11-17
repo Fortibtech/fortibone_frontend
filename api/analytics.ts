@@ -49,16 +49,6 @@ export interface SalesByPeriod {
   totalItems: number; // nombre d'articles vendus sur la période
 }
 
-// ✅ Type pour topSellingProducts
-export interface TopSellingProduct {
-  variantId: string;
-  sku: string;
-  productName: string;
-  variantImageUrl: string;
-  totalQuantitySold: number;
-  totalRevenue: number;
-}
-
 // ✅ Type pour salesByProductCategory
 export interface SalesByProductCategory {
   categoryId: string;

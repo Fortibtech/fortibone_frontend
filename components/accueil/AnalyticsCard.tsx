@@ -4,10 +4,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-
+import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
+import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
+import { SalesByCategoryChart } from "@/components/Chart/SalesBarChart";
+import { getSales, SalesResponse } from "@/api/analytics";
+import { useEffect, useState } from "react";
 type FeatherIconName =
   | "filter"
   | "bold"
@@ -47,19 +52,51 @@ const AnalyticsCard = ({ icon, title, onPress }: props) => (
   </TouchableOpacity>
 );
 
-const StatisticsSection = () => (
-  <View style={styles.statisticsContainer}>
-    <View style={styles.statisticsHeader}>
-      <Text style={styles.statisticsTitle}>Statistiques des ventes</Text>
-      <TouchableOpacity>
-        <Text style={styles.voirPlus}>Voir plus</Text>
-      </TouchableOpacity>
-    </View>
-    <View style={styles.underline} />
-  </View>
-);
 type AnalyticsComponentProps = { id: string };
 export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
+  const [data, setData] = useState<SalesResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getSales(id);
+      setData(result);
+    } catch (error) {
+      console.error("❌ Erreur lors du fetch overview:", error);
+      setError("Échec du chargement des données. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchData();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>Chargement...</Text>
+      </View>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorText}>
+          {error || "Aucune donnée trouvée."}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryButtonText}>Réessayer</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Analytics</Text>
@@ -98,12 +135,42 @@ export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
       </View>
 
       <Text style={styles.sectionTitle}>Statistiques</Text>
-      <StatisticsSection />
+      <SalesByCategoryChart data={data.salesByPeriod} />
+      <ExpenseDistributionChart businessId={id} />
+      <RevenueDistributionChart businessId={id} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  errorText: {
+    fontSize: 16,
+    color: "#dc2626",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: "#3b82f6",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: "#1f2937",
+  },
   container: {
     flex: 1,
     backgroundColor: "#f9fafb",
