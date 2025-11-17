@@ -78,7 +78,7 @@ const Login = () => {
       } else if (profileType === "particulier") {
         router.replace("/(auth)/register");
       } else if (profileType === "professionnel") {
-        router.replace("/(auth)/CommerrcantSignup");
+        router.replace("/(auth)/FournisseurSignUp");
       }
     }
   }, [isCheckingProfile, profileType, router]);
@@ -179,7 +179,7 @@ const Login = () => {
           onPress={() =>
             profileType === "particulier"
               ? router.push("/(auth)/register")
-              : router.push("/(auth)/CommerrcantSignup")
+              : router.push("/(auth)/FournisseurSignUp")
           }
         >
           <Text style={{ color: "#059669", fontWeight: "600" }}>
