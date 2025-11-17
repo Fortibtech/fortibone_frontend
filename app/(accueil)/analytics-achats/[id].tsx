@@ -1,8 +1,17 @@
-import React from "react";
-import { View, Text, ScrollView, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import BackButtonAdmin from "@/components/Admin/BackButton";
 import { StockCard } from "@/components/accueil/StockCard";
+import { useLocalSearchParams } from "expo-router";
+import { getSales, SalesResponse } from "@/api/analytics";
 // Composant Header
 const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   return (
@@ -14,69 +23,105 @@ const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   );
 };
 const StockTrackingScreen: React.FC = () => {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [data, setData] = useState<SalesResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const fetchData = async () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getSales(id);
+      setData(result);
+    } catch (error) {
+      console.error("❌ Erreur lors du fetch overview:", error);
+      setError("Échec du chargement des données. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchData();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+        <Text style={styles.loadingText}>Chargement...</Text>
+      </View>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorText}>
+          {error || "Aucune donnée trouvée."}
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryButtonText}>Réessayer</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   const stockData = [
     {
-      icon: "package" as keyof typeof Feather.glyphMap,
-      iconColor: "#10B981",
-      iconBgColor: "#D1FAE5",
-      title: "Produits en Stock",
-      value: "56",
-    },
-    {
+      title: "Montant total des ventes",
+      value: data.salesByPeriod?.[0]?.totalAmount ?? 0,
       icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#10B981",
       iconBgColor: "#D1FAE5",
-      title: "Valeur du Stock",
-      value: "32 463 000 KMF",
     },
     {
-      icon: "alert-triangle" as keyof typeof Feather.glyphMap,
-      iconColor: "#F59E0B",
-      iconBgColor: "#FEF3C7",
-      title: "Stock Faible",
-      value: "7",
-    },
-    {
-      icon: "box" as keyof typeof Feather.glyphMap,
-      iconColor: "#6B7280",
-      iconBgColor: "#F3F4F6",
-      title: "Rupture de Stock",
-      value: "1",
-    },
-    {
-      icon: "clock" as keyof typeof Feather.glyphMap,
+      title: "Articles vendus",
+      value: data.salesByPeriod?.[0]?.totalItems ?? 0,
+      icon: "shopping-cart" as keyof typeof Feather.glyphMap,
       iconColor: "#3B82F6",
       iconBgColor: "#DBEAFE",
-      title: "En Voie d'Expiration",
-      value: "3",
     },
     {
-      icon: "x-circle" as keyof typeof Feather.glyphMap,
-      iconColor: "#EF4444",
-      iconBgColor: "#FEE2E2",
-      title: "Expiré",
-      value: "4",
+      title: "Revenu par catégorie",
+      value: data.salesByProductCategory?.reduce(
+        (sum, c) => sum + (c.totalRevenue || 0),
+        0
+      ),
+      icon: "layers" as keyof typeof Feather.glyphMap,
+      iconColor: "#F59E0B",
+      iconBgColor: "#FEF3C7",
     },
     {
-      icon: "trending-down" as keyof typeof Feather.glyphMap,
-      iconColor: "#EF4444",
-      iconBgColor: "#FEE2E2",
-      title: "Total Pertes",
-      value: "9",
+      title: "Produits vendus (catégories)",
+      value: data.salesByProductCategory?.reduce(
+        (sum, c) => sum + (c.totalItemsSold || 0),
+        0
+      ),
+      icon: "tag" as keyof typeof Feather.glyphMap,
+      iconColor: "#8B5CF6",
+      iconBgColor: "#EDE9FE",
     },
     {
-      icon: "image" as keyof typeof Feather.glyphMap,
-      iconColor: "#EF4444",
-      iconBgColor: "#FEE2E2",
-      title: "Valeur Pertes",
-      value: "766 500 KMF",
+      title: "Top produit vendu (quantité)",
+      value: data.topSellingProducts?.[0]?.totalQuantitySold ?? 0,
+      icon: "package" as keyof typeof Feather.glyphMap,
+      iconColor: "#F97316",
+      iconBgColor: "#FFEDD5",
     },
     {
-      icon: "refresh-cw" as keyof typeof Feather.glyphMap,
-      iconColor: "#10B981",
-      iconBgColor: "#D1FAE5",
-      title: "Taux de Rotation",
-      value: "11.6",
+      title: "Top produit revenu",
+      value: data.topSellingProducts?.[0]?.totalRevenue ?? 0,
+      icon: "trending-up" as keyof typeof Feather.glyphMap,
+      iconColor: "#06B6D4",
+      iconBgColor: "#CFFAFE",
+    },
+    {
+      title: "Pourcentage du top produit",
+      value: `${data.topSellingProducts?.[0]?.revenuePercentage ?? 0}%`,
+      icon: "percent" as keyof typeof Feather.glyphMap,
+      iconColor: "#84CC16",
+      iconBgColor: "#ECFCCB",
     },
   ];
 
@@ -115,6 +160,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F9FAFB",
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: "#1f2937",
   },
   header: {
     flexDirection: "row",
@@ -161,9 +217,27 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
+
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 2,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#dc2626",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: "#3b82f6",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
   iconContainer: {
     width: 48,
