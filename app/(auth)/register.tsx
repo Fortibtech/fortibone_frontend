@@ -23,7 +23,6 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 // === TYPES ===
 interface DatePickerModalProps {
   visible: boolean;
@@ -713,16 +712,21 @@ const Register: React.FC = () => {
                   value={formData.ville}
                   onChangeText={(text) => updateField("ville", text)}
                   autoCapitalize="words"
-                  leftIcon={selectedCountry ? (
-                    <Image
-                      source={{ uri: selectedCountry.flags.png }}
-                      style={{
-                        width: 20,
-                        height: 14,
-                        marginRight: 8,
-                        borderRadius: 2,
-                      }} />
-                  ) : null} label={""}                />
+                  leftIcon={
+                    selectedCountry ? (
+                      <Image
+                        source={{ uri: selectedCountry.flags.png }}
+                        style={{
+                          width: 20,
+                          height: 14,
+                          marginRight: 8,
+                          borderRadius: 2,
+                        }}
+                      />
+                    ) : null
+                  }
+                  label={""}
+                />
               </View>
 
               {/* TÉLÉPHONE */}
@@ -754,7 +758,7 @@ const Register: React.FC = () => {
                   ) : null}
                 </View>
               </View>
- 
+
               <View style={styles.fieldContainer}>
                 <Text style={styles.label}>Date de naissance</Text>
                 <TouchableOpacity
@@ -877,7 +881,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     alignItems: "center",
   },
-  fieldContainer: { marginVertical: 10, width: 343 },
+  fieldContainer: { marginVertical: 10, width: "100%" },
   label: { marginBottom: 5, fontSize: 14, fontWeight: "500", color: "#111" },
   selectField: {
     flexDirection: "row",
@@ -904,7 +908,7 @@ const styles = StyleSheet.create({
   createButtonContainer: { width: "100%", marginBottom: 20 },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+
     justifyContent: "flex-end",
     alignItems: "center",
   },
@@ -1031,6 +1035,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     marginBottom: 16,
     position: "relative",
@@ -1039,6 +1044,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 32,
     zIndex: 1,
+    bottom: 25,
   },
   searchInput: {
     flex: 1,
