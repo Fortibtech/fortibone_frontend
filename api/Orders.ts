@@ -19,7 +19,7 @@ export const createOrder = async (
       "/orders",
       payload
     );
-    // TODO: Remplacer par une bibliothèque de journalisation structurée (ex: winston)
+    // TODO: Remplacer par une bibliothèque de journalisation structurée ceci (ex: winston)
     console.log("✅ Commande créée:", response.data);
 
     // Validation basique de la réponse
