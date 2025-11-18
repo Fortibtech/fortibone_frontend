@@ -8,7 +8,7 @@ export const getCategories = async (): Promise<Category[]> => {
     return response.data; // l’API renvoie directement les catégories
   } catch (error: any) {
     console.error(
-      "❌ Erreur getCategories:",
+      "Erreur getCategories:",
       error.response?.data || error.message
     );
     throw error;
