@@ -1,4 +1,4 @@
-import { registerUser } from "@/api/authService";
+import { registerUser, verifyEmail } from "@/api/authService";
 import BackButton from "@/components/BackButton";
 import CustomButton from "@/components/CustomButton";
 import InputField from "@/components/InputField";

@@ -16,7 +16,7 @@ export interface FormData {
 
 export type AccountType = "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
 
-export interface CreateBusinessData {
+export interface CreateBusinessDatas {
   name: string;
   description: string;
   type: AccountType;
@@ -44,7 +44,7 @@ interface OnboardingState {
   step: number;
   accountType: AccountType | "";
   personalData: FormData;
-  businessData: CreateBusinessData;
+  businessData: CreateBusinessDatas;
   logoImage: string | null;
   coverImage: string | null;
   selectedCountry: Country | null;
@@ -62,7 +62,7 @@ interface OnboardingState {
   setStep: (step: number) => void;
   setAccountType: (type: AccountType | "") => void;
   updatePersonalData: (data: Partial<FormData>) => void;
-  updateBusinessData: (data: Partial<CreateBusinessData>) => void;
+  updateBusinessData: (data: Partial<CreateBusinessDatas>) => void;
   setLogoImage: (uri: string | null) => void;
   setCoverImage: (uri: string | null) => void;
   setSelectedCountry: (country: Country | null) => void;
@@ -91,7 +91,7 @@ const initialPersonalData: FormData = {
   confirmPassword: "",
 };
 
-const initialBusinessData: CreateBusinessData = {
+const initialBusinessData: CreateBusinessDatas = {
   name: "",
   description: "",
   type: "COMMERCANT",
