@@ -8,6 +8,7 @@ import {
 } from "@/api/analytics";
 import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import BusinessSelector from "@/components/Business/BusinessSelector";
+import { useUserStore } from "@/store/userStore";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -25,6 +26,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 const HomePage: React.FC = () => {
+  const user = useUserStore.getState().userProfile;
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
     null
@@ -165,6 +167,11 @@ const HomePage: React.FC = () => {
       maximumFractionDigits: 0,
     }).format(num);
   };
+  // ✅ Calculer le nombre total d'alertes
+  const getTotalAlertsCount = (): number => {
+    if (!pendingOrdersCount) return 0;
+    return pendingOrdersCount;
+  };
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -178,17 +185,29 @@ const HomePage: React.FC = () => {
       />
 
       <View style={styles.headerRight}>
-        <TouchableOpacity style={styles.iconButton}>
+        {/* <TouchableOpacity style={styles.iconButton}>
           <Ionicons name="search" size={24} color="#000" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TouchableOpacity style={styles.iconButton}>
-          <View style={styles.notificationBadge}>
-            <Text style={styles.badgeText}>3</Text>
-          </View>
+          {getTotalAlertsCount() > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>{getTotalAlertsCount()}</Text>
+            </View>
+          )}
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.avatar}>
-          <Ionicons name="person" size={20} color="#666" />
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={() => router.push("/fournisseurSetting")}
+        >
+          <Image
+            source={
+              user?.profileImageUrl
+                ? { uri: user.profileImageUrl }
+                : require("@/assets/images/icon.png")
+            }
+            style={styles.avatar}
+          />
         </TouchableOpacity>
       </View>
     </View>
