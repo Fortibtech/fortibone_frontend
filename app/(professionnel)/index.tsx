@@ -180,7 +180,7 @@ const HomePage: React.FC = () => {
         selectedBusiness={selectedBusiness}
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
-        onAddBusiness={() => router.push("/pro/createBusiness")}
+        onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/profile")}
       />
 

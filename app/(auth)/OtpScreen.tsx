@@ -70,14 +70,14 @@ const OtpVerify = () => {
       }
 
       Alert.alert("✅ Succès", "Votre compte est vérifié !");
-      router.replace("/(tabs)");
+
       // 🎯 Redirection selon le type de compte
-      // const profileType = store.userProfile?.profileType;
-      // if (profileType === "PRO") {
-      //   router.replace("/pro/createBusiness");
-      // } else {
-       
-      // }
+      const profileType = store.userProfile?.profileType;
+      if (profileType === "PRO") {
+        router.replace("/(create-business)/");
+      } else {
+        router.replace("/(tabs)");
+      }
     } catch (error: any) {
       console.error("Erreur vérification OTP:", error);
       Alert.alert("Erreur", error.message || "OTP invalide ou expiré");
@@ -85,7 +85,7 @@ const OtpVerify = () => {
       setLoading(false);
     }
   };
-    const handleResendOtp = async () => {
+  const handleResendOtp = async () => {
     try {
       const result = await resendOtp(email!, "EMAIL_VERIFICATION");
       console.log("✅ OTP renvoyé:", result.message);
@@ -103,8 +103,6 @@ const OtpVerify = () => {
     const s = (seconds % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
   };
-
-
 
   return (
     <SafeAreaView style={styles.container}>

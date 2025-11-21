@@ -179,7 +179,7 @@ const Login = () => {
           onPress={() =>
             profileType === "particulier"
               ? router.push("/(auth)/register")
-              : router.push("/(auth)/CommerrcantSignup")
+              : router.push("/(auth)/register")
           }
         >
           <Text style={{ color: "#059669", fontWeight: "600" }}>

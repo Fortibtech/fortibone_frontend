@@ -55,8 +55,12 @@ export default function RootLayout() {
         <Stack.Screen name="(restaurants)" />
         <Stack.Screen name="(transactions)" />
         <Stack.Screen name="(professionnel)" options={{ headerShown: false }} />
+        <Stack.Screen name="(pro)" options={{ headerShown: false }} />
         <Stack.Screen name="(fournisseur)" options={{ headerShown: false }} />
-        <Stack.Screen name="fournisseurSetting" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="fournisseurSetting"
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="product-details/[id]" />
         <Stack.Screen name=" client-produit-details/[id]" />
         <Stack.Screen name="(profile-particulier)" />

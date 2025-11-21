@@ -39,17 +39,14 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onProd
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null)
   const [loading, setLoading] = useState(false)
   const [images, setImages] = useState<string[]>([])
-
   // États pour les catégories
   const [categories, setCategories] = useState<Category[]>([])
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [categoryModalVisible, setCategoryModalVisible] = useState(false)
-
   // États pour l'unité de vente
   const [salesUnitModalVisible, setSalesUnitModalVisible] = useState(false)
   const [selectedSalesUnit, setSelectedSalesUnit] = useState<{ value: string; label: string } | null>(null)
-
   const salesUnitOptions = [
     { value: "UNIT", label: "Unité (pièce)" },
     { value: "LOT", label: "LOT" },
