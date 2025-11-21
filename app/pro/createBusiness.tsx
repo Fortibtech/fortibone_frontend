@@ -586,7 +586,7 @@ const CreateBusiness: React.FC = () => {
         latitude: business.latitude!,
         longitude: business.longitude!,
         currencyId: business.currencyId!,
-        activitySector: ""
+        activitySector: "",
       });
 
       console.log("✅ Entreprise créée:", newBusiness);

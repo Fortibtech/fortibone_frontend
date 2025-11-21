@@ -22,21 +22,68 @@ export interface Business {
   userRole: "OWNER" | "ADMIN" | "MEMBER";
 }
 
+export type CommerceType = "PHYSICAL" | "ONLINE" | "HYBRID";
+export type BusinessType = "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+export type PriceRange = "ENTRY_LEVEL" | "MID_RANGE" | "PREMIUM" | "LUXURY";
+export type Civility = "MR" | "MME" | "MLLE" | "OTHER";
+
 export interface CreateBusinessData {
+  // Champs obligatoires
   name: string;
   description: string;
-  type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+  type: BusinessType;
   address: string;
-  phoneNumber: string;
-  logoUrl?: string;
-  coverImageUrl?: string;
   latitude: number;
   longitude: number;
   currencyId: string;
+  activitySector: string;
+  commerceType: CommerceType;
+
+  // Champs optionnels (mais souvent remplis)
+  postalCode?: string;
   siret?: string;
   websiteUrl?: string;
-}
+  businessEmail?: string;
+  phoneNumber?: string;
 
+  // Contact personne physique
+  contactFirstName?: string;
+  contactLastName?: string;
+  contactCivility?: Civility;
+  contactFunction?: string;
+
+  // Images (on les envoie à part → donc on les met en optionnel ici)
+  logoUrl?: string; // ← sera uploadé après création
+  coverImageUrl?: string; // ← sera uploadé après création
+
+  // Champs spécifiques selon le type de commerce
+  priceRange?: PriceRange;
+  productCategories?: string[];
+  detailedDescription?: string;
+
+  // Fournisseurs uniquement
+  productionVolume?: string;
+  deliveryZones?: string[];
+  avgDeliveryTime?: string;
+  paymentConditions?: string[];
+  minOrderQuantity?: number;
+  sampleAvailable?: boolean;
+
+  // Réseaux sociaux
+  socialLinks?: {
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+    tiktok?: string;
+    twitter?: string;
+  };
+
+  // Références clients (fournisseurs surtout)
+  clientReferences?: string;
+
+  // Champ technique ignoré à la création (généré par le backend)
+  // creationDate?: string; → ne pas envoyer
+}
 export interface BusinessFilters {
   search?: string;
   type?: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";

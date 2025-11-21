@@ -40,7 +40,7 @@ import {
 import { VariantFormModal } from '@/components/VariantFormModal';
 import { EditProductScreen } from './edit';
 
-const { width: screenWidth } = Dimensions.get('window');
+Dimensions.get('window');
 
 interface ProductDetailScreenProps {
   productId?: string;
@@ -50,7 +50,6 @@ interface ProductDetailScreenProps {
 
 export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   productId: propProductId,
-  onEdit,
   onDelete,
 }) => {
   const params = useLocalSearchParams();
@@ -325,7 +324,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         <View style={styles.variantDetailDivider} />
         
         <View style={styles.variantDetailRow}>
-          <Text style={styles.variantDetailLabel}>Prix d'achat</Text>
+          <Text style={styles.variantDetailLabel}>Prix d&apos;achat</Text>
           <Text style={styles.variantDetailValue}>
             {variant.purchasePrice.toLocaleString()} FCFA
           </Text>
@@ -586,7 +585,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           </View>
           <Text style={styles.errorTitle}>Produit introuvable</Text>
           <Text style={styles.errorSubtitle}>
-            Ce produit n'existe plus ou a été supprimé
+            Ce produit n&apos;existe plus ou a été supprimé
           </Text>
           <TouchableOpacity 
             style={styles.backButton}

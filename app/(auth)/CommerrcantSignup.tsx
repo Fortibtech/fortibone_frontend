@@ -1678,7 +1678,7 @@ const FortibOneOnboarding: React.FC = () => {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Mot de passe *</Text>
-              <View style={styles.passwordInput}>
+           0   <View style={styles.passwordInput}>
                 <TextInput
                   style={[
                     styles.inputPassword,

@@ -25,7 +25,7 @@ interface AmountOption {
 
 const DepositScreen: React.FC = () => {
   const [selectedAmount, setSelectedAmount] = useState<number>(500000);
-  const [selectedMethod, setSelectedMethod] = useState<string>("1");
+
 
   const paymentMethods: PaymentMethod[] = [
     {

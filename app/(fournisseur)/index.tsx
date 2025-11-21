@@ -374,6 +374,7 @@ const HomePage: React.FC = () => {
       year: currentYear,
       month: unit === "MONTH" ? currentMonth : undefined,
       label,
+      
     });
     setShowPeriodModal(false);
   };
@@ -385,7 +386,7 @@ const HomePage: React.FC = () => {
         selectedBusiness={selectedBusiness}
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
-        onAddBusiness={() => router.push("/pro/createBusiness")}
+        onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/profile")}
       />
 
@@ -443,7 +444,7 @@ const HomePage: React.FC = () => {
             <View style={styles.alertContent}>
               <Ionicons name="alert-circle" size={20} color="#EF4444" />
               <Text style={[styles.alertText, { color: "#F50B0BFF" }]}>
-                '{firstExpiringProduct.productName}' expire dans{" "}
+                `{firstExpiringProduct.productName}` expire dans{" "}
                 {daysUntilExpiry} jour{daysUntilExpiry > 1 ? "s" : ""} (
                 {firstExpiringProduct.quantity} unités)
               </Text>
@@ -473,7 +474,7 @@ const HomePage: React.FC = () => {
             <View style={styles.alertContent}>
               <Ionicons name="warning" size={20} color="#FBBF24" />
               <Text style={[styles.alertText, { color: "#FFB700FF" }]}>
-                Stock faible sur '{firstLowStockProduct.productName}' (
+                Stock faible sur `{firstLowStockProduct.productName}` (
                 {firstLowStockProduct.quantityInStock} unités)
               </Text>
             </View>

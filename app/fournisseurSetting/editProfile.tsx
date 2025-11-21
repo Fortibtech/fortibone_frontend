@@ -1,17 +1,31 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from "react-native"
-import MaterialIcon from "react-native-vector-icons/MaterialIcons"
-import { updateUserProfile, type UpdateUserPayload } from "@/api/Users"
-import { useUserStore } from "@/store/userStore"
-import { router } from "expo-router"
+import type React from "react";
+import { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import MaterialIcon from "react-native-vector-icons/MaterialIcons";
+import { updateUserProfile, type UpdateUserPayload } from "@/api/Users";
+import { useUserStore } from "@/store/userStore";
+import { router } from "expo-router";
 
 const EditProfileScreen: React.FC = () => {
-  const user = useUserStore.getState().userProfile
+  // On lit le profil actuel depuis le store (reactif)
+  const user = useUserStore((state) => state.userProfile);
 
-  const [loading, setLoading] = useState(false)
+  // Fonction pour mettre à jour le store globalement (très important !)
+  const setUserProfile = useUserStore((state) => state.setUserProfile);
+
+  const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     contactName: user?.firstName || "",
     contactFirstName: user?.lastName || "",
@@ -22,57 +36,78 @@ const EditProfileScreen: React.FC = () => {
     country: user?.country || "",
     city: user?.city || "",
     gender: user?.gender || ("MALE" as "MALE" | "FEMALE"),
-  })
+  });
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
-    }))
-  }
+    }));
+  };
 
   const handleSave = async () => {
     if (!formData.contactName || !formData.email) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires")
-      return
+      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
+
     try {
       const payload: UpdateUserPayload = {
         firstName: formData.contactName,
         lastName: formData.contactFirstName,
-        phoneNumber: formData.phoneNumber,
+        phoneNumber: formData.phoneNumber || undefined,
         profileImageUrl: user?.profileImageUrl || "",
-        dateOfBirth: formData.dateOfBirth,
-        country: formData.country,
-        city: formData.city,
+        dateOfBirth: formData.dateOfBirth || undefined,
+        country: formData.country || undefined,
+        city: formData.city || undefined,
         gender: formData.gender === "MALE" ? "MALE" : "FEMALE",
-      }
+      };
 
-      const result = await updateUserProfile(payload)
+      // Appel à l'API
+      const updatedUser = await updateUserProfile(payload); // ← suppose que ça retourne le user mis à jour
+
+      // === LA CORRECTION PRINCIPALE EST ICI ===
+      // On met à jour le store Zustand avec les données fraîches
+      setUserProfile(updatedUser);
+
+      // Si ton API ne retourne pas l'objet complet, décommente la version ci-dessous :
+      // setUserProfile({
+      //   ...user!,
+      //   firstName: formData.contactName,
+      //   lastName: formData.contactFirstName,
+      //   phoneNumber: formData.phoneNumber || null,
+      //   dateOfBirth: formData.dateOfBirth || null,
+      //   country: formData.country || null,
+      //   city: formData.city || null,
+      //   gender: formData.gender === "MALE" ? "MALE" : "FEMALE",
+      // })
 
       Alert.alert("Succès", "Profil mis à jour avec succès", [
         {
           text: "OK",
-          onPress: () => router.back(),
+          onPress: () => router.back(), // ← l'écran précédent verra les changements immédiatement
         },
-      ])
+      ]);
     } catch (error: any) {
-      Alert.alert("Erreur", error.message || "Une erreur est survenue")
+      Alert.alert("Erreur", error.message || "Une erreur est survenue");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCancel = () => {
-    router.back()
-  }
+    router.back();
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
           <MaterialIcon name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Modifier Infos Contact</Text>
@@ -137,12 +172,21 @@ const EditProfileScreen: React.FC = () => {
             autoCapitalize="none"
             editable={false}
           />
-          <Text style={styles.helperText}>Cette email sera utilisé comme identifiant</Text>
+          <Text style={styles.helperText}>
+            Cette email sera utilisé comme identifiant
+          </Text>
         </View>
+
+        {/* Tu peux rajouter les autres champs plus tard (téléphone, date de naissance, etc.) */}
+        {/* Pour l'instant on garde seulement ceux visibles dans ton code original */}
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.cancelButton} onPress={handleCancel} disabled={loading}>
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={handleCancel}
+          disabled={loading}
+        >
           <MaterialIcon name="close" size={20} color="#1BB874" />
           <Text style={styles.cancelButtonText}>Annuler</Text>
         </TouchableOpacity>
@@ -163,8 +207,8 @@ const EditProfileScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -266,6 +310,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
-})
+});
 
-export default EditProfileScreen
+export default EditProfileScreen;

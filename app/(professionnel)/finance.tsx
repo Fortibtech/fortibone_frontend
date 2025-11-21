@@ -1,14 +1,13 @@
 import { GetWallet, GetWalletTransactions, Wallet } from "@/api/wallet";
-import { DepositModal } from "@/components/Wallet/DepositModal";
 import WalletHeaderCard from "@/components/Wallet/GetWalletDeposits";
-import { RecentTransactions } from "@/components/Wallet/RecentTransactions";
 import { StatsCard } from "@/components/Wallet/StatsCard";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BackButtonAdmin from "@/components/Admin/BackButton";
+import { RecentTransactions } from "@/components/Wallet/RecentTransactions";
+
 const WalletScreen = () => {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -17,8 +16,7 @@ const WalletScreen = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-  const [modalVisible, setModalVisible] = useState(false);
+
   const fetchTransactions = async () => {
     try {
       setLoadingHistory(true);
@@ -83,20 +81,11 @@ const WalletScreen = () => {
         {/* --- CONTENU --- */}
         <View style={styles.content}>
           {wallet ? (
-            <WalletHeaderCard
-              balance={parseFloat(wallet.balance) || 0}
-              onDepositPress={() => setModalVisible(true)}
-            />
+            <WalletHeaderCard balance={parseFloat(wallet.balance) || 0} />
           ) : (
-            <WalletHeaderCard
-              balance={0}
-              onDepositPress={() => setModalVisible(true)}
-            />
+            <WalletHeaderCard balance={0} />
           )}
-          <DepositModal
-            visible={modalVisible}
-            onClose={() => setModalVisible(false)}
-          />
+
           <StatsCard />
           <RecentTransactions />
         </View>
