@@ -181,7 +181,7 @@ const HomePage: React.FC = () => {
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
-        onManageBusiness={() => router.push("/pro/profile")}
+        onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
       />
 
       <View style={styles.headerRight}>
