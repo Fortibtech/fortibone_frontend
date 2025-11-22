@@ -50,6 +50,7 @@ export default function RootLayout() {
         <Stack.Screen name="(business-details)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(inventory)" />
+        <Stack.Screen name="(update-business)" />
         <Stack.Screen name="(orders)" />
         <Stack.Screen name="(accueil)" />
         <Stack.Screen name="(restaurants)" />

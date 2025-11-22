@@ -374,7 +374,6 @@ const HomePage: React.FC = () => {
       year: currentYear,
       month: unit === "MONTH" ? currentMonth : undefined,
       label,
-      
     });
     setShowPeriodModal(false);
   };
@@ -387,13 +386,11 @@ const HomePage: React.FC = () => {
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
-        onManageBusiness={() => router.push("/pro/profile")}
+        onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
       />
 
       <View style={styles.headerRight}>
-        {/* <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="search" size={24} color="#000" />
-        </TouchableOpacity> */}
+      
         <TouchableOpacity style={styles.iconButton}>
           {getTotalAlertsCount() > 0 && (
             <View style={styles.notificationBadge}>
