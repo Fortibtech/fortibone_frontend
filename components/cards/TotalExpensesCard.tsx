@@ -25,23 +25,27 @@ const TotalExpensesCard: React.FC<Props> = ({
   const loadTotalExpenses = async () => {
     try {
       setLoading(true);
+
       const response = await GetWalletTransactions({
-        limit: 1000, // Suffisant pour le total global
-        // Pas de filtre de date → tout l'historique
+        limit: 100,
+        status: "COMPLETED", // indispensable pour éviter le 400 sur status
+        // type: "WITHDRAWAL" ou "PAYMENT" si tu veux être plus précis (optionnel)
       });
 
-      const txs = response.data || [];
+      const txs = response?.data || [];
 
-      // Toutes les sorties d'argent (dépenses)
-      const expenses = txs
+      const total = txs
         .filter(
-          (t) => !["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
+          (t: any) => !["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
         )
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        .reduce(
+          (sum: number, t: any) => sum + Math.abs(Number(t.amount || 0)),
+          0
+        );
 
-      setTotalExpenses(expenses);
+      setTotalExpenses(total);
     } catch (err) {
-      console.error("Erreur chargement total dépenses", err);
+      console.error("Erreur chargement dépenses", err);
       setTotalExpenses(0);
     } finally {
       setLoading(false);

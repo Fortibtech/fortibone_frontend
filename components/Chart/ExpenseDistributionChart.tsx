@@ -228,13 +228,13 @@ const styles = StyleSheet.create({
   },
   filterButtons: {
     flexDirection: "row",
-    gap: 8,
   },
   filterBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: "#F5F5F5",
+    marginLeft: 8, // ← Ajoute cette ligne
   },
   filterBtnActive: {
     backgroundColor: "#FFEBEE",

@@ -24,7 +24,7 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 
 import { BusinessesService, Currency, CurrencyService } from "@/api";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import BackButtonAdmin from "@/components/Admin/BackButton";
 
 type CommerceType = "PHYSICAL" | "ONLINE" | "HYBRID";
@@ -198,6 +198,7 @@ const EditBusinessFournisseur = ({ id }: Business) => {
       const payload: any = {
         name: business.name.trim(),
         description: business.description.trim(),
+        type: "FOURNISSEUR",
         address: business.address.trim(),
         latitude: Number(business.latitude),
         longitude: Number(business.longitude),

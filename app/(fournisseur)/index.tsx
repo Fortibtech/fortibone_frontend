@@ -17,11 +17,12 @@ import {
   type SalesResponse,
 } from "@/api/analytics";
 import BusinessSelector from "@/components/Business/BusinessSelector";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { useUserStore } from "@/store/userStore";
 import { Ionicons } from "@expo/vector-icons";
-import { type Route, router } from "expo-router";
+import { type Route, router, useFocusEffect } from "expo-router";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -60,7 +61,7 @@ const HomePage: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+  const { uri } = useUserAvatar();
   // ✅ État dynamique pour la période des top produits
   const [topProductsPeriod, setTopProductsPeriod] = useState<PeriodSelection>({
     unit: "MONTH",
@@ -88,22 +89,30 @@ const HomePage: React.FC = () => {
   const [topProductsLoading, setTopProductsLoading] = useState(false);
   const user = useUserStore.getState().userProfile;
 
+  // Recharge quand on revient sur l'écran OU quand on change de commerce
+  useFocusEffect(
+    useCallback(() => {
+      const refreshAllData = async () => {
+        if (!selectedBusiness) return;
+
+        setAnalyticsLoading(true);
+        setTopProductsLoading(true);
+
+        try {
+          await Promise.all([loadAnalytics(), loadTopProducts()]);
+        } catch (err) {
+          console.error("Erreur refresh global:", err);
+        }
+      };
+
+      refreshAllData();
+    }, [selectedBusiness, topProductsPeriod]) // Ajout de topProductsPeriod ici aussi !
+  );
+
+  // On garde juste le chargement initial
   useEffect(() => {
     loadInitialData();
   }, []);
-
-  useEffect(() => {
-    if (selectedBusiness) {
-      loadAnalytics();
-    }
-  }, [selectedBusiness]);
-
-  // ✅ Recharger les top produits quand la période change
-  useEffect(() => {
-    if (selectedBusiness && topProductsPeriod) {
-      loadTopProducts();
-    }
-  }, [topProductsPeriod, selectedBusiness]);
 
   // ✅ Fonction utilitaire pour obtenir le nom du mois
   function getMonthName(monthIndex: number): string {
@@ -390,7 +399,6 @@ const HomePage: React.FC = () => {
       />
 
       <View style={styles.headerRight}>
-      
         <TouchableOpacity style={styles.iconButton}>
           {getTotalAlertsCount() > 0 && (
             <View style={styles.notificationBadge}>
@@ -406,10 +414,11 @@ const HomePage: React.FC = () => {
           <Image
             source={
               user?.profileImageUrl
-                ? { uri: user.profileImageUrl }
+                ? user.profileImageUrl
                 : require("@/assets/images/icon.png")
             }
             style={styles.avatar}
+            resizeMode="cover"
           />
         </TouchableOpacity>
       </View>

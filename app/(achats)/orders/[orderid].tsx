@@ -1,4 +1,6 @@
 // app/(achats)/orders/[orderid]/index.tsx
+"use client";
+
 import { useEffect, useState } from "react";
 import {
   View,
@@ -17,7 +19,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// IMPORT CORRIGÉ ET GARANTI
 import {
   getOrderById,
   updateOrderStatus,
@@ -27,7 +28,6 @@ import {
 export default function OrderScreen() {
   const { orderid } = useLocalSearchParams<{ orderid: string }>();
 
-  // États
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export default function OrderScreen() {
   const [quantityReceived, setQuantityReceived] = useState("");
   const [receiving, setReceiving] = useState(false);
 
-  // === CHARGEMENT DE LA COMMANDE ===
+  // Chargement de la commande
   useEffect(() => {
     const fetchOrder = async () => {
       if (!orderid) return;
@@ -53,21 +53,23 @@ export default function OrderScreen() {
     fetchOrder();
   }, [orderid]);
 
-  // Pré-remplir quantité si une seule ligne
+  // Pré-remplir la quantité si une seule ligne
   useEffect(() => {
     if (order?.lines.length === 1) {
       setQuantityReceived(order.lines[0].quantity.toString());
     }
   }, [order]);
 
-  // === HANDLERS ===
   const openReceptionModal = () => setModalVisible(true);
-  const closeModal = () => {
+
+  // Annuler = fermer modale + retour à l'écran précédent
+  const closeModalAndGoBack = () => {
     setModalVisible(false);
-    setReceiving(false);
+    setQuantityReceived("");
+    router.back();
   };
 
-  // === CONFIRMER RÉCEPTION → DELIVERED ===
+  // Confirmation de réception
   const confirmReception = async () => {
     if (!order?.id) return;
 
@@ -79,28 +81,41 @@ export default function OrderScreen() {
 
     setReceiving(true);
     try {
-      // Mise à jour du statut
       await updateOrderStatus(order.id, { status: "DELIVERED" });
 
-      // Recharger la commande mise à jour
       const updatedOrder = await getOrderById(order.id);
       setOrder(updatedOrder);
 
-      Alert.alert("Succès ✅", "La commande est marquée comme LIVRÉE", [
-        { text: "OK", onPress: closeModal },
-      ]);
-    } catch (err: any) {
-      console.error("Échec updateOrderStatus:", err);
       Alert.alert(
-        "Erreur ❌",
-        "Impossible de mettre à jour le statut. Réessayez."
+        "Succès",
+        order.status === "DELIVERED"
+          ? "Cette commande est déjà marquée comme LIVRÉE"
+          : "La commande a bien été marquée comme LIVRÉE",
+        [{ text: "OK", onPress: () => setModalVisible(false) }]
       );
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || "";
+
+      if (
+        message.toLowerCase().includes("already") ||
+        message.toLowerCase().includes("delivered")
+      ) {
+        Alert.alert(
+          "Information",
+          "Cette commande a déjà été marquée comme livrée",
+          [{ text: "OK", onPress: () => setModalVisible(false) }]
+        );
+      } else {
+        Alert.alert(
+          "Erreur",
+          message || "Impossible de confirmer la réception"
+        );
+      }
     } finally {
       setReceiving(false);
     }
   };
 
-  // === FORMATAGE STATUT ===
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -120,13 +135,13 @@ export default function OrderScreen() {
   const formatStatus = (status: string) =>
     status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, " ");
 
-  // === RENDU CHARGEMENT / ERREUR ===
+  // Écrans de chargement / erreur
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#00B87C" />
-          <Text style={styles.loadingText}>Chargement...</Text>
+          <Text style={styles.loadingText}>Chargement de la commande...</Text>
         </View>
       </SafeAreaView>
     );
@@ -137,15 +152,13 @@ export default function OrderScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
           <Ionicons name="alert-circle" size={64} color="#EF4444" />
-          <Text style={styles.errorText}>Erreur</Text>
-          <Text style={styles.errorMessage}>
-            {error || "Commande non trouvée"}
-          </Text>
+          <Text style={styles.errorText}>Commande introuvable</Text>
+          <Text style={styles.errorMessage}>{error || "Erreur inconnue"}</Text>
           <TouchableOpacity
             style={styles.retryBtn}
             onPress={() => router.replace("/(tabs)/achats")}
           >
-            <Text style={styles.retryText}>Retour</Text>
+            <Text style={styles.retryText}>Retour aux commandes</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -189,9 +202,6 @@ export default function OrderScreen() {
               {order.business.description || "Fournisseur"}
             </Text>
           </View>
-          <TouchableOpacity style={styles.callButton}>
-            <Ionicons name="call-outline" size={20} color="#000" />
-          </TouchableOpacity>
         </View>
         <View style={styles.statusBadge}>
           <Text style={styles.statusLabel}>Statut</Text>
@@ -255,16 +265,27 @@ export default function OrderScreen() {
         )}
       </ScrollView>
 
-      {/* ACTIONS */}
+      {/* ACTIONS PRINCIPALES */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.cancelBtn}>
+        <TouchableOpacity
+          style={styles.cancelBtn}
+          onPress={closeModalAndGoBack}
+        >
           <Text style={styles.cancelText}>Annuler</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.confirmBtn}
+          style={[
+            styles.confirmBtn,
+            order.status === "DELIVERED" && styles.confirmBtnDisabled,
+          ]}
           onPress={openReceptionModal}
+          disabled={order.status === "DELIVERED"}
         >
-          <Text style={styles.confirmText}>Confirmer Réception</Text>
+          <Text style={styles.confirmText}>
+            {order.status === "DELIVERED"
+              ? "Déjà livrée"
+              : "Confirmer réception"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -273,14 +294,17 @@ export default function OrderScreen() {
         visible={modalVisible}
         animationType="slide"
         transparent
-        onRequestClose={closeModal}
+        onRequestClose={closeModalAndGoBack}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <View style={styles.handle} />
               <Text style={styles.modalTitle}>Réception de Stock</Text>
-              <TouchableOpacity style={styles.closeBtn} onPress={closeModal}>
+              <TouchableOpacity
+                style={styles.closeBtn}
+                onPress={closeModalAndGoBack}
+              >
                 <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
             </View>
@@ -368,7 +392,10 @@ export default function OrderScreen() {
             </ScrollView>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancel} onPress={closeModal}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={closeModalAndGoBack}
+              >
                 <Text style={styles.modalCancelText}>Annuler</Text>
               </TouchableOpacity>
 
@@ -378,13 +405,15 @@ export default function OrderScreen() {
                   receiving && styles.modalConfirmDisabled,
                 ]}
                 onPress={confirmReception}
-                disabled={receiving}
+                disabled={receiving || order.status === "DELIVERED"}
               >
                 {receiving ? (
                   <ActivityIndicator color="#FFF" size="small" />
                 ) : (
                   <Text style={styles.modalConfirmText}>
-                    Confirmer la réception
+                    {order.status === "DELIVERED"
+                      ? "Déjà confirmée"
+                      : "Confirmer la réception"}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -396,7 +425,7 @@ export default function OrderScreen() {
   );
 }
 
-// === STYLES (propres et complets) ===
+// Tous les styles (inchangés)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F5F5F5" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -417,9 +446,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   retryText: { color: "#FFF", fontWeight: "600" },
-  modalConfirmDisabled: { backgroundColor: "#999", opacity: 0.8 },
+  modalConfirmDisabled: { opacity: 0.6 },
 
-  // ... (tous les styles que tu avais déjà – je les garde intacts)
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -453,15 +481,6 @@ const styles = StyleSheet.create({
   supplierInfo: { flex: 1 },
   supplierName: { fontSize: 16, fontWeight: "600", color: "#000" },
   supplierCategory: { fontSize: 13, color: "#666" },
-  callButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    justifyContent: "center",
-    alignItems: "center",
-  },
   statusBadge: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -546,6 +565,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#00B87C",
     alignItems: "center",
   },
+  confirmBtnDisabled: { backgroundColor: "#999" },
   confirmText: { fontSize: 15, fontWeight: "600", color: "#FFF" },
   modalOverlay: {
     flex: 1,

@@ -22,7 +22,7 @@ interface UserStore {
   token: string | null;
   otp: string | null;
   userProfile: UserProfile | null;
-
+  _avatarVersion: number; // <-- pour forcer le refresh d'image
   // setters
   setEmail: (email: string) => void;
   setToken: (token: string) => Promise<void>;
@@ -33,6 +33,7 @@ interface UserStore {
   hydrateTokenAndProfile: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
+  bumpAvatarVersion: () => void; // <-- nouvelle action
 }
 
 export const useUserStore = create<UserStore>((set, get) => ({
@@ -40,6 +41,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
   token: null,
   otp: null,
   userProfile: null,
+  _avatarVersion: 0,
 
   setEmail: (email: string) => set({ email }),
   setToken: async (token: string) => {
@@ -47,20 +49,28 @@ export const useUserStore = create<UserStore>((set, get) => ({
     await AsyncStorage.setItem("access_token", token);
   },
   setOtp: (otp: string) => set({ otp }),
-  setUserProfile: (profile: UserProfile) => set({ userProfile: profile }),
 
-  // Hydrate token + profil au démarrage
+  // Mise à jour du profil → on incrémente automatiquement la version d'avatar
+
+  setUserProfile: (profile: UserProfile) =>
+    set({
+      userProfile: profile,
+      _avatarVersion: get()._avatarVersion + 1,
+    }),
   hydrateTokenAndProfile: async () => {
     try {
       const savedToken = await AsyncStorage.getItem("access_token");
       if (savedToken) {
         set({ token: savedToken });
-        console.log("🔑 Token hydraté :", savedToken);
+        const response = await fetchProfileFromAPI(); // ← suppose que ça retourne { data: {...} }
 
-        // On essaie d’hydrater le profil
-        const profile = await fetchProfileFromAPI();
-        set({ userProfile: profile });
-        console.log("🚀 Profil hydraté :", profile);
+        // TOUJOURS utiliser response.data (ou response selon ton API)
+        const profile = response.data || response; // protection
+
+        set({
+          userProfile: profile,
+          _avatarVersion: Date.now(), // force refresh au démarrage
+        });
       }
     } catch (e) {
       console.error("Erreur hydratation store :", e);
@@ -68,14 +78,17 @@ export const useUserStore = create<UserStore>((set, get) => ({
     }
   },
 
-  // Rafraîchir explicitement le profil depuis l’API
   refreshProfile: async () => {
     const token = get().token;
     if (!token) return;
     try {
-      const profile = await fetchProfileFromAPI();
-      set({ userProfile: profile });
-      console.log("✅ Profil rafraîchi :", profile);
+      const response = await fetchProfileFromAPI();
+      const profile = response.data || response;
+
+      set({
+        userProfile: profile,
+        _avatarVersion: Date.now(),
+      });
     } catch (e) {
       console.error("Erreur refreshProfile :", e);
     }
@@ -83,6 +96,16 @@ export const useUserStore = create<UserStore>((set, get) => ({
 
   logout: async () => {
     await AsyncStorage.removeItem("access_token");
-    set({ email: null, token: null, otp: null, userProfile: null });
+    set({
+      email: null,
+      token: null,
+      otp: null,
+      userProfile: null,
+      _avatarVersion: 0,
+    });
   },
+
+  // Permet de forcer un refresh d'avatar sans toucher au profil (utile si besoin)
+  bumpAvatarVersion: () =>
+    set((state) => ({ _avatarVersion: state._avatarVersion + 1 })),
 }));

@@ -16,13 +16,14 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useCartStore } from "@/stores/achatCartStore"; // ← IMPORT ZUSTAND
-import Toast from "react-native-toast-message"; // ← Installe si pas fait : expo install react-native-toast-message
+import { useProCartStore } from "@/stores/achatCartStore"; // CORRIGÉ : c'est useProCartStore
+import Toast from "react-native-toast-message";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import BackButtonAdmin from "@/components/Admin/BackButton";
+
 const { width } = Dimensions.get("window");
-// === Types ===
+
 type Product = import("@/api").Product;
 type ProductVariant = import("@/api").ProductVariant;
 
@@ -42,36 +43,31 @@ interface DisplayProduct {
   variant: ProductVariant;
 }
 
-// === Composant principal ===
 export default function ProductDetailsScreen() {
   const { productId, bussinessId } = useLocalSearchParams<{
     productId: string;
     bussinessId: string;
   }>();
 
-  console.log("Product ID:", productId);
-  console.log("Business ID:", bussinessId);
-
   const [productData, setProductData] = useState<DisplayProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
-  const addToCart = useCartStore((state) => state.addItem); // ← Hook Zustand
+
+  // CORRIGÉ : on utilise le bon store PRO
+  const addToCart = useProCartStore((state) => state.addItem);
 
   const handleAddToCart = () => {
-    if (!productData) return;
+    if (!productData || !bussinessId) return;
 
-    // ──────────────────────────────────────────────────────────────
-    // Ajout au panier avec supplierBusinessId
-    // ──────────────────────────────────────────────────────────────
     addToCart(
       productData.id,
       productData.name,
       productData.variant,
       quantity,
       productData.images[0]?.url,
-      bussinessId
+      bussinessId // supplierBusinessId
     );
 
     Toast.show({
@@ -82,14 +78,13 @@ export default function ProductDetailsScreen() {
       visibilityTime: 2000,
     });
   };
+
   const fetchProduct = useCallback(async () => {
     if (!productId) return;
-
     setLoading(true);
     try {
       const product: Product = await ProductService.getProductById(productId);
       const variant = product.variants[0];
-
       if (!variant) throw new Error("Aucune variante trouvée");
 
       const priceNum = parseFloat(variant.price) || 0;
@@ -193,12 +188,10 @@ export default function ProductDetailsScreen() {
     );
   }
 
-  // ✅ CORRIGÉ : on utilise directement productData, pas "product"
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* HEADER */}
       <View style={styles.header}>
         <BackButtonAdmin />
         <Text style={styles.title}>Détails</Text>
@@ -209,7 +202,7 @@ export default function ProductDetailsScreen() {
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
       >
-        {/* CAROUSEL D'IMAGES */}
+        {/* CAROUSEL */}
         <View style={styles.carousel}>
           <ScrollView
             ref={scrollViewRef}
@@ -229,7 +222,6 @@ export default function ProductDetailsScreen() {
               </View>
             ))}
           </ScrollView>
-
           <View style={styles.dots}>
             {productData.images.map((_, index) => (
               <View
@@ -245,7 +237,7 @@ export default function ProductDetailsScreen() {
           </View>
         </View>
 
-        {/* INFORMATIONS */}
+        {/* INFOS */}
         <View style={styles.infoCard}>
           <View style={styles.categories}>
             <Text style={styles.category}>{productData.category}</Text>
@@ -256,14 +248,11 @@ export default function ProductDetailsScreen() {
               </Text>
             )}
           </View>
-
           <Text style={styles.name}>{productData.name}</Text>
-
           <View style={styles.statusRow}>
             <Text style={styles.condition}>{productData.condition}</Text>
             <Text style={styles.stock}>{productData.availability}</Text>
           </View>
-
           <View style={styles.priceSection}>
             <View style={styles.priceRow}>
               <Text style={styles.price}>
@@ -275,7 +264,6 @@ export default function ProductDetailsScreen() {
               Minimum : {productData.minimumOrder} pièces
             </Text>
           </View>
-
           <View style={styles.tags}>
             {productData.tags.map((tag, i) => (
               <View key={i} style={styles.tag}>
@@ -315,9 +303,7 @@ export default function ProductDetailsScreen() {
           >
             <Ionicons name="remove" size={20} color="#00B87C" />
           </TouchableOpacity>
-
           <Text style={styles.qtyText}>{quantity}</Text>
-
           <TouchableOpacity
             style={styles.qtyBtn}
             onPress={() => updateQuantity(1)}
@@ -325,7 +311,6 @@ export default function ProductDetailsScreen() {
             <Ionicons name="add" size={20} color="#00B87C" />
           </TouchableOpacity>
         </View>
-
         <TouchableOpacity style={styles.addToCartBtn} onPress={handleAddToCart}>
           <Text style={styles.addToCartText}>Ajouter au panier</Text>
         </TouchableOpacity>
@@ -334,9 +319,8 @@ export default function ProductDetailsScreen() {
   );
 }
 
-// === STYLES (identiques) ===
+// Tes styles originaux (inchangés)
 const styles = StyleSheet.create({
-  // ... (tout ton StyleSheet original, inchangé)
   container: { flex: 1, backgroundColor: "#F5F5F5" },
   header: {
     flexDirection: "row",
@@ -410,7 +394,6 @@ const styles = StyleSheet.create({
   descItem: { fontSize: 14, color: "#666", lineHeight: 20 },
   label: { color: "#666" },
   value: { color: "#000", fontWeight: "500" },
-  viewMore: { fontSize: 14, color: "#00B87C", fontWeight: "600", marginTop: 4 },
   bottomBar: {
     position: "absolute",
     bottom: 0,

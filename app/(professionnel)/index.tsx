@@ -8,10 +8,12 @@ import {
 } from "@/api/analytics";
 import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import BusinessSelector from "@/components/Business/BusinessSelector";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { useUserStore } from "@/store/userStore";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
@@ -33,7 +35,7 @@ const HomePage: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+const { uri } = useUserAvatar();
   // ✅ États pour les analytics
   const [monthlyOverview, setMonthlyOverview] =
     useState<AnalyticsOverview | null>(null);
@@ -100,7 +102,7 @@ const HomePage: React.FC = () => {
   // ✅ Fonction pour charger les analytics
   const loadAnalytics = async () => {
     if (!selectedBusiness) return;
-
+    if (analyticsLoading) return; // ← Évite les appels simultanés
     try {
       setAnalyticsLoading(true);
 
@@ -138,15 +140,33 @@ const HomePage: React.FC = () => {
     }
   };
 
+  // 1. Chargement initial (une seule fois)
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  // 2. Recharge les stats quand on revient dans l'onglet
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedBusiness) {
+        loadAnalytics();
+      }
+    }, [selectedBusiness])
+  );
+
+  // 3. Recharge les stats quand on change de commerce
+  useEffect(() => {
+    if (selectedBusiness) {
+      loadAnalytics();
+    }
+  }, [selectedBusiness]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (selectedBusiness) {
-      await loadAnalytics();
-    }
+    if (selectedBusiness) await loadAnalytics();
     setRefreshing(false);
   };
-
   const handleBusinessSelect = async (business: Business) => {
     try {
       await BusinessesService.selectBusiness(business);
@@ -203,10 +223,11 @@ const HomePage: React.FC = () => {
           <Image
             source={
               user?.profileImageUrl
-                ? { uri: user.profileImageUrl }
+                ? user.profileImageUrl
                 : require("@/assets/images/icon.png")
             }
             style={styles.avatar}
+            resizeMode="cover"
           />
         </TouchableOpacity>
       </View>

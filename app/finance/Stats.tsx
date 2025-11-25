@@ -48,8 +48,6 @@ export default function StatsDashboard() {
 
         {/* Répartition des Revenus */}
         <CashFlowChart period="6m" />
-
-        {/* Répartition des dépenses */}
         <ExpenseBreakdownChart />
       </ScrollView>
     </View>

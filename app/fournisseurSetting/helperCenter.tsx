@@ -1,27 +1,33 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native"
-import { useRouter } from "expo-router"
-import MaterialIcons from "react-native-vector-icons/MaterialIcons"
+import type React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
+import { useRouter } from "expo-router";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 interface HelpItem {
-  id: string
-  icon: string
-  title: string
-  route: string
+  id: string;
+  icon: string;
+  title: string;
+  route: string;
 }
 
 const HelpCenterScreen: React.FC = () => {
-  const router = useRouter()
+  const router = useRouter();
 
   const helpItems: HelpItem[] = [
-    {
-      id: "support",
-      icon: "lock",
-      title: "Assistance Technique",
-      route: "/fournisseurSetting/TechnicalSupport",
-    },
+    // {
+    //   id: "support",
+    //   icon: "lock",
+    //   title: "Assistance Technique",
+    //   route: "/fournisseurSetting/TechnicalSupport",
+    // },
     {
       id: "contacts",
       icon: "lock",
@@ -34,7 +40,7 @@ const HelpCenterScreen: React.FC = () => {
       title: "FAQs",
       route: "/fournisseurSetting/faq",
     },
-  ]
+  ];
 
   return (
     <View style={styles.container}>
@@ -49,7 +55,11 @@ const HelpCenterScreen: React.FC = () => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {helpItems.map((item) => (
-          <TouchableOpacity key={item.id} style={styles.helpItem} onPress={() => router.push(item.route)}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.helpItem}
+            onPress={() => router.push(item.route)}
+          >
             <View style={styles.helpItemLeft}>
               <View style={styles.iconContainer}>
                 <MaterialIcons name={item.icon} size={20} color="#1BB874" />
@@ -61,8 +71,8 @@ const HelpCenterScreen: React.FC = () => {
         ))}
       </ScrollView>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -77,6 +87,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     // borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
+    height: 120,
   },
   headerTitle: {
     fontSize: 18,
@@ -119,6 +130,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#000000",
   },
-})
+});
 
-export default HelpCenterScreen
+export default HelpCenterScreen;

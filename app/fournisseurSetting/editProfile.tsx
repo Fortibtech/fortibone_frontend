@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -13,178 +12,140 @@ import {
   ActivityIndicator,
 } from "react-native";
 import MaterialIcon from "react-native-vector-icons/MaterialIcons";
-import { updateUserProfile, type UpdateUserPayload } from "@/api/Users";
-import { useUserStore } from "@/store/userStore";
+import { updateUserProfile } from "@/api/Users";
+import { UserProfile, useUserStore } from "@/store/userStore";
 import { router } from "expo-router";
 
-const EditProfileScreen: React.FC = () => {
-  // On lit le profil actuel depuis le store (reactif)
+const EditProfileScreen = () => {
   const user = useUserStore((state) => state.userProfile);
-
-  // Fonction pour mettre à jour le store globalement (très important !)
-  const setUserProfile = useUserStore((state) => state.setUserProfile);
+  const setUserProfile = useUserStore.getState().setUserProfile;
 
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    contactName: user?.firstName || "",
-    contactFirstName: user?.lastName || "",
+    firstName: "",
+    lastName: "",
+    phoneNumber: "",
+    dateOfBirth: "",
+    country: "",
+    city: "",
+    gender: "MALE" as "MALE" | "FEMALE",
     fonction: "Responsable commercial",
-    email: user?.email || "",
-    phoneNumber: user?.phoneNumber || "",
-    dateOfBirth: user?.dateOfBirth || "",
-    country: user?.country || "",
-    city: user?.city || "",
-    gender: user?.gender || ("MALE" as "MALE" | "FEMALE"),
   });
 
-  const handleInputChange = (field: keyof typeof formData, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  // ⭐️ Hydratation du formulaire une seule fois au montage
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phoneNumber: user.phoneNumber || "",
+        dateOfBirth: user.dateOfBirth || "",
+        country: user.country || "",
+        city: user.city || "",
+        gender: (user.gender as any) || "MALE",
+        fonction: "Responsable commercial",
+      });
+    }
+  }, [user]); // ← tableau vide = exécute une seule fois
 
   const handleSave = async () => {
-    if (!formData.contactName || !formData.email) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-
     setLoading(true);
-
     try {
-      const payload: UpdateUserPayload = {
-        firstName: formData.contactName,
-        lastName: formData.contactFirstName,
+      const payload: any = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
         phoneNumber: formData.phoneNumber || undefined,
-        profileImageUrl: user?.profileImageUrl || "",
         dateOfBirth: formData.dateOfBirth || undefined,
         country: formData.country || undefined,
         city: formData.city || undefined,
-        gender: formData.gender === "MALE" ? "MALE" : "FEMALE",
+        gender: formData.gender,
       };
 
-      // Appel à l'API
-      const updatedUser = await updateUserProfile(payload); // ← suppose que ça retourne le user mis à jour
+      const updatedUser = await updateUserProfile(payload);
 
-      // === LA CORRECTION PRINCIPALE EST ICI ===
-      // On met à jour le store Zustand avec les données fraîches
-      setUserProfile(updatedUser);
+      const data = updatedUser.data || updatedUser;
 
-      // Si ton API ne retourne pas l'objet complet, décommente la version ci-dessous :
-      // setUserProfile({
-      //   ...user!,
-      //   firstName: formData.contactName,
-      //   lastName: formData.contactFirstName,
-      //   phoneNumber: formData.phoneNumber || null,
-      //   dateOfBirth: formData.dateOfBirth || null,
-      //   country: formData.country || null,
-      //   city: formData.city || null,
-      //   gender: formData.gender === "MALE" ? "MALE" : "FEMALE",
-      // })
+      setUserProfile({
+        ...data,
+        profileType: data.profileType.toUpperCase(),
+      } as UserProfile);
 
-      Alert.alert("Succès", "Profil mis à jour avec succès", [
+      Alert.alert("Succès", "Profil mis à jour !", [
         {
           text: "OK",
-          onPress: () => router.back(), // ← l'écran précédent verra les changements immédiatement
+          onPress: () => {
+            router.replace("/fournisseurSetting/userProfile");
+          },
         },
       ]);
     } catch (error: any) {
-      Alert.alert("Erreur", error.message || "Une erreur est survenue");
+      Alert.alert("Erreur", error.message || "Échec de la sauvegarde");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    router.back();
-  };
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <MaterialIcon name="arrow-back" size={24} color="#000000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Modifier Infos Contact</Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <ScrollView style={styles.formContainer}>
-        {/* Nom du Contact */}
+        {/* NOM */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>
-            Nom du Contact <Text style={styles.required}>*</Text>
+            Nom <Text style={styles.required}>*</Text>
           </Text>
           <TextInput
             style={styles.input}
-            value={formData.contactName}
-            onChangeText={(text) => handleInputChange("contactName", text)}
-            placeholder="John Doe"
-            placeholderTextColor="#999999"
+            value={formData.firstName}
+            onChangeText={(v) => setFormData((p) => ({ ...p, firstName: v }))}
+            placeholder="Votre nom"
           />
         </View>
 
-        {/* Prénom du Contact */}
+        {/* PRÉNOM */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>
-            Prénom du Contact <Text style={styles.required}>*</Text>
+            Prénom <Text style={styles.required}>*</Text>
           </Text>
           <TextInput
             style={styles.input}
-            value={formData.contactFirstName}
-            onChangeText={(text) => handleInputChange("contactFirstName", text)}
-            placeholder="Adresse complète avec rue, BP..."
-            placeholderTextColor="#999999"
+            value={formData.lastName}
+            onChangeText={(v) => setFormData((p) => ({ ...p, lastName: v }))}
+            placeholder="Votre prénom"
           />
         </View>
 
-        {/* Fonction */}
+        {/* FONCTION */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>
-            Fonction <Text style={styles.required}>*</Text>
-          </Text>
+          <Text style={styles.label}>Fonction</Text>
           <TextInput
             style={styles.input}
             value={formData.fonction}
-            onChangeText={(text) => handleInputChange("fonction", text)}
+            onChangeText={(v) => setFormData((p) => ({ ...p, fonction: v }))}
             placeholder="Ex. Responsable commercial"
-            placeholderTextColor="#999999"
           />
         </View>
 
-        {/* Email Professionnel */}
+        {/* TÉLÉPHONE */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>
-            Email Professionnel <Text style={styles.required}>*</Text>
-          </Text>
+          <Text style={styles.label}>Téléphone</Text>
           <TextInput
             style={styles.input}
-            value={formData.email}
-            onChangeText={(text) => handleInputChange("email", text)}
-            placeholder="example@email.com"
-            placeholderTextColor="#999999"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={false}
+            value={formData.phoneNumber}
+            onChangeText={(v) => setFormData((p) => ({ ...p, phoneNumber: v }))}
+            keyboardType="phone-pad"
+            placeholder="+33 6 12 34 56 78"
           />
-          <Text style={styles.helperText}>
-            Cette email sera utilisé comme identifiant
-          </Text>
         </View>
 
-        {/* Tu peux rajouter les autres champs plus tard (téléphone, date de naissance, etc.) */}
-        {/* Pour l'instant on garde seulement ceux visibles dans ton code original */}
+        {/* Ville / Pays — même logique */}
       </ScrollView>
 
+      {/* FOOTER */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={handleCancel}
+          onPress={() => router.back()}
           disabled={loading}
         >
           <MaterialIcon name="close" size={20} color="#1BB874" />
@@ -197,12 +158,9 @@ const EditProfileScreen: React.FC = () => {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color="#FFF" />
           ) : (
-            <>
-              <MaterialIcon name="check" size={20} color="#FFFFFF" />
-              <Text style={styles.saveButtonText}>Sauvegarder</Text>
-            </>
+            <Text style={styles.saveButtonText}>Sauvegarder</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -211,47 +169,11 @@ const EditProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  backButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000000",
-  },
-  placeholder: {
-    width: 34,
-  },
-  formContainer: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#000000",
-    marginBottom: 8,
-  },
-  required: {
-    color: "#FF3B30",
-  },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  formContainer: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+  inputGroup: { marginBottom: 24 },
+  label: { fontSize: 14, fontWeight: "500", color: "#000000", marginBottom: 8 },
+  required: { color: "#FF3B30" },
   input: {
     backgroundColor: "#F8F9FA",
     borderRadius: 14,
@@ -262,15 +184,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E8E8E8",
   },
-  helperText: {
-    fontSize: 12,
-    color: "#666666",
-    marginTop: 6,
-  },
   footer: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 35,
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
     gap: 12,
@@ -287,11 +204,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1BB874",
-  },
+  cancelButtonText: { fontSize: 15, fontWeight: "600", color: "#1BB874" },
   saveButton: {
     flex: 1,
     paddingVertical: 12,
@@ -302,14 +215,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
+  saveButtonDisabled: { opacity: 0.6 },
+  saveButtonText: { fontSize: 15, fontWeight: "600", color: "#FFFFFF" },
 });
 
 export default EditProfileScreen;

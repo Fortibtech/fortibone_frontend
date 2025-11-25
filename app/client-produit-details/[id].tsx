@@ -1,3 +1,4 @@
+// app/(tabs)/product/[id].tsx   (ou là où tu l’as placé)
 import { addToFavorite, deleteFavoris, getProductById } from "@/api/Products";
 import BackButton from "@/components/BackButton";
 import AddProductReviewModal from "@/components/produit/AddProductReviewModal";
@@ -26,9 +27,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 const { width: screenWidth } = Dimensions.get("window");
+
 const ProductDetails = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
+
   const { toggleItem, isInCart } = useCartStore();
+
   const [product, setProduct] = useState<Products | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -38,56 +42,59 @@ const ProductDetails = () => {
   const [showAddReview, setShowAddReview] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
 
+  // ──────────────────────────────────────────────────────────────
+  // Récupération du produit
+  // ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!id) return;
+
     (async () => {
       try {
         const data = await getProductById(id);
         setProduct(data);
+        // Optionnel : pré-sélectionner la première variante
+        if (data.variants?.length) {
+          setSelectedVariant(data.variants[0]);
+        }
       } catch (err) {
         console.error("Erreur récupération produit :", err);
+        Toast.show({
+          type: "error",
+          text1: "Impossible de charger le produit",
+        });
       } finally {
         setLoading(false);
       }
     })();
   }, [id]);
 
+  // ──────────────────────────────────────────────────────────────
+  // Gestion des favoris
+  // ──────────────────────────────────────────────────────────────
   const handleToggleFavorite = async () => {
-    if (favLoading) return;
+    if (favLoading || !id) return;
 
     try {
       setFavLoading(true);
       if (isFavorite) {
         await deleteFavoris(id);
         setIsFavorite(false);
-        Toast.show({
-          type: "info",
-          text1: "Produit retiré des favoris",
-        });
+        Toast.show({ type: "info", text1: "Retiré des favoris" });
       } else {
         await addToFavorite(id);
         setIsFavorite(true);
-        Toast.show({
-          type: "success",
-          text1: "Produit ajouté aux favoris",
-        });
+        Toast.show({ type: "success", text1: "Ajouté aux favoris" });
       }
     } catch (err) {
-      Toast.show({
-        type: "error",
-        text1: "Erreur lors de la mise à jour du favori",
-      });
-      console.error(err);
+      Toast.show({ type: "error", text1: "Erreur favoris" });
     } finally {
       setFavLoading(false);
     }
   };
 
-  const inCart = (variantId?: string) => {
-    if (variantId) return isInCart(variantId);
-    return isInCart(product?.id || "");
-  };
-
+  // ──────────────────────────────────────────────────────────────
+  // Ajout / retrait du panier
+  // ──────────────────────────────────────────────────────────────
   const handleAddToCart = () => {
     if (!product) return;
 
@@ -95,42 +102,60 @@ const ProductDetails = () => {
     if (!variant) {
       Toast.show({
         type: "error",
-        text1: "Veuillez sélectionner une variante",
+        text1: "Veuillez choisir une variante",
       });
       return;
     }
 
-    const alreadyInCart = isInCart(variant.id);
-
-    toggleItem({
+    const payload = {
       productId: product.id,
-      businessId: product.businessId,
-      supplierBusinessId: product.businessId,
       variantId: variant.id,
       name: product.name,
-      price: variant.price,
-      imageUrl: variant.imageUrl ?? product.imageUrl,
-      quantity: 1,
-    });
+      price: Number(variant.price), // ← number obligatoire
+      imageUrl: variant.imageUrl ?? product.imageUrl ?? undefined,
+      businessId: product.businessId,
+      supplierBusinessId: product.businessId,
+      variantName: variant.id,
+      stock: variant.quantityInStock,
+      currency: "FCFA",
+    };
+
+    const alreadyInCart = isInCart(product.id, variant.id);
+
+    toggleItem(payload);
 
     Toast.show({
       type: alreadyInCart ? "info" : "success",
-      text1: alreadyInCart
-        ? "Produit retiré du panier"
-        : "✅ Le produit a été ajouté au panier avec succès !",
+      text1: alreadyInCart ? "Retiré du panier" : "Ajouté au panier !",
+      text2: alreadyInCart ? undefined : `${product.name} ×1`,
     });
   };
 
-  const renderStars = (val: number) =>
+  // ──────────────────────────────────────────────────────────────
+  // État "dans le panier" pour l’affichage
+  // ──────────────────────────────────────────────────────────────
+  const currentVariantId = selectedVariant?.id || product?.variants?.[0]?.id;
+  const inCart =
+    product && currentVariantId
+      ? isInCart(product.id, currentVariantId)
+      : false;
+
+  // ──────────────────────────────────────────────────────────────
+  // Rendu des étoiles
+  // ──────────────────────────────────────────────────────────────
+  const renderStars = (rating: number) =>
     Array.from({ length: 5 }).map((_, i) => (
       <Text
         key={i}
-        style={{ fontSize: 18, color: i < val ? "#FFD700" : "#ccc" }}
+        style={{ fontSize: 18, color: i < rating ? "#FFD700" : "#ccc" }}
       >
         ★
       </Text>
     ));
 
+  // ──────────────────────────────────────────────────────────────
+  // Loading / Erreur
+  // ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <SafeAreaView style={styles.center}>
@@ -147,19 +172,28 @@ const ProductDetails = () => {
     );
   }
 
-  const images = product.variants.length
-    ? product.variants.map((v) => ({ uri: v.imageUrl }))
-    : [{ uri: product.imageUrl }];
+  // ──────────────────────────────────────────────────────────────
+  // Images du carousel
+  // ──────────────────────────────────────────────────────────────
+  const images =
+    product.variants.length > 0
+      ? product.variants.flatMap((v) =>
+          v.imageUrl ? [{ uri: v.imageUrl }] : []
+        )
+      : product.imageUrl
+      ? [{ uri: product.imageUrl }]
+      : [];
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* ────────────────────── CAROUSEL ────────────────────── */}
       <View style={styles.topSection}>
         <Carousel
           width={screenWidth}
           height={250}
-          data={images}
+          data={images.length > 0 ? images : [{ uri: product.imageUrl }]}
           scrollAnimationDuration={300}
-          onSnapToItem={(index) => setActiveSlide(index)}
+          onSnapToItem={setActiveSlide}
           renderItem={({ item }) => (
             <View style={styles.carouselContainer}>
               <Image source={item} style={styles.carouselImage} />
@@ -171,6 +205,7 @@ const ProductDetails = () => {
           )}
         />
 
+        {/* Pagination dots */}
         <View style={styles.paginationContainer}>
           {images.map((_, index) => (
             <View
@@ -183,27 +218,27 @@ const ProductDetails = () => {
           ))}
         </View>
 
+        {/* Back button */}
         <View style={styles.backButtonContainer}>
           <BackButton />
         </View>
 
+        {/* Icône panier (coin haut droit) */}
         <TouchableOpacity
           style={[
             styles.cartIconContainer,
-            inCart(selectedVariant?.id) ? styles.cartIconContainerInCart : null,
+            inCart ? styles.cartIconContainerInCart : null,
           ]}
           onPress={handleAddToCart}
           activeOpacity={0.7}
         >
           <Image
             source={require("@/assets/images/logo/cart.png")}
-            style={[
-              styles.icon,
-              inCart(selectedVariant?.id) ? { tintColor: "#fff" } : null,
-            ]}
+            style={[styles.icon, inCart ? { tintColor: "#fff" } : null]}
           />
         </TouchableOpacity>
 
+        {/* Icône cœur favoris */}
         <TouchableOpacity
           style={[
             styles.favoriteIconContainer,
@@ -227,11 +262,13 @@ const ProductDetails = () => {
         </TouchableOpacity>
       </View>
 
+      {/* ────────────────────── CONTENU ────────────────────── */}
       <ScrollView
         style={styles.bottomSection}
         contentContainerStyle={styles.bottomSectionContent}
       >
         <Text style={styles.title}>{product.name}</Text>
+
         <ScrollView style={styles.descriptionContainer} nestedScrollEnabled>
           <Text style={styles.description}>{product.description}</Text>
         </ScrollView>
@@ -246,10 +283,15 @@ const ProductDetails = () => {
         </View>
 
         <View style={styles.infoContainer}>
-          <Text style={styles.price}>{product.variants[0].price}</Text>
+          <Text style={styles.price}>
+            {selectedVariant?.price ?? product.variants[0]?.price ?? "0"} €
+          </Text>
+
           <Text style={styles.stockText}>
-            {product.variants[0].quantityInStock > 0
-              ? `${product.variants[0].quantityInStock} pièces en stock`
+            {(selectedVariant ?? product.variants[0])?.quantityInStock > 0
+              ? `${
+                  (selectedVariant ?? product.variants[0]).quantityInStock
+                } en stock`
               : "Rupture de stock"}
           </Text>
 
@@ -257,23 +299,21 @@ const ProductDetails = () => {
             product={product}
             onVariantSelect={setSelectedVariant}
           />
+
           <CategoryInfo category={product.category} />
 
+          {/* Bouton principal Ajouter/Retirer */}
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
               style={[
                 styles.addToCartButton,
-                inCart(selectedVariant?.id)
-                  ? styles.addToCartButtonInCart
-                  : null,
+                inCart ? styles.addToCartButtonInCart : null,
               ]}
               onPress={handleAddToCart}
               activeOpacity={0.7}
             >
               <Text style={styles.addToCartButtonText}>
-                {inCart(selectedVariant?.id)
-                  ? "Retirer du panier"
-                  : "Ajouter au panier"}
+                {inCart ? "Retirer du panier" : "Ajouter au panier"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -286,12 +326,12 @@ const ProductDetails = () => {
           />
         </View>
 
+        {/* Modals avis */}
         <ProductReviewsListModal
           productId={product.id}
           visible={showReviews}
           onClose={() => setShowReviews(false)}
         />
-
         <AddProductReviewModal
           productId={product.id}
           visible={showAddReview}
@@ -302,6 +342,9 @@ const ProductDetails = () => {
   );
 };
 
+// ──────────────────────────────────────────────────────────────
+// Styles (identiques à avant, juste un petit nettoyage)
+// ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -311,16 +354,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
     overflow: "hidden",
   },
-  carouselContainer: {
-    position: "relative",
-    width: "100%",
-    height: "100%",
-  },
-  carouselImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
+  carouselContainer: { position: "relative", width: "100%", height: "100%" },
+  carouselImage: { width: "100%", height: "100%", resizeMode: "cover" },
   carouselOverlay: {
     position: "absolute",
     top: 0,
@@ -335,32 +370,16 @@ const styles = StyleSheet.create({
     bottom: 15,
     width: "100%",
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginHorizontal: 4,
-    transform: [{ scale: 0.8 }],
-  },
-  activeDot: {
-    backgroundColor: "#000",
-    transform: [{ scale: 1.2 }],
-  },
-  inactiveDot: {
-    backgroundColor: "rgba(255,255,255,0.5)",
-  },
+  dot: { width: 10, height: 10, borderRadius: 5, marginHorizontal: 4 },
+  activeDot: { backgroundColor: "#000", transform: [{ scale: 1.2 }] },
+  inactiveDot: { backgroundColor: "rgba(255,255,255,0.5)" },
   backButtonContainer: {
     position: "absolute",
     top: 15,
     left: 15,
-    backgroundColor: "rgba(255,255,255,0.8)",
+    backgroundColor: "rgba(255,255,255,0.9)",
     borderRadius: 20,
     padding: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
     zIndex: 10,
   },
   cartIconContainer: {
@@ -373,16 +392,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.9)",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
     zIndex: 10,
   },
-  cartIconContainerInCart: {
-    backgroundColor: "#4caf50",
-  },
+  cartIconContainerInCart: { backgroundColor: "#4caf50" },
   favoriteIconContainer: {
     position: "absolute",
     top: 60,
@@ -393,19 +405,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.9)",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
     zIndex: 10,
   },
-  icon: {
-    width: 22,
-    height: 22,
-    tintColor: "#000",
-    resizeMode: "contain",
-  },
+  icon: { width: 22, height: 22, tintColor: "#000", resizeMode: "contain" },
   bottomSection: {
     flex: 1,
     backgroundColor: "#fff",
@@ -413,127 +415,25 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     marginTop: -20,
   },
-  bottomSectionContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  descriptionContainer: {
-    maxHeight: 150,
-    marginBottom: 10,
-  },
-  description: {
-    fontSize: 16,
-    color: "#666",
-    lineHeight: 24,
-    paddingRight: 10,
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
-    marginBottom: 12,
-  },
-  ratingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: "#555",
-  },
-  infoContainer: {
-    marginBottom: 16,
-  },
-  price: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 8,
-  },
-  stockText: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 12,
-  },
-  paymentMethodTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-    marginTop: 12,
-  },
-  paymentMethodContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  paymentMethodButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    marginHorizontal: 4,
-    alignItems: "center",
-  },
-  paymentMethodButtonSelected: {
-    borderColor: "#000",
-    backgroundColor: "#f0f0f0",
-  },
-  paymentMethodText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  paymentMethodTextSelected: {
-    fontWeight: "600",
-    color: "#000",
-  },
-  actionButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
-  },
+  bottomSectionContent: { padding: 20, paddingBottom: 40 },
+  title: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
+  descriptionContainer: { maxHeight: 150, marginBottom: 10 },
+  description: { fontSize: 16, color: "#666", lineHeight: 24 },
+  ratingRow: { flexDirection: "row", alignItems: "center", marginVertical: 12 },
+  ratingText: { marginLeft: 8, fontSize: 14, color: "#555" },
+  infoContainer: { marginBottom: 16 },
+  price: { fontSize: 20, fontWeight: "600", color: "#000", marginBottom: 8 },
+  stockText: { fontSize: 14, color: "#666", marginBottom: 12 },
+  actionButtonsContainer: { marginTop: 20 },
   addToCartButton: {
-    flex: 1,
     backgroundColor: "#4caf50",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingVertical: 14,
+    borderRadius: 8,
     alignItems: "center",
-    marginRight: 8,
   },
-  addToCartButtonInCart: {
-    backgroundColor: "#f44336",
-  },
-  addToCartButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  buyButton: {
-    flex: 1,
-    backgroundColor: "#000",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  buyButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  buyButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  actionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
-  },
+  addToCartButtonInCart: { backgroundColor: "#f44336" },
+  addToCartButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  actionsRow: { marginTop: 16 },
 });
 
 export default ProductDetails;
