@@ -2,10 +2,11 @@
 import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useCartStore } from "@/stores/achatCartStore"; // ← Ton store Zustand
+import { useProCartStore } from "@/stores/achatCartStore"; // ← CORRIGÉ : c'est useProCartStore
 
 const CartIcon = () => {
-  const itemCount = useCartStore((state) => state.getTotalItems());
+  const itemCount = useProCartStore((state) => state.getTotalItems());
+
   const handlePress = () => {
     router.push("/(achats)/shopping-cart");
   };
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#FF3B30", // Rouge Apple / Instagram
+    backgroundColor: "#FF3B30",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 6,

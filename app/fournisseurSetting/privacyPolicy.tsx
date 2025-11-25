@@ -1,18 +1,24 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native"
-import { useRouter } from "expo-router"
-import MaterialIcons from "react-native-vector-icons/MaterialIcons"
+import type React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
+import { useRouter } from "expo-router";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 interface PolicySection {
-  id: string
-  title: string
-  content: string
+  id: string;
+  title: string;
+  content: string;
 }
 
 const PrivacyPolicy: React.FC = () => {
-  const router = useRouter()
+  const router = useRouter();
 
   const policySections: PolicySection[] = [
     {
@@ -33,7 +39,7 @@ const PrivacyPolicy: React.FC = () => {
       content:
         "Morec ipsum dolor sit amet, consectetur adipiscing elit. Eliam eu turpis molestie, dictum est a, mattis tellus. Sed dignissim, metus nec fringilla accumsan, risus sem sollicitudin lacus, ut interdum tellus elit sed risus. Maecenas eget condimentum velit, sit amet feugiat lectus. Class aptent taciti sociosqu ad litora torquent",
     },
-  ]
+  ];
 
   return (
     <View style={styles.container}>
@@ -55,8 +61,8 @@ const PrivacyPolicy: React.FC = () => {
         ))}
       </ScrollView>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -69,8 +75,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    // borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
+    height: 100,
   },
   headerTitle: {
     fontSize: 18,
@@ -96,6 +102,6 @@ const styles = StyleSheet.create({
     color: "#666666",
     lineHeight: 18,
   },
-})
+});
 
-export default PrivacyPolicy
+export default PrivacyPolicy;

@@ -42,7 +42,7 @@ const ProductDetails = () => {
       style={styles.gridItem}
       onPress={() =>
         router.push({
-          pathname: "/product-details/[id]",
+          pathname: "/client-produit-details/[id]",
           params: { id: product.id.toString() },
         })
       }

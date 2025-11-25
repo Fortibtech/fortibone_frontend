@@ -1,84 +1,158 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native"
-import MaterialIcon from "react-native-vector-icons/MaterialIcons"
-import { useUserStore } from "@/store/userStore"
-import { router } from "expo-router"
+import type React from "react";
+import { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import MaterialIcon from "react-native-vector-icons/MaterialIcons";
+import { useUserStore } from "@/store/userStore";
+import { router, useLocalSearchParams, usePathname } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import { uploadUserAvatar } from "@/api/Users";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
 
 const UserProfileScreen: React.FC = () => {
-  const user = useUserStore.getState().userProfile
-  const [loading, setLoading] = useState(false)
+  // CORRIGÉ : on utilise le sélecteur réactif de Zustan
+  const pathname = usePathname();
+  const params = useLocalSearchParams();
 
+  const user = useUserStore((state) => state.userProfile);
+  const { uri } = useUserAvatar();
+  const [loading, setLoading] = useState(false);
+  // AJOUTE ÇA : log pour debug + protection
+  console.log("USER DANS UserProfileScreen :", user);
   const handleEditProfile = () => {
-    router.push("/fournisseurSetting/editProfile")
-  }
+    router.push("/fournisseurSetting/editProfile");
+  };
 
-  if (loading) {
+  const handleChangeAvatar = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission refusée", "Accès à la galerie requis.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.7,
+        allowsEditing: true,
+        aspect: [1, 1],
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      setLoading(true);
+      const uploadedUrl = await uploadUserAvatar(result.assets[0].uri);
+
+      if (uploadedUrl) {
+        // Mise à jour via setUserProfile → déclenche _avatarVersion automatiquement
+        useUserStore.getState().setUserProfile({
+          ...useUserStore.getState().userProfile!,
+          profileImageUrl: uploadedUrl,
+        });
+
+        Alert.alert("Succès", "Photo mise à jour !");
+      }
+    } catch (err: any) {
+      Alert.alert("Erreur", err.message || "Échec de la mise à jour");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    useUserStore.getState().refreshProfile();
+  }, [pathname, params]);
+  if (!user) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#1BB874" />
+        <Text style={{ marginTop: 10, color: "#666" }}>
+          Chargement du profil...
+        </Text>
       </View>
-    )
+    );
   }
 
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
           <MaterialIcon name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profil Utilisateur</Text>
-        <TouchableOpacity style={styles.menuButton}>
-          <MaterialIcon name="more-vert" size={24} color="#000000" />
-        </TouchableOpacity>
+        <View style={styles.menuButton} />
       </View>
 
+      {/* Avatar + Nom */}
       <View style={styles.profileSection}>
         <View style={styles.avatarContainer}>
           <Image
-            source={user?.profileImageUrl ? { uri: user.profileImageUrl } : require("@/assets/images/icon.png")}
+            key={user.profileImageUrl} // CLÉ MAGIQUE : force le refresh complet de l'image
+            source={
+              user?.profileImageUrl
+                ? user.profileImageUrl
+                : require("@/assets/images/icon.png")
+            }
             style={styles.avatar}
+            resizeMode="cover"
           />
-          <TouchableOpacity style={styles.editAvatarButton}>
-            <MaterialIcon name="edit" size={16} color="#FFFFFF" />
+          <TouchableOpacity
+            style={styles.editAvatarButton}
+            onPress={handleChangeAvatar}
+          >
+            <MaterialIcon name="edit" size={16} color="#FFF" />
           </TouchableOpacity>
         </View>
 
         <Text style={styles.userName}>
-          {user?.firstName || "Jean"} {user?.lastName || "Dupont"}
+          {user.firstName?.trim() || "Prénom"} {user.lastName?.trim() || "Nom"}
         </Text>
-        <Text style={styles.userRole}>{user?.profileType || "Dupont"}</Text>
+        <Text style={styles.userRole}>{user.profileType || "Utilisateur"}</Text>
       </View>
 
+      {/* Infos */}
       <View style={styles.infoSection}>
         <Text style={styles.sectionTitle}>Informations Contact</Text>
 
-        {/* Email */}
         <View style={styles.infoRow}>
           <View style={styles.iconContainer}>
             <MaterialIcon name="email" size={20} color="#1BB874" />
           </View>
-          <Text style={styles.infoText}>{user?.email || "john.doe@gmail.com"}</Text>
+          <Text style={styles.infoText}>{user.email}</Text>
         </View>
 
-        {/* Phone */}
         <View style={styles.infoRow}>
           <View style={styles.iconContainer}>
             <MaterialIcon name="phone" size={20} color="#1BB874" />
           </View>
-          <Text style={styles.infoText}>{user?.phoneNumber || "+37 53 07 08 73"}</Text>
+          <Text style={styles.infoText}>
+            {user.phoneNumber || "Non renseigné"}
+          </Text>
         </View>
 
-        {/* Location */}
+        {/* CORRIGÉ : protection contre undefined */}
         <View style={styles.infoRow}>
           <View style={styles.iconContainer}>
             <MaterialIcon name="location-on" size={20} color="#1BB874" />
           </View>
           <Text style={styles.infoText}>
-            {user?.city && user?.country ? `${user.city}, ${user.country}` : "Douala, Littoral, Cameroun"}
+            {user.city && user.country
+              ? `${user.city}, ${user.country}`
+              : "Localisation non renseignée"}
           </Text>
         </View>
       </View>
@@ -88,9 +162,8 @@ const UserProfileScreen: React.FC = () => {
         <Text style={styles.editButtonText}>Modifier les informations</Text>
       </TouchableOpacity>
     </ScrollView>
-  )
-}
-
+  );
+};
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -110,6 +183,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
+    height: 100,
   },
   backButton: {
     padding: 8,
@@ -206,6 +280,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
-})
+});
 
-export default UserProfileScreen
+export default UserProfileScreen;

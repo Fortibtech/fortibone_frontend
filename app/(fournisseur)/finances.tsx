@@ -64,40 +64,17 @@ const WalletScreen = () => {
           <Text style={styles.title}>Finances</Text>
 
           {/* Bouton Options */}
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => setMenuVisible(!menuVisible)}
-          >
+          <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="ellipsis-vertical" size={22} color="#000" />
           </TouchableOpacity>
         </View>
-        {/* --- MENU OPTIONS --- */}
-        {menuVisible && (
-          <View style={styles.optionsMenu}>
-            <TouchableOpacity
-              style={styles.optionItem}
-              onPress={() => {
-                setMenuVisible(false);
-                setHistoryVisible(true);
-                fetchTransactions();
-              }}
-            >
-              <Text style={styles.optionText}>Historique</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+
         {/* --- CONTENU --- */}
         <View style={styles.content}>
           {wallet ? (
-            <WalletHeaderCard
-              balance={parseFloat(wallet.balance) || 0}
-              onDepositPress={() => setModalVisible(true)}
-            />
+            <WalletHeaderCard balance={parseFloat(wallet.balance) || 0} />
           ) : (
-            <WalletHeaderCard
-              balance={0}
-              onDepositPress={() => setModalVisible(true)}
-            />
+            <WalletHeaderCard balance={0} />
           )}
           <DepositModal
             visible={modalVisible}

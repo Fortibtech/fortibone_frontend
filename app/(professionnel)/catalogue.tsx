@@ -50,8 +50,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   // Référence pour suivre l'entreprise précédente
   const previousBusinessIdRef = useRef<string | null>(null);
 
-    const isLoadingRef = useRef(false);
-
+  const isLoadingRef = useRef(false);
 
   // Charger les catégories au démarrage
   useEffect(() => {
@@ -87,7 +86,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   };
 
   const checkForBusinessChange = async () => {
-     if (isLoadingRef.current) {
+    if (isLoadingRef.current) {
       console.log("⏳ Chargement déjà en cours, ignoré");
       return;
     }
@@ -207,7 +206,13 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   }, [selectedBusiness]);
 
   const loadMoreProducts = useCallback(async () => {
-    if (loadingMore || !pagination || !pagination.totalPages || page >= pagination.totalPages) return;
+    if (
+      loadingMore ||
+      !pagination ||
+      !pagination.totalPages ||
+      page >= pagination.totalPages
+    )
+      return;
 
     const nextPage = page + 1;
     setPage(nextPage);
@@ -218,7 +223,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
     if (onProductPress) {
       onProductPress(product);
     } else {
-       router.push(`/product/${product.id}`);
+      router.push(`/product/${product.id}`);
     }
   };
 
@@ -261,9 +266,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
           <Text style={styles.productName} numberOfLines={2}>
             {product.name}
           </Text>
-          <TouchableOpacity style={styles.favoriteButton}>
-            <Heart size={20} color="#666" fill="none" />
-          </TouchableOpacity>
         </View>
 
         <Text style={styles.productDescription} numberOfLines={2}>
@@ -333,7 +335,11 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
 
       <View style={styles.statItem}>
         <Text style={styles.statNumber}>
-          {products.filter((p) => p.variants.some((v)=>v.price && parseInt(v.price) > 0)).length}
+          {
+            products.filter((p) =>
+              p.variants.some((v) => v.price && parseInt(v.price) > 0)
+            ).length
+          }
         </Text>
         <Text style={styles.statLabel}>Avec prix</Text>
       </View>

@@ -25,7 +25,7 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
 
 // Import des services API
 import {
@@ -33,14 +33,14 @@ import {
   BusinessesService,
   Product,
   ProductService,
-  ProductVariant
-} from '@/api';
+  ProductVariant,
+} from "@/api";
 
 // Import des composants
-import { VariantFormModal } from '@/components/VariantFormModal';
-import { EditProductScreen } from './edit';
+import { VariantFormModal } from "@/components/VariantFormModal";
+import { EditProductScreen } from "./edit";
 
-Dimensions.get('window');
+Dimensions.get("window");
 
 interface ProductDetailScreenProps {
   productId?: string;
@@ -242,13 +242,13 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <Share size={18} color="#1f2937" />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={toggleLike} style={styles.floatingButton}>
+        {/* <TouchableOpacity onPress={toggleLike} style={styles.floatingButton}>
           <Heart 
             size={18} 
             color={isLiked ? "#ef4444" : "#1f2937"} 
             fill={isLiked ? "#ef4444" : "none"} 
           />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </View>
   );
@@ -278,9 +278,11 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       <View style={styles.variantHeader}>
         <View style={styles.variantMainInfo}>
           <Text style={styles.variantSku}>{variant.sku}</Text>
-          <Text style={styles.variantPrice}>{variant.price.toLocaleString()} FCFA</Text>
+          <Text style={styles.variantPrice}>
+            {variant.price.toLocaleString()} FCFA
+          </Text>
         </View>
-        
+
         <View style={styles.variantActions}>
           <TouchableOpacity
             style={styles.variantIconButton}
@@ -288,7 +290,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           >
             <Edit size={16} color="#6b7280" />
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={styles.variantIconButton}
             onPress={() => handleDeleteVariant(variant)}
@@ -313,16 +315,18 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       <View style={styles.variantDetailsGrid}>
         <View style={styles.variantDetailRow}>
           <Text style={styles.variantDetailLabel}>Stock</Text>
-          <Text style={[
-            styles.variantDetailValue,
-            variant.quantityInStock < 10 && styles.lowStockText
-          ]}>
+          <Text
+            style={[
+              styles.variantDetailValue,
+              variant.quantityInStock < 10 && styles.lowStockText,
+            ]}
+          >
             {variant.quantityInStock}
           </Text>
         </View>
-        
+
         <View style={styles.variantDetailDivider} />
-        
+
         <View style={styles.variantDetailRow}>
           <Text style={styles.variantDetailLabel}>Prix d&apos;achat</Text>
           <Text style={styles.variantDetailValue}>
@@ -343,8 +347,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
       {variant.imageUrl && (
         <View style={styles.variantImageWrapper}>
-          <Image 
-            source={{ uri: variant.imageUrl }} 
+          <Image
+            source={{ uri: variant.imageUrl }}
             style={styles.variantImage}
             resizeMode="cover"
           />
@@ -367,7 +371,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               <Text style={styles.addButtonText}>Ajouter</Text>
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.emptyState}>
             <View style={styles.emptyStateIcon}>
               <Package size={32} color="#d1d5db" />
@@ -387,10 +391,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <Text style={styles.sectionTitle}>
             Variantes ({product.variants.length})
           </Text>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={handleAddVariant}
-          >
+          <TouchableOpacity style={styles.addButton} onPress={handleAddVariant}>
             <Plus size={16} color="#059669" />
             <Text style={styles.addButtonText}>Ajouter</Text>
           </TouchableOpacity>
@@ -398,9 +399,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
         <View style={styles.variantsList}>
           {product.variants.map((variant) => (
-            <View key={variant.id}>
-              {renderVariantCard({ item: variant })}
-            </View>
+            <View key={variant.id}>{renderVariantCard({ item: variant })}</View>
           ))}
         </View>
       </View>
@@ -411,7 +410,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     <View style={styles.contentContainer}>
       <View style={styles.productTitleSection}>
         <Text style={styles.productName}>{product?.name}</Text>
-        
+
         <View style={styles.productMetaRow}>
           {product?.category && (
             <View style={styles.categoryBadge}>
@@ -420,7 +419,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               </Text>
             </View>
           )}
-          
+
           <View style={styles.metaItem}>
             <Tag size={13} color="#9ca3af" />
             <Text style={styles.metaText}>{product?.salesUnit}</Text>
@@ -445,7 +444,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Description</Text>
         <Text style={styles.descriptionText}>
-          {product?.description || 'Aucune description disponible'}
+          {product?.description || "Aucune description disponible"}
         </Text>
       </View>
 
@@ -462,7 +461,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               <View style={styles.businessInfo}>
                 <Text style={styles.businessName}>{business.name}</Text>
                 <Text style={styles.businessType}>{business.type}</Text>
-                
+
                 {business.address && (
                   <View style={styles.addressRow}>
                     <MapPin size={13} color="#9ca3af" />
@@ -472,10 +471,10 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                   </View>
                 )}
               </View>
-              
+
               {business.logoUrl && (
-                <Image 
-                  source={{ uri: business.logoUrl }} 
+                <Image
+                  source={{ uri: business.logoUrl }}
                   style={styles.businessLogo}
                   resizeMode="contain"
                 />
@@ -502,10 +501,9 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Créé le</Text>
             <Text style={styles.infoValue}>
-              {product?.createdAt 
-                ? new Date(product.createdAt).toLocaleDateString('fr-FR')
-                : '-'
-              }
+              {product?.createdAt
+                ? new Date(product.createdAt).toLocaleDateString("fr-FR")
+                : "-"}
             </Text>
           </View>
 
@@ -517,14 +515,14 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               {product?.id.slice(0, 8)}...
             </Text>
           </View>
-          
+
           {product?.updatedAt && product.updatedAt !== product.createdAt && (
             <>
               <View style={styles.infoDivider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Modifié le</Text>
                 <Text style={styles.infoValue}>
-                  {new Date(product.updatedAt).toLocaleDateString('fr-FR')}
+                  {new Date(product.updatedAt).toLocaleDateString("fr-FR")}
                 </Text>
               </View>
             </>
@@ -536,7 +534,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const renderActions = () => (
     <View style={styles.actionsContainer}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.editButton}
         onPress={handleEditProduct}
         activeOpacity={0.7}
@@ -544,8 +542,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         <Edit size={18} color="white" />
         <Text style={styles.editButtonText}>Modifier</Text>
       </TouchableOpacity>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
         onPress={handleDeleteProduct}
         disabled={isDeleting}
@@ -557,7 +555,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <Trash2 size={18} color="white" />
         )}
         <Text style={styles.deleteButtonText}>
-          {isDeleting ? 'Suppression...' : 'Supprimer'}
+          {isDeleting ? "Suppression..." : "Supprimer"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -587,7 +585,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <Text style={styles.errorSubtitle}>
             Ce produit n&apos;existe plus ou a été supprimé
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
           >
@@ -601,8 +599,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -610,7 +608,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         {renderImageSection()}
         {renderProductInfo()}
       </ScrollView>
-      
+
       {renderActions()}
 
       {/* Modal pour créer/modifier une variante */}
@@ -641,7 +639,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   scrollView: {
     flex: 1,
@@ -649,16 +647,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  
+
   // Floating Header (par dessus l'image)
   floatingHeader: {
-    position: 'absolute',
-    top: 0,
+    position: "absolute",
+    top: 15,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
@@ -668,62 +666,62 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
+    borderColor: "rgba(0, 0, 0, 0.04)",
   },
   floatingActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
-  
+
   // Image Section
   imageContainer: {
     height: 320,
-    backgroundColor: '#fafafa',
-    position: 'relative',
+    backgroundColor: "#fafafa",
+    position: "relative",
   },
   productImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#fafafa',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#fafafa",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
   placeholderIconCircle: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
   imagePlaceholderText: {
     fontSize: 13,
-    color: '#9ca3af',
-    fontWeight: '500',
+    color: "#9ca3af",
+    fontWeight: "500",
   },
-  
+
   // Content Container
   contentContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     paddingBottom: 24,
   },
-  
+
   // Product Title Section
   productTitleSection: {
     paddingHorizontal: 20,
@@ -732,159 +730,159 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 26,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
     marginBottom: 14,
     lineHeight: 32,
     letterSpacing: -0.3,
   },
   productMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 10,
   },
   categoryBadge: {
-    backgroundColor: '#ecfdf5',
+    backgroundColor: "#ecfdf5",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 10,
     borderWidth: 0.5,
-    borderColor: 'rgba(5, 150, 105, 0.1)',
+    borderColor: "rgba(5, 150, 105, 0.1)",
   },
   categoryBadgeText: {
-    color: '#059669',
+    color: "#059669",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.2,
   },
   metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   metaText: {
     fontSize: 13,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   ratingText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
   },
   ratingCount: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: "#9ca3af",
   },
-  
+
   // Divider
   divider: {
     height: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: "#f3f4f6",
     marginHorizontal: 20,
     marginVertical: 4,
   },
-  
+
   // Sections
   section: {
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
     letterSpacing: -0.2,
   },
   addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
     gap: 4,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    shadowColor: '#000',
+    borderColor: "#e5e7eb",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
     shadowRadius: 2,
     elevation: 1,
   },
   addButtonText: {
-    color: '#059669',
+    color: "#059669",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
-  
+
   // Description
   descriptionText: {
     fontSize: 14,
-    color: '#4b5563',
+    color: "#4b5563",
     lineHeight: 22,
     letterSpacing: 0.1,
   },
-  
+
   // Empty State
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 48,
-    backgroundColor: '#fafafa',
+    backgroundColor: "#fafafa",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
   emptyStateIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
   emptyStateTitle: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#6b7280',
+    fontWeight: "600",
+    color: "#6b7280",
     marginBottom: 4,
   },
   emptyStateSubtitle: {
     fontSize: 13,
-    color: '#9ca3af',
-    textAlign: 'center',
+    color: "#9ca3af",
+    textAlign: "center",
   },
-  
+
   // Variants List
   variantsList: {
     gap: 10,
   },
   variantCard: {
-    backgroundColor: '#fafafa',
+    backgroundColor: "#fafafa",
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
   variantHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
   },
   variantMainInfo: {
@@ -892,191 +890,194 @@ const styles = StyleSheet.create({
   },
   variantSku: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
     marginBottom: 4,
     letterSpacing: -0.1,
   },
   variantPrice: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#059669',
+    fontWeight: "700",
+    color: "#059669",
     letterSpacing: -0.2,
   },
   variantActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
   },
   variantIconButton: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
-  
+
   // Attributes
   attributesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 6,
     marginBottom: 12,
   },
   attributeTag: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   attributeTagText: {
     fontSize: 12,
-    color: '#4b5563',
-    fontWeight: '500',
+    color: "#4b5563",
+    fontWeight: "500",
   },
-  
+
   // Variant Details Grid
   variantDetailsGrid: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
   variantDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 2,
   },
   variantDetailDivider: {
     height: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: "#f3f4f6",
     marginVertical: 8,
   },
   variantDetailLabel: {
     fontSize: 13,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   variantDetailValue: {
     fontSize: 13,
-    color: '#111827',
-    fontWeight: '600',
+    color: "#111827",
+    fontWeight: "600",
   },
   lowStockText: {
-    color: '#ef4444',
+    color: "#ef4444",
   },
-  
+
   // Variant Image
   variantImageWrapper: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
     marginTop: 12,
   },
   variantImage: {
     width: 72,
     height: 72,
     borderRadius: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
-  
+
   // Business Card
   businessCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fafafa',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fafafa",
     padding: 16,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
   businessInfo: {
     flex: 1,
   },
   businessName: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
     marginBottom: 4,
     letterSpacing: -0.1,
   },
   businessType: {
     fontSize: 13,
-    color: '#059669',
-    fontWeight: '600',
+    color: "#059669",
+    fontWeight: "600",
     marginBottom: 8,
   },
   addressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   addressText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: "#6b7280",
     flex: 1,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   businessLogo: {
     width: 52,
     height: 52,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
-  
+
   // Info Grid
   infoGrid: {
-    backgroundColor: '#fafafa',
+    backgroundColor: "#fafafa",
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
   infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 2,
   },
   infoDivider: {
     height: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: "#f3f4f6",
     marginVertical: 10,
   },
   infoLabel: {
     fontSize: 13,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   infoValue: {
     fontSize: 13,
-    color: '#111827',
-    fontWeight: '600',
-    textAlign: 'right',
+    color: "#111827",
+    fontWeight: "600",
+    textAlign: "right",
     flex: 1,
     marginLeft: 12,
   },
-  
+
   // Actions Container
   actionsContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
+
+    flexDirection: "row",
     padding: 16,
-    backgroundColor: '#ffffff',
+
+    paddingVertical: 35,
+    backgroundColor: "#ffffff",
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: "#f3f4f6",
     gap: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.03,
     shadowRadius: 8,
@@ -1084,67 +1085,67 @@ const styles = StyleSheet.create({
   },
   editButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#059669',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#059669",
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#059669',
+    shadowColor: "#059669",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 2,
   },
   editButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.2,
   },
   deleteButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ef4444',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ef4444",
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#ef4444',
+    shadowColor: "#ef4444",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 2,
   },
   deleteButtonDisabled: {
-    backgroundColor: '#9ca3af',
+    backgroundColor: "#9ca3af",
     shadowOpacity: 0,
   },
   deleteButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.2,
   },
-  
+
   // Loading & Error States
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
   loadingText: {
     fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+    color: "#6b7280",
+    fontWeight: "500",
   },
   errorContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 40,
     gap: 12,
   },
@@ -1152,42 +1153,42 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#fafafa',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#fafafa",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: "#f0f0f0",
   },
   errorTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: "600",
+    color: "#111827",
     letterSpacing: -0.2,
   },
   errorSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
+    color: "#6b7280",
+    textAlign: "center",
     lineHeight: 20,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   backButton: {
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
     paddingHorizontal: 28,
     paddingVertical: 12,
     borderRadius: 12,
     marginTop: 12,
-    shadowColor: '#059669',
+    shadowColor: "#059669",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 2,
   },
   backButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.2,
   },
 });

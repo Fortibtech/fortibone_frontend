@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { Business, BusinessesService } from "@/api";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import BackButtonAdmin from "@/components/Admin/BackButton"; // ← ton composant
 const ManageBusinessesScreen: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -42,10 +42,12 @@ const ManageBusinessesScreen: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    loadBusinesses();
-  }, [loadBusinesses]);
-
+  // Recharge la liste à chaque fois que l'écran revient au premier plan
+  useFocusEffect(
+    useCallback(() => {
+      loadBusinesses();
+    }, [loadBusinesses])
+  );
   const confirmDelete = async () => {
     if (!businessToDelete) return;
 
@@ -168,7 +170,11 @@ const ManageBusinessesScreen: React.FC = () => {
             <Ionicons name="warning" size={48} color="#ef4444" />
             <Text style={styles.deleteTitle}>Supprimer ce commerce ?</Text>
             <Text style={styles.deleteMessage}>
-              `{businessToDelete?.name}` sera définitivement supprimé.
+              Le commerce{" "}
+              <Text style={{ fontWeight: "700" }}>
+                {businessToDelete?.name || "inconnu"}
+              </Text>{" "}
+              sera définitivement supprimé.
             </Text>
             <View style={styles.deleteActions}>
               <TouchableOpacity

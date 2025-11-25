@@ -193,9 +193,9 @@ export default function CommandeDetails() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.callBtn}>
+          {/* <TouchableOpacity style={styles.callBtn}>
             <Ionicons name="call-outline" size={18} color="#111" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <View style={styles.statusBox}>
             <Text style={styles.statusLabel}>Statut</Text>

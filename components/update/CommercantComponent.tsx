@@ -188,6 +188,7 @@ const EditBusinessCommercant: React.FC<Props> = ({ id }) => {
       const payload = {
         name: business.name.trim(),
         description: business.description.trim(),
+        type: "COMMERCANT",
         address: business.address.trim(),
         latitude: Number(business.latitude),
         longitude: Number(business.longitude),
@@ -198,7 +199,7 @@ const EditBusinessCommercant: React.FC<Props> = ({ id }) => {
         commerceType: business.commerceType as CommerceType,
       };
 
-      await BusinessesService.updateBusiness(id, payload);
+      await BusinessesService.updateBusiness(id, payload as any);
 
       if (
         business.logoUrl?.startsWith("file://") ||
