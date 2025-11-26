@@ -1,4 +1,4 @@
-import { Tabs } from "expo-router";
+import { router, Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   CircleDollarSign,
@@ -9,6 +9,8 @@ import {
   ShoppingCart,
 } from "lucide-react-native";
 import { Platform } from "react-native";
+import { SelectedBusinessManager } from "@/api/selectedBusinessManager";
+import { BusinessesService } from "@/api/services/businessesService";
 
 export default function RootLayout() {
   const insets = useSafeAreaInsets();
@@ -93,6 +95,18 @@ export default function RootLayout() {
             <CircleDollarSign size={24} color={color} />
           ),
         }}
+        listeners={{
+            tabPress: async (e) => {
+              e.preventDefault();
+              const selected = await SelectedBusinessManager.getSelectedBusiness();
+              if (selected) {
+                 await BusinessesService.selectBusiness(selected);
+                router.push(`/(orders)/details/${selected.id}`);
+              }
+              else{
+              router.push('/(professionnel)');}
+            },
+          }}
       />
       <Tabs.Screen
         name="inventaire"
@@ -100,6 +114,18 @@ export default function RootLayout() {
           title: "Inventaire",
           tabBarIcon: ({ color }) => <Send size={24} color={color} />,
         }}
+        listeners={{
+            tabPress: async (e) => {
+              e.preventDefault();
+              const selected = await SelectedBusinessManager.getSelectedBusiness();
+              if (selected) {
+                 await BusinessesService.selectBusiness(selected);
+                router.push(`/(inventory)/details/${selected.id}`);
+              }
+              else{
+              router.push('/(professionnel)');}
+            },
+          }}
       />
       <Tabs.Screen
         name="finance"
