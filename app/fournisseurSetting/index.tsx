@@ -1,84 +1,96 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native"
-import { useUserStore } from "@/store/userStore"
-import { router } from "expo-router"
-import MaterialIcons from "react-native-vector-icons/MaterialIcons"
-import LogoutModal from "./logoutModal"
-import ShareAppModal from "./shareAppModal"
+import type React from "react";
+import { useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from "react-native";
+import { useUserStore } from "@/store/userStore";
+import { router } from "expo-router";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import LogoutModal from "./logoutModal";
+import ShareAppModal from "./shareAppModal";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
 
 interface MenuItem {
-  id: string
-  iconName: string
-  title: string
-  onPress: () => void
-  showArrow?: boolean
+  id: string;
+  iconName: string;
+  title: string;
+  onPress: () => void;
+  showArrow?: boolean;
 }
 
 const SettingsMenu: React.FC = () => {
-  const [loading, setLoading] = useState(false)
-  const [showLogoutModal, setShowLogoutModal] = useState(false)
-  const [showShareModal, setShowShareModal] = useState(false)
-  const user = useUserStore.getState().userProfile
-
+  const [loading, setLoading] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const user = useUserStore.getState().userProfile;
+  const { uri } = useUserAvatar();
   const handleViewProfile = () => {
-    router.push("/fournisseurSetting/userProfile")
-  }
+    router.push("/fournisseurSetting/userProfile");
+  };
 
   const handleUpgradeToPremium = () => {
-    router.push("/fournisseurSetting/subscription")
-  }
+    router.push("/fournisseurSetting/subscription");
+  };
 
   const handleMyBusiness = () => {
-    router.push("/fournisseurSetting/companyProfile")
-  }
+    router.push("/fournisseurSetting/companyProfile");
+  };
 
   const handleAppSettings = () => {
-    router.push("/fournisseurSetting/setting")
-  }
+    router.push("/fournisseurSetting/setting");
+  };
 
   const handleHelpCenter = () => {
-    router.push("/fournisseurSetting/helperCenter")
-  }
+    router.push("/fournisseurSetting/helperCenter");
+  };
 
   const handlePrivacyPolicy = () => {
-    router.push("/fournisseurSetting/privacyPolicy")
-  }
+    router.push("/fournisseurSetting/privacyPolicy");
+  };
 
   const handleTermsConditions = () => {
-    router.push("/fournisseurSetting/TermsAndConditions")
-  }
+    router.push("/fournisseurSetting/TermsAndConditions");
+  };
 
   const handleAbout = () => {
-    router.push("/fournisseurSetting/about")
-  }
+    router.push("/fournisseurSetting/about");
+  };
 
   const handleInviteUsers = () => {
-    setShowShareModal(true)
-  }
+    setShowShareModal(true);
+  };
 
   const handleRateApp = () => {
-    Alert.alert("Noter", "Merci de votre soutien !")
-  }
+    Alert.alert("Noter", "Merci de votre soutien !");
+  };
 
   const handleLogout = () => {
-    Alert.alert("Se Déconnecter", "Êtes-vous sûr de vouloir vous déconnecter ?", [
-      {
-        text: "Annuler",
-        style: "cancel",
-      },
-      {
-        text: "Déconnecter",
-        style: "destructive",
-        onPress: () => {
-          router.replace('/')
+    Alert.alert(
+      "Se Déconnecter",
+      "Êtes-vous sûr de vouloir vous déconnecter ?",
+      [
+        {
+          text: "Annuler",
+          style: "cancel",
         },
-      },
-    ])
-    
-  }
+        {
+          text: "Déconnecter",
+          style: "destructive",
+          onPress: () => {
+            router.replace("/");
+          },
+        },
+      ]
+    );
+  };
 
   const menuItems: MenuItem[] = [
     {
@@ -137,13 +149,16 @@ const SettingsMenu: React.FC = () => {
       onPress: handleRateApp,
       showArrow: true,
     },
-  ]
+  ];
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
           <MaterialIcons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Menu</Text>
@@ -153,8 +168,13 @@ const SettingsMenu: React.FC = () => {
       <ScrollView style={styles.content}>
         <View style={styles.profileCard}>
           <Image
-            source={user?.profileImageUrl ? { uri: user.profileImageUrl } : require("@/assets/images/icon.png")}
+            source={
+              user?.profileImageUrl
+                ?    user.profileImageUrl 
+                : require("@/assets/images/icon.png")
+            }
             style={styles.avatar}
+            resizeMode="cover"
           />
           <View style={styles.profileInfo}>
             <Text style={styles.userName}>
@@ -166,11 +186,15 @@ const SettingsMenu: React.FC = () => {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.premiumCard} onPress={handleUpgradeToPremium}>
+        <TouchableOpacity
+          style={styles.premiumCard}
+          onPress={handleUpgradeToPremium}
+        >
           <View style={styles.premiumContent}>
             <Text style={styles.premiumTitle}>Passer à Premium</Text>
             <Text style={styles.premiumSubtitle}>
-              Débloquez des fonctionnalités{"\n"}avancées et boostez vos activités
+              Débloquez des fonctionnalités{"\n"}avancées et boostez vos
+              activités
             </Text>
           </View>
           <TouchableOpacity style={styles.subscribeButton}>
@@ -181,31 +205,52 @@ const SettingsMenu: React.FC = () => {
         {/* Menu Items */}
         <View style={styles.menuList}>
           {menuItems.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.menuItem} onPress={item.onPress}>
+            <TouchableOpacity
+              key={item.id}
+              style={styles.menuItem}
+              onPress={item.onPress}
+            >
               <View style={styles.menuItemLeft}>
                 <View style={styles.iconContainer}>
-                  <MaterialIcons name={item.iconName} size={20} color="#1BB874" />
+                  <MaterialIcons
+                    name={item.iconName}
+                    size={20}
+                    color="#1BB874"
+                  />
                 </View>
                 <Text style={styles.menuItemText}>{item.title}</Text>
               </View>
-              {item.showArrow && <MaterialIcons name="chevron-right" size={24} color="#CCCCCC" />}
+              {item.showArrow && (
+                <MaterialIcons name="chevron-right" size={24} color="#CCCCCC" />
+              )}
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.logoutButton} onPress={()=> setShowLogoutModal(true)} disabled={loading}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => setShowLogoutModal(true)}
+          disabled={loading}
+        >
           <MaterialIcons name="logout" size={20} color="#FFFFFF" />
           <Text style={styles.logoutButtonText}>Se Déconnecter</Text>
         </TouchableOpacity>
       </View>
 
-       <LogoutModal visible={showLogoutModal} onCancel={()=> setShowLogoutModal(false)} onLogout={handleLogout} />
-      <ShareAppModal visible={showShareModal} onClose={() => setShowShareModal(false)} />
+      <LogoutModal
+        visible={showLogoutModal}
+        onCancel={() => setShowLogoutModal(false)}
+        onLogout={handleLogout}
+      />
+      <ShareAppModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -219,12 +264,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: "#F8F1F1FF",
+    height: 90,
   },
   backButton: {
     borderWidth: 1,
     borderRadius: 50,
-    borderColor: '#F8F1F1FF',
+    borderColor: "#F8F1F1FF",
     padding: 5,
   },
   backIcon: {
@@ -241,7 +287,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    alignContent: 'center',
+    alignContent: "center",
     // justifyContent:'center'
   },
   profileCard: {
@@ -358,6 +404,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
+    height: 122,
   },
   logoutButton: {
     flexDirection: "row",
@@ -376,6 +423,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
-})
+});
 
-export default SettingsMenu
+export default SettingsMenu;

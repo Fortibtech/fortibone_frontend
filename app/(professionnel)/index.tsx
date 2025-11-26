@@ -8,9 +8,12 @@ import {
 } from "@/api/analytics";
 import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import BusinessSelector from "@/components/Business/BusinessSelector";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { useUserStore } from "@/store/userStore";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
@@ -25,13 +28,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 const HomePage: React.FC = () => {
+  const user = useUserStore.getState().userProfile;
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+const { uri } = useUserAvatar();
   // ✅ États pour les analytics
   const [monthlyOverview, setMonthlyOverview] =
     useState<AnalyticsOverview | null>(null);
@@ -98,7 +102,7 @@ const HomePage: React.FC = () => {
   // ✅ Fonction pour charger les analytics
   const loadAnalytics = async () => {
     if (!selectedBusiness) return;
-
+    if (analyticsLoading) return; // ← Évite les appels simultanés
     try {
       setAnalyticsLoading(true);
 
@@ -136,15 +140,33 @@ const HomePage: React.FC = () => {
     }
   };
 
+  // 1. Chargement initial (une seule fois)
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  // 2. Recharge les stats quand on revient dans l'onglet
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedBusiness) {
+        loadAnalytics();
+      }
+    }, [selectedBusiness])
+  );
+
+  // 3. Recharge les stats quand on change de commerce
+  useEffect(() => {
+    if (selectedBusiness) {
+      loadAnalytics();
+    }
+  }, [selectedBusiness]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (selectedBusiness) {
-      await loadAnalytics();
-    }
+    if (selectedBusiness) await loadAnalytics();
     setRefreshing(false);
   };
-
   const handleBusinessSelect = async (business: Business) => {
     try {
       await BusinessesService.selectBusiness(business);
@@ -165,6 +187,11 @@ const HomePage: React.FC = () => {
       maximumFractionDigits: 0,
     }).format(num);
   };
+  // ✅ Calculer le nombre total d'alertes
+  const getTotalAlertsCount = (): number => {
+    if (!pendingOrdersCount) return 0;
+    return pendingOrdersCount;
+  };
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -173,22 +200,35 @@ const HomePage: React.FC = () => {
         selectedBusiness={selectedBusiness}
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
-        onAddBusiness={() => router.push("/pro/createBusiness")}
-        onManageBusiness={() => router.push("/pro/profile")}
+        onAddBusiness={() => router.push("/(create-business)/")}
+        onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
       />
 
       <View style={styles.headerRight}>
-        <TouchableOpacity style={styles.iconButton}>
+        {/* <TouchableOpacity style={styles.iconButton}>
           <Ionicons name="search" size={24} color="#000" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TouchableOpacity style={styles.iconButton}>
-          <View style={styles.notificationBadge}>
-            <Text style={styles.badgeText}>3</Text>
-          </View>
+          {getTotalAlertsCount() > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>{getTotalAlertsCount()}</Text>
+            </View>
+          )}
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.avatar}>
-          <Ionicons name="person" size={20} color="#666" />
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={() => router.push("/fournisseurSetting")}
+        >
+          <Image
+            source={
+              user?.profileImageUrl
+                ? user.profileImageUrl
+                : require("@/assets/images/icon.png")
+            }
+            style={styles.avatar}
+            resizeMode="cover"
+          />
         </TouchableOpacity>
       </View>
     </View>

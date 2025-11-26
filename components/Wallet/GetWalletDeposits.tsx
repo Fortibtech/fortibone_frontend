@@ -2,24 +2,20 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-const BalanceCard = ({
-  balance,
-  onDepositPress,
-}: {
-  balance: number;
-  onDepositPress: () => void; // <- prop pour gérer le clic
-}) => {
+
+const BalanceCard = ({ balance }: { balance: number }) => {
   const [hidden, setHidden] = useState(false);
   const router = useRouter();
+
   return (
     <View style={styles.container}>
-      {/* Ligne 1 */}
+      {/* Ligne 1 - Label */}
       <View style={styles.row}>
         <Ionicons name="wallet-outline" size={20} color="#58617b" />
         <Text style={styles.label}>Active Balance</Text>
       </View>
 
-      {/* Ligne 2 */}
+      {/* Ligne 2 - Montant */}
       <View style={styles.rowBetween}>
         <Text style={styles.amount}>
           {hidden ? "••••••" : `${balance?.toFixed(2) ?? "0.00"} KMF`}
@@ -33,23 +29,34 @@ const BalanceCard = ({
         </TouchableOpacity>
       </View>
 
-      {/* Ligne 3  onPress={onDepositPress} */}
-      <View style={styles.rowBetween}>
+      {/* Ligne 3 - Trois actions */}
+      <View style={styles.actionsRow}>
+        {/* Dépôt */}
         <TouchableOpacity
-          style={styles.depositBtn}
+          style={[styles.actionBtn, styles.depositBtn]}
           onPress={() => router.push("/finance/DepositScreen")}
         >
-          <Feather name="arrow-down-left" size={20} color="#fff" />
+          <Feather name="arrow-down-left" size={24} color="#fff" />
           <Text style={styles.depositText}>Dépôt</Text>
         </TouchableOpacity>
 
+        {/* Retrait */}
         <TouchableOpacity
-          style={styles.withdrawBtn}
+          style={[styles.actionBtn, styles.withdrawBtn]}
           onPress={() => router.push("/finance/RetraitArgent")}
         >
-          <Feather name="arrow-up-right" size={20} color="#00af66" />
+          <Feather name="arrow-up-right" size={24} color="#ff4444" />
           <Text style={styles.withdrawText}>Retrait</Text>
         </TouchableOpacity>
+
+        {/* Transfert */}
+        {/* <TouchableOpacity
+          style={[styles.actionBtn, styles.transferBtn]}
+          onPress={() => router.push("/finance/TransfertScreen")}
+        >
+          <MaterialIcons name="swap-horiz" size={24} color="#fff" />
+          <Text style={styles.transferText}>Transfert</Text>
+        </TouchableOpacity> */}
       </View>
     </View>
   );
@@ -64,6 +71,7 @@ const styles = StyleSheet.create({
     borderColor: "#00af66",
     borderRadius: 20,
     justifyContent: "space-between",
+    backgroundColor: "#fff",
   },
   row: {
     flexDirection: "row",
@@ -84,35 +92,53 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#00af66",
   },
-  depositBtn: {
+  actionsRow: {
     flexDirection: "row",
+    gap: 12, // espacement régulier et confortable entre les boutons
+    paddingHorizontal: 4, // petite marge pour éviter que ça colle aux bords
+    justifyContent: "space-between",
+  },
+  actionBtn: {
+    flexDirection: "row",
+    width: "30%",
     alignItems: "center",
-    justifyContent: "center",
-    width: 155,
-    height: 48,
-    backgroundColor: "#00af66",
+    justifyContent: "center", // centre parfaitement icône + texte
+    height: 50,
     borderRadius: 28,
-    gap: 6,
+    paddingHorizontal: 12, // espacement interne identique
+    gap: 8,
+  },
+
+  // Dépôt
+  depositBtn: {
+    backgroundColor: "#00af66",
   },
   depositText: {
     color: "#fff",
     fontWeight: "600",
+    fontSize: 15,
   },
+
+  // Retrait
   withdrawBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    width: 155,
-    height: 48,
     backgroundColor: "#fff",
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "#00af66",
-    gap: 6,
+    borderWidth: 1.5,
+    borderColor: "#ff4444",
   },
   withdrawText: {
-    color: "#00af66",
+    color: "#ff4444",
     fontWeight: "600",
+    fontSize: 15,
+  },
+
+  // Transfert
+  transferBtn: {
+    backgroundColor: "#3366ff",
+  },
+  transferText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
   },
 });
 

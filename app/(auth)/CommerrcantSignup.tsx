@@ -13,20 +13,24 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator,
   Modal,
+  FlatList,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useOnboardingStore, FormData, Country } from "@/store/onboardingStore";
 import {
-  useOnboardingStore,
-  FormData,
+  Currency,
+  CurrencyService,
+  BusinessesService,
   CreateBusinessData,
-  Country,
-} from "@/store/onboardingStore";
+} from "@/api";
+import axiosInstance from "@/api/axiosInstance";
+import { RegisterPayload } from "@/types/auth";
 
 // === TYPES ===
 interface DatePickerModalProps {
@@ -386,21 +390,111 @@ const CountrySelectionModal: React.FC<CountrySelectionModalProps> = ({
 };
 
 const FortibOneOnboarding: React.FC = () => {
+  // ──────── NOUVEAUX STATES POUR LA SOUMISSION ────────
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionProgress, setSubmissionProgress] = useState(0); // 0 à 100
+  const [submissionError, setSubmissionError] = useState<string>("");
+  const [submissionStatus, setSubmissionStatus] = useState<
+    | "idle"
+    | "registering"
+    | "verifying"
+    | "uploading"
+    | "creatingBusiness"
+    | "success"
+    | "error"
+  >("registering");
   const router = useRouter();
-  const scrollViewRef2 = useRef<ScrollView>(null);
-  const scrollViewRef3 = useRef<ScrollView>(null);
-  const otpInputRefs = useRef<Array<TextInput | null>>([]);
-
+  const [business, setBusiness] = useState<Partial<CreateBusinessData>>({
+    name: "",
+    description: "",
+    type: "COMMERCANT",
+    address: "",
+    phoneNumber: "",
+    latitude: 4.0511, // Douala par défaut
+    longitude: 9.7679,
+    currencyId: "",
+  });
+  const otpInputRefs = useRef<(TextInput | null)[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [isLoadingLogo, setIsLoadingLogo] = useState(false);
-  const [isLoadingCover, setIsLoadingCover] = useState(false);
-
+  // const [isLoadingLogo, setIsLoadingLogo] = useState(false);
+  // const [isLoadingCover, setIsLoadingCover] = useState(false);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [phoneError, setPhoneError] = useState<string>("");
+  const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loadingCurrencies, setLoadingCurrencies] = useState(false);
 
+  // ═══════════════════════════════════════════════════════════
+  // VERSION FINALE – UNIQUEMENT expo-image-picker (comme tu veux)
+  // Upload direct sans manipulation + FormData natif
+  // ═══════════════════════════════════════════════════════════
+
+  // Filtrage des devises selon la recherche
+  const filteredCurrencies = useMemo(() => {
+    if (!searchQuery) return currencies;
+    const lowerQuery = searchQuery.toLowerCase();
+    return currencies.filter(
+      (c) =>
+        c.code.toLowerCase().includes(lowerQuery) ||
+        c.name.toLowerCase().includes(lowerQuery) ||
+        c.symbol.toLowerCase().includes(lowerQuery)
+    );
+  }, [currencies, searchQuery]);
+
+  // Récupère l'affichage de la devise sélectionnée
+  const selectedCurrency = currencies.find((c) => c.id === business.currencyId);
+
+  const getCurrencyDisplay = () => {
+    if (!selectedCurrency) return "Sélectionnez une devise";
+    return `${selectedCurrency.code} • ${selectedCurrency.name}`;
+  };
+  // Ajoute ça dans tes states (si pas déjà fait)
+  const [activitySectors] = useState([
+    { id: "COMMERCANT", label: "Commerçant / Boutique" },
+    { id: "RESTAURATEUR", label: "Restaurateur / Restauration" },
+  ]);
+
+  const [sectorModalVisible, setSectorModalVisible] = useState(false);
+
+  // Au chargement du formulaire (useEffect ou dans ton init)
+  // Pré-sélectionne COMMERCANT par défaut AU CHARGEMENT
+  useEffect(() => {
+    const defaultSector = "COMMERCANT";
+
+    // Mise à jour état local (pour l'affichage immédiat)
+    setBusiness((prev) => ({ ...prev, activitySector: defaultSector }));
+
+    // Mise à jour du store (important !)
+    updateBusinessData({ activitySector: defaultSector });
+  }, []); // seulement au montage
+  useEffect(() => {
+    loadCurrencies();
+  }, []);
+
+  const loadCurrencies = async () => {
+    try {
+      setLoadingCurrencies(true);
+      const currenciesData = await CurrencyService.getCurrencies();
+      setCurrencies(currenciesData);
+
+      // Sélectionner XAF par défaut si disponible
+      const xafCurrency = currenciesData.find((c) => c.code === "XAF");
+      if (xafCurrency) {
+        setBusiness((prev) => ({ ...prev, currencyId: xafCurrency.id }));
+      } else if (currenciesData.length > 0) {
+        setBusiness((prev) => ({ ...prev, currencyId: currenciesData[0].id }));
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des devises:", error);
+      Alert.alert("Erreur", "Impossible de charger les devises");
+    } finally {
+      setLoadingCurrencies(false);
+    }
+  };
   // ÉTAT LOCAL pour gérer les erreurs de validation
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
@@ -421,8 +515,6 @@ const FortibOneOnboarding: React.FC = () => {
     setAccountType,
     updatePersonalData,
     updateBusinessData,
-    setLogoImage,
-    setCoverImage,
     setOtp,
     togglePassword,
     toggleConfirmPassword,
@@ -486,6 +578,184 @@ const FortibOneOnboarding: React.FC = () => {
     return Object.keys(errors).length === 0;
   }, [personalData, selectedCountry]);
 
+  console.log("ÉTAT COMPLET DU STORE AVANT SOUMISSION :", {
+    personalData,
+    businessData,
+    accountType,
+  });
+  // ──────── HANDLE FINAL – TOUT EN UN (remplace l’ancienne) ────────
+  const handleRegisterAccount = async () => {
+    const store = useOnboardingStore.getState();
+    const { personalData } = store;
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSubmissionError("");
+    setSubmissionProgress(5);
+    setSubmissionStatus("registering");
+
+    try {
+      // 1️⃣ CRÉATION DU COMPTE
+      console.log("🔹 ÉTAPE 1 : Création du compte...");
+
+      const registerPayload: RegisterPayload = {
+        email: personalData.email!.trim(),
+        password: personalData.password!,
+        firstName: personalData.prenom!.trim(),
+        lastName: personalData.name!.trim(),
+        phoneNumber: personalData.phone!.trim(),
+        dateOfBirth: personalData.dateNaissance!.split("/").reverse().join("-"),
+        country: personalData.country!,
+        city: personalData.city!.trim(),
+        gender: personalData.sexe === "Masculin" ? "MALE" : "FEMALE",
+        profileType: "PRO",
+      };
+
+      console.log("📤 Envoi inscription :", registerPayload);
+
+      await axiosInstance.post("/auth/register", registerPayload);
+      console.log("✅ Compte créé, OTP envoyé par email");
+
+      setSubmissionProgress(100);
+      setIsSubmitting(false);
+
+      // ✅ PASSER À L'ÉCRAN OTP (étape 5)
+      setStep(5);
+
+      Alert.alert(
+        "✅ Compte créé",
+        `Un code de vérification a été envoyé à ${personalData.email}`
+      );
+    } catch (err: any) {
+      console.error(
+        "❌ Échec inscription :",
+        err.response?.data || err.message
+      );
+
+      let msg = "Une erreur est survenue lors de l'inscription";
+      if (err.response?.data?.message) {
+        msg = err.response.data.message;
+      }
+
+      setSubmissionError(msg);
+      setSubmissionStatus("error");
+      setIsSubmitting(false);
+      setSubmissionProgress(0);
+
+      Alert.alert("Échec de création", msg);
+    }
+  };
+
+  // ══════════════════════════════════════════════════════════════
+  // NOUVELLE FONCTION : Vérifier OTP → Upload → Créer entreprise
+  // ══════════════════════════════════════════════════════════════
+  const handleVerifyOtpAndComplete = async () => {
+    const store = useOnboardingStore.getState();
+    const { personalData, businessData } = store;
+    // Vérifier que l'OTP est complet
+    if (otp.some((digit) => digit === "")) {
+      Alert.alert("Code incomplet", "Veuillez saisir les 6 chiffres");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmissionError("");
+    setSubmissionProgress(10);
+    setSubmissionStatus("verifying");
+
+    try {
+      const otpCode = otp.join("");
+      console.log("🔹 ÉTAPE 2 : Vérification OTP...", otpCode);
+
+      // 2️⃣ VÉRIFICATION EMAIL
+      const verifyRes = await axiosInstance.post("/auth/verify-email", {
+        email: personalData.email,
+        otp: otpCode,
+      });
+      console.log("✅ Email vérifié :", verifyRes.data);
+
+      const token = verifyRes.data?.access_token;
+      if (!token) throw new Error("Token manquant dans la réponse");
+
+      // Sauvegarder le token
+      await AsyncStorage.setItem("access_token", token);
+      axiosInstance.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${token}`;
+      console.log("🔑 Token configuré");
+
+      setSubmissionProgress(30);
+
+      // 3️⃣ UPLOAD DES IMAGES
+      console.log("🔹 ÉTAPE 3 : Upload des images...");
+      setSubmissionStatus("uploading");
+
+      setSubmissionProgress(60);
+
+      // 4️⃣ CRÉATION DE L'ENTREPRISE
+      console.log("🔹 ÉTAPE 4 : Création de l'entreprise...");
+      setSubmissionStatus("creatingBusiness");
+
+      if (!accountType) {
+        throw new Error("Type de compte non sélectionné");
+      }
+
+      const businessPayload: CreateBusinessData = {
+        name: businessData.name!.trim(),
+        description: businessData.description!.trim(),
+        type: accountType as "COMMERCANT" | "RESTAURATEUR" | "FOURNISSEUR",
+        address: businessData.address!.trim(),
+        phoneNumber: personalData.phone!.replace(/\s/g, ""),
+        logoUrl:
+          "https://sanishtech.com/i/691d336ce34a72.33433443-1763521388.png",
+        coverImageUrl:
+          "https://sanishtech.com/i/691d33c7dd9ee9.03005096-1763521479.png",
+        latitude: businessData.latitude!,
+        longitude: businessData.longitude!,
+        currencyId: businessData.currencyId!,
+      };
+
+      console.log(
+        "📤 BUSINESS PAYLOAD :",
+        JSON.stringify(businessPayload, null, 2)
+      );
+
+      await BusinessesService.createBusiness(businessPayload);
+      console.log("✅ Entreprise créée avec succès");
+
+      setSubmissionProgress(100);
+      setSubmissionStatus("success");
+
+      // ✅ AJOUTER CES LIGNES
+      setIsSubmitting(false); // ← CRITIQUE : Libère le loader
+
+      // Petit délai pour montrer le message de succès
+      setTimeout(() => {
+        setStep(6); // Redirection vers l'écran de succès
+      }, 500);
+    } catch (err: any) {
+      console.error("❌ Échec après OTP :", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
+
+      let msg = "Une erreur est survenue";
+      if (err.response?.data?.message) {
+        msg = err.response.data.message;
+      } else if (err.message) {
+        msg = err.message;
+      }
+
+      setSubmissionError(msg);
+      setSubmissionStatus("error");
+      setIsSubmitting(false);
+      setSubmissionProgress(0);
+
+      Alert.alert("Échec", msg);
+    }
+  };
+
   const validateBusinessData = useCallback((): boolean => {
     const errors: Record<string, string> = {};
 
@@ -500,15 +770,13 @@ const FortibOneOnboarding: React.FC = () => {
       errors.description = "20+ caractères requis";
     }
 
-    if (!logoImage) errors.logoUrl = "Logo requis";
-    if (!coverImage) errors.coverImageUrl = "Couverture requise";
     if (!businessData.latitude || businessData.latitude === 0) {
       errors.latitude = "Position GPS requise";
     }
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [businessData, logoImage, coverImage]);
+  }, [businessData]);
 
   const validatePasswordData = useCallback((): boolean => {
     const errors: Record<string, string> = {};
@@ -582,14 +850,14 @@ const FortibOneOnboarding: React.FC = () => {
     [updatePersonalData]
   );
 
-  const handleBusinessInputChange = useCallback(
-    (field: keyof CreateBusinessData, value: string) => {
-      updateBusinessData({ [field]: value });
-      // Effacer l'erreur de validation pour ce champ
-      setValidationErrors((prev) => ({ ...prev, [field]: "" }));
-    },
-    [updateBusinessData]
-  );
+  const handleBusinessInputChange = (
+    field: keyof CreateBusinessData,
+    value: string
+  ) => {
+    updateBusinessData({ [field]: value });
+    // Effacer l'erreur de validation pour ce champ
+    setValidationErrors((prev) => ({ ...prev, [field]: "" }));
+  };
 
   const handleCountrySelect = useCallback(
     (country: Country) => {
@@ -631,47 +899,6 @@ const FortibOneOnboarding: React.FC = () => {
       setShowDateModal(false);
     },
     [updatePersonalData]
-  );
-
-  const pickImage = useCallback(
-    async (type: "logo" | "cover") => {
-      try {
-        const { status } =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== "granted") {
-          Alert.alert("Permission refusée", "Accès à la galerie nécessaire");
-          return;
-        }
-
-        if (type === "logo") setIsLoadingLogo(true);
-        else setIsLoadingCover(true);
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: type === "logo" ? [1, 1] : [16, 9],
-          quality: 0.8,
-        });
-
-        if (!result.canceled) {
-          const uri = result.assets[0].uri;
-          if (type === "logo") {
-            setLogoImage(uri);
-            setValidationErrors((prev) => ({ ...prev, logoUrl: "" }));
-          } else {
-            setCoverImage(uri);
-            setValidationErrors((prev) => ({ ...prev, coverImageUrl: "" }));
-          }
-        }
-      } catch (error) {
-        Alert.alert("Erreur", "Impossible de charger l'image");
-        console.error("Image picker error:", error);
-      } finally {
-        if (type === "logo") setIsLoadingLogo(false);
-        else setIsLoadingCover(false);
-      }
-    },
-    [setLogoImage, setCoverImage]
   );
 
   const getCurrentLocation = useCallback(async () => {
@@ -780,24 +1007,36 @@ const FortibOneOnboarding: React.FC = () => {
       nextLabel?: string;
       showIcon?: boolean;
     }) => {
-      const getIsValid = () => {
-        switch (step) {
-          case 1:
-            return !!accountType;
-          case 2:
-            return validatePersonalData();
-          case 3:
-            return validateBusinessData();
-          case 4:
-            return validatePasswordData();
-          case 5:
-            return otp.every((digit) => digit !== "");
-          default:
-            return true;
+      // On calcule la validité UNIQUEMENT au moment du clic
+      const handleNext = () => {
+        let isValid = true;
+
+        if (step === 1) {
+          isValid = !!accountType;
+        } else if (step === 2) {
+          isValid = validatePersonalData();
+        } else if (step === 3) {
+          isValid = validateBusinessData();
+        } else if (step === 4) {
+          isValid = validatePasswordData();
+        } else if (step === 5) {
+          isValid = otp.every((d) => d !== "");
+        }
+
+        if (isValid) {
+          onNext();
         }
       };
 
-      const isValid = getIsValid();
+      // On garde juste un état visuel simple pour activer/désactiver le bouton
+      // sans déclencher de setState dans le render
+      const isButtonEnabled =
+        step === 1
+          ? !!accountType
+          : step === 5
+          ? otp.some((d) => d !== "") // au moins un chiffre saisi
+          : true; // pour les étapes 2-3-4 on active toujours visuellement
+      // (la vraie validation se fait dans handleNext)
 
       return (
         <View style={styles.footer}>
@@ -807,9 +1046,14 @@ const FortibOneOnboarding: React.FC = () => {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[styles.nextButton, !isValid && styles.nextButtonDisabled]}
-            onPress={onNext}
-            disabled={!isValid}
+            style={[
+              styles.nextButton,
+              !isButtonEnabled && styles.nextButtonDisabled,
+            ]}
+            onPress={handleNext}
+            disabled={
+              !isButtonEnabled && step !== 2 && step !== 3 && step !== 4
+            }
           >
             <Text style={styles.nextButtonText}>{nextLabel}</Text>
             {showIcon && <Feather name="arrow-right" size={20} color="#fff" />}
@@ -820,13 +1064,12 @@ const FortibOneOnboarding: React.FC = () => {
     [
       step,
       accountType,
+      otp,
       validatePersonalData,
       validateBusinessData,
       validatePasswordData,
-      otp,
     ]
   );
-
   const renderStep1 = () => (
     <View style={styles.container}>
       <Header />
@@ -857,15 +1100,10 @@ const FortibOneOnboarding: React.FC = () => {
 
   const Step2Content = () => {
     return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
+      <View style={{ flex: 1 }}>
         <ScrollView
-          ref={scrollViewRef2}
-          contentContainerStyle={{ paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
         >
           <Header onBack={() => setStep(1)} />
@@ -1053,21 +1291,26 @@ const FortibOneOnboarding: React.FC = () => {
           onSelect={handleCountrySelect}
           selectedCountry={selectedCountry}
         />
-      </KeyboardAvoidingView>
+      </View>
     );
   };
 
   const Step3Content = () => {
+    // Permet à l'utilisateur de changer le secteur (quand tu ouvriras le modal)
+    const handleSectorSelect = useCallback(
+      (sectorId: "COMMERCANT" | "RESTAURATEUR") => {
+        setBusiness((prev) => ({ ...prev, activitySector: sectorId }));
+        updateBusinessData({ activitySector: sectorId }); // ← CRUCIAL : envoie le bon secteur au store
+        setSectorModalVisible(false);
+        setValidationErrors((prev) => ({ ...prev, activitySector: "" })); // efface l'erreur
+      },
+      []
+    );
     return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
+      <View style={{ flex: 1 }}>
         <ScrollView
-          ref={scrollViewRef3}
-          contentContainerStyle={{ paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
         >
           <Header onBack={() => setStep(2)} />
@@ -1086,26 +1329,68 @@ const FortibOneOnboarding: React.FC = () => {
             )}
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Secteur d&apos;activité *</Text>
-            <TouchableOpacity
+          <View>
+            {/* <Text style={styles.label}>Secteur d&apos;activité *</Text> */}
+            {/* <TouchableOpacity
               style={styles.selectInput}
-              onPress={() => {
-                Alert.alert("Info", "Sélection du secteur d'activité");
-              }}
+              onPress={() => setSectorModalVisible(true)}
             >
               <Text
-                style={{ color: businessData.activitySector ? "#000" : "#999" }}
+                style={{
+                  color: business.activitySector ? "#000" : "#999",
+                  flex: 1,
+                }}
               >
-                {businessData.activitySector || "Sélectionnez"}
+                {activitySectors.find((s) => s.id === business.activitySector)
+                  ?.label || "Sélectionnez un secteur"}
               </Text>
               <Feather name="chevron-down" size={20} color="#666" />
-            </TouchableOpacity>
-            {validationErrors.activitySector && (
+            </TouchableOpacity> */}
+
+            {/* MODAL DE SÉLECTION DU SECTEUR */}
+            {/* <Modal
+              visible={sectorModalVisible}
+              transparent
+              animationType="fade"
+            >
+              <TouchableWithoutFeedback
+                onPress={() => setSectorModalVisible(false)}
+              >
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>
+                      Choisir le secteur d&apos;activité
+                    </Text>
+                    {activitySectors.map((sector) => (
+                      <TouchableOpacity
+                        key={sector.id}
+                        style={[
+                          styles.currencyItem,
+                          business.activitySector === sector.id &&
+                            styles.currencyItemSelected,
+                        ]}
+                        onPress={() =>
+                          handleSectorSelect(
+                            sector.id as "COMMERCANT" | "RESTAURATEUR"
+                          )
+                        }
+                      >
+                        <Text style={styles.currencyCode}>{sector.label}</Text>
+                        {business.activitySector === sector.id && (
+                          <Feather name="check" size={24} color="#059669" />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </Modal> */}
+
+            {/* {validationErrors.activitySector && (
               <Text style={styles.errorText}>
                 {validationErrors.activitySector}
               </Text>
-            )}
+            )} */}
           </View>
 
           <View style={styles.formGroup}>
@@ -1157,7 +1442,7 @@ const FortibOneOnboarding: React.FC = () => {
               <Text style={styles.errorText}>{validationErrors.latitude}</Text>
             )}
           </View>
-
+          {/* 
           <View style={styles.formGroup}>
             <Text style={styles.label}>Logo *</Text>
             <TouchableOpacity
@@ -1218,7 +1503,7 @@ const FortibOneOnboarding: React.FC = () => {
                 {validationErrors.coverImageUrl}
               </Text>
             )}
-          </View>
+          </View> */}
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>Description *</Text>
@@ -1245,26 +1530,123 @@ const FortibOneOnboarding: React.FC = () => {
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>Devise *</Text>
+
             <TouchableOpacity
               style={styles.selectInput}
-              onPress={() => {
-                Alert.alert("Info", "Sélection de la devise");
-              }}
+              onPress={() => setCurrencyModalVisible(true)}
             >
               <Text
-                style={{ color: businessData.currencyId ? "#000" : "#999" }}
+                style={{
+                  color: business.currencyId ? "#000" : "#999",
+                  flex: 1,
+                }}
               >
-                {businessData.currencyId || "Sélectionnez"}
+                {getCurrencyDisplay()}
               </Text>
               <Feather name="chevron-down" size={20} color="#666" />
             </TouchableOpacity>
+
             {validationErrors.currencyId && (
               <Text style={styles.errorText}>
                 {validationErrors.currencyId}
               </Text>
             )}
           </View>
+          <Modal
+            visible={currencyModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setCurrencyModalVisible(false)}
+          >
+            <TouchableWithoutFeedback
+              onPress={() => setCurrencyModalVisible(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <TouchableWithoutFeedback>
+                  <View style={styles.modalContent}>
+                    {/* En-tête avec recherche */}
+                    <View style={styles.modalHeader}>
+                      <Text style={styles.modalTitle}>Choisir une devise</Text>
+                      <TouchableOpacity
+                        onPress={() => setCurrencyModalVisible(false)}
+                      >
+                        <Feather name="x" size={24} color="#666" />
+                      </TouchableOpacity>
+                    </View>
 
+                    {/* Barre de recherche */}
+                    <View style={styles.searchContainer}>
+                      <Feather
+                        name="search"
+                        size={20}
+                        color="#999"
+                        style={{ marginRight: 10 }}
+                      />
+                      <TextInput
+                        placeholder="Rechercher une devise..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        style={{ flex: 1, fontSize: 16 }}
+                        autoFocus
+                        clearButtonMode="while-editing"
+                      />
+                    </View>
+
+                    {/* Liste des devises */}
+                    <FlatList
+                      data={filteredCurrencies}
+                      keyExtractor={(item) => item.id}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={[
+                            styles.currencyItem,
+                            item.id === business.currencyId &&
+                              styles.currencyItemSelected,
+                          ]}
+                          onPress={() => {
+                            setBusiness((prev) => ({
+                              ...prev,
+                              currencyId: item.id,
+                            }));
+                            updateBusinessData({ currencyId: item.id }); // ← LIGNE AJOUTÉE (très importante !)
+                            setValidationErrors((prev) => ({
+                              ...prev,
+                              currencyId: "",
+                            })); // bonus UX
+                            setCurrencyModalVisible(false);
+                            setSearchQuery("");
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.currencyCode}>
+                              {item.code} {item.symbol}
+                            </Text>
+                            <Text style={styles.currencyName}>{item.name}</Text>
+                          </View>
+                          {item.id === business.currencyId && (
+                            <Feather name="check" size={24} color="#007AFF" />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                      ListEmptyComponent={
+                        <Text
+                          style={{
+                            textAlign: "center",
+                            padding: 20,
+                            color: "#666",
+                          }}
+                        >
+                          {searchQuery
+                            ? "Aucune devise trouvée"
+                            : "Chargement..."}
+                        </Text>
+                      }
+                    />
+                  </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </Modal>
           <Footer
             onBack={() => setStep(2)}
             onNext={() => {
@@ -1277,17 +1659,13 @@ const FortibOneOnboarding: React.FC = () => {
             }}
           />
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     );
   };
 
   const renderStep4 = () => {
     return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
+      <View style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
@@ -1300,7 +1678,7 @@ const FortibOneOnboarding: React.FC = () => {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Mot de passe *</Text>
-              <View style={styles.passwordInput}>
+           0   <View style={styles.passwordInput}>
                 <TextInput
                   style={[
                     styles.inputPassword,
@@ -1360,31 +1738,20 @@ const FortibOneOnboarding: React.FC = () => {
             </View>
           </View>
 
-          <Footer
-            onBack={() => setStep(3)}
-            onNext={() => {
-              if (validatePasswordData()) {
-                setStep(5);
-              }
-            }}
-            nextLabel="Créer mon compte"
-            showIcon={false}
-          />
+          <FooterStep4 />
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     );
   };
 
   const renderStep5 = () => {
-    const isOtpComplete = otp.every((digit) => digit !== "");
-
     return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <Header onBack={() => setStep(4)} />
           <View style={styles.content}>
             <Text style={styles.otpTitle}>Vérification OTP</Text>
@@ -1412,28 +1779,25 @@ const FortibOneOnboarding: React.FC = () => {
             <TouchableOpacity
               style={styles.resendButton}
               onPress={() => {
+                // TODO : Implémenter le renvoi d'OTP
                 Alert.alert("Code renvoyé", "Un nouveau code a été envoyé");
               }}
             >
               <Text style={styles.resendButtonText}>Renvoyer le code</Text>
             </TouchableOpacity>
 
+            {/* ✅ NOUVEAU FOOTER */}
             <Footer
               onBack={() => setStep(4)}
-              onNext={() => {
-                if (isOtpComplete) {
-                  setStep(6);
-                }
-              }}
-              nextLabel="Vérifier"
+              onNext={handleVerifyOtpAndComplete} // ← CHANGÉ ICI
+              nextLabel="Vérifier et continuer"
               showIcon={false}
             />
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     );
   };
-
   const renderStep6 = () => (
     <View style={styles.successContainer}>
       <View style={styles.successContent}>
@@ -1448,7 +1812,7 @@ const FortibOneOnboarding: React.FC = () => {
         <TouchableOpacity
           style={styles.successButton}
           onPress={() => {
-            router.push("/(tabs)/home");
+            router.push("/(professionnel)");
           }}
         >
           <Text style={styles.successButtonText}>Accéder à mon commerce</Text>
@@ -1458,20 +1822,216 @@ const FortibOneOnboarding: React.FC = () => {
     </View>
   );
 
+  // ──────────────────────────────────────────────────────────────
+  // Footer spécial pour l'étape 4 → déclenche la vraie création PRO
+  // ──────────────────────────────────────────────────────────────
+  const FooterStep4 = useCallback(
+    () => (
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => setStep(3)}
+        >
+          <Text style={styles.cancelText}>Retour</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.nextButton, isSubmitting && styles.nextButtonDisabled]}
+          onPress={handleRegisterAccount} // ← CHANGÉ ICI
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={[styles.nextButtonText, { marginLeft: 10 }]}>
+                Création en cours...
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.nextButtonText}>Créer mon compte</Text>
+              <Feather name="arrow-right" size={20} color="#fff" />
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    ),
+    [isSubmitting]
+  );
+
+  // ──────────────────────────────────────────────────────────────
+  // LOADER FULLSCREEN PENDANT LA CRÉATION
+  // ──────────────────────────────────────────────────────────────
+  if (isSubmitting) {
+    return (
+      <View style={styles.fullscreenLoader}>
+        <View style={styles.loaderContent}>
+          <ActivityIndicator size="large" color="#059669" />
+          <Text style={styles.loaderTitle}>Création de votre compte pro</Text>
+          <Text style={styles.loaderSubtitle}>
+            {submissionStatus === "registering" && "Création du compte..."}
+            {submissionStatus === "verifying" && "Vérification de l'email..."}
+            {submissionStatus === "uploading" && "Envoi des images..."}
+            {submissionStatus === "creatingBusiness" &&
+              "Création de votre commerce..."}
+            {submissionStatus === "success" && "Tout est prêt ! 🎉"}
+          </Text>
+
+          <View style={styles.progressBar}>
+            <View
+              style={[styles.progressFill, { width: `${submissionProgress}%` }]}
+            />
+          </View>
+          <Text style={styles.progressText}>{submissionProgress}%</Text>
+
+          {submissionError ? (
+            <Text style={styles.errorTextLoader}>{submissionError}</Text>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
   return (
     <SafeAreaView style={styles.safeArea}>
-      {step === 1 && renderStep1()}
-      {step === 2 && <Step2Content />}
-      {step === 3 && <Step3Content />}
-      {step === 4 && renderStep4()}
-      {step === 5 && renderStep5()}
-      {step === 6 && renderStep6()}
+      {/* UN SEUL KeyboardAvoidingView pour tout l'écran */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        key={step} // force le remontage propre à chaque étape
+      >
+        {step === 1 && renderStep1()}
+        {step === 2 && <Step2Content />}
+        {step === 3 && <Step3Content />}
+        {step === 4 && renderStep4()}
+        {step === 5 && renderStep5()}
+        {step === 6 && renderStep6()}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 // Les styles restent exactement les mêmes...
 const styles = StyleSheet.create({
+  fullscreenLoader: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.97)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
+  loaderContent: {
+    alignItems: "center",
+    padding: 32,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    width: "85%",
+  },
+  loaderTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 20,
+    color: "#111",
+  },
+  loaderSubtitle: {
+    fontSize: 15,
+    color: "#666",
+    marginTop: 8,
+    textAlign: "center",
+  },
+  progressBar: {
+    height: 10,
+    width: "100%",
+    backgroundColor: "#eee",
+    borderRadius: 5,
+    marginTop: 24,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#059669",
+    borderRadius: 5,
+  },
+  progressText: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#059669",
+  },
+  errorTextLoader: {
+    color: "#ef4444",
+    marginTop: 16,
+    textAlign: "center",
+    fontSize: 14,
+  },
+  selectInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 15,
+    backgroundColor: "#fff",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    width: "92%",
+    maxHeight: "85%",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "#f9f9f9",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "#fff",
+  },
+  currencyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  currencyItemSelected: {
+    backgroundColor: "#f0f8ff",
+  },
+  currencyCode: {
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  currencyName: {
+    color: "#666",
+    fontSize: 14,
+    marginTop: 2,
+  },
   safeArea: { flex: 1, backgroundColor: "#fff" },
   container: { flex: 1 },
   header: {
@@ -1535,16 +2095,7 @@ const styles = StyleSheet.create({
   },
   inputError: { borderColor: "#ef4444" },
   errorText: { color: "#ef4444", fontSize: 12, marginTop: 4 },
-  selectInput: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: "#fff",
-  },
+
   placeholderText: { color: "#999" },
   phoneContainer: { position: "relative" },
   phoneCodeOverlay: {
@@ -1900,6 +2451,46 @@ const modalStyles = StyleSheet.create({
   phoneCodeModern: { fontSize: 13, color: "#059669", fontWeight: "500" },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 10, color: "#666" },
+  fullscreenLoader: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+  loaderContent: {
+    alignItems: "center",
+    padding: 30,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  loaderTitle: { fontSize: 18, fontWeight: "600", marginTop: 20 },
+  loaderSubtitle: { fontSize: 14, color: "#666", marginTop: 8 },
+  progressBar: {
+    height: 8,
+    width: 250,
+    backgroundColor: "#eee",
+    borderRadius: 4,
+    marginTop: 20,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#059669",
+    borderRadius: 4,
+  },
+  progressText: {
+    marginTop: 8,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#059669",
+  },
+  errorTextLoader: { color: "#ef4444", marginTop: 15, textAlign: "center" },
 });
 
 export default FortibOneOnboarding;

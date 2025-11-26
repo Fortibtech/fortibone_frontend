@@ -1,25 +1,32 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from "react-native"
-import { useRouter } from "expo-router"
-import MaterialIcons from "react-native-vector-icons/MaterialIcons"
+import type React from "react";
+import { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Switch,
+} from "react-native";
+import { useRouter } from "expo-router";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 interface SettingItem {
-  id: string
-  icon: string
-  label: string
-  type: "arrow" | "toggle"
-  onPress?: () => void
-  value?: boolean
-  onChange?: (value: boolean) => void
+  id: string;
+  icon: string;
+  label: string;
+  type: "arrow" | "toggle";
+  onPress?: () => void;
+  value?: boolean;
+  onChange?: (value: boolean) => void;
 }
 
 const Setting: React.FC = () => {
-  const router = useRouter()
-  const [notifications, setNotifications] = useState(true)
-  const [theme, setTheme] = useState(true)
+  const router = useRouter();
+  const [notifications, setNotifications] = useState(true);
+  const [theme, setTheme] = useState(true);
 
   const settings: SettingItem[] = [
     {
@@ -45,20 +52,16 @@ const Setting: React.FC = () => {
       value: theme,
       onChange: setTheme,
     },
-    {
-      id: "language",
-      icon: "language",
-      label: "Langue",
-      type: "arrow",
-      onPress: () => router.push("/fournisseurSetting/Language"),
-    },
-  ]
+  ];
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.arrowBack} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.arrowBack}
+          onPress={() => router.back()}
+        >
           <MaterialIcons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Paramètres</Text>
@@ -79,7 +82,9 @@ const Setting: React.FC = () => {
               </View>
               <Text style={styles.settingLabel}>{setting.label}</Text>
             </View>
-            {setting.type === "arrow" && <MaterialIcons name="chevron-right" size={24} color="#CCCCCC" />}
+            {setting.type === "arrow" && (
+              <MaterialIcons name="chevron-right" size={24} color="#CCCCCC" />
+            )}
             {setting.type === "toggle" && (
               <Switch
                 value={setting.value}
@@ -105,8 +110,8 @@ const Setting: React.FC = () => {
         </TouchableOpacity>
       </ScrollView>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -183,18 +188,18 @@ const styles = StyleSheet.create({
     marginRight: 8,
     // borderWidth: 1,
     borderRadius: 50,
-    borderColor: '#F8F1F1FF',
+    borderColor: "#F8F1F1FF",
     // padding: 5,
   },
   flag: {
     fontSize: 20,
   },
   arrowBack: {
-      borderWidth: 1,
+    borderWidth: 1,
     borderRadius: 50,
-    borderColor: '#F8F1F1FF',
+    borderColor: "#F8F1F1FF",
     padding: 5,
-  }
-})
+  },
+});
 
-export default Setting
+export default Setting;

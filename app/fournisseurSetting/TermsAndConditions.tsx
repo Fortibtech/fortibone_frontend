@@ -14,6 +14,7 @@ export default function TermsAndConditions() {
           paddingVertical: 12,
           borderBottomWidth: 1,
           borderBottomColor: "#E5E5E5",
+           height: 100,
         }}
       >
         <TouchableOpacity onPress={() => router.back()}>
@@ -22,7 +23,7 @@ export default function TermsAndConditions() {
         <Text
           style={{ fontSize: 18, fontWeight: "600", marginLeft: 16, flex: 1, textAlign: "center", color: "#333333" }}
         >
-          Termes & Conditions d'u...
+          Termes & Conditions d&apos;u...
         </Text>
       </View>
 

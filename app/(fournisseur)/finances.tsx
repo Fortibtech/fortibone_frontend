@@ -1,35 +1,20 @@
-import { GetWallet, GetWalletTransactions, Wallet } from "@/api/wallet";
+import { GetWallet, Wallet } from "@/api/wallet";
 import { DepositModal } from "@/components/Wallet/DepositModal";
 import WalletHeaderCard from "@/components/Wallet/GetWalletDeposits";
 import { RecentTransactions } from "@/components/Wallet/RecentTransactions";
-import { StatsCard } from "@/components/Wallet/StatsCard";
+import StatsCard from "@/components/Wallet/StatsCard";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const WalletScreen = () => {
   const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [historyVisible, setHistoryVisible] = useState(false);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
-  const fetchTransactions = async () => {
-    try {
-      setLoadingHistory(true);
-      const res = await GetWalletTransactions({ page: 1, limit: 10 });
-      setTransactions(res?.data || []); // selon ta réponse API
-    } catch (error) {
-      console.log("Erreur historique :", error);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
   const fetchWallet = useCallback(async () => {
     try {
       setLoading(true);
@@ -64,40 +49,17 @@ const WalletScreen = () => {
           <Text style={styles.title}>Finances</Text>
 
           {/* Bouton Options */}
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => setMenuVisible(!menuVisible)}
-          >
+          <TouchableOpacity style={styles.iconButton}>
             <Ionicons name="ellipsis-vertical" size={22} color="#000" />
           </TouchableOpacity>
         </View>
-        {/* --- MENU OPTIONS --- */}
-        {menuVisible && (
-          <View style={styles.optionsMenu}>
-            <TouchableOpacity
-              style={styles.optionItem}
-              onPress={() => {
-                setMenuVisible(false);
-                setHistoryVisible(true);
-                fetchTransactions();
-              }}
-            >
-              <Text style={styles.optionText}>Historique</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+
         {/* --- CONTENU --- */}
         <View style={styles.content}>
           {wallet ? (
-            <WalletHeaderCard
-              balance={parseFloat(wallet.balance) || 0}
-              onDepositPress={() => setModalVisible(true)}
-            />
+            <WalletHeaderCard balance={parseFloat(wallet.balance) || 0} />
           ) : (
-            <WalletHeaderCard
-              balance={0}
-              onDepositPress={() => setModalVisible(true)}
-            />
+            <WalletHeaderCard balance={0} />
           )}
           <DepositModal
             visible={modalVisible}
@@ -107,44 +69,6 @@ const WalletScreen = () => {
           <RecentTransactions />
         </View>
       </SafeAreaView>
-
-      <Modal
-        visible={historyVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setHistoryVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Historique des transactions</Text>
-
-            {loadingHistory ? (
-              <Text>Chargement...</Text>
-            ) : transactions.length > 0 ? (
-              transactions.map((tx, i) => (
-                <View key={i} style={styles.transactionItem}>
-                  <Text style={styles.txType}>{tx.type}</Text>
-                  <Text style={styles.txAmount}>
-                    {tx.amount} {tx.currency?.symbol}
-                  </Text>
-                  <Text style={styles.txDate}>
-                    {new Date(tx.createdAt).toLocaleDateString()}
-                  </Text>
-                </View>
-              ))
-            ) : (
-              <Text>Aucune transaction trouvée</Text>
-            )}
-
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setHistoryVisible(false)}
-            >
-              <Text style={styles.closeText}>Fermer</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 };

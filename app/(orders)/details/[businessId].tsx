@@ -418,13 +418,13 @@ function ClientsList({
             <Ionicons name="filter-outline" size={18} color="#777" />
           )}
         </View>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.newBtn}
           onPress={() => router.push("/(orders)/screen/NouveauClient")}
         >
           <Ionicons name="person-add-outline" size={18} color="#00A36C" />
           <Text style={styles.newBtnText}>Nouveau Client</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {clients.length === 0 ? (
