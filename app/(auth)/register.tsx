@@ -9,6 +9,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
   Alert,
   Image,
@@ -460,25 +461,29 @@ const Register: React.FC = () => {
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [phoneError, setPhoneError] = useState<string>("");
-
+  const [userProfile, setUserProfile] = useState<
+    "particulier" | "professionnel" | null
+  >(null);
   const router = useRouter();
-
+  // Dans useEffect avec la vérif du profil, charge-le aussi dans l'état
   useEffect(() => {
     const checkProfile = async () => {
       try {
         const saved = await AsyncStorage.getItem("userProfile");
-        if (saved !== "particulier") {
+        if (saved === "particulier" || saved === "professionnel") {
+          setUserProfile(saved as "particulier" | "professionnel");
+        } else {
           router.replace("/onboarding");
         }
       } catch (error) {
         console.error("Erreur vérification profil:", error);
+        router.replace("/onboarding");
       } finally {
         setIsLoadingProfile(false);
       }
     };
     checkProfile();
   }, [router]);
-
   const updateField = useCallback((field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (field === "phoneNumber") {
@@ -558,27 +563,33 @@ const Register: React.FC = () => {
       return;
     }
 
-    const payload: RegisterPayload = {
-      firstName: formData.prenom.trim(),
-      lastName: formData.nom.trim(),
-      gender: formData.sexe === "Masculin" ? "MALE" : "FEMALE",
-      profileType: "PARTICULIER",
-      country: formData.pays.trim(),
-      city: formData.ville.trim(),
-      dateOfBirth: selectedDate
-        ? selectedDate.toISOString().split("T")[0]
-        : "1990-01-01",
-      email: formData.email.trim(),
-      password: formData.motDePasse,
-      phoneNumber: formData.phoneNumber.trim(),
-    };
-
     try {
+      // Lecture directe du profil choisi dans l'onboarding
+      const savedProfile = await AsyncStorage.getItem("userProfile");
+
+      const profileType =
+        savedProfile === "professionnel" ? "PRO" : "PARTICULIER";
+
+      const payload: RegisterPayload = {
+        firstName: formData.prenom.trim(),
+        lastName: formData.nom.trim(),
+        gender: formData.sexe === "Masculin" ? "MALE" : "FEMALE",
+        profileType, // ← maintenant dynamique et sans warning !
+        country: formData.pays.trim(),
+        city: formData.ville.trim(),
+        dateOfBirth: selectedDate
+          ? selectedDate.toISOString().split("T")[0]
+          : "1990-01-01", //
+        email: formData.email.trim(),
+        password: formData.motDePasse,
+        phoneNumber: formData.phoneNumber.trim().replace(/\s+/g, ""),
+      };
+
       const result = await registerUser(payload);
       useUserStore.getState().setEmail(payload.email);
 
       if (result.success) {
-        Alert.alert("Succès", result.message);
+        Alert.alert("Succès", result.message || "Compte créé avec succès !");
         router.push("/(auth)/OtpScreen");
       }
     } catch (error: any) {
@@ -615,7 +626,11 @@ const Register: React.FC = () => {
             <View style={styles.titleText}>
               <Text style={styles.mainTitle}>
                 Création de compte{" "}
-                <Text style={styles.subTitle}>Particulier</Text>
+                <Text style={styles.subTitle}>
+                  {userProfile === "professionnel"
+                    ? "Professionnel"
+                    : "Particulier"}
+                </Text>
               </Text>
             </View>
           </View>
@@ -734,9 +749,27 @@ const Register: React.FC = () => {
                 <Text style={styles.label}>Téléphone</Text>
                 <View style={{ position: "relative" }}>
                   <InputField
-                    placeholder="+33 6 12 34 56 78"
-                    value={formData.phoneNumber}
-                    onChangeText={(text) => updateField("phoneNumber", text)}
+                    placeholder="6 12 34 56 78" // ← Plus d'indicatif ici !
+                    value={
+                      selectedCountry &&
+                      formData.phoneNumber.startsWith(
+                        getPhoneCode(selectedCountry)
+                      )
+                        ? formData.phoneNumber
+                            .replace(getPhoneCode(selectedCountry), "")
+                            .trim()
+                        : formData.phoneNumber
+                    }
+                    onChangeText={(text) => {
+                      const code = selectedCountry
+                        ? getPhoneCode(selectedCountry)
+                        : "";
+                      const cleanNumber = text.replace(/\s+/g, " ").trim();
+                      updateField(
+                        "phoneNumber",
+                        code + (cleanNumber ? " " + cleanNumber : "")
+                      );
+                    }}
                     keyboardType="phone-pad"
                     leftIcon={
                       selectedCountry ? (
@@ -745,11 +778,22 @@ const Register: React.FC = () => {
                             marginRight: 8,
                             fontSize: 16,
                             color: "#059669",
+                            fontWeight: "600",
                           }}
                         >
                           {getPhoneCode(selectedCountry)}
                         </Text>
-                      ) : null
+                      ) : (
+                        <Text
+                          style={{
+                            marginRight: 8,
+                            fontSize: 16,
+                            color: "#999",
+                          }}
+                        >
+                          +?
+                        </Text>
+                      )
                     }
                     label={""}
                   />

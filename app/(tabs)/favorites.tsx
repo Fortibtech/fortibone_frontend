@@ -73,7 +73,7 @@ const FavoritesPage: React.FC = () => {
                       pathname: `/(restaurants)/restaurants-details/[restaurantsId]`,
                       params: { restaurantsId: item.id }, 
                     })
-                  }
+                  } 
                 >
                   <Image
                     source={{ uri: item.coverImageUrl || item.logoUrl }}

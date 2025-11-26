@@ -200,13 +200,13 @@ const styles = StyleSheet.create({
   },
   filterButtons: {
     flexDirection: "row",
-    gap: 8,
   },
   filterBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: "#F5F5F5",
+    marginLeft: 8, // ← Ajoute cette ligne
   },
   filterBtnActive: {
     backgroundColor: "#E8FFF6",
@@ -227,18 +227,17 @@ const styles = StyleSheet.create({
   legend: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 24,
     marginTop: 12,
   },
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
   },
   legendDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
+    marginRight: 6,
   },
   legendText: {
     fontSize: 12,

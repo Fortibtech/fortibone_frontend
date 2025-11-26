@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// app/deposit.tsx
+import { useState } from "react";
 import {
   View,
   Text,
@@ -7,186 +8,399 @@ import {
   StatusBar,
   SafeAreaView,
   ScrollView,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  Keyboard,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
+import {
+  CardField,
+  useStripe,
+  StripeProvider,
+} from "@stripe/stripe-react-native";
 
-// Types
-interface PaymentMethod {
-  id: string;
-  type: "mastercard" | "visa";
-  cardNumber: string;
-  cardHolder: string;
-}
+import { createDeposit } from "@/api/wallet";
 
-interface AmountOption {
-  value: number;
-  label: string;
-}
+type Method = "STRIPE" | "MVOLA";
 
-const DepositScreen: React.FC = () => {
-  const [selectedAmount, setSelectedAmount] = useState<number>(500000);
-  const [selectedMethod, setSelectedMethod] = useState<string>("1");
+const presets = [10000, 20000, 50000, 15000]; // OK pour Stripe (max ~600M XAF safe)
+const MAX_AMOUNT_XAF = 99999; // Limite safe (~1M USD equiv, sous 999k USD Stripe)
 
-  const paymentMethods: PaymentMethod[] = [
-    {
-      id: "1",
-      type: "mastercard",
-      cardNumber: "**** **** 2145 5489",
-      cardHolder: "Mohammed Fouad",
-    },
-  ];
+export default function DepositScreen() {
+  const { confirmPayment, createPaymentMethod } = useStripe();
+  const [method, setMethod] = useState<Method>("STRIPE");
+  const [amount, setAmount] = useState<string>("500000");
+  const [customInput, setCustomInput] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [cardComplete, setCardComplete] = useState(false);
 
-  const amountOptions: AmountOption[] = [
-    { value: 100000, label: "100 000" },
-    { value: 200000, label: "200 000" },
-    { value: 500000, label: "500 000" },
-    { value: 1000000, label: "1 000 000" },
-  ];
+  const formattedAmount = amount
+    ? parseInt(amount).toLocaleString("fr-FR")
+    : "0";
 
-  const formatAmount = (amount: number): string => {
-    return amount
-      .toLocaleString("fr-FR", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })
-      .replace(/\s/g, " ");
+  const handlePreset = (val: number) => {
+    setAmount(val.toString());
+    setCustomInput("");
+    Keyboard.dismiss();
   };
 
-  const handleConfirm = (): void => {
-    console.log("Confirming deposit of", selectedAmount);
-    // Logique de confirmation ici
+  const handleCustomAmount = (text: string) => {
+    const nums = text.replace(/[^0-9]/g, "");
+    setCustomInput(nums);
+    if (nums) {
+      const numVal = parseInt(nums);
+      if (numVal > MAX_AMOUNT_XAF) {
+        Alert.alert(
+          "Limite dépassée",
+          `Montant max : ${MAX_AMOUNT_XAF.toLocaleString(
+            "fr-FR"
+          )} XAF (limite Stripe)`
+        );
+        return;
+      }
+      setAmount(nums);
+    }
   };
 
-  const handleCancel = (): void => {
-    console.log("Cancelling deposit");
-    // Logique d'annulation ici
+  const initiateDeposit = async () => {
+    const numAmount = parseInt(amount);
+    if (!numAmount || numAmount < 1000) {
+      Alert.alert("Erreur", "Montant minimum : 1 000 XAF");
+      return;
+    }
+    if (numAmount > MAX_AMOUNT_XAF) {
+      Alert.alert(
+        "Limite dépassée",
+        `Montant max : ${MAX_AMOUNT_XAF.toLocaleString(
+          "fr-FR"
+        )} XAF (limite Stripe)`
+      );
+      return;
+    }
+
+    if (method === "MVOLA" && !/^\+(261|237)\d{8,9}$/.test(phoneNumber)) {
+      // Regex affinée
+      Alert.alert("Numéro invalide", "Format : +261XXXXXXXXX ou +237XXXXXXXXX");
+      return;
+    }
+
+    if (method === "STRIPE" && !cardComplete) {
+      Alert.alert(
+        "Carte incomplète",
+        "Veuillez remplir tous les champs de la carte"
+      );
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // ================== MVOLA ==================
+      if (method === "MVOLA") {
+        console.log("Envoi dépôt MVOLA →", {
+          amount: numAmount,
+          method: "MVOLA",
+          phoneNumber,
+        });
+
+        const response = await createDeposit({
+          amount: numAmount,
+          method: "MVOLA",
+          metadata: {
+            phoneNumber,
+            note: "Dépôt via application mobile",
+          },
+        });
+
+        console.log("Réponse MVOLA :", response);
+
+        Alert.alert(
+          "Demande MVola envoyée !",
+          `Vous allez recevoir une notification pour confirmer le paiement de ${formattedAmount} XAF`,
+          [{ text: "OK", onPress: () => router.back() }]
+        );
+        return;
+      }
+
+      // ================== STRIPE ==================
+      if (method === "STRIPE") {
+        console.log("Création du PaymentMethod Stripe...");
+
+        const { paymentMethod, error: pmError } = await createPaymentMethod({
+          paymentMethodType: "Card",
+        });
+
+        if (pmError || !paymentMethod) {
+          console.error("Erreur création PaymentMethod :", pmError);
+          Alert.alert(
+            "Carte invalide",
+            pmError?.message || "Impossible de lire la carte"
+          );
+          return;
+        }
+
+        console.log("PaymentMethod créé →", paymentMethod.id);
+
+        console.log("Envoi dépôt STRIPE →", {
+          amount: numAmount,
+          method: "STRIPE",
+          paymentMethodId: paymentMethod.id,
+        });
+
+        const resp = await createDeposit({
+          amount: numAmount,
+          method: "STRIPE",
+          metadata: {
+            paymentMethodId: paymentMethod.id, // OBLIGATOIRE
+            note: "Dépôt via carte bancaire",
+          },
+        });
+
+        console.log("Réponse backend STRIPE :", resp);
+
+        // Si ton backend renvoie un clientSecret → 3D Secure requis
+        if (resp.data?.clientSecret) {
+          console.log("3D Secure requis → clientSecret reçu");
+
+          const { error, paymentIntent } = await confirmPayment(
+            resp.data.clientSecret,
+            {
+              paymentMethodType: "Card",
+            }
+          );
+
+          if (error) {
+            console.error("Erreur 3D Secure :", error);
+            Alert.alert(
+              "Paiement refusé",
+              error.message || "Échec du paiement"
+            );
+            return;
+          }
+
+          console.log("Paiement 3D Secure réussi →", paymentIntent?.status);
+        } else {
+          console.log("Paiement direct réussi (sans 3D Secure)");
+        }
+
+        Alert.alert(
+          "Dépôt réussi !",
+          `${formattedAmount} XAF ont été ajoutés à votre portefeuille`,
+          [{ text: "Terminé", onPress: () => router.back() }]
+        );
+      }
+    } catch (err: any) {
+      console.error(
+        "Erreur critique dépôt :",
+        err.response?.data || err.message || err
+      );
+
+      if (err.message === "TOKEN_EXPIRED") {
+        Alert.alert("Session expirée", "Veuillez vous reconnecter");
+        router.replace("/login");
+      } else {
+        const message =
+          err.response?.data?.message ||
+          err.message ||
+          "Une erreur est survenue";
+        Alert.alert("Erreur", message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <StripeProvider publishableKey="pk_test_51PBf5wRqgxgrSOxzkT3CoAj3wnYQKPSKxZLmtaH9lt8XXO8NoIknakl1nMxj14Mj25f3VC56dchbm7E4ATNXco2200dXM6svtP">
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Feather name="arrow-left" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dépôt d&apos;Argent</Text>
-        <TouchableOpacity style={styles.menuButton}>
-          <Feather name="more-vertical" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Progress Indicator */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressSegment, styles.progressActive]} />
-          <View style={styles.progressSegment} />
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Feather name="arrow-left" size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Dépôt d&apos;Argent</Text>
+          <TouchableOpacity style={styles.menuButton}>
+            <Feather name="more-vertical" size={24} color="#000" />
+          </TouchableOpacity>
         </View>
-      </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Payment Method Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Méthode</Text>
-          <View style={styles.card}>
-            <TouchableOpacity
-              style={styles.paymentMethodContainer}
-              activeOpacity={0.7}
-            >
-              <View style={styles.paymentMethodLeft}>
-                {/* Mastercard Logo */}
-                <View style={styles.cardLogoContainer}>
-                  <View style={[styles.cardCircle, styles.cardCircleRed]} />
-                  <View style={[styles.cardCircle, styles.cardCircleOrange]} />
-                </View>
-
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardNumber}>
-                    {paymentMethods[0].cardNumber}
-                  </Text>
-                  <Text style={styles.cardHolder}>
-                    {paymentMethods[0].cardHolder}
-                  </Text>
-                </View>
-              </View>
-
-              <Feather name="chevron-down" size={20} color="#999" />
-            </TouchableOpacity>
+        {/* Progress */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressSegment, styles.progressActive]} />
+            <View style={styles.progressSegment} />
           </View>
         </View>
 
-        {/* Amount Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Montant</Text>
-          <View style={styles.card}>
-            <View style={styles.amountContainer}>
-              <Text style={styles.amountValue}>
-                {formatAmount(selectedAmount)}
-              </Text>
-              <Text style={styles.currency}>XAF</Text>
-            </View>
-
-            {/* Amount Options */}
-            <View style={styles.amountOptions}>
-              {amountOptions.map((option) => (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Méthode */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Méthode</Text>
+            <View style={styles.card}>
+              <View style={styles.tabs}>
                 <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.amountOption,
-                    selectedAmount === option.value &&
-                      styles.amountOptionActive,
-                  ]}
-                  onPress={() => setSelectedAmount(option.value)}
-                  activeOpacity={0.7}
+                  style={[styles.tab, method === "STRIPE" && styles.tabActive]}
+                  onPress={() => setMethod("STRIPE")}
                 >
                   <Text
                     style={[
-                      styles.amountOptionText,
-                      selectedAmount === option.value &&
-                        styles.amountOptionTextActive,
+                      styles.tabText,
+                      method === "STRIPE" && styles.tabTextActive,
                     ]}
                   >
-                    {option.label}
+                    Carte bancaire
                   </Text>
                 </TouchableOpacity>
-              ))}
+                <TouchableOpacity
+                  style={[styles.tab, method === "MVOLA" && styles.tabActive]}
+                  onPress={() => setMethod("MVOLA")}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      method === "MVOLA" && styles.tabTextActive,
+                    ]}
+                  >
+                    MVola / Orange Money
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
+
+          {/* Montant */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Montant</Text>
+            <View style={styles.card}>
+              <View style={styles.amountContainer}>
+                <Text style={styles.amountValue}>{formattedAmount}</Text>
+                <Text style={styles.currency}>XAF</Text>{" "}
+                {/* Uniformisé en XAF */}
+              </View>
+
+              <View style={styles.amountOptions}>
+                {presets.map((val) => (
+                  <TouchableOpacity
+                    key={val}
+                    style={[
+                      styles.amountOption,
+                      parseInt(amount) === val && styles.amountOptionActive,
+                    ]}
+                    onPress={() => handlePreset(val)}
+                  >
+                    <Text
+                      style={[
+                        styles.amountOptionText,
+                        parseInt(amount) === val &&
+                          styles.amountOptionTextActive,
+                      ]}
+                    >
+                      {val.toLocaleString("fr-FR")}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                style={styles.customAmountInput}
+                placeholder="Montant personnalisé..."
+                keyboardType="numeric"
+                value={
+                  customInput
+                    ? parseInt(customInput).toLocaleString("fr-FR")
+                    : ""
+                }
+                onChangeText={handleCustomAmount}
+              />
+            </View>
+          </View>
+
+          {/* Carte bancaire */}
+          {method === "STRIPE" && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Carte bancaire</Text>
+              <View style={styles.card}>
+                <CardField
+                  postalCodeEnabled={false}
+                  placeholders={{ number: "4242 4242 4242 4242" }}
+                  cardStyle={{
+                    backgroundColor: "#FFFFFF",
+                    borderRadius: 12,
+                    textColor: "#000000",
+                    placeholderColor: "#999999",
+                  }}
+                  style={{ width: "100%", height: 50 }}
+                  onCardChange={(cardDetails) =>
+                    setCardComplete(cardDetails.complete)
+                  }
+                />
+              </View>
+            </View>
+          )}
+
+          {/* MVola */}
+          {method === "MVOLA" && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>
+                Numéro MVola / Orange Money
+              </Text>
+              <View style={styles.card}>
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="+261 34 12 345 67"
+                  keyboardType="phone-pad"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                />
+              </View>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Boutons du bas */}
+        <View style={styles.bottomContainer}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => router.back()}
+            disabled={loading}
+          >
+            <Text style={styles.cancelButtonText}>Annuler</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.confirmButton, loading && { opacity: 0.7 }]}
+            onPress={initiateDeposit}
+            disabled={loading || (method === "STRIPE" && !cardComplete)}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.confirmButtonText}>
+                {method === "STRIPE" ? "Payer par carte" : "Continuer"}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-
-      {/* Bottom Action Buttons */}
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={handleCancel}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.cancelButtonText}>Annuler</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.confirmButton}
-          onPress={handleConfirm}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.confirmButtonText}>Confirmer</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </StripeProvider>
   );
-};
+}
 
+// === TES STYLES ORIGINAUX 100% RESPECTÉS ===
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -195,9 +409,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     backgroundColor: "#FFFFFF",
   },
-  backButton: {
-    padding: 4,
-  },
+  backButton: { padding: 4 },
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
@@ -205,44 +417,23 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
   },
-  menuButton: {
-    padding: 4,
-  },
-  progressContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  progressBar: {
-    flexDirection: "row",
-    gap: 4,
-    height: 3,
-  },
-  progressSegment: {
-    flex: 1,
-    height: "100%",
-    backgroundColor: "#E0E0E0",
-    borderRadius: 2,
-  },
-  progressActive: {
-    backgroundColor: "#00BFA5",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 24,
-  },
-  section: {
-    marginBottom: 24,
-  },
+  menuButton: { padding: 4 },
+
+  progressContainer: { paddingHorizontal: 16, paddingBottom: 16 },
+  progressBar: { flexDirection: "row", gap: 4, height: 3 },
+  progressSegment: { flex: 1, backgroundColor: "#E0E0E0", borderRadius: 2 },
+  progressActive: { backgroundColor: "#00BFA5" },
+
+  scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24 },
+
+  section: { marginBottom: 24 },
   sectionLabel: {
     fontSize: 14,
     fontWeight: "500",
     color: "#000",
     marginBottom: 12,
   },
+
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -251,52 +442,18 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     padding: 16,
   },
-  paymentMethodContainer: {
+
+  tabs: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    backgroundColor: "#F8F8F8",
+    borderRadius: 12,
+    overflow: "hidden",
   },
-  paymentMethodLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    gap: 12,
-  },
-  cardLogoContainer: {
-    flexDirection: "row",
-    width: 40,
-    height: 24,
-    position: "relative",
-  },
-  cardCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    position: "absolute",
-    top: 2,
-  },
-  cardCircleRed: {
-    backgroundColor: "#EB001B",
-    left: 0,
-  },
-  cardCircleOrange: {
-    backgroundColor: "#FF5F00",
-    left: 12,
-    opacity: 0.9,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  cardNumber: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 2,
-  },
-  cardHolder: {
-    fontSize: 13,
-    color: "#666",
-  },
+  tab: { flex: 1, paddingVertical: 14, alignItems: "center" },
+  tabActive: { backgroundColor: "#00BFA5" },
+  tabText: { fontWeight: "600", color: "#666" },
+  tabTextActive: { color: "#FFFFFF" },
+
   amountContainer: {
     flexDirection: "row",
     alignItems: "baseline",
@@ -308,16 +465,13 @@ const styles = StyleSheet.create({
     color: "#000",
     letterSpacing: -0.5,
   },
-  currency: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#666",
-    marginLeft: 8,
-  },
+  currency: { fontSize: 16, fontWeight: "600", color: "#666", marginLeft: 8 },
+
   amountOptions: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 8,
+    marginBottom: 16,
   },
   amountOption: {
     flex: 1,
@@ -328,22 +482,35 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
     backgroundColor: "#FFFFFF",
     alignItems: "center",
-    justifyContent: "center",
   },
   amountOptionActive: {
     backgroundColor: "#E8F5E9",
     borderColor: "#00BFA5",
     borderWidth: 2,
   },
-  amountOptionText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#666",
+  amountOptionText: { fontSize: 13, fontWeight: "500", color: "#666" },
+  amountOptionTextActive: { color: "#00BFA5", fontWeight: "600" },
+
+  customAmountInput: {
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    textAlign: "center",
+    backgroundColor: "#FAFAFA",
+    marginTop: 8,
   },
-  amountOptionTextActive: {
-    color: "#00BFA5",
-    fontWeight: "600",
+
+  phoneInput: {
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    backgroundColor: "#FAFAFA",
   },
+
   bottomContainer: {
     flexDirection: "row",
     paddingHorizontal: 16,
@@ -362,11 +529,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#00BFA5",
-  },
+  cancelButtonText: { fontSize: 16, fontWeight: "600", color: "#00BFA5" },
   confirmButton: {
     flex: 2,
     paddingVertical: 16,
@@ -375,11 +538,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
+  confirmButtonText: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
 });
-
-export default DepositScreen;

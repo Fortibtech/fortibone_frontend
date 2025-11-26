@@ -1,329 +1,268 @@
+// components/charts/CashFlowChart.tsx
 import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
+  ScrollView,
   StyleSheet,
-  Dimensions,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from "react-native";
-import { BarChart } from "react-native-chart-kit";
-import { getSales } from "@/api/analytics"; // Ajuste le chemin selon ton projet
+import { GetWalletTransactions } from "@/api/wallet";
+import {
+  format,
+  subMonths,
+  eachMonthOfInterval,
+  startOfMonth,
+  endOfMonth,
+} from "date-fns";
+import { fr } from "date-fns/locale/fr"; // Import correct (v3 compatible)
 
-const { width } = Dimensions.get("window");
-
-interface SalesResponse {
-  salesByPeriod: Array<{
-    period: string; // "2025-09"
-    totalAmount: number;
-    totalItems: number;
-  }>;
-  topSellingProducts: any[];
-  salesByProductCategory: any[];
-}
-
-interface CashFlowData {
-  labels: string[];
-  datasets: Array<{
-    data: number[];
-    color?: (opacity: number) => string;
-  }>;
-}
-
-const chartConfig = {
-  backgroundGradientFrom: "#fff",
-  backgroundGradientTo: "#fff",
-  decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(0, 208, 156, ${opacity})`,
-  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-  style: {
-    borderRadius: 16,
-  },
-  propsForBackgroundLines: {
-    stroke: "#E5E5E5",
-  },
-  propsForLabels: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
+export type CashFlowData = {
+  month: string;
+  revenue: number;
+  expense: number;
 };
 
-const CashFlowChart: React.FC<{ businessId: string }> = ({ businessId }) => {
-  const [tresorerieFilter, setTresorerieFilter] = useState<"Jan" | "Mensuel">(
-    "Jan"
-  );
+type Props = {
+  period?: "6m" | "12m" | "all";
+};
+
+const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
+  const [data, setData] = useState<CashFlowData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState<CashFlowData | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const tresorerieLegend = [
-    { name: "Revenus", color: "#00D09C" },
-    { name: "Dépenses", color: "#FF6B6B" },
-  ];
+  const fetchAllTransactionsInPeriod = async (start: string, end: string) => {
+    const allTxs: any[] = [];
+    let page = 1;
 
-  // Simuler des dépenses (car pas dans l'API)
-  const generateMockExpenses = (period: string) => {
-    const base = parseFloat(period.split("-")[1]);
-    return Math.round((Math.random() * 300 + 500) * 100) / 100; // 500–800€
-  };
-
-  const processData = (salesData: SalesResponse): CashFlowData => {
-    const monthlyData: { [key: string]: { revenue: number; expense: number } } =
-      {};
-
-    // Traitement des revenus par mois
-    salesData.salesByPeriod.forEach((sale) => {
-      const monthKey = sale.period.slice(0, 7); // "2025-09"
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { revenue: 0, expense: 0 };
-      }
-      monthlyData[monthKey].revenue += sale.totalAmount;
-      monthlyData[monthKey].expense = generateMockExpenses(monthKey);
-    });
-
-    // Si pas de données dans salesByPeriod, on peut ajouter des mois par défaut
-    const allMonths =
-      tresorerieFilter === "Jan"
-        ? ["2025-01"]
-        : Object.keys(monthlyData).length > 0
-        ? Object.keys(monthlyData)
-        : ["2025-09"]; // fallback
-
-    const filteredMonths = allMonths.filter((m) =>
-      tresorerieFilter === "Jan" ? m === "2025-01" : true
-    );
-
-    const labels = filteredMonths.map((m) => {
-      const [year, month] = m.split("-");
-      const monthName = new Date(`${year}-${month}-01`).toLocaleString("fr", {
-        month: "short",
+    while (true) {
+      const res = await GetWalletTransactions({
+        startDate: start,
+        endDate: end,
+        status: "COMPLETED",
+        limit: 100,
+        page,
       });
-      return tresorerieFilter === "Jan"
-        ? "Jan"
-        : `${monthName} ${year.slice(2)}`;
-    });
-
-    const revenues = filteredMonths.map((m) => monthlyData[m]?.revenue || 0);
-    const expenses = filteredMonths.map(
-      (m) => monthlyData[m]?.expense || generateMockExpenses(m)
-    );
-
-    return {
-      labels,
-      datasets: [
-        {
-          data: revenues,
-          color: () => "#00D09C",
-        },
-        {
-          data: expenses,
-          color: () => "#FF6B6B",
-        },
-      ],
-    };
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getSales(businessId);
-      const processed = processData(data);
-      setChartData(processed);
-    } catch (err: any) {
-      setError("Impossible de charger les données de trésorerie");
-      Alert.alert("Erreur", err.message || "Une erreur est survenue");
-    } finally {
-      setLoading(false);
+      const items = res?.data || [];
+      allTxs.push(...items);
+      if (items.length < 100) break;
+      page++;
     }
+    return allTxs;
   };
 
   useEffect(() => {
-    fetchData();
-  }, [businessId, tresorerieFilter]);
+    const load = async () => {
+      setLoading(true);
+      try {
+        const monthsCount = period === "6m" ? 6 : 12;
+        const endDate = new Date();
+        const startDateObj = subMonths(endDate, monthsCount - 1);
+
+        const start = format(startOfMonth(startDateObj), "yyyy-MM-dd");
+        const end = format(endOfMonth(endDate), "yyyy-MM-dd");
+
+        const transactions = await fetchAllTransactionsInPeriod(start, end);
+
+        const months = eachMonthOfInterval({
+          start: startDateObj,
+          end: endDate,
+        });
+
+        const result: CashFlowData[] = months.map((monthDate) => {
+          const monthKey = format(monthDate, "yyyy-MM");
+          const monthName =
+            format(monthDate, "MMM", { locale: fr }).charAt(0).toUpperCase() +
+            format(monthDate, "MMM", { locale: fr }).slice(1);
+
+          const monthTxs = transactions.filter(
+            (t: any) => format(new Date(t.createdAt), "yyyy-MM") === monthKey
+          );
+
+          const revenue = monthTxs
+            .filter((t: any) =>
+              ["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
+            )
+            .reduce(
+              (sum: number, t: any) => sum + Math.abs(Number(t.amount || 0)),
+              0
+            );
+
+          const expense = monthTxs
+            .filter(
+              (t: any) =>
+                !["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
+            )
+            .reduce(
+              (sum: number, t: any) => sum + Math.abs(Number(t.amount || 0)),
+              0
+            );
+
+          return {
+            month: monthName,
+            revenue: Math.round(revenue / 1000),
+            expense: Math.round(expense / 1000),
+          };
+        });
+
+        setData(result);
+      } catch (err) {
+        console.error("Erreur CashFlowChart :", err);
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [period]);
+
+  const maxValue = Math.max(
+    ...data.flatMap((d) => [d.revenue, d.expense]),
+    100
+  );
+  const height = 200;
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Flux de trésorerie</Text>
+        <ActivityIndicator style={{ marginTop: 40 }} color="#666" />
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.chartCard}>
-      <View style={styles.chartHeader}>
-        <Text style={styles.chartTitle}>Flux de Ventes</Text>
-        <View style={styles.filterButtons}>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              tresorerieFilter === "Jan" && styles.filterBtnActive,
-            ]}
-            onPress={() => setTresorerieFilter("Jan")}
-          >
-            <Text
-              style={[
-                styles.filterBtnText,
-                tresorerieFilter === "Jan" && styles.filterBtnTextActive,
-              ]}
-            >
-              Jan
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              tresorerieFilter === "Mensuel" && styles.filterBtnActive,
-            ]}
-            onPress={() => setTresorerieFilter("Mensuel")}
-          >
-            <Text
-              style={[
-                styles.filterBtnText,
-                tresorerieFilter === "Mensuel" && styles.filterBtnTextActive,
-              ]}
-            >
-              Mensuel
-            </Text>
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <Text style={styles.title}>
+        Flux de trésorerie • {period === "6m" ? "6" : "12"} mois
+      </Text>
+
+      <View style={styles.chart}>
+        <View style={styles.yAxis}>
+          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.8)}K</Text>
+          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.6)}K</Text>
+          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.4)}K</Text>
+          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.2)}K</Text>
+          <Text style={styles.axisLabel}>0</Text>
         </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.barsContainer}>
+            {data.map((item, i) => {
+              const rh = (item.revenue / maxValue) * height || 4;
+              const eh = (item.expense / maxValue) * height || 4;
+              return (
+                <View key={i} style={styles.barGroup}>
+                  <View style={styles.bars}>
+                    <View
+                      style={[styles.bar, styles.revenueBar, { height: rh }]}
+                    />
+                    <View
+                      style={[styles.bar, styles.expenseBar, { height: eh }]}
+                    />
+                  </View>
+                  <Text style={styles.monthLabel}>{item.month}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#00D09C" />
-          <Text style={styles.loadingText}>Chargement des données...</Text>
+      <View style={styles.legend}>
+        <View style={styles.legendItem}>
+          <View style={[styles.dot, { backgroundColor: "#4CAF50" }]} />
+          <Text style={styles.legendText}>Revenus</Text>
         </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={styles.legendItem}>
+          <View style={[styles.dot, { backgroundColor: "#F44336" }]} />
+          <Text style={styles.legendText}>Dépenses</Text>
         </View>
-      ) : chartData ? (
-        <>
-          <BarChart
-            data={chartData}
-            width={width - 80}
-            height={220}
-            yAxisLabel="kmf"
-            yAxisSuffix=""
-            chartConfig={chartConfig}
-            style={styles.chart}
-            withInnerLines={true}
-            showBarTops={false}
-            fromZero={true}
-            segments={4}
-          />
-
-          <View style={styles.legend}>
-            {tresorerieLegend.map((item, index) => (
-              <View key={index} style={styles.legendItem}>
-                <View
-                  style={[styles.legendDot, { backgroundColor: item.color }]}
-                />
-                <Text style={styles.legendText}>{item.name}</Text>
-              </View>
-            ))}
-          </View>
-        </>
-      ) : (
-        <Text style={styles.noDataText}>Aucune donnée disponible</Text>
-      )}
+      </View>
     </View>
   );
 };
 
+export default CashFlowChart;
+
 const styles = StyleSheet.create({
-  chartCard: {
+  container: {
     backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginBottom: 16,
+    padding: 20,
+    marginTop: 12,
     borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#00D09C",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
   },
-  chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  title: {
+    fontSize: 17,
+    fontWeight: "600",
     marginBottom: 16,
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-  },
-  filterButtons: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  filterBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#F5F5F5",
-  },
-  filterBtnActive: {
-    backgroundColor: "#E8FFF6",
-  },
-  filterBtnText: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "500",
-  },
-  filterBtnTextActive: {
-    color: "#00D09C",
-    fontWeight: "600",
   },
   chart: {
-    marginVertical: 8,
-    borderRadius: 16,
+    flexDirection: "row",
+    height: 240,
+  },
+  yAxis: {
+    width: 44,
+    justifyContent: "space-between",
+    paddingVertical: 12,
+  },
+  axisLabel: {
+    fontSize: 10,
+    color: "#888",
+    textAlign: "right",
+  },
+  barsContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 20,
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+  },
+  barGroup: {
+    alignItems: "center",
+    gap: 8,
+  },
+  bars: {
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "flex-end",
+    height: 200,
+  },
+  bar: {
+    width: 16,
+    borderRadius: 4,
+    minHeight: 4,
+  },
+  revenueBar: {
+    backgroundColor: "#4CAF50",
+  },
+  expenseBar: {
+    backgroundColor: "#F44336",
+  },
+  monthLabel: {
+    fontSize: 11,
+    color: "#666",
+    marginTop: 4,
   },
   legend: {
     flexDirection: "row",
     justifyContent: "center",
     gap: 24,
-    marginTop: 12,
+    marginTop: 16,
   },
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
   },
-  legendDot: {
+  dot: {
     width: 12,
     height: 12,
     borderRadius: 6,
   },
   legendText: {
-    fontSize: 12,
-    color: "#666",
-  },
-  loadingContainer: {
-    height: 220,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 8,
-    color: "#666",
-    fontSize: 14,
-  },
-  errorContainer: {
-    height: 220,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorText: {
-    color: "#FF6B6B",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  noDataText: {
-    textAlign: "center",
-    color: "#999",
-    fontSize: 14,
-    marginTop: 20,
+    fontSize: 13,
+    color: "#555",
   },
 });
-
-export default CashFlowChart;

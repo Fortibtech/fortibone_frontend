@@ -43,6 +43,12 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permet de localiser votre commerce sur la carte."
+        }
       ]
     ],
     "experiments": {

@@ -1,47 +1,61 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from "react-native"
-import { useRouter } from "expo-router"
-import MaterialIcons from "react-native-vector-icons/MaterialIcons"
+import type React from "react";
+import { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Alert,
+} from "react-native";
+import { useRouter } from "expo-router";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 const ChangePassword: React.FC = () => {
-  const router = useRouter()
-  const [oldPassword, setOldPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [showOldPassword, setShowOldPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const passwordRequirements = [
-    { text: "Majuscule et minuscule", met: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword) },
+    {
+      text: "Majuscule et minuscule",
+      met: /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword),
+    },
     { text: "Chiffre", met: /\d/.test(newPassword) },
     { text: "Caractère spécial", met: /[!@#$%^&*]/.test(newPassword) },
-  ]
+  ];
 
   const handleSave = () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs")
-      return
+      Alert.alert("Erreur", "Veuillez remplir tous les champs");
+      return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert("Erreur", "Les mots de passe ne correspondent pas")
-      return
+      Alert.alert("Erreur", "Les mots de passe ne correspondent pas");
+      return;
     }
     if (newPassword.length < 8) {
-      Alert.alert("Erreur", "Le mot de passe doit contenir au moins 8 caractères")
-      return
+      Alert.alert(
+        "Erreur",
+        "Le mot de passe doit contenir au moins 8 caractères"
+      );
+      return;
     }
-    setLoading(true)
+    setLoading(true);
     setTimeout(() => {
-      setLoading(false)
-      Alert.alert("Succès", "Mot de passe mis à jour avec succès")
-      router.back()
-    }, 1000)
-  }
+      setLoading(false);
+      Alert.alert("Succès", "Mot de passe mis à jour avec succès");
+      router.back();
+    }, 1000);
+  };
 
   return (
     <View style={styles.container}>
@@ -59,7 +73,12 @@ const ChangePassword: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.label}>Ancien Mot de Passe *</Text>
           <View style={styles.inputWrapper}>
-            <MaterialIcons name="lock-outline" size={20} color="#1BB874" style={{ marginRight: 10 }} />
+            <MaterialIcons
+              name="lock-outline"
+              size={20}
+              color="#1BB874"
+              style={{ marginRight: 10 }}
+            />
             <TextInput
               style={styles.input}
               placeholder="Confirmer le mot de passe"
@@ -68,8 +87,14 @@ const ChangePassword: React.FC = () => {
               onChangeText={setOldPassword}
               placeholderTextColor="#CCCCCC"
             />
-            <TouchableOpacity onPress={() => setShowOldPassword(!showOldPassword)}>
-              <MaterialIcons name={showOldPassword ? "visibility" : "visibility-off"} size={20} color="#999999" />
+            <TouchableOpacity
+              onPress={() => setShowOldPassword(!showOldPassword)}
+            >
+              <MaterialIcons
+                name={showOldPassword ? "visibility" : "visibility-off"}
+                size={20}
+                color="#999999"
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -83,7 +108,12 @@ const ChangePassword: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.label}>Nouveau Mot de Passe *</Text>
           <View style={styles.inputWrapper}>
-            <MaterialIcons name="lock-outline" size={20} color="#1BB874" style={{ marginRight: 10 }} />
+            <MaterialIcons
+              name="lock-outline"
+              size={20}
+              color="#1BB874"
+              style={{ marginRight: 10 }}
+            />
             <TextInput
               style={styles.input}
               placeholder="Entrer le mot de passe"
@@ -92,8 +122,14 @@ const ChangePassword: React.FC = () => {
               onChangeText={setNewPassword}
               placeholderTextColor="#CCCCCC"
             />
-            <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
-              <MaterialIcons name={showNewPassword ? "visibility" : "visibility-off"} size={20} color="#999999" />
+            <TouchableOpacity
+              onPress={() => setShowNewPassword(!showNewPassword)}
+            >
+              <MaterialIcons
+                name={showNewPassword ? "visibility" : "visibility-off"}
+                size={20}
+                color="#999999"
+              />
             </TouchableOpacity>
           </View>
 
@@ -107,7 +143,14 @@ const ChangePassword: React.FC = () => {
                   size={16}
                   color={req.met ? "#1BB874" : "#CCCCCC"}
                 />
-                <Text style={[styles.requirementText, { color: req.met ? "#1BB874" : "#999999" }]}>{req.text}</Text>
+                <Text
+                  style={[
+                    styles.requirementText,
+                    { color: req.met ? "#1BB874" : "#999999" },
+                  ]}
+                >
+                  {req.text}
+                </Text>
               </View>
             ))}
           </View>
@@ -117,7 +160,12 @@ const ChangePassword: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.label}>Confirmer Mot de Passe *</Text>
           <View style={styles.inputWrapper}>
-            <MaterialIcons name="lock-outline" size={20} color="#1BB874" style={{ marginRight: 10 }} />
+            <MaterialIcons
+              name="lock-outline"
+              size={20}
+              color="#1BB874"
+              style={{ marginRight: 10 }}
+            />
             <TextInput
               style={styles.input}
               placeholder="Confirmer le mot de passe"
@@ -126,8 +174,14 @@ const ChangePassword: React.FC = () => {
               onChangeText={setConfirmPassword}
               placeholderTextColor="#CCCCCC"
             />
-            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-              <MaterialIcons name={showConfirmPassword ? "visibility" : "visibility-off"} size={20} color="#999999" />
+            <TouchableOpacity
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            >
+              <MaterialIcons
+                name={showConfirmPassword ? "visibility" : "visibility-off"}
+                size={20}
+                color="#999999"
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -135,16 +189,25 @@ const ChangePassword: React.FC = () => {
 
       {/* Buttons */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => router.back()}
+        >
           <Text style={styles.cancelButtonText}>Annuler</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
-          <Text style={styles.saveButtonText}>{loading ? "Chargement..." : "Sauvegarder"}</Text>
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          <Text style={styles.saveButtonText}>
+            {loading ? "Chargement..." : "Sauvegarder"}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -159,6 +222,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
+    height: 100,
   },
   headerTitle: {
     fontSize: 18,
@@ -229,8 +293,9 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 35,
     gap: 12,
+   
   },
   cancelButton: {
     flex: 1,
@@ -257,6 +322,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
-})
+});
 
-export default ChangePassword
+export default ChangePassword;

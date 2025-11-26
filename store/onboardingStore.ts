@@ -1,6 +1,11 @@
 // src/store/onboardingStore.ts
 import { create } from "zustand";
 
+export type AccountType = "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+export type CommerceType = "PHYSICAL" | "ONLINE" | "HYBRID";
+export type PriceRange = "ENTRY_LEVEL" | "MID_RANGE" | "HIGH_END" | "LUXURY";
+export type Civility = "MR" | "MME" | "MLLE" | "OTHER";
+
 export interface FormData {
   prenom: string;
   name: string;
@@ -14,22 +19,59 @@ export interface FormData {
   confirmPassword: string;
 }
 
-export type AccountType = "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
-
 export interface CreateBusinessData {
+  // Champs communs et obligatoires
   name: string;
   description: string;
   type: AccountType;
   address: string;
-  phoneNumber: string;
-  logoUrl?: string;
-  coverImageUrl?: string;
   latitude: number;
   longitude: number;
   currencyId: string;
+  activitySector: string;
+  commerceType: CommerceType;
+
+  // Contact & infos légales
+  postalCode?: string;
   siret?: string;
   websiteUrl?: string;
-  activitySector: string;
+  businessEmail?: string;
+  phoneNumber?: string;
+
+  // Contact personne référente
+  contactFirstName?: string;
+  contactLastName?: string;
+  contactCivility?: Civility;
+  contactFunction?: string;
+
+  // Images (URI locales → upload après création)
+  logoUrl?: string;
+  coverImageUrl?: string;
+
+  // Champs COMMERCANT / RESTAURATEUR
+  priceRange?: PriceRange;
+  productCategories?: string[];
+  detailedDescription?: string;
+
+  // Champs spécifiques FOURNISSEUR
+  productionVolume?: string;
+  deliveryZones?: string[];
+  avgDeliveryTime?: string;
+  paymentConditions?: string[];
+  minOrderQuantity?: number;
+  sampleAvailable?: boolean;
+
+  // Réseaux sociaux
+  socialLinks?: {
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+    tiktok?: string;
+    twitter?: string;
+  };
+
+  // Références clients (surtout FOURNISSEUR)
+  clientReferences?: string;
 }
 
 export interface Country {
@@ -45,8 +87,8 @@ interface OnboardingState {
   accountType: AccountType | "";
   personalData: FormData;
   businessData: CreateBusinessData;
-  logoImage: string | null;
-  coverImage: string | null;
+  logoImage: string | null; // URI locale du logo (ImagePicker)
+  coverImage: string | null; // URI locale de la couverture
   selectedCountry: Country | null;
   selectedDate: Date | null;
   otp: string[];
@@ -91,18 +133,33 @@ const initialPersonalData: FormData = {
   confirmPassword: "",
 };
 
-const initialBusinessData: CreateBusinessData = {
+export const initialBusinessData: CreateBusinessData = {
   name: "",
   description: "",
   type: "COMMERCANT",
   address: "",
-  phoneNumber: "",
-  latitude: 0,
-  longitude: 0,
+  latitude: 4.0511, // Yaoundé par défaut (Cameroun)
+  longitude: 9.7679,
   currencyId: "",
+  activitySector: "",
+  commerceType: "PHYSICAL",
+
+  // Tout le reste optionnel → vide
+  postalCode: "",
   siret: "",
   websiteUrl: "",
-  activitySector: "",
+  businessEmail: "",
+  phoneNumber: "",
+  contactFirstName: "",
+  contactLastName: "",
+  contactCivility: undefined,
+  contactFunction: "",
+  logoUrl: undefined,
+  coverImageUrl: undefined,
+  priceRange: undefined,
+  productCategories: [],
+  detailedDescription: "",
+  socialLinks: {},
 };
 
 export const useOnboardingStore = create<OnboardingState>((set) => ({
@@ -124,31 +181,31 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   showCurrencyPicker: false,
 
   setStep: (step) => set({ step }),
+
   setAccountType: (type) =>
-    set((state) => {
-      // Si type est vide, on ne met pas à jour businessData.type
-      if (type === "") {
-        return { accountType: type };
-      }
-      // Sinon on met à jour les deux
-      return {
-        accountType: type,
-        businessData: { ...state.businessData, type },
-      };
-    }),
+    set((state) => ({
+      accountType: type,
+      businessData:
+        type === "" ? state.businessData : { ...state.businessData, type },
+    })),
+
   updatePersonalData: (data) =>
     set((state) => ({
       personalData: { ...state.personalData, ...data },
     })),
+
   updateBusinessData: (data) =>
     set((state) => ({
       businessData: { ...state.businessData, ...data },
     })),
+
   setLogoImage: (uri) => set({ logoImage: uri }),
   setCoverImage: (uri) => set({ coverImage: uri }),
+
   setSelectedCountry: (country) => set({ selectedCountry: country }),
   setSelectedDate: (date) => set({ selectedDate: date }),
   setOtp: (otp) => set({ otp }),
+
   togglePassword: () => set((state) => ({ showPassword: !state.showPassword })),
   toggleConfirmPassword: () =>
     set((state) => ({ showConfirmPassword: !state.showConfirmPassword })),
@@ -162,6 +219,7 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
     set((state) => ({ showSectorPicker: !state.showSectorPicker })),
   toggleCurrencyPicker: () =>
     set((state) => ({ showCurrencyPicker: !state.showCurrencyPicker })),
+
   reset: () =>
     set({
       step: 1,

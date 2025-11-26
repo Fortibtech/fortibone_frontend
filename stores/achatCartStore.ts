@@ -1,38 +1,41 @@
-// stores/cartStore.ts
+// stores/useProCartStore.ts
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProductVariant } from "@/api";
 
-// ──────────────────────────────────────────────────────────────
-// Type de chaque article du panier
-// ──────────────────────────────────────────────────────────────
-export interface CartItem {
+export interface ProCartItem {
+  id: string; // clé unique : `${productId}-${variantId}-${supplierBusinessId}`
   productId: string;
   productName: string;
   variant: ProductVariant;
   quantity: number;
-  imageUrl?: string;
+  imageUrl?: string | null;
   addedAt: number;
-  supplierBusinessId: string; // ← NOUVEAU : ID du fournisseur qui vend ce produit
+  supplierBusinessId: string;
 }
 
-// ──────────────────────────────────────────────────────────────
-// Interface du store
-// ──────────────────────────────────────────────────────────────
-interface CartStore {
-  items: CartItem[];
+interface ProCartStore {
+  items: ProCartItem[];
+
   addItem: (
     productId: string,
     productName: string,
     variant: ProductVariant,
-    quantity: number,
-    imageUrl?: string, // ← optionnel (?)
-    supplierBusinessId: string // ← obligatoire, mais après un optionnel → ERREUR TS1016
+    quantity?: number,
+    imageUrl?: string,
+    supplierBusinessId?: string
   ) => void;
-  removeItem: (productId: string, variantId: string) => void;
+
+  removeItem: (
+    productId: string,
+    variantId: string,
+    supplierBusinessId: string
+  ) => void;
   updateQuantity: (
     productId: string,
     variantId: string,
+    supplierBusinessId: string,
     quantity: number
   ) => void;
   clearCart: () => void;
@@ -40,105 +43,95 @@ interface CartStore {
   getTotalPrice: () => number;
 }
 
-export const useCartStore = create<CartStore>()(
+const generateId = (
+  productId: string,
+  variantId: string,
+  supplierBusinessId?: string
+) => `${productId}-${variantId}-${supplierBusinessId}`;
+
+export const useProCartStore = create<ProCartStore>()(
   persist(
     (set, get) => ({
       items: [],
 
-      // ──────────────────────────────────────────────────────────────
-      // Ajouter un article au panier
-      // ──────────────────────────────────────────────────────────────
       addItem: (
         productId,
         productName,
         variant,
-        quantity,
+        quantity = 1,
         imageUrl,
-        supplierBusinessId: string
+        supplierBusinessId
       ) => {
-        set((state) => {
-          const existingItem = state.items.find(
-            (i) =>
-              i.productId === productId &&
-              i.variant.id === variant.id &&
-              i.supplierBusinessId === supplierBusinessId // ← Vérifie aussi le fournisseur
-          );
+        const id = generateId(productId, variant.id, supplierBusinessId);
 
-          if (existingItem) {
-            // Mise à jour de la quantité si l'article existe déjà (même produit, variante, fournisseur)
+        set((state: any) => {
+          const existing = state.items.find((i:any) => i.id === id);
+
+          if (existing) {
             return {
-              items: state.items.map((item) =>
-                item.productId === productId &&
-                item.variant.id === variant.id &&
-                item.supplierBusinessId === supplierBusinessId
-                  ? { ...item, quantity: item.quantity + quantity }
-                  : item
+              items: state.items.map((i:any) =>
+                i.id === id ? { ...i, quantity: i.quantity + quantity } : i
               ),
             };
           }
 
-          // Nouvel article
           return {
             items: [
               ...state.items,
               {
+                id,
                 productId,
                 productName,
                 variant,
                 quantity,
-                imageUrl: imageUrl || variant.imageUrl || undefined,
+                imageUrl: imageUrl ?? variant.imageUrl ?? null,
                 addedAt: Date.now(),
-                supplierBusinessId, // ← Stocké ici
+                supplierBusinessId,
               },
             ],
           };
         });
       },
 
-      // ──────────────────────────────────────────────────────────────
-      // Supprimer un article
-      // ──────────────────────────────────────────────────────────────
-      removeItem: (productId, variantId) =>
+      removeItem: (productId, variantId, supplierBusinessId) =>
         set((state) => ({
           items: state.items.filter(
-            (i) => !(i.productId === productId && i.variant.id === variantId)
+            (i) => i.id !== generateId(productId, variantId, supplierBusinessId)
           ),
         })),
 
-      // ──────────────────────────────────────────────────────────────
-      // Mettre à jour la quantité
-      // ──────────────────────────────────────────────────────────────
-      updateQuantity: (productId, variantId, quantity) =>
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.productId === productId && item.variant.id === variantId
-              ? { ...item, quantity: Math.max(1, quantity) }
-              : item
-          ),
-        })),
+      updateQuantity: (productId, variantId, supplierBusinessId, quantity) =>
+        set((state) => {
+          if (quantity <= 0) {
+            return {
+              items: state.items.filter(
+                (i) =>
+                  i.id !== generateId(productId, variantId, supplierBusinessId)
+              ),
+            };
+          }
+          return {
+            items: state.items.map((i) =>
+              i.id === generateId(productId, variantId, supplierBusinessId)
+                ? { ...i, quantity }
+                : i
+            ),
+          };
+        }),
 
-      // ──────────────────────────────────────────────────────────────
-      // Vider le panier
-      // ──────────────────────────────────────────────────────────────
       clearCart: () => set({ items: [] }),
 
-      // ──────────────────────────────────────────────────────────────
-      // Nombre total d'articles
-      // ──────────────────────────────────────────────────────────────
-      getTotalItems: () =>
-        get().items.reduce((sum, item) => sum + item.quantity, 0),
+      getTotalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
 
-      // ──────────────────────────────────────────────────────────────
-      // Prix total du panier
-      // ──────────────────────────────────────────────────────────────
       getTotalPrice: () =>
         get().items.reduce((sum, item) => {
-          const price = parseFloat(item.variant.price) || 0;
+          const price = Number(item.variant.price) || 0;
           return sum + price * item.quantity;
         }, 0),
     }),
     {
-      name: "cart-storage", // Clé dans AsyncStorage pour persistance
+      name: "pro-cart-storage",
+      storage: createJSONStorage(() => AsyncStorage), // Plus de warning !
     }
   )
 );

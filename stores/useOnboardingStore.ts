@@ -1,10 +1,11 @@
+// store/onboardingStore.ts
 import { create } from "zustand";
+import { CreateBusinessData } from "@/types/business"; // ← AJOUTE ÇA
 
 interface OnboardingData {
-  // Étape 1
+  // ... tes champs actuels
   accountType: string;
 
-  // Étape 2
   prenom: string;
   name: string;
   email: string;
@@ -14,30 +15,33 @@ interface OnboardingData {
   sexe: string;
   dateNaissance: string;
 
-  // Étape 3
-  businessName: string;
-  businessType: string;
-  businessSector: string;
-  address: string;
-  website?: string;
-  description?: string;
+  // Remplace businessName, businessType, etc. par un objet complet
+  businessData: CreateBusinessData;
 
-  // Étape 4
   password: string;
-
-  // OTP
   otp: string;
 
-  // Métadonnées
   completedSteps: number[];
   currentStep: number;
 }
 
 interface OnboardingStore extends OnboardingData {
   setData: (data: Partial<OnboardingData>) => void;
+  updateBusinessData: (data: Partial<CreateBusinessData>) => void; // ← NOUVELLE FONCTION
   completeStep: (step: number) => void;
   reset: () => void;
 }
+
+const initialBusinessData: CreateBusinessData = {
+  name: "",
+  description: "",
+  type: "COMMERCANT",
+  address: "",
+  phoneNumber: "",
+  latitude: 4.0511,
+  longitude: 9.7679,
+  currencyId: "",
+};
 
 const initialState: OnboardingData = {
   accountType: "",
@@ -49,12 +53,7 @@ const initialState: OnboardingData = {
   city: "",
   sexe: "",
   dateNaissance: "",
-  businessName: "",
-  businessType: "",
-  businessSector: "",
-  address: "",
-  website: "",
-  description: "",
+  businessData: initialBusinessData,
   password: "",
   otp: "",
   completedSteps: [],
@@ -66,6 +65,11 @@ export const useOnboardingStore = create<OnboardingStore>((set) => ({
 
   setData: (data) => set((state) => ({ ...state, ...data })),
 
+  updateBusinessData: (data) =>
+    set((state) => ({
+      businessData: { ...state.businessData, ...data },
+    })),
+
   completeStep: (step) =>
     set((state) => ({
       completedSteps: [...new Set([...state.completedSteps, step])],
@@ -73,3 +77,6 @@ export const useOnboardingStore = create<OnboardingStore>((set) => ({
 
   reset: () => set(initialState),
 }));
+
+// EXPORTE LE TYPE POUR L'UTILISER PARTOUT
+export type { CreateBusinessData };

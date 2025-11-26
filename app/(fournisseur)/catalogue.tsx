@@ -2,6 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { Plus, Search, Download } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 import {
   ActivityIndicator,
   Alert,
@@ -78,7 +81,147 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
       console.warn("Erreur lors du chargement des catégories:", error);
     }
   };
+  const handleExport = async () => {
+    try {
+      if (products.length === 0) {
+        Alert.alert("Aucun produit", "Il n'y a aucun produit à exporter");
+        return;
+      }
 
+      // Génère le HTML du tableau
+      const html = `
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+            }
+            h1 {
+              color: #10B981;
+              text-align: center;
+              margin-bottom: 10px;
+            }
+            .business-name {
+              text-align: center;
+              color: #6B7280;
+              margin-bottom: 20px;
+              font-size: 14px;
+            }
+            .date {
+              text-align: right;
+              color: #9CA3AF;
+              font-size: 12px;
+              margin-bottom: 20px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            th {
+              background-color: #F3F4F6;
+              color: #374151;
+              font-weight: 600;
+              padding: 12px 8px;
+              text-align: left;
+              border-bottom: 2px solid #E5E7EB;
+              font-size: 12px;
+            }
+            td {
+              padding: 10px 8px;
+              border-bottom: 1px solid #E5E7EB;
+              font-size: 11px;
+            }
+            tr:hover {
+              background-color: #F9FAFB;
+            }
+            .row-indicator {
+              width: 4px;
+              height: 100%;
+              display: inline-block;
+              margin-right: 8px;
+            }
+            .color-0 { background-color: #FBBF24; }
+            .color-1 { background-color: #EC4899; }
+            .color-2 { background-color: #8B5CF6; }
+            .color-3 { background-color: #10B981; }
+            .color-4 { background-color: #F97316; }
+            .total-row {
+              font-weight: bold;
+              background-color: #F3F4F6;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Catalogue de Produits</h1>
+          <div class="business-name">${selectedBusiness?.name || ""}</div>
+          <div class="date">Généré le ${new Date().toLocaleDateString(
+            "fr-FR"
+          )} à ${new Date().toLocaleTimeString("fr-FR")}</div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Produit</th>
+                <th>Conditionnement</th>
+                <th>Lots</th>
+                <th>Valeur (KMF)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${products
+                .map(
+                  (product, index) => `
+                <tr>
+                  <td>
+                    <span class="row-indicator color-${index % 5}"></span>
+                    ${index + 1}
+                  </td>
+                  <td>${product.name}</td>
+                  <td>${getPackaging(product)}</td>
+                  <td>${getTotalStock(product)}</td>
+                  <td>${getValue(product)}</td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="2">Total</td>
+                <td>${products.length} produits</td>
+                <td>${products.reduce(
+                  (sum, p) => sum + getTotalStock(p),
+                  0
+                )}</td>
+                <td>-</td>
+              </tr>
+            </tfoot>
+          </table>
+        </body>
+      </html>
+    `;
+
+      // Génère le PDF
+      const { uri } = await Print.printToFileAsync({ html });
+
+      // Partage le fichier
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          UTI: ".pdf",
+          mimeType: "application/pdf",
+        });
+      } else {
+        Alert.alert("Succès", "PDF généré avec succès!");
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'export:", error);
+      Alert.alert("Erreur", "Impossible d'exporter le catalogue");
+    }
+  };
   const checkForBusinessChange = async () => {
     if (isLoadingRef.current) {
       console.log("⏳ Chargement déjà en cours, ignoré");
@@ -213,18 +356,11 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
     }
   };
 
-  const handleExport = () => {
-    Alert.alert(
-      "Exporter",
-      "Fonctionnalité d'export en cours de développement"
-    );
-  };
-
   // ✅ Fonction pour obtenir le conditionnement (premier variant)
   const getPackaging = (product: Product): string => {
     if (product.variants && product.variants.length > 0) {
       const variant = product.variants[0];
-      return variant.sku  || "Standard";
+      return variant.sku || "Standard";
     }
     return "-";
   };
@@ -333,10 +469,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
       <Text style={[styles.tableCell, styles.columnNumber]}>{index + 1}</Text>
 
       {/* Nom du produit */}
-      <Text
-        style={[styles.tableCell, styles.columnProduct]}
-        numberOfLines={1}
-      >
+      <Text style={[styles.tableCell, styles.columnProduct]} numberOfLines={1}>
         {product.name}
       </Text>
 

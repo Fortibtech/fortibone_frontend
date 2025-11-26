@@ -1,6 +1,5 @@
 // app/(achats)/cartproduct/index.tsx
-// Composant : Panier d'achat avec validation de commande via l'API createOrder
-import  { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,179 +8,123 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Dimensions,
-  ActivityIndicator, // ← Pour le loader pendant l'envoi
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router"; // ← Pour rediriger après succès
 import Toast from "react-native-toast-message";
-
-// Stores & API
-import { useCartStore, CartItem } from "@/stores/achatCartStore";
-import { createOrder, CreateOrderPayload } from "@/api/Orders";
-
-// Composants réutilisables
-import BackButtonAdmin from "@/components/Admin/BackButton";
+import { useProCartStore, ProCartItem } from "@/stores/achatCartStore";
+import { createOrder } from "@/api/orers/createOrder";
 import { useUserStore } from "@/store/userStore";
-
-const { width } = Dimensions.get("window");
+import BackButtonAdmin from "@/components/Admin/BackButton";
 
 const ShoppingCart = () => {
-  // ──────────────────────────────────────────────────────────────
-  // 1. Zustand : accès au panier global
-  // ──────────────────────────────────────────────────────────────
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } =
-    useCartStore();
+    useProCartStore();
 
-  // ──────────────────────────────────────────────────────────────
-  // 2. Navigation & états locaux
-  // ──────────────────────────────────────────────────────────────
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false); // ← Empêche le double clic
+  const [isLoading, setIsLoading] = useState(false);
 
-  // ──────────────────────────────────────────────────────────────
-  // Vérification multi-fournisseurs (optionnel, mais recommandé)
-  // ──────────────────────────────────────────────────────────────
+  // Alerte si plusieurs fournisseurs
   useEffect(() => {
-    const supplierIds = [
-      ...new Set(items.map((item) => item.supplierBusinessId)),
-    ];
+    const supplierIds = [...new Set(items.map((i) => i.supplierBusinessId))];
     if (supplierIds.length > 1) {
       Toast.show({
         type: "error",
         text1: "Attention",
         text2:
-          "Vous avez des produits de plusieurs fournisseurs. Veuillez commander auprès d'un seul fournisseur à la fois.",
-        visibilityTime: 5000,
+          "Vous avez des produits de plusieurs fournisseurs. Commandez un par un.",
+        visibilityTime: 6000,
       });
     }
   }, [items]);
 
-  // ──────────────────────────────────────────────────────────────
-  // 3. Mise à jour quantité (+ / -)
-  // ──────────────────────────────────────────────────────────────
-  const handleUpdateQuantity = (item: CartItem, delta: number) => {
+  const handleUpdateQuantity = (item: ProCartItem, delta: number) => {
     const newQty = item.quantity + delta;
     if (newQty < 1) {
-      // Quantité à 0 → on retire complètement
-      removeItem(item.productId, item.variant.id);
-      Toast.show({ type: "info", text1: "Retiré du panier" });
+      removeItem(item.productId, item.variant.id, item.supplierBusinessId);
+      Toast.show({ type: "info", text1: "Produit retiré" });
     } else {
-      updateQuantity(item.productId, item.variant.id, newQty);
+      updateQuantity(
+        item.productId,
+        item.variant.id,
+        item.supplierBusinessId,
+        newQty
+      );
     }
   };
-
-  // ──────────────────────────────────────────────────────────────
-  // 4. Suppression avec confirmation native
-  // ──────────────────────────────────────────────────────────────
-  const handleRemove = (item: CartItem) => {
-    Alert.alert(
-      "Retirer du panier",
-      `Voulez-vous supprimer ${item.productName} ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: () => {
-            removeItem(item.productId, item.variant.id);
-            Toast.show({ type: "info", text1: "Produit retiré" });
-          },
+  console.log("YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY", items);
+  const handleRemove = (item: ProCartItem) => {
+    Alert.alert("Retirer du panier", `Supprimer ${item.productName} ?`, [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: () => {
+          removeItem(item.productId, item.variant.id, item.supplierBusinessId);
+          Toast.show({ type: "info", text1: "Produit retiré" });
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  // ──────────────────────────────────────────────────────────────
-  // 6. PASSER COMMANDE → appel API createOrder()
-  // ──────────────────────────────────────────────────────────────
-
   const handleCheckout = async () => {
-    if (isLoading) return;
+    if (isLoading || items.length === 0) return;
     setIsLoading(true);
 
     try {
-      // ──────────────────────────────────────────────────────────────
-      // 1. Récupère acheteur + fournisseur
-      // ──────────────────────────────────────────────────────────────
       const buyerBusinessId = useUserStore.getState().userProfile?.id;
       if (!buyerBusinessId) throw new Error("Utilisateur non connecté");
 
-      if (items.length === 0) throw new Error("Panier vide");
-
-      // Tous les articles doivent avoir le même fournisseur
-      const supplierIds = [...new Set(items.map((i) => i.supplierBusinessId))];
-      if (supplierIds.length !== 1) {
-        throw new Error(
-          "Tous les produits doivent provenir du même fournisseur"
-        );
-      }
-      const supplierBusinessId = supplierIds[0];
-
-      // ──────────────────────────────────────────────────────────────
-      // 2. Payload FINAL qui marche à 100%
-      // ──────────────────────────────────────────────────────────────
-      const payload: CreateOrderPayload = {
-        type: "SALE",
-        businessId: buyerBusinessId, // ← acheteur
-        supplierBusinessId: supplierBusinessId, // ← fournisseur (OBLIGATOIRE MAINTENANT)
-        notes: `Commande mobile - ${
-          items.length
-        } article(s) - ${new Date().toLocaleDateString("fr-FR")}`,
+      const payload = {
+        type: "SALE" as const,
+        businessId: buyerBusinessId,
+        supplierBusinessId: items[0].supplierBusinessId, // 100% sûr
+        notes: `Commande mobile - ${items.length} article(s)`,
+        tableId: null,
+        reservationDate: new Date().toISOString(),
         lines: items.map((item) => ({
           variantId: item.variant.id,
           quantity: item.quantity,
         })),
+        useWallet: false,
+        shippingFee: 0,
+        discountAmount: 0,
       };
 
       console.log(
-        "🚀 PAYLOAD FINAL CORRIGÉ :",
+        "Payload envoyé (devrait passer) :",
         JSON.stringify(payload, null, 2)
       );
 
-      const orderResponse = await createOrder(payload);
+      const response = await createOrder(payload);
 
-      // ──────────────────────────────────────────────────────────────
-      // Succès !
-      // ──────────────────────────────────────────────────────────────
       clearCart();
       Toast.show({
         type: "success",
-        text1: "Commande passée ! 🎉",
-        text2: `N° ${orderResponse.orderNumber}`,
+        text1: "Commande passée !",
+        text2: `N° ${response.orderNumber || response.id}`,
       });
     } catch (error: any) {
+      console.error("Erreur finale :", error.response?.data || error);
       Toast.show({
         type: "error",
-        text1: "Impossible",
-        text2: error.message || "Erreur serveur",
-        visibilityTime: 5000,
+        text1: "Échec",
+        text2: error.response?.data?.message || "Erreur serveur",
       });
     } finally {
       setIsLoading(false);
     }
   };
-
-  // ──────────────────────────────────────────────────────────────
-  // 7. Calcul du total (Zustand le fait déjà)
-  // ──────────────────────────────────────────────────────────────
   const totalPrice = getTotalPrice();
 
-  // ──────────────────────────────────────────────────────────────
-  // 8. Panier vide → état alternatif
-  // ──────────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
-        {/* Header avec retour */}
         <View style={styles.header}>
           <BackButtonAdmin />
           <Text style={styles.title}>Mon Panier</Text>
           <View style={styles.spacer} />
         </View>
-
-        {/* État vide */}
         <View style={styles.emptyContainer}>
           <Ionicons name="cart-outline" size={80} color="#CCC" />
           <Text style={styles.emptyTitle}>Votre panier est vide</Text>
@@ -193,12 +136,8 @@ const ShoppingCart = () => {
     );
   }
 
-  // ──────────────────────────────────────────────────────────────
-  // 9. Panier avec produits
-  // ──────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <BackButtonAdmin />
         <Text style={styles.title}>Mon Panier ({items.length})</Text>
@@ -212,17 +151,12 @@ const ShoppingCart = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Liste des articles */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
       >
         {items.map((item) => (
-          <View
-            key={`${item.productId}-${item.variant.id}`}
-            style={styles.itemCard}
-          >
-            {/* Image produit */}
+          <View key={item.id} style={styles.itemCard}>
             <Image
               source={{
                 uri: item.imageUrl || "https://via.placeholder.com/80",
@@ -230,13 +164,10 @@ const ShoppingCart = () => {
               style={styles.itemImage}
               resizeMode="cover"
             />
-
-            {/* Infos produit */}
             <View style={styles.itemInfo}>
               <Text style={styles.itemName} numberOfLines={2}>
                 {item.productName}
               </Text>
-
               <View style={styles.itemTags}>
                 <Text style={styles.itemSku}>SKU: {item.variant.sku}</Text>
                 {item.variant.itemsPerLot && (
@@ -245,13 +176,11 @@ const ShoppingCart = () => {
                   </Text>
                 )}
               </View>
-
               <Text style={styles.itemPrice}>
-                {parseFloat(item.variant.price).toLocaleString("fr-FR")} FCFA
+                {Number(item.variant.price).toLocaleString("fr-FR")} FCFA
                 {item.variant.lotPrice ? "/lot" : "/pièce"}
               </Text>
 
-              {/* Actions : quantité & suppression */}
               <View style={styles.itemActions}>
                 <View style={styles.quantityControl}>
                   <TouchableOpacity
@@ -260,9 +189,7 @@ const ShoppingCart = () => {
                   >
                     <Ionicons name="remove" size={18} color="#00B87C" />
                   </TouchableOpacity>
-
                   <Text style={styles.qtyText}>{item.quantity}</Text>
-
                   <TouchableOpacity
                     style={styles.qtyBtn}
                     onPress={() => handleUpdateQuantity(item, +1)}
@@ -270,7 +197,6 @@ const ShoppingCart = () => {
                     <Ionicons name="add" size={18} color="#00B87C" />
                   </TouchableOpacity>
                 </View>
-
                 <TouchableOpacity
                   style={styles.removeBtn}
                   onPress={() => handleRemove(item)}
@@ -282,7 +208,6 @@ const ShoppingCart = () => {
           </View>
         ))}
 
-        {/* Résumé de commande */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Sous-total</Text>
@@ -292,9 +217,7 @@ const ShoppingCart = () => {
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Livraison</Text>
-            <Text style={styles.summaryValue}>
-              Calculée à l&apos;étape suivante
-            </Text>
+            <Text style={styles.summaryValue}>Calculée plus tard</Text>
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total</Text>
@@ -304,13 +227,9 @@ const ShoppingCart = () => {
           </View>
         </View>
 
-        {/* Espace pour le bouton fixe */}
-        <View style={{ height: 120 }} />
+        <View style={{ height: 170 }} />
       </ScrollView>
 
-      {/* ────────────────────────────────────────────────────────── */}
-      {/* BOUTON FIXE EN BAS → PASSER COMMANDE */}
-      {/* ────────────────────────────────────────────────────────── */}
       <View style={styles.bottomBar}>
         <View style={styles.totalSection}>
           <Text style={styles.totalText}>Total</Text>
@@ -318,12 +237,8 @@ const ShoppingCart = () => {
             {totalPrice.toLocaleString("fr-FR")} FCFA
           </Text>
         </View>
-
         <TouchableOpacity
-          style={[
-            styles.checkoutBtn,
-            isLoading && styles.checkoutBtnDisabled, // ← Grisé pendant loading
-          ]}
+          style={[styles.checkoutBtn, isLoading && styles.checkoutBtnDisabled]}
           onPress={handleCheckout}
           disabled={isLoading}
         >
@@ -341,16 +256,11 @@ const ShoppingCart = () => {
   );
 };
 
-// ──────────────────────────────────────────────────────────────
-// Styles (inchangés + petit ajout pour le bouton disabled)
-// ──────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   checkoutBtnDisabled: {
     backgroundColor: "#999",
     opacity: 0.7,
   },
-
   container: { flex: 1, backgroundColor: "#F5F5F5" },
   header: {
     flexDirection: "row",
@@ -365,10 +275,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: "600", color: "#000" },
   spacer: { width: 32 },
   clearText: { fontSize: 14, color: "#00B87C", fontWeight: "600" },
-
   scrollView: { flex: 1 },
-
-  // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -377,16 +284,6 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 20, fontWeight: "600", color: "#333", marginTop: 20 },
   emptyText: { fontSize: 14, color: "#666", textAlign: "center", marginTop: 8 },
-  shopBtn: {
-    marginTop: 24,
-    backgroundColor: "#00B87C",
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  shopBtnText: { color: "#FFF", fontWeight: "600", fontSize: 16 },
-
-  // Item Card
   itemCard: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
@@ -459,8 +356,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   removeBtn: { padding: 8 },
-
-  // Summary
   summaryCard: {
     backgroundColor: "#FFFFFF",
     margin: 16,
@@ -489,8 +384,6 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 18, fontWeight: "600", color: "#000" },
   totalPrice: { fontSize: 20, fontWeight: "700", color: "#00B87C" },
-
-  // Bottom Bar
   bottomBar: {
     position: "absolute",
     bottom: 0,
@@ -498,6 +391,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: "#FFFFFF",
     flexDirection: "row",
+    height: 150,
     alignItems: "center",
     padding: 16,
     borderTopWidth: 1,

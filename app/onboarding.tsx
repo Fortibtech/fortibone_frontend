@@ -15,15 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 // Interface pour les props de CustomButton
-interface CustomButtonProps {
-  title: string;
-  backgroundColor: string;
-  textColor: string;
-  width: string | number;
-  borderRadius: number;
-  fontSize: number;
-  onPress: () => void;
-}
+
 
 // Type pour le profil
 type ProfileType = "particulier" | "professionnel" | null;
