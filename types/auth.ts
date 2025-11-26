@@ -7,10 +7,11 @@ export interface RegisterPayload {
   dateOfBirth: string; // format YYYY-MM-DD
   country: string;
   city: string;
-  gender: "MALE" | "FEMALE";
+  gender: Genre;
   profileType: "PARTICULIER" | "PRO";
 }
 
+export const enum Genre  {MALE = "MALE", FEMALE= "FEMALE"}
 // export interface RegisterUserPayload {
 //   firstName: string;
 //   lastName: string;
