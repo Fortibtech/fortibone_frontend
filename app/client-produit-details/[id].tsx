@@ -1,5 +1,6 @@
-// app/(tabs)/product/[id].tsx   (ou là où tu l’as placé)
+// app/(tabs)/product/[id].tsx
 import { addToFavorite, deleteFavoris, getProductById } from "@/api/Products";
+import BackButtonAdmin from "@/components/Admin/BackButton";
 import BackButton from "@/components/BackButton";
 import AddProductReviewModal from "@/components/produit/AddProductReviewModal";
 import CategoryInfo from "@/components/produit/CategoryInfo";
@@ -16,11 +17,11 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
-  ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Animated,
+  StyleSheet,
 } from "react-native";
 import Carousel from "react-native-reanimated-carousel";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -41,10 +42,16 @@ const ProductDetails = () => {
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
   const [showAddReview, setShowAddReview] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
-  // ──────────────────────────────────────────────────────────────
-  // Récupération du produit
-  // ──────────────────────────────────────────────────────────────
+  // Animation du bouton flottant
+  const scrollY = new Animated.Value(0);
+  const floatingButtonOpacity = scrollY.interpolate({
+    inputRange: [100, 300],
+    outputRange: [0, 1],
+    extrapolate: "clamp",
+  });
+
   useEffect(() => {
     if (!id) return;
 
@@ -52,12 +59,10 @@ const ProductDetails = () => {
       try {
         const data = await getProductById(id);
         setProduct(data);
-        // Optionnel : pré-sélectionner la première variante
         if (data.variants?.length) {
           setSelectedVariant(data.variants[0]);
         }
       } catch (err) {
-        console.error("Erreur récupération produit :", err);
         Toast.show({
           type: "error",
           text1: "Impossible de charger le produit",
@@ -68,14 +73,10 @@ const ProductDetails = () => {
     })();
   }, [id]);
 
-  // ──────────────────────────────────────────────────────────────
-  // Gestion des favoris
-  // ──────────────────────────────────────────────────────────────
   const handleToggleFavorite = async () => {
     if (favLoading || !id) return;
-
+    setFavLoading(true);
     try {
-      setFavLoading(true);
       if (isFavorite) {
         await deleteFavoris(id);
         setIsFavorite(false);
@@ -83,27 +84,21 @@ const ProductDetails = () => {
       } else {
         await addToFavorite(id);
         setIsFavorite(true);
-        Toast.show({ type: "success", text1: "Ajouté aux favoris" });
+        Toast.show({ type: "success", text1: "Ajouté aux favoris ❤️" });
       }
-    } catch (err) {
-      Toast.show({ type: "error", text1: "Erreur favoris" });
+    } catch {
+      Toast.show({ type: "error", text1: "Erreur" });
     } finally {
       setFavLoading(false);
     }
   };
 
-  // ──────────────────────────────────────────────────────────────
-  // Ajout / retrait du panier
-  // ──────────────────────────────────────────────────────────────
   const handleAddToCart = () => {
     if (!product) return;
 
     const variant = selectedVariant || product.variants?.[0];
     if (!variant) {
-      Toast.show({
-        type: "error",
-        text1: "Veuillez choisir une variante",
-      });
+      Toast.show({ type: "error", text1: "Choisissez une variante" });
       return;
     }
 
@@ -111,7 +106,7 @@ const ProductDetails = () => {
       productId: product.id,
       variantId: variant.id,
       name: product.name,
-      price: Number(variant.price), // ← number obligatoire
+      price: Number(variant.price),
       imageUrl: variant.imageUrl ?? product.imageUrl ?? undefined,
       businessId: product.businessId,
       supplierBusinessId: product.businessId,
@@ -121,45 +116,31 @@ const ProductDetails = () => {
     };
 
     const alreadyInCart = isInCart(product.id, variant.id);
-
     toggleItem(payload);
 
     Toast.show({
       type: alreadyInCart ? "info" : "success",
       text1: alreadyInCart ? "Retiré du panier" : "Ajouté au panier !",
-      text2: alreadyInCart ? undefined : `${product.name} ×1`,
+      text2: alreadyInCart ? undefined : `${product.name}`,
     });
   };
 
-  // ──────────────────────────────────────────────────────────────
-  // État "dans le panier" pour l’affichage
-  // ──────────────────────────────────────────────────────────────
-  const currentVariantId = selectedVariant?.id || product?.variants?.[0]?.id;
+  const currentVariant = selectedVariant || product?.variants?.[0];
   const inCart =
-    product && currentVariantId
-      ? isInCart(product.id, currentVariantId)
-      : false;
+    product && currentVariant ? isInCart(product.id, currentVariant.id) : false;
+  const outOfStock = currentVariant?.quantityInStock === 0;
 
-  // ──────────────────────────────────────────────────────────────
-  // Rendu des étoiles
-  // ──────────────────────────────────────────────────────────────
   const renderStars = (rating: number) =>
     Array.from({ length: 5 }).map((_, i) => (
-      <Text
-        key={i}
-        style={{ fontSize: 18, color: i < rating ? "#FFD700" : "#ccc" }}
-      >
-        ★
+      <Text key={i} style={{ fontSize: 20, marginRight: 2 }}>
+        {i < rating ? "★" : "☆"}
       </Text>
     ));
 
-  // ──────────────────────────────────────────────────────────────
-  // Loading / Erreur
-  // ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator size="large" color="#000" />
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#000" style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
@@ -167,273 +148,392 @@ const ProductDetails = () => {
   if (!product) {
     return (
       <SafeAreaView style={styles.center}>
-        <Text>Produit introuvable</Text>
+        <Text style={{ fontSize: 18, color: "#999" }}>Produit introuvable</Text>
       </SafeAreaView>
     );
   }
 
-  // ──────────────────────────────────────────────────────────────
-  // Images du carousel
-  // ──────────────────────────────────────────────────────────────
-  const images =
-    product.variants.length > 0
-      ? product.variants.flatMap((v) =>
-          v.imageUrl ? [{ uri: v.imageUrl }] : []
-        )
-      : product.imageUrl
-      ? [{ uri: product.imageUrl }]
-      : [];
+  const images = product.variants
+    .flatMap((v) => (v.imageUrl ? [{ uri: v.imageUrl }] : []))
+    .concat(product.imageUrl ? [{ uri: product.imageUrl }] : [])
+    .slice(0, 10); // max 10 images
+
+  const hasImages = images.length > 0;
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ────────────────────── CAROUSEL ────────────────────── */}
+      {/* ==================== HERO CAROUSEL ==================== */}
       <View style={styles.topSection}>
         <Carousel
           width={screenWidth}
-          height={250}
-          data={images.length > 0 ? images : [{ uri: product.imageUrl }]}
-          scrollAnimationDuration={300}
+          height={280}
+          data={hasImages ? images : [{ uri: "https://picsum.photos/600/800" }]}
           onSnapToItem={setActiveSlide}
           renderItem={({ item }) => (
             <View style={styles.carouselContainer}>
               <Image source={item} style={styles.carouselImage} />
               <LinearGradient
-                colors={["rgba(0,0,0,0.2)", "transparent"]}
+                colors={["rgba(0,0,0,0.3)", "transparent"]}
                 style={styles.carouselOverlay}
               />
             </View>
           )}
         />
 
-        {/* Pagination dots */}
-        <View style={styles.paginationContainer}>
-          {images.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                activeSlide === index ? styles.activeDot : styles.inactiveDot,
-              ]}
-            />
-          ))}
-        </View>
+        {/* Dots */}
+        {hasImages && images.length > 1 && (
+          <View style={styles.paginationContainer}>
+            {images.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  i === activeSlide ? styles.activeDot : styles.inactiveDot,
+                ]}
+              />
+            ))}
+          </View>
+        )}
 
-        {/* Back button */}
+        {/* Back */}
         <View style={styles.backButtonContainer}>
-          <BackButton />
+          <BackButtonAdmin/>
         </View>
 
-        {/* Icône panier (coin haut droit) */}
+        {/* Panier rapide */}
         <TouchableOpacity
           style={[
-            styles.cartIconContainer,
-            inCart ? styles.cartIconContainerInCart : null,
+            styles.quickCartButton,
+            inCart && styles.quickCartButtonActive,
           ]}
           onPress={handleAddToCart}
-          activeOpacity={0.7}
         >
           <Image
             source={require("@/assets/images/logo/cart.png")}
-            style={[styles.icon, inCart ? { tintColor: "#fff" } : null]}
+            style={[styles.quickIcon, inCart && { tintColor: "#fff" }]}
           />
         </TouchableOpacity>
 
-        {/* Icône cœur favoris */}
+        {/* Favoris */}
         <TouchableOpacity
           style={[
-            styles.favoriteIconContainer,
-            isFavorite ? { backgroundColor: "red" } : null,
+            styles.favoriteButton,
+            isFavorite && styles.favoriteButtonActive,
           ]}
           onPress={handleToggleFavorite}
           disabled={favLoading}
-          activeOpacity={0.7}
         >
           <Image
             source={require("@/assets/images/logo/heart.png")}
             style={[
-              styles.icon,
-              favLoading
-                ? { tintColor: "#ccc" }
-                : isFavorite
-                ? { tintColor: "#fff" }
-                : null,
+              styles.quickIcon,
+              isFavorite ? { tintColor: "#fff" } : { tintColor: "#000" },
             ]}
           />
         </TouchableOpacity>
       </View>
 
-      {/* ────────────────────── CONTENU ────────────────────── */}
-      <ScrollView
+      {/* ==================== CONTENU ==================== */}
+      <Animated.ScrollView
         style={styles.bottomSection}
-        contentContainerStyle={styles.bottomSectionContent}
+        contentContainerStyle={styles.bottomContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          {
+            useNativeDriver: true,
+          }
+        )}
+        scrollEventThrottle={16}
       >
         <Text style={styles.title}>{product.name}</Text>
 
-        <ScrollView style={styles.descriptionContainer} nestedScrollEnabled>
-          <Text style={styles.description}>{product.description}</Text>
-        </ScrollView>
+        {/* Description expandable */}
+        <View style={styles.descriptionWrapper}>
+          <Text
+            style={styles.description}
+            numberOfLines={descriptionExpanded ? undefined : 4}
+          >
+            {product.description || "Aucune description disponible."}
+          </Text>
+          {(product.description?.length ?? 0) > 120 && (
+            <TouchableOpacity
+              onPress={() => setDescriptionExpanded(!descriptionExpanded)}
+              style={{ marginTop: 8 }}
+            >
+              <Text style={styles.readMoreText}>
+                {descriptionExpanded ? "Afficher moins" : "Lire la suite"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
+        {/* Rating */}
         <View style={styles.ratingRow}>
           <View style={{ flexDirection: "row" }}>
             {renderStars(Math.round(product.averageRating))}
           </View>
           <Text style={styles.ratingText}>
-            {product.averageRating.toFixed(1)} ({product.reviewCount} avis)
+            {product.averageRating.toFixed(1)} • {product.reviewCount} avis
           </Text>
         </View>
 
-        <View style={styles.infoContainer}>
-          <Text style={styles.price}>
-            {selectedVariant?.price ?? product.variants[0]?.price ?? "0"} €
-          </Text>
-
-          <Text style={styles.stockText}>
-            {(selectedVariant ?? product.variants[0])?.quantityInStock > 0
-              ? `${
-                  (selectedVariant ?? product.variants[0]).quantityInStock
-                } en stock`
-              : "Rupture de stock"}
-          </Text>
-
-          <ProductOptionsSelector
-            product={product}
-            onVariantSelect={setSelectedVariant}
-          />
-
-          <CategoryInfo category={product.category} />
-
-          {/* Bouton principal Ajouter/Retirer */}
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity
-              style={[
-                styles.addToCartButton,
-                inCart ? styles.addToCartButtonInCart : null,
-              ]}
-              onPress={handleAddToCart}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.addToCartButtonText}>
-                {inCart ? "Retirer du panier" : "Ajouter au panier"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+        {/* Prix + Stock */}
+        <View style={styles.priceContainer}>
+          <Text style={styles.price}>{currentVariant?.price ?? "0"} KMF</Text>
+          {outOfStock && (
+            <Text style={styles.outOfStock}>Rupture de stock</Text>
+          )}
+          {!outOfStock && (
+            <Text style={styles.stockText}>
+              {currentVariant?.quantityInStock} en stock
+            </Text>
+          )}
         </View>
 
-        <View style={styles.actionsRow}>
-          <ReviewActions
-            onShowReviews={() => setShowReviews(true)}
-            onAddReview={() => setShowAddReview(true)}
-          />
-        </View>
-
-        {/* Modals avis */}
-        <ProductReviewsListModal
-          productId={product.id}
-          visible={showReviews}
-          onClose={() => setShowReviews(false)}
+        <ProductOptionsSelector
+          product={product}
+          onVariantSelect={setSelectedVariant}
         />
-        <AddProductReviewModal
-          productId={product.id}
-          visible={showAddReview}
-          onClose={() => setShowAddReview(false)}
+        <CategoryInfo category={product.category} />
+
+        <ReviewActions
+          onShowReviews={() => setShowReviews(true)}
+          onAddReview={() => setShowAddReview(true)}
         />
-      </ScrollView>
+
+        <View style={{ height: 100 }} />
+      </Animated.ScrollView>
+
+      {/* ==================== BOUTONS FIXES BAS ==================== */}
+      <View style={styles.fixedBottomBar}>
+        <TouchableOpacity
+          style={[
+            styles.addToCartButton,
+            inCart && styles.addToCartButtonInCart,
+            outOfStock && styles.buttonDisabled,
+          ]}
+          onPress={handleAddToCart}
+          disabled={outOfStock}
+        >
+          <Text style={styles.addToCartText}>
+            {inCart ? "Retirer" : "Ajouter au panier"}
+          </Text>
+        </TouchableOpacity>
+
+        {/* <TouchableOpacity
+          style={[styles.buyNowButton, outOfStock && styles.buttonDisabled]}
+          disabled={outOfStock}
+          onPress={() => {
+            handleAddToCart();
+            // router.push("/cart");
+          }}
+        >
+          <Text style={styles.buyNowText}>Acheter maintenant</Text>
+        </TouchableOpacity> */}
+      </View>
+
+      {/* Bouton flottant (apparaît après scroll) */}
+      <Animated.View
+        style={[styles.floatingCartButton, { opacity: floatingButtonOpacity }]}
+      >
+        <TouchableOpacity
+          onPress={handleAddToCart}
+          style={styles.floatingButtonInner}
+        >
+          <Text style={styles.floatingButtonText}>
+            {inCart ? "Retirer" : "Ajouter"}
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Modals */}
+      <ProductReviewsListModal
+        productId={product.id}
+        visible={showReviews}
+        onClose={() => setShowReviews(false)}
+      />
+      <AddProductReviewModal
+        productId={product.id}
+        visible={showAddReview}
+        onClose={() => setShowAddReview(false)}
+      />
     </SafeAreaView>
   );
 };
 
-// ──────────────────────────────────────────────────────────────
-// Styles (identiques à avant, juste un petit nettoyage)
-// ──────────────────────────────────────────────────────────────
+// ========================================
+// STYLES ULTIMES 2025 – UI/UX PARFAITE
+// ========================================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  topSection: {
-    height: 250,
-    position: "relative",
-    backgroundColor: "#f5f5f5",
-    overflow: "hidden",
-  },
-  carouselContainer: { position: "relative", width: "100%", height: "100%" },
+
+  topSection: { height: 280, position: "relative", backgroundColor: "#f8f8f8" },
+  carouselContainer: { width: "100%", height: "100%" },
   carouselImage: { width: "100%", height: "100%", resizeMode: "cover" },
   carouselOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    height: "50%",
+    height: "40%",
   },
+
   paginationContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
     position: "absolute",
-    bottom: 15,
+    bottom: 24,
     width: "100%",
+    justifyContent: "center",
+    flexDirection: "row",
   },
-  dot: { width: 10, height: 10, borderRadius: 5, marginHorizontal: 4 },
-  activeDot: { backgroundColor: "#000", transform: [{ scale: 1.2 }] },
-  inactiveDot: { backgroundColor: "rgba(255,255,255,0.5)" },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
+    backgroundColor: "rgba(255,255,255,0.6)",
+  },
+  activeDot: { backgroundColor: "#fff", transform: [{ scale: 1.3 }] },
+  inactiveDot: { backgroundColor: "rgba(255,255,255,0.4)" },
+
   backButtonContainer: {
     position: "absolute",
-    top: 15,
-    left: 15,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 20,
-    padding: 5,
+    top: 12,
+    left: 12,
     zIndex: 10,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 22,
+    padding: 8,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
-  cartIconContainer: {
+
+  quickCartButton: {
     position: "absolute",
-    top: 15,
-    right: 15,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    top: 12,
+    right: 60,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.95)",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 10,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
   },
-  cartIconContainerInCart: { backgroundColor: "#4caf50" },
-  favoriteIconContainer: {
+  quickCartButtonActive: { backgroundColor: "#4caf50" },
+
+  favoriteButton: {
     position: "absolute",
-    top: 60,
-    right: 15,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    top: 12,
+    right: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.95)",
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 10,
+    elevation: 6,
   },
-  icon: { width: 22, height: 22, tintColor: "#000", resizeMode: "contain" },
+  favoriteButtonActive: { backgroundColor: "#e74c3c" },
+
+  quickIcon: { width: 24, height: 24, tintColor: "#000" },
+
   bottomSection: {
     flex: 1,
     backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     marginTop: -20,
   },
-  bottomSectionContent: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
-  descriptionContainer: { maxHeight: 150, marginBottom: 10 },
-  description: { fontSize: 16, color: "#666", lineHeight: 24 },
+  bottomContent: { padding: 24, paddingBottom: 120 },
+
+  title: { fontSize: 26, fontWeight: "800", color: "#000", marginBottom: 8 },
+  descriptionWrapper: { marginVertical: 12 },
+  description: { fontSize: 16, lineHeight: 24, color: "#444" },
+  readMoreText: { color: "#000", fontWeight: "600", fontSize: 15 },
+
   ratingRow: { flexDirection: "row", alignItems: "center", marginVertical: 12 },
-  ratingText: { marginLeft: 8, fontSize: 14, color: "#555" },
-  infoContainer: { marginBottom: 16 },
-  price: { fontSize: 20, fontWeight: "600", color: "#000", marginBottom: 8 },
-  stockText: { fontSize: 14, color: "#666", marginBottom: 12 },
-  actionButtonsContainer: { marginTop: 20 },
+  ratingText: {
+    marginLeft: 10,
+    fontSize: 15,
+    color: "#555",
+    fontWeight: "500",
+  },
+
+  priceContainer: { marginVertical: 16 },
+  price: { fontSize: 30, fontWeight: "800", color: "#000" },
+  outOfStock: {
+    fontSize: 16,
+    color: "#e74c3c",
+    marginTop: 6,
+    fontWeight: "600",
+  },
+  stockText: {
+    fontSize: 15,
+    color: "#27ae60",
+    marginTop: 6,
+    fontWeight: "600",
+  },
+
+  fixedBottomBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    padding: 16,
+    paddingBottom: 34,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    gap: 12,
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+  },
+
   addToCartButton: {
+    flex: 1,
     backgroundColor: "#4caf50",
-    paddingVertical: 14,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
   },
-  addToCartButtonInCart: { backgroundColor: "#f44336" },
-  addToCartButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  actionsRow: { marginTop: 16 },
+  addToCartButtonInCart: { backgroundColor: "#e74c3c" },
+  addToCartText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+
+  buyNowButton: {
+    flex: 1,
+    backgroundColor: "#000",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  buyNowText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+
+  buttonDisabled: { backgroundColor: "#ccc", opacity: 0.7 },
+
+  floatingCartButton: {
+    position: "absolute",
+    bottom: 100,
+    right: 20,
+    zIndex: 100,
+  },
+  floatingButtonInner: {
+    backgroundColor: "#000",
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 30,
+    elevation: 10,
+  },
+  floatingButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 });
 
 export default ProductDetails;

@@ -4,7 +4,6 @@ import { Plus, Search, Download } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system";
 import {
   ActivityIndicator,
   Alert,
@@ -49,7 +48,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   const [pagination, setPagination] = useState<any>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
-
   const previousBusinessIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
 

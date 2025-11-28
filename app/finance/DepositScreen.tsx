@@ -23,7 +23,7 @@ import {
 
 import { createDeposit } from "@/api/wallet";
 
-type Method = "STRIPE" | "MVOLA";
+type Method = "STRIPE" | "KARTAPAY";
 
 const presets = [10000, 20000, 50000, 15000]; // OK pour Stripe (max ~600M XAF safe)
 const MAX_AMOUNT_XAF = 99999; // Limite safe (~1M USD equiv, sous 999k USD Stripe)
@@ -81,7 +81,7 @@ export default function DepositScreen() {
       return;
     }
 
-    if (method === "MVOLA" && !/^\+(261|237)\d{8,9}$/.test(phoneNumber)) {
+    if (method === "KARTAPAY" && !/^\+(261|237)\d{8,9}$/.test(phoneNumber)) {
       // Regex affinée
       Alert.alert("Numéro invalide", "Format : +261XXXXXXXXX ou +237XXXXXXXXX");
       return;
@@ -99,23 +99,23 @@ export default function DepositScreen() {
 
     try {
       // ================== MVOLA ==================
-      if (method === "MVOLA") {
-        console.log("Envoi dépôt MVOLA →", {
+      if (method === "KARTAPAY") {
+        console.log("Envoi dépôt KARTAPAY →", {
           amount: numAmount,
-          method: "MVOLA",
+          method: "KARTAPAY",
           phoneNumber,
         });
 
         const response = await createDeposit({
           amount: numAmount,
-          method: "MVOLA",
+          method: "KARTAPAY",
           metadata: {
             phoneNumber,
             note: "Dépôt via application mobile",
           },
         });
 
-        console.log("Réponse MVOLA :", response);
+        console.log("Réponse KARTAPAY :", response);
 
         Alert.alert(
           "Demande MVola envoyée !",
@@ -264,13 +264,16 @@ export default function DepositScreen() {
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.tab, method === "MVOLA" && styles.tabActive]}
-                  onPress={() => setMethod("MVOLA")}
+                  style={[
+                    styles.tab,
+                    method === "KARTAPAY" && styles.tabActive,
+                  ]}
+                  onPress={() => setMethod("KARTAPAY")}
                 >
                   <Text
                     style={[
                       styles.tabText,
-                      method === "MVOLA" && styles.tabTextActive,
+                      method === "KARTAPAY" && styles.tabTextActive,
                     ]}
                   >
                     MVola / Orange Money
@@ -351,7 +354,7 @@ export default function DepositScreen() {
           )}
 
           {/* MVola */}
-          {method === "MVOLA" && (
+          {method === "KARTAPAY" && (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>
                 Numéro MVola / Orange Money

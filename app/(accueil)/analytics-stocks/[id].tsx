@@ -53,7 +53,7 @@ const StockTrackingScreen: React.FC = () => {
       </View>
     );
   }
-
+  console.log("ANALITICS id du bussines en STOCK", id);
   if (error || !data) {
     return (
       <View style={styles.center}>

@@ -49,7 +49,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Permet de localiser votre commerce sur la carte."
         }
-      ]
+      ],
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true,

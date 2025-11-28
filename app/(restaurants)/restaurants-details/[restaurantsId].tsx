@@ -1,64 +1,52 @@
-import {
-  getAvailableTables,
-  getMenus,
-  getTables,
-  Menu,
-  Table,
-} from "@/api/restaurant";
+import { getAvailableTables, getMenus, Menu, Table } from "@/api/restaurant";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker, {
-  DateTimePickerAndroid,
-} from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
-import { LinearGradient } from "expo-linear-gradient";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Modal,
   Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, { FadeInUp, Layout } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+} from "react-native-reanimated";
+import { format } from "date-fns";
 
 const RestaurantsId: React.FC = () => {
   const { restaurantsId } = useLocalSearchParams<{ restaurantsId: string }>();
   const router = useRouter();
+
   const [menus, setMenus] = useState<Menu[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
   const [duration, setDuration] = useState<number>(90);
-  const [showIOSPicker, setShowIOSPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const durationOptions = [
-    { label: "30 minutes", value: 30 },
-    { label: "60 minutes", value: 60 },
-    { label: "90 minutes", value: 90 },
-    { label: "120 minutes", value: 120 },
-  ];
+  const durationOptions = [30, 60, 90, 120];
 
   const fetchData = async () => {
     if (!restaurantsId) return;
     setLoading(true);
-    setError(null);
     try {
       const [menuData, tableData] = await Promise.all([
         getMenus(restaurantsId),
-        date
-          ? getAvailableTables(restaurantsId, date.toISOString(), duration)
-          : getTables(restaurantsId),
+        getAvailableTables(restaurantsId, date.toISOString(), duration),
       ]);
       setMenus(menuData);
       setTables(tableData);
-    } catch (err: any) {
-      console.error("❌ Error loading data:", err);
-      setError("Failed to load data. Please try again.");
+    } catch (err) {
+      console.error("Erreur chargement restaurant :", err);
     } finally {
       setLoading(false);
     }
@@ -66,417 +54,463 @@ const RestaurantsId: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [restaurantsId]);
+  }, [restaurantsId, date, duration]);
 
-  const showDateTimePicker = () => {
+  const formatDate = (d: Date) => format(d, "EEE d MMM yyyy • HH:mm");
+
+  const handleDatePress = () => {
     if (Platform.OS === "android") {
-      DateTimePickerAndroid.open({
-        value: date,
-        onChange: (event, selectedDate) => {
-          if (event.type === "set" && selectedDate) {
-            setDate(selectedDate);
-          }
-        },
-        mode: "date",
-        minimumDate: new Date(),
-      });
+      // Sur Android, on affiche directement le picker natif
+      setShowDatePicker(true);
     } else {
-      setShowIOSPicker(true);
+      // Sur iOS, on affiche notre modal personnalisé
+      setShowDatePicker(true);
     }
   };
 
-  const handleFilter = () => {
-    if (!date) {
-      alert("Please select a date and time");
-      return;
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    // Sur Android, le picker se ferme automatiquement
+    setShowDatePicker(Platform.OS === "ios");
+
+    if (event.type === "set" && selectedDate) {
+      setDate(selectedDate);
     }
-    if (!duration || duration < 30 || duration > 180) {
-      alert("Please select a duration between 30 and 180 minutes");
-      return;
-    }
-    fetchData();
   };
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Loading data...</Text>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00af66" />
+        <Text style={styles.loadingText}>Chargement du restaurant...</Text>
       </View>
     );
   }
-
-  if (error) {
-    return (
-      <View style={styles.center}>
-        <Ionicons name="sad-outline" size={40} color="#6b7280" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={fetchData}
-          accessibilityLabel="Retry loading data"
-          accessibilityRole="button"
-        >
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  // Compute sections directly without useMemo
-  const sections = [
-    {
-      title: "Tables",
-      icon: "cafe-outline",
-      data:
-        tables.length === 0
-          ? [
-              {
-                id: "empty",
-                label: "No tables",
-                value: "No tables found",
-                icon: "alert-circle-outline",
-              },
-            ]
-          : tables.map((table) => ({
-              id: table.id,
-              label: table.name,
-              value: `Capacity: ${table.capacity} | Available: ${
-                table.isAvailable ? "✅ Yes" : "❌ No"
-              }`,
-              icon: table.isAvailable
-                ? "checkmark-circle-outline"
-                : "close-circle-outline",
-            })),
-    },
-    {
-      title: "Available Menus",
-      icon: "restaurant-outline",
-      data:
-        menus.length === 0
-          ? [
-              {
-                id: "empty",
-                label: "No menus",
-                value: "No menus found",
-                icon: "alert-circle-outline",
-              },
-            ]
-          : menus.map((menu) => ({
-              id: menu.id,
-              label: menu.name,
-              value: `${menu.description} | Price: ${menu.price} FCFA`,
-              icon: "fast-food-outline",
-            })),
-    },
-  ];
 
   return (
-    <View style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          accessibilityLabel="Go back to previous page"
-          accessibilityRole="button"
-        >
-          <Ionicons name="arrow-back" size={24} color="#1f2937" />
-        </TouchableOpacity>
-        <Ionicons
-          name="restaurant-outline"
-          size={28}
-          color="#3b82f6"
-          style={styles.headerIcon}
-        />
-        <Text style={styles.header} numberOfLines={1} ellipsizeMode="tail">
-          Restaurant
-        </Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={fetchData}
-          accessibilityLabel="Refresh data"
-          accessibilityRole="button"
-        >
-          <Ionicons name="refresh" size={24} color="#3b82f6" />
-        </TouchableOpacity>
-      </View>
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      {/* FILTERS */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={styles.dateButton}
-          onPress={showDateTimePicker}
-        >
-          <Ionicons
-            name="calendar-outline"
-            size={20}
-            color="#3b82f6"
-            style={styles.dateIcon}
-          />
-          <Text style={styles.dateText}>
-            {date.toLocaleString("en-US", {
-              timeZone: "Africa/Lagos",
-              dateStyle: "short",
-              timeStyle: "short",
-            })}
-          </Text>
-        </TouchableOpacity>
-        <Picker
-          selectedValue={duration}
-          onValueChange={(value) => setDuration(value)}
-          style={styles.picker}
-        >
-          {durationOptions.map((option) => (
-            <Picker.Item
-              key={option.value}
-              label={option.label}
-              value={option.value}
-            />
-          ))}
-        </Picker>
-        <TouchableOpacity style={styles.filterButton} onPress={handleFilter}>
-          <Text style={styles.filterButtonText}>Filter</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* LIST */}
-      <FlatList
-        data={sections}
-        keyExtractor={(item) => item.title}
-        renderItem={({ item, index }) => (
-          <Animated.View
-            entering={FadeInUp.delay(index * 100).springify()}
-            layout={Layout.springify()}
-            style={styles.sectionCard}
+      <View style={styles.container}>
+        {/* Header */}
+        <Animated.View entering={FadeIn.duration(500)} style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
           >
-            <LinearGradient
-              colors={["#ffffff", "#f8fafc"]}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.sectionHeader}>
-              <Ionicons
-                name={item.icon as string}
-                size={20}
-                color="#3b82f6"
-                style={styles.sectionIcon}
-              />
-              <Text style={styles.sectionTitle}>{item.title}</Text>
-            </View>
-            {item.data.map((dataItem) => (
-              <View key={dataItem.id} style={styles.dataRow}>
-                <Ionicons
-                  name={dataItem.icon as string}
-                  size={16}
-                  color="#3b82f6"
-                  style={styles.dataIcon}
-                />
-                <Text style={styles.dataLabel}>{dataItem.label}</Text>
-                <Text style={styles.dataValue}>{dataItem.value}</Text>
-              </View>
-            ))}
-          </Animated.View>
-        )}
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Text style={styles.errorText}>No data available</Text>
-          </View>
-        }
-        contentContainerStyle={styles.listContent}
-      />
+            <Ionicons name="arrow-back" size={28} color="#333" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Choisir une table</Text>
+          <TouchableOpacity onPress={fetchData}>
+            <Ionicons name="refresh" size={26} color="#00af66" />
+          </TouchableOpacity>
+        </Animated.View>
 
-      {/* iOS Modal Picker */}
-      {Platform.OS === "ios" && (
-        <Modal visible={showIOSPicker} transparent animationType="slide">
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "flex-end",
-              backgroundColor: "rgba(0,0,0,0.3)",
-            }}
-          >
-            <View style={{ backgroundColor: "white", padding: 16 }}>
-              <DateTimePicker
-                value={date}
-                mode="date"
-                display="spinner"
-                onChange={(event, selectedDate) => {
-                  if (event.type === "set" && selectedDate) {
-                    setDate(selectedDate);
-                  }
-                  setShowIOSPicker(false);
-                }}
-              />
-              <TouchableOpacity
-                onPress={() => setShowIOSPicker(false)}
-                style={{
-                  marginTop: 12,
-                  alignItems: "center",
-                  padding: 12,
-                  backgroundColor: "#3b82f6",
-                  borderRadius: 8,
-                }}
+        {/* Filtres */}
+        <Animated.View
+          entering={FadeInDown.springify()}
+          style={styles.filterBar}
+        >
+          <Pressable onPress={handleDatePress} style={styles.datePickerBtn}>
+            <Ionicons name="calendar-outline" size={22} color="#00af66" />
+            <Text style={styles.dateText}>{formatDate(date)}</Text>
+            <Ionicons name="chevron-down" size={18} color="#999" />
+          </Pressable>
+
+          <View style={styles.durationRow}>
+            {durationOptions.map((d) => (
+              <Pressable
+                key={d}
+                onPress={() => setDuration(d)}
+                style={[
+                  styles.durationChip,
+                  duration === d && styles.durationChipActive,
+                ]}
               >
-                <Text style={{ color: "white", fontWeight: "600" }}>Done</Text>
-              </TouchableOpacity>
-            </View>
+                <Text
+                  style={[
+                    styles.durationText,
+                    duration === d && styles.durationTextActive,
+                  ]}
+                >
+                  {d} min
+                </Text>
+              </Pressable>
+            ))}
           </View>
-        </Modal>
-      )}
-    </View>
+        </Animated.View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Tables */}
+          <Animated.View entering={FadeInUp.delay(100)}>
+            <Text style={styles.sectionTitle}>Tables disponibles</Text>
+
+            {tables.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Ionicons name="alert-circle-outline" size={50} color="#ccc" />
+                <Text style={styles.emptyText}>
+                  Aucune table disponible pour ces critères
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.list}>
+                {tables.map((table, i) => (
+                  <Animated.View
+                    key={table.id}
+                    entering={FadeInUp.delay(80 * i)}
+                    style={styles.tableCard}
+                  >
+                    <View style={styles.tableLeft}>
+                      <View
+                        style={[
+                          styles.statusDot,
+                          {
+                            backgroundColor: table.isAvailable
+                              ? "#00af66"
+                              : "#ef4444",
+                          },
+                        ]}
+                      />
+                      <View>
+                        <Text style={styles.tableName}>{table.name}</Text>
+                        <Text style={styles.tableInfo}>
+                          {table.capacity} pers. •{" "}
+                          {table.location || "Salle principale"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {table.isAvailable ? (
+                      <TouchableOpacity style={styles.reserveBtn}>
+                        <Text style={styles.reserveBtnText}>Réserver</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={styles.unavailableText}>Indisponible</Text>
+                    )}
+                  </Animated.View>
+                ))}
+              </View>
+            )}
+          </Animated.View>
+
+          {/* Menus */}
+          <Animated.View
+            entering={FadeInUp.delay(300)}
+            style={styles.sectionMargin}
+          >
+            <Text style={styles.sectionTitle}>Menus disponibles</Text>
+
+            {menus.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Ionicons name="restaurant-outline" size={50} color="#ccc" />
+                <Text style={styles.emptyText}>Aucun menu pour le moment</Text>
+              </View>
+            ) : (
+              <View style={styles.list}>
+                {menus.map((menu, i) => (
+                  <Animated.View
+                    key={menu.id}
+                    entering={FadeInUp.delay(80 * i + 100)}
+                    style={styles.menuCard}
+                  >
+                    <View style={styles.menuIcon}>
+                      <Ionicons name="restaurant" size={28} color="#00af66" />
+                    </View>
+                    <View style={styles.menuInfo}>
+                      <Text style={styles.menuName}>{menu.name}</Text>
+                      <Text style={styles.menuDesc} numberOfLines={2}>
+                        {menu.description}
+                      </Text>
+                    </View>
+                    <Text style={styles.menuPrice}>
+                      {menu.price.toLocaleString()} FCFA
+                    </Text>
+                  </Animated.View>
+                ))}
+              </View>
+            )}
+          </Animated.View>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </View>
+
+      {/* DateTimePicker - Android : natif direct, iOS : dans Modal */}
+      {Platform.OS === "android"
+        ? showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="datetime"
+              display="default"
+              minimumDate={new Date()}
+              onChange={handleDateChange}
+            />
+          )
+        : showDatePicker && (
+            <Modal transparent animationType="slide">
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Date et heure</Text>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Ionicons name="close" size={26} color="#999" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <DateTimePicker
+                    value={date}
+                    mode="datetime"
+                    display="spinner"
+                    minimumDate={new Date()}
+                    onChange={handleDateChange}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.modalConfirmBtn}
+                    onPress={() => setShowDatePicker(false)}
+                  >
+                    <Text style={styles.modalConfirmText}>Confirmer</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          )}
+    </>
   );
 };
-// Styles remain unchanged
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#f8f9fa",
   },
-  headerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    paddingTop: Platform.OS === "ios" ? 50 : 40,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  backButton: {
-    padding: 12,
-    marginRight: 12,
-  },
-  headerIcon: {
-    marginRight: 8,
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1f2937",
-    flex: 1,
-  },
-  refreshButton: {
-    padding: 12,
-  },
-  filterContainer: {
-    padding: 16,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-  },
-  dateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: "#f8fafc",
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  dateIcon: {
-    marginRight: 8,
-  },
-  dateText: {
-    fontSize: 16,
-    color: "#1f2937",
-  },
-  picker: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  filterButton: {
-    backgroundColor: "#3b82f6",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  filterButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  sectionCard: {
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-  },
-  sectionIcon: {
-    marginRight: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  dataRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    paddingHorizontal: 16,
-  },
-  dataIcon: {
-    marginRight: 8,
-  },
-  dataLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#1f2937",
-    flex: 1,
-  },
-  dataValue: {
-    fontSize: 14,
-    color: "#4b5563",
-    flex: 1,
-    textAlign: "right",
-  },
-  center: {
+  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#fff",
   },
   loadingText: {
-    marginTop: 8,
+    marginTop: 16,
     fontSize: 16,
-    color: "#1f2937",
+    color: "#666",
   },
-  errorText: {
-    fontSize: 16,
-    color: "#dc2626",
-    textAlign: "center",
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  retryButton: {
-    backgroundColor: "#3b82f6",
-    paddingVertical: 10,
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 16,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
-  retryButtonText: {
-    color: "white",
+  backBtn: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#333",
+  },
+  filterBar: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  datePickerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f1f5f9",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 14,
+  },
+  dateText: {
+    flex: 1,
+    marginLeft: 10,
     fontSize: 16,
+    color: "#333",
+    fontWeight: "500",
+  },
+  durationRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  durationChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#f1f5f9",
+    borderRadius: 30,
+  },
+  durationChipActive: {
+    backgroundColor: "#00af66",
+  },
+  durationText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "600",
+  },
+  durationTextActive: {
+    color: "#fff",
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 16,
+  },
+  list: {
+    gap: 14,
+  },
+  sectionMargin: {
+    marginTop: 40,
+  },
+  tableCard: {
+    backgroundColor: "#fff",
+    padding: 18,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  tableLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  tableName: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#333",
+  },
+  tableInfo: {
+    fontSize: 14,
+    color: "#888",
+    marginTop: 4,
+  },
+  reserveBtn: {
+    backgroundColor: "#00af66",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  reserveBtnText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  unavailableText: {
+    color: "#ef4444",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  menuCard: {
+    backgroundColor: "#fff",
+    padding: 18,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  menuIcon: {
+    width: 56,
+    height: 56,
+    backgroundColor: "#f0fdf4",
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  menuInfo: {
+    flex: 1,
+  },
+  menuName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+  menuDesc: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  menuPrice: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#00af66",
+  },
+  emptyCard: {
+    backgroundColor: "#fff",
+    padding: 40,
+    borderRadius: 16,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#999",
+    textAlign: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    width: "90%",
+    padding: 20,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#333",
+  },
+  modalConfirmBtn: {
+    backgroundColor: "#00af66",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  modalConfirmText: {
+    color: "#fff",
+    fontSize: 17,
     fontWeight: "600",
   },
 });

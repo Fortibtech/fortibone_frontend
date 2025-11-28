@@ -35,16 +35,12 @@ type Product = {
 };
 
 const HomePage: React.FC = () => {
+  const itemsCount = useCartStore((state) => state.items.length);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [suggestions, setSuggestions] = useState<Product[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const cartItems = useCartStore((s: { items: any }) => s.items);
-  const totalCount = cartItems.reduce(
-    (sum: any, item: { quantity: any }) => sum + item.quantity,
-    0
-  );
 
   useEffect(() => {
     fetchProducts();
@@ -129,12 +125,12 @@ const HomePage: React.FC = () => {
         </View>
         <TouchableOpacity
           style={styles.notificationButton}
-           onPress={() => router.push("/(profile-particulier)/cart")}
+          onPress={() => router.push("/(profile-particulier)/cart")}
         >
           <Ionicons name="cart-outline" size={24} color="#fff" />
-          {totalCount > 0 && (
+          {itemsCount > 0 && (
             <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{totalCount}</Text>
+              <Text style={styles.cartBadgeText}>{itemsCount}</Text>
             </View>
           )}
         </TouchableOpacity>
