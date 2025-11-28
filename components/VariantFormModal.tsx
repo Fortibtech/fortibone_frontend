@@ -3,7 +3,7 @@
 // components/VariantFormModal.tsx - Modal pour créer/modifier les variantes
 import { Ionicons } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
-import { Camera, Package, X } from "lucide-react-native"
+import { Calendar, Camera, Package, X } from "lucide-react-native"
 import type React from "react"
 import { useEffect, useState } from "react"
 import {
@@ -21,6 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native"
+import DateTimePicker from "@react-native-community/datetimepicker"
 
 import {
   type CategoryAttribute,
@@ -58,6 +59,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
 
   const [attributeValues, setAttributeValues] = useState<Record<string, string>>({})
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [showDatePicker, setShowDatePicker] = useState<string | null>(null)
 
   useEffect(() => {
     if (visible && product) {
@@ -272,6 +274,103 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
     const error = formErrors[`attr_${attribute.id}`]
     const value = attributeValues[attribute.id] || ""
 
+    const isDateField = attribute.name.toLowerCase().includes('date') || 
+                        attribute.name.toLowerCase().includes('péremption') ||
+                        attribute.name.toLowerCase().includes('expiration')
+
+    // Si c'est un champ texte mais détecté comme date, afficher un DatePicker
+    if (isDateField) {
+          return (
+        <View key={attribute.id} style={styles.formGroup}>
+          <Text style={styles.label}>
+            {attribute.name}
+            {attribute.required && <Text style={styles.required}> *</Text>}
+          </Text>
+          
+          <TouchableOpacity
+            style={[styles.dateButton, error && styles.inputError]}
+            onPress={() => setShowDatePicker(attribute.id)}
+          >
+            <Calendar size={20} color="#6b7280" />
+            <Text style={[styles.dateText, !value && styles.datePlaceholder]}>
+              {value 
+                ? new Date(value).toLocaleDateString('fr-FR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  })
+                : `Sélectionner ${attribute.name.toLowerCase()}`
+              }
+            </Text>
+          </TouchableOpacity>
+
+          {/* Modal pour iOS */}
+          {Platform.OS === 'ios' && showDatePicker === attribute.id && (
+            <Modal
+              transparent
+              animationType="slide"
+              visible={true}
+              onRequestClose={() => setShowDatePicker(null)}
+            >
+              <TouchableOpacity 
+                style={styles.datePickerModal} 
+                activeOpacity={1}
+                onPress={() => setShowDatePicker(null)}
+              >
+                <TouchableOpacity 
+                  activeOpacity={1} 
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <View style={styles.datePickerContainer}>
+                    <View style={styles.datePickerHeader}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(null)}>
+                        <Text style={styles.datePickerCancel}>Annuler</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.datePickerTitle}>{attribute.name}</Text>
+                      <TouchableOpacity onPress={() => setShowDatePicker(null)}>
+                        <Text style={styles.datePickerDone}>OK</Text>
+                      </TouchableOpacity>
+                    </View>
+                    
+                    <DateTimePicker
+                      value={value ? new Date(value) : new Date()}
+                      mode="date"
+                      display="spinner"
+                      textColor="#000000" 
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) {
+                          const dateString = selectedDate.toISOString().split('T')[0]
+                          updateAttributeValue(attribute.id, dateString)
+                        }
+                      }}
+                      style={styles.datePickerIOS}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </Modal>
+          )}
+
+          {/* DatePicker pour Android */}
+          {Platform.OS === 'android' && showDatePicker === attribute.id && (
+            <DateTimePicker
+              value={value ? new Date(value) : new Date()}
+              mode="date"
+              display="default"
+              onChange={(event, selectedDate) => {
+                setShowDatePicker(null)
+                if (event.type === 'set' && selectedDate) {
+                  const dateString = selectedDate.toISOString().split('T')[0]
+                  updateAttributeValue(attribute.id, dateString)
+                }
+              }}
+            />
+          )}
+          
+          {error && <Text style={styles.errorText}>{error}</Text>}
+        </View>
+      )
+    }
     switch (attribute.type) {
       case "select":
         return (
@@ -744,5 +843,62 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#a0a8b3",
     fontWeight: "400",
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#fafafb',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#f0f1f3',
+  },
+  dateText: {
+    fontSize: 15,
+    color: '#2d3748',
+    fontWeight: '400',
+    flex: 1,
+  },
+  datePlaceholder: {
+    color: '#b0b8c0',
+  },
+  datePickerModal: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  datePickerContainer: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f1f3',
+  },
+  datePickerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#2d3748',
+  },
+  datePickerCancel: {
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  datePickerDone: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  datePickerIOS: {
+    height: 200,
+    backgroundColor: '#ffffff',
   },
 })
