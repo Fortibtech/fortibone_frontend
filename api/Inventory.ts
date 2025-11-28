@@ -76,12 +76,20 @@ export const getBusinessInventory = async (
     throw new Error(`Failed to fetch inventory: ${err.message}`);
   }
 };
-
+export const getVariantBatches = async (
+  variantId: string
+): Promise<Batch[]> => {
+  const { data } = await axiosInstance.get(
+    `/inventory/variants/${variantId}/history`
+  );
+  return data;
+};
 // ✅ Interface pour le payload d’ajustement de stock
 export interface AdjustPayload {
   quantityChange: number;
-  type: "LOSS" | "GAIN" | "ADJUSTMENT";
+  type: "RETURN" | "LOSS" | "ADJUSTMENT" | "EXPIRATION";
   reason?: string;
+  batchId?: string;
 }
 
 // ✅ Fonction pour ajuster la quantité d’un variant

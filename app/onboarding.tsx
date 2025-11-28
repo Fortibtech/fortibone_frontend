@@ -1,154 +1,199 @@
 import CustomButton from "@/components/CustomButton";
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
+  Dimensions,
   Image,
-  ImageBackground,
-  SafeAreaView,
   StyleSheet,
   Text,
-  View,
+  TouchableOpacity,
+  View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
-const Onboarding = () => {
+// Interface pour les props de CustomButton
+
+
+// Type pour le profil
+type ProfileType = "particulier" | "professionnel" | null;
+
+const Onboarding: React.FC = () => {
   const router = useRouter();
+  const [selectedProfile, setSelectedProfile] = useState<ProfileType>(null);
+
+  // Fonction pour sauvegarder le choix dans AsyncStorage
+  const saveProfileChoice = async (profile: ProfileType) => {
+    try {
+      if (profile) {
+        await AsyncStorage.setItem("userProfile", profile);
+        setSelectedProfile(profile);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde du profil:", error);
+    }
+  };
+
+  // Fonction pour gérer le clic sur "Continuer"
+  const handleContinue = async () => {
+    if (selectedProfile) {
+      await AsyncStorage.setItem("userProfile", selectedProfile);
+      router.push("/(auth)/login");
+    } else {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Veuillez sélectionner un profil avant de continuer.",
+        position: "top",
+        visibilityTime: 3000,
+      });
+    }
+  };
+
   return (
-    <>
-      {/* Image en background */}
-      <ImageBackground
-        source={require("../assets/images/bg.png")}
-        style={styles.bgImage}
-        imageStyle={{ resizeMode: "cover" }}
-      >
-        {/* Dégradé blanc du haut vers le bas (30% de hauteur) */}
-        <LinearGradient
-          colors={[
-            "rgba(255,255,255,1)", // haut (opaque)
-            "rgba(255,255,255,0.6)", // intermédiaire
-            "rgba(255,255,255,0)", // bas (transparent)
-          ]}
-          end={{ x: 0, y: 0 }} // haut
-          start={{ x: 0, y: 1 }} // bas
-          style={styles.gradientOverlay}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.TopContainer}>
+        <Image
+          source={require("../assets/images/logo/green.png")}
+          style={styles.logo}
         />
-      </ImageBackground>
-      <SafeAreaView style={styles.container}>
-        <View style={styles.TopContainer}>
-          <Image
-            source={require("../assets/images/logo/white.png")}
-            style={styles.logo}
-          />
-          <Text style={styles.title2}>FortibOne</Text>
+      </View>
+      <View style={styles.bottomContainer}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.headerTitle}>Quel est votre profil ?</Text>
+          <Text style={styles.headerSubtitle}>
+            Sélectionnez le type de profil qui vous correspond
+          </Text>
         </View>
-        <View style={styles.bottomContainer}>
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>
-              Achetez facilement et rapidement avec FortibOne
-            </Text>
-            <Text style={styles.description}>
-              Avec une interface intuitive, vous pouvez trouver et acheter vos
-              produits.
-            </Text>
-          </View>
-          <View style={styles.buttonContainer}>
-            <CustomButton
-              title="Se connecter"
-              backgroundColor="#f6f4f0"
-              textColor="#059669"
-              width="50%"
-              borderRadius={15}
-              fontSize={16}
-              onPress={() => router.push("/(auth)/login")}
-            />
-            <CustomButton
-              title="Creer un compte"
-              backgroundColor="#059669"
-              textColor="#fff"
-              width="50%"
-              borderRadius={15}
-              fontSize={16}
-              onPress={() => router.push("/(auth)/register")}
-            />
-          </View>
+        <View style={styles.optionsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.optionBox,
+              selectedProfile === "particulier" && styles.optionSelected,
+            ]}
+            onPress={() => saveProfileChoice("particulier")}
+          >
+            <Ionicons name="person-outline" size={32} color="#059669" />
+            <View style={styles.optionTextContainer}>
+              <Text style={styles.optionTitle}>Particulier</Text>
+              <Text style={styles.optionDescription}>
+                Acheteur, client ou restaurant
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.optionBox,
+              selectedProfile === "professionnel" && styles.optionSelected,
+            ]}
+            onPress={() => saveProfileChoice("professionnel")}
+          >
+            <Ionicons name="storefront-outline" size={32} color="#059669" />
+            <View style={styles.optionTextContainer}>
+              <Text style={styles.optionTitle}>Professionnel</Text>
+              <Text style={styles.optionDescription}>
+                Commerçant, fournisseur ou restaurant
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
-    </>
+      </View>
+      <View style={styles.buttonContainer}>
+        <CustomButton
+          title="Continuer"
+          backgroundColor="#059669"
+          textColor="#fff"
+          width="100%"
+          borderRadius={15}
+          fontSize={16}
+          onPress={handleContinue}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  gradientOverlay: {
-    position: "absolute",
-    top: "20%", // ✅ commence en haut
-    width: "100%",
-    height: "50%", // ✅ ne couvre que 30% de la hauteur
-  },
-  logo: {
-    width: 24,
-    height: 24,
-    position: "relative",
-    bottom: 5,
-  },
   container: {
     flex: 1,
-    flexDirection: "column",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: "column" as const,
     backgroundColor: "#fff",
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
   },
   TopContainer: {
-    flex: 1,
+    flex: 0.5,
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 2,
-    flexDirection: "row",
-    position: "relative",
-    bottom: 150,
-    gap: 10,
+    width: "100%",
   },
-  bgImage: {
-    position: "absolute",
-    width: "100%", // largeur de l'image
-    height: "70%", // hauteur de l'image
-    resizeMode: "contain",
-    zIndex: 1,
-  },
-  description: {
-    fontSize: 16,
-    textAlign: "center",
-    color: "#7b7e86",
-  },
-  title2: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#121f3e",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  textContainer: {
-    position: "relative",
-    top: 120,
+  logo: {
+    width: Dimensions.get("window").width * 0.4,
+    height: Dimensions.get("window").width * 0.4,
+    resizeMode: "contain" as const,
   },
   bottomContainer: {
-    height: "30%",
-    flex: 1,
+    flex: 0.5,
+    width: "100%",
     justifyContent: "space-between",
     alignItems: "center",
+    minHeight: 200,
+  },
+  headerContainer: {
+    alignItems: "center",
+    marginBottom: 16,
+    marginTop: 10,
+    width: "100%",
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#121f3e",
+    marginBottom: 6,
+    width: "100%",
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#059669",
+    width: "100%",
+  },
+  optionsContainer: {
+    width: "100%",
+    gap: 10,
+    marginBottom: 250,
+  },
+  optionBox: {
+    flexDirection: "row" as const,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#059669",
+    borderRadius: 10,
+    padding: 10,
+  },
+  optionSelected: {
+    backgroundColor: "#05966920",
+    borderColor: "#059669",
+  },
+  optionTextContainer: {
+    flex: 1,
+    marginHorizontal: 10,
+  },
+  optionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#121f3e",
+  },
+  optionDescription: {
+    fontSize: 12,
+    color: "#7b7e86",
   },
   buttonContainer: {
     width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
+    paddingBottom: 10,
   },
 });
 

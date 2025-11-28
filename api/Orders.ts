@@ -5,10 +5,9 @@ import {
   CreateOrderResponse,
   GetBusinessOrdersParams,
   MyOrdersResponse,
-  OrderResponse,
-  UpdateOrderStatusPayload,
 } from "@/types/orders";
 import axiosInstance from "./axiosInstance";
+import { AxiosError } from "axios";
 
 // ----------------------
 export const createOrder = async (
@@ -28,17 +27,19 @@ export const createOrder = async (
     }
 
     return response.data;
-  } catch (error: any) {
-    // TODO: Remplacer par une bibliothèque de journalisation structurée
-    console.error(
-      "❌ Erreur lors de la création de la commande:",
-      error.response?.data || error.message
-    );
-    throw new Error(
-      `Échec de la création de la commande: ${
-        error.response?.data?.message || error.message
-      }`
-    );
+  } catch (error) {
+    const axiosError = error as AxiosError<any>;
+    console.log("❌ ERREUR COMPLÈTE :", {
+      message: axiosError.message,
+      status: axiosError.response?.status,
+      data: axiosError.response?.data,
+      config: {
+        url: axiosError.config?.url,
+        method: axiosError.config?.method,
+        data: axiosError.config?.data,
+      },
+    });
+    throw error; // on rejette pour que ça remonte
   }
 };
 
@@ -59,7 +60,7 @@ export const getMyOrders = async (params?: {
 }): Promise<MyOrdersResponse> => {
   try {
     const response = await axiosInstance.get<MyOrdersResponse>(
-      "/orders/orders/my-orders",
+      "/orders/my-orders",
       { params: { page: 1, limit: 10, ...params } } // Valeurs par défaut
     );
     // Validation basique de la réponse
@@ -87,30 +88,30 @@ export const getMyOrders = async (params?: {
 // ----------------------
 // API: Get order by ID
 // ----------------------
-export const getOrderById = async (orderId: string): Promise<OrderResponse> => {
-  try {
-    const { data } = await axiosInstance.get<OrderResponse>(
-      `/orders/${orderId}`
-    );
-    if (!data.id || !data.orderNumber) {
-      throw new Error("Réponse API invalide : id ou orderNumber manquant");
-    }
-    // TODO: Remplacer par une bibliothèque de journalisation structurée (ex: winston)
-    console.log("✅ Détails de la commande récupérés:", data);
-    return data;
-  } catch (error: any) {
-    // TODO: Remplacer par une bibliothèque de journalisation structurée
-    console.error(
-      "❌ Erreur lors de la récupération des détails de la commande:",
-      error.response?.data || error.message
-    );
-    throw new Error(
-      `Échec de la récupération des détails: ${
-        error.response?.data?.message || error.message
-      }`
-    );
-  }
-};
+// export const getOrderById = async (orderId: string): Promise<OrderResponse> => {
+//   try {
+//     const { data } = await axiosInstance.get<OrderResponse>(
+//       `/orders/${orderId}`
+//     );
+//     if (!data.id || !data.orderNumber) {
+//       throw new Error("Réponse API invalide : id ou orderNumber manquant");
+//     }
+//     // TODO: Remplacer par une bibliothèque de journalisation structurée (ex: winston)
+//     console.log("✅ Détails de la commande récupérés:", data);
+//     return data;
+//   } catch (error: any) {
+//     // TODO: Remplacer par une bibliothèque de journalisation structurée
+//     console.error(
+//       "❌ Erreur lors de la récupération des détails de la commande:",
+//       error.response?.data || error.message
+//     );
+//     throw new Error(
+//       `Échec de la récupération des détails: ${
+//         error.response?.data?.message || error.message
+//       }`
+//     );
+//   }
+// };
 // ----------------------
 // API: Lister commandes d'une entreprise
 // ----------------------
@@ -126,7 +127,7 @@ export const getBusinessOrders = async (
 ): Promise<OrdersPaginatedResponse> => {
   try {
     const { data } = await axiosInstance.get<OrdersPaginatedResponse>(
-      `/orders/businesses/${businessId}/orders`,
+      `/businesses/${businessId}/orders`,
       { params }
     );
     return data;
@@ -142,13 +143,91 @@ export const getBusinessOrders = async (
 // ----------------------
 // API: Update order status
 // ----------------------
+// === Types ===
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  profileImageUrl?: string | null;
+}
+
+export interface Business {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+  description?: string | null;
+}
+
+export interface OrderLine {
+  id: string;
+  quantity: number;
+  price: number; // ou string si ton API renvoie string
+  variantId: string;
+  variant: {
+    id: string;
+    name: string;
+    sku?: string | null;
+    product: {
+      id: string;
+      name: string;
+      images?: string[];
+    };
+  };
+}
+
+export interface OrderResponse {
+  id: string;
+  profileImageUrl: string | null;
+  orderNumber: string;
+  type: "SALE" | "PURCHASE" | "RESERVATION";
+  status:
+    | "PENDING"
+    | "CONFIRMED"
+    | "PROCESSING"
+    | "SHIPPED"
+    | "DELIVERED"
+    | "COMPLETED"
+    | "CANCELLED"
+    | "REFUNDED";
+  totalAmount: string; // ou number si tu veux convertir
+  notes: string | null;
+  createdAt: string;
+  businessId: string;
+  customerId: string;
+  purchasingBusinessId: string | null;
+  employeeId: string | null;
+  tableNumber: string | null;
+  reservationDate: string | null;
+  lines: OrderLine[];
+  customer: Customer;
+  business: Business;
+}
+
+export interface UpdateOrderStatusPayload {
+  status:
+    | "PENDING"
+    | "CONFIRMED"
+    | "PROCESSING"
+    | "SHIPPED"
+    | "DELIVERED"
+    | "COMPLETED"
+    | "CANCELLED"
+    | "REFUNDED";
+}
+
+// === Fonctions API ===
+export const getOrderById = async (orderId: string): Promise<OrderResponse> => {
+  const { data } = await axiosInstance.get<OrderResponse>(`/orders/${orderId}`);
+  return data;
+};
+
 export const updateOrderStatus = async (
   orderId: string,
   payload: UpdateOrderStatusPayload
 ): Promise<OrderResponse> => {
   try {
     const { data } = await axiosInstance.patch<OrderResponse>(
-      `/orders/orders/${orderId}/status`,
+      `/orders/${orderId}/status`,
       payload
     );
     return data;
@@ -160,3 +239,5 @@ export const updateOrderStatus = async (
     throw error;
   }
 };
+
+export { CreateOrderPayload };

@@ -1,3 +1,4 @@
+/* eslint-disable import/export */
 // ----------------------
 // Types
 // ----------------------
@@ -28,6 +29,7 @@ export interface CreateOrderPayload {
 // Response types
 // ----------------------
 export interface Product {
+  images: any;
   id: string;
   name: string;
   description: string;
@@ -39,7 +41,9 @@ export interface Product {
   categoryId: string;
 }
 
+// eslint-disable-next-line import/export
 export interface Variant {
+  name: string;
   id: string;
   sku: string;
   barcode: string | null;
@@ -54,6 +58,7 @@ export interface Variant {
   product: Product;
 }
 
+// eslint-disable-next-line import/export
 export interface OrderLine {
   id: string;
   quantity: number;
@@ -64,6 +69,8 @@ export interface OrderLine {
 }
 
 export interface Customer {
+  lastName: any;
+  profileImageUrl: any;
   id: string;
   firstName: string;
 }
@@ -105,6 +112,7 @@ export interface CreateOrderResponse {
   business: Business;
 }
 export interface MyOrder {
+  business: any;
   id: string;
   orderNumber: string;
   type: "SALE" | "PURCHASE" | "RESERVATION";
@@ -200,6 +208,7 @@ export interface Business {
 
 export interface OrderResponse {
   id: string;
+  profileImageUrl: string | null;
   orderNumber: string;
   type: "SALE" | "PURCHASE" | "RESERVATION";
   status:

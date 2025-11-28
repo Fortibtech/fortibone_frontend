@@ -1,21 +1,24 @@
 // components/sidebar.tsx
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { AlignJustify } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { AlignJustify } from "lucide-react-native";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Dimensions,
   FlatList,
   Image,
   Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
-} from 'react-native';
+  View,
+} from "react-native";
 
 // Import des types et services API
-import { Business } from '@/api';
+import { Business } from "@/api";
+import { useUserStore } from "@/store/userStore";
 
 interface SidebarProps {
   businesses: Business[];
@@ -23,27 +26,42 @@ interface SidebarProps {
   onBusinessSelect: (business: Business) => void;
   loading?: boolean;
 }
-
-const Sidebar: React.FC<SidebarProps> = ({ 
-  businesses, 
-  selectedBusiness, 
-  onBusinessSelect, 
-  loading = false 
+// Responsive dimensions
+const { width } = Dimensions.get("window");
+const isTablet = width >= 600;
+const Sidebar: React.FC<SidebarProps> = ({
+  businesses,
+  selectedBusiness,
+  onBusinessSelect,
+  loading = false,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const { logout } = useUserStore();
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace("/(auth)/login");
+    } catch (err: any) {
+      Alert.alert("Erreur", "Échec de la déconnexion");
+    }
+  };
   const toggleSidebar = () => {
     setIsVisible(!isVisible);
   };
 
   const navigateToCreateBusiness = () => {
     toggleSidebar();
-    router.push('/pro/createBusiness');
+    router.push("/pro/createBusiness");
   };
 
   const navigateToProfile = () => {
     toggleSidebar();
-    router.push('/pro/profile');
+    router.push("/pro/profile");
+  };
+  const navigateToWallet = () => {
+    toggleSidebar();
+    router.push("/(transactions)/WalletScreen");
   };
 
   const handleBusinessSelect = (business: Business) => {
@@ -53,22 +71,21 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const renderBusinessItem = ({ item }: { item: Business }) => {
     const isSelected = selectedBusiness?.id === item.id;
-    
+
     return (
       <TouchableOpacity
-        style={[
-          styles.businessItem,
-          isSelected && styles.selectedBusinessItem
-        ]}
+        style={[styles.businessItem, isSelected && styles.selectedBusinessItem]}
         onPress={() => handleBusinessSelect(item)}
         activeOpacity={0.8}
       >
         <View style={styles.businessContent}>
           {/* Logo d'entreprise ou placeholder */}
-          <View style={[
-            styles.businessLogoContainer,
-            isSelected && styles.selectedBusinessLogoContainer
-          ]}>
+          <View
+            style={[
+              styles.businessLogoContainer,
+              isSelected && styles.selectedBusinessLogoContainer,
+            ]}
+          >
             {item.logoUrl ? (
               <Image
                 source={{ uri: item.logoUrl }}
@@ -76,14 +93,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                 resizeMode="contain"
               />
             ) : (
-              <View style={[
-                styles.logoPlaceholder,
-                isSelected && styles.selectedLogoPlaceholder
-              ]}>
-                <Text style={[
-                  styles.logoPlaceholderText,
-                  isSelected && styles.selectedLogoPlaceholderText
-                ]}>
+              <View
+                style={[
+                  styles.logoPlaceholder,
+                  isSelected && styles.selectedLogoPlaceholder,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.logoPlaceholderText,
+                    isSelected && styles.selectedLogoPlaceholderText,
+                  ]}
+                >
                   {item.name.charAt(0).toUpperCase()}
                 </Text>
               </View>
@@ -91,36 +112,40 @@ const Sidebar: React.FC<SidebarProps> = ({
           </View>
 
           <View style={styles.businessTextContainer}>
-            <Text 
+            <Text
               style={[
                 styles.businessName,
-                isSelected && styles.selectedBusinessName
-              ]} 
+                isSelected && styles.selectedBusinessName,
+              ]}
               numberOfLines={1}
             >
               {item.name}
             </Text>
-            <Text 
+            <Text
               style={[
                 styles.businessDescription,
-                isSelected && styles.selectedBusinessDescription
-              ]} 
+                isSelected && styles.selectedBusinessDescription,
+              ]}
               numberOfLines={2}
             >
               {item.description}
             </Text>
             <View style={styles.businessMetaContainer}>
-              <Text style={[
-                styles.businessType,
-                isSelected && styles.selectedBusinessType
-              ]}>
+              <Text
+                style={[
+                  styles.businessType,
+                  isSelected && styles.selectedBusinessType,
+                ]}
+              >
                 {item.type}
               </Text>
               {item.phoneNumber && (
-                <Text style={[
-                  styles.businessPhone,
-                  isSelected && styles.selectedBusinessPhone
-                ]}>
+                <Text
+                  style={[
+                    styles.businessPhone,
+                    isSelected && styles.selectedBusinessPhone,
+                  ]}
+                >
                   📞 {item.phoneNumber}
                 </Text>
               )}
@@ -185,7 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <TouchableOpacity onPress={toggleSidebar} style={styles.menuButton}>
         <AlignJustify size={30} color="black" />
       </TouchableOpacity>
-      
+
       <Modal
         visible={isVisible}
         animationType="slide"
@@ -199,7 +224,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Text style={styles.sidebarTitle}>Mes Entreprises</Text>
                 {businesses.length > 0 && (
                   <Text style={styles.businessCount}>
-                    {businesses.length} entreprise{businesses.length > 1 ? 's' : ''}
+                    {businesses.length} entreprise
+                    {businesses.length > 1 ? "s" : ""}
                   </Text>
                 )}
               </View>
@@ -223,6 +249,13 @@ const Sidebar: React.FC<SidebarProps> = ({
             <View style={styles.buttonContainer}>
               <TouchableOpacity
                 style={styles.sidebarButton}
+                onPress={navigateToWallet}
+              >
+                <Ionicons name="wallet-outline" size={24} color="#fff" />
+                <Text style={styles.buttonText}>Portefeuille</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sidebarButton}
                 onPress={navigateToCreateBusiness}
               >
                 <Ionicons name="add-circle-outline" size={24} color="#fff" />
@@ -235,9 +268,24 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Ionicons name="person-outline" size={24} color="#fff" />
                 <Text style={styles.buttonText}>Profil</Text>
               </TouchableOpacity>
+
+              {/* Logout Button */}
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+                accessible={true}
+                accessibilityLabel="Se déconnecter"
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={isTablet ? 24 : 20}
+                  color="#FF5722"
+                />
+                <Text style={styles.logoutText}>Se déconnecter</Text>
+              </TouchableOpacity>
             </View>
           </View>
-          
+
           <TouchableOpacity
             style={styles.overlay}
             onPress={toggleSidebar}
@@ -250,19 +298,39 @@ const Sidebar: React.FC<SidebarProps> = ({
 };
 
 const styles = StyleSheet.create({
+  logoutText: {
+    fontSize: isTablet ? 18 : 16,
+    color: "#FF5722",
+    marginLeft: 8,
+    fontWeight: "600",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
   menuButton: {
     padding: -5,
   },
   sidebarContainer: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   sidebar: {
-    width: '80%',
-    backgroundColor: '#fafafb',
-    height: '100%',
+    width: "80%",
+    backgroundColor: "#fafafb",
+    height: "100%",
     paddingTop: 40,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -270,85 +338,85 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   sidebarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     paddingHorizontal: 15,
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   sidebarTitle: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#333',
+    fontWeight: "700",
+    color: "#333",
   },
   businessCount: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
   },
   currentSelectionBanner: {
-    backgroundColor: '#e8f5e8',
+    backgroundColor: "#e8f5e8",
     marginHorizontal: 15,
     marginVertical: 10,
     padding: 12,
     borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderLeftWidth: 3,
-    borderLeftColor: '#059669',
+    borderLeftColor: "#059669",
   },
   currentSelectionText: {
     fontSize: 14,
-    color: '#1b5e20',
-    fontWeight: '600',
+    color: "#1b5e20",
+    fontWeight: "600",
     marginLeft: 8,
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 40,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   emptyStateContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 20,
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateSubtitle: {
     fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginBottom: 20,
   },
   emptyStateButton: {
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
   },
   emptyStateButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   businessList: {
     flex: 1,
@@ -357,35 +425,35 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   businessItem: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     marginHorizontal: 10,
     marginVertical: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
-    position: 'relative',
+    position: "relative",
   },
   selectedBusinessItem: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: "#f0f9ff",
     borderWidth: 2,
-    borderColor: '#059669',
-    shadowColor: '#059669',
+    borderColor: "#059669",
+    shadowColor: "#059669",
     shadowOpacity: 0.2,
   },
   businessContent: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 15,
-    alignItems: 'center',
+    alignItems: "center",
   },
   businessLogoContainer: {
     marginRight: 12,
   },
   selectedBusinessLogoContainer: {
     borderWidth: 2,
-    borderColor: '#059669',
+    borderColor: "#059669",
     borderRadius: 8,
   },
   businessLogo: {
@@ -397,65 +465,65 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 8,
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
   },
   selectedLogoPlaceholder: {
-    backgroundColor: '#059669',
+    backgroundColor: "#059669",
   },
   logoPlaceholderText: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#666',
+    fontWeight: "700",
+    color: "#666",
   },
   selectedLogoPlaceholderText: {
-    color: 'white',
+    color: "white",
   },
   businessTextContainer: {
     flex: 1,
   },
   businessName: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 4,
   },
   selectedBusinessName: {
-    color: '#059669',
-    fontWeight: '700',
+    color: "#059669",
+    fontWeight: "700",
   },
   businessDescription: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 8,
     lineHeight: 18,
   },
   selectedBusinessDescription: {
-    color: '#047857',
+    color: "#047857",
   },
   businessMetaContainer: {
     gap: 4,
   },
   businessType: {
     fontSize: 12,
-    color: '#666',
-    fontWeight: '600',
+    color: "#666",
+    fontWeight: "600",
     opacity: 0.8,
   },
   selectedBusinessType: {
-    color: '#059669',
+    color: "#059669",
     opacity: 1,
   },
   businessPhone: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   selectedBusinessPhone: {
-    color: '#047857',
+    color: "#047857",
   },
   selectionIndicator: {
-    position: 'absolute',
+    position: "absolute",
     top: 10,
     right: 10,
   },
@@ -464,19 +532,19 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   sidebarButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#059669',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#059669",
     paddingVertical: 12,
     paddingHorizontal: 20,
     marginVertical: 5,
     borderRadius: 12,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 8,
   },
 });

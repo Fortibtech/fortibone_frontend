@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { forwardRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,71 +9,103 @@ import {
   View,
 } from "react-native";
 
-// Interface pour typer les props du composant
 interface InputFieldProps extends TextInputProps {
-  label: string; // Le texte affiché au-dessus de l'input
-  placeholder: string; // Texte indicatif dans le champ
-  secureTextEntry?: boolean; // Si true, masque le texte (mot de passe)
-  value: string; // Valeur actuelle de l'input (state externe)
-  onChangeText: (text: string) => void; // Fonction pour mettre à jour la valeur
+  label: string;
+  placeholder: string;
+  secureTextEntry?: boolean;
+  value: string;
+  onChangeText: (text: string) => void;
+  type?: "text" | "password" | "description";
+  leftIcon?: React.ReactNode; // AJOUTÉ ICI
 }
 
-/**
- * Composant réutilisable pour un champ de saisie (texte, mot de passe, numérique)
- */
-const InputField: React.FC<InputFieldProps> = ({
-  label,
-  placeholder,
-  secureTextEntry = false,
-  value,
-  onChangeText,
-  keyboardType = "default", // valeur par défaut
-  ...rest
-}) => {
-  // State local pour basculer l'affichage du mot de passe
-  const [showPassword, setShowPassword] = useState(!secureTextEntry);
+const InputField = forwardRef<TextInput, InputFieldProps>(
+  (
+    {
+      label,
+      placeholder,
+      secureTextEntry = false,
+      value,
+      onChangeText,
+      keyboardType = "default",
+      onSubmitEditing,
+      type = "text",
+      leftIcon, // AJOUTÉ
+      ...rest
+    },
+    ref
+  ) => {
+    const [showPassword, setShowPassword] = React.useState(!secureTextEntry);
+    const [isFocused, setIsFocused] = React.useState(false);
 
-  return (
-    <View style={styles.container}>
-      {/* Label du champ */}
-      <Text style={styles.label}>{label}</Text>
+    const isDescription = type === "description";
 
-      {/* Wrapper pour gérer input + icône si password */}
-      <View style={styles.inputWrapper}>
-        <TextInput
-          style={styles.input}
-          placeholder={placeholder}
-          secureTextEntry={!showPassword && secureTextEntry} // masque si password et non affiché
-          value={value}
-          onChangeText={onChangeText}
-          keyboardType={keyboardType} // permet numeric, email, etc.
-          {...rest} // passe toutes les autres props
-        />
+    return (
+      <View style={styles.container}>
+        <Text style={styles.label}>{label}</Text>
 
-        {/* Affiche l'icône œil uniquement si c'est un mot de passe */}
-        {secureTextEntry && (
-          <TouchableOpacity
-            style={styles.icon}
-            onPress={() => setShowPassword(!showPassword)} // toggle affichage
-          >
-            <Ionicons
-              name={showPassword ? "eye-outline" : "eye-off-outline"}
-              size={24}
-              color="#555"
-            />
-          </TouchableOpacity>
-        )}
+        <View
+          style={[
+            styles.inputWrapper,
+            isDescription && styles.textareaWrapper,
+            { borderColor: isFocused ? "#059669" : "#ccc" },
+          ]}
+        >
+          {/* LEFT ICON */}
+          {leftIcon && <View style={styles.leftIconContainer}>{leftIcon}</View>}
+
+          <TextInput
+            ref={ref}
+            style={[
+              styles.input,
+              isDescription && styles.textareaInput,
+              leftIcon ? styles.inputWithLeftIcon : undefined, // CORRIGÉ
+            ]}
+            placeholder={placeholder}
+            secureTextEntry={!showPassword && secureTextEntry}
+            value={value}
+            onChangeText={onChangeText}
+            keyboardType={keyboardType}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onSubmitEditing={(event) => {
+              console.log(`${label} onSubmitEditing triggered`);
+              onSubmitEditing?.(event);
+            }}
+            multiline={isDescription}
+            textAlignVertical={isDescription ? "top" : "center"}
+            numberOfLines={isDescription ? 5 : 1}
+            {...rest}
+          />
+
+          {/* RIGHT ICON (password toggle) */}
+          {secureTextEntry && (
+            <TouchableOpacity
+              style={styles.icon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+                name={showPassword ? "eye-outline" : "eye-off-outline"}
+                size={24}
+                color="#555"
+              />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-    </View>
-  );
-};
+    );
+  }
+);
+
+InputField.displayName = "InputField";
 
 export default InputField;
 
+// === STYLES AMÉLIORÉS ===
 const styles = StyleSheet.create({
   container: {
     marginVertical: 10,
-    width: 343,
+    width: "100%",
   },
   label: {
     marginBottom: 5,
@@ -85,15 +117,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 8,
     height: 48,
     paddingHorizontal: 10,
+  },
+  textareaWrapper: {
+    alignItems: "flex-start",
+    height: 120,
+  },
+  leftIconContainer: {
+    marginRight: 8,
+    justifyContent: "center",
   },
   input: {
     flex: 1,
     fontSize: 16,
     color: "#111",
+  },
+  inputWithLeftIcon: {
+    paddingLeft: 0, // évite double padding
+  },
+  textareaInput: {
+    height: "100%",
+    textAlignVertical: "top",
+    paddingTop: 8,
   },
   icon: {
     marginLeft: 10,

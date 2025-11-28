@@ -1,9 +1,11 @@
 import React from "react";
-import { StyleSheet, SafeAreaView, Text } from "react-native";
-
+import { StyleSheet, Text } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import BackButton from "@/components/BackButton";
 const Notifications = () => {
   return (
     <SafeAreaView style={styles.container}>
+       <BackButton />
       <Text>Notifications</Text>
     </SafeAreaView>
   );

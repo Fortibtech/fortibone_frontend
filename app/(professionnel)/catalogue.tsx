@@ -1,7 +1,6 @@
-// screens/ProductListScreen.tsx - Version corrigée
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import { Filter, Heart, Plus, Search } from "lucide-react-native";
+import { Heart, Plus, Search } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,7 +8,6 @@ import {
   FlatList,
   Image,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -26,6 +24,7 @@ import {
   ProductService,
   SelectedBusinessManager,
 } from "@/api";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface ProductListScreenProps {
   onProductPress?: (product: Product) => void;
@@ -51,6 +50,8 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   // Référence pour suivre l'entreprise précédente
   const previousBusinessIdRef = useRef<string | null>(null);
 
+  const isLoadingRef = useRef(false);
+
   // Charger les catégories au démarrage
   useEffect(() => {
     loadCategories();
@@ -72,7 +73,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
     }, 500); // Délai de 500ms pour éviter trop d'appels API
 
     return () => clearTimeout(timeoutId);
-  }, [searchText]);
+  }, [searchText, selectedBusiness?.id]);
 
   const loadCategories = async () => {
     try {
@@ -85,6 +86,10 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   };
 
   const checkForBusinessChange = async () => {
+    if (isLoadingRef.current) {
+      console.log("⏳ Chargement déjà en cours, ignoré");
+      return;
+    }
     try {
       const currentBusiness =
         await SelectedBusinessManager.getSelectedBusiness();
@@ -121,6 +126,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
         // Réinitialiser l'état et recharger les données
         setSearchText("");
         setPage(1);
+        setPagination(null);
         await loadProducts(1, "", currentBusiness);
       } else if (!products.length && !loading) {
         // Premier chargement ou cas où les produits ne sont pas encore chargés
@@ -139,6 +145,11 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   ) => {
     const targetBusiness = business || selectedBusiness;
     if (!targetBusiness) return;
+
+    if (isLoadingRef.current) {
+      console.log("⏳ Chargement déjà en cours");
+      return;
+    }
 
     try {
       const isFirstPage = pageNumber === 1;
@@ -167,6 +178,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
         setProducts(response.data);
         setPage(1);
         console.log("✅ Produits chargés:", response.data.length);
+        console.log("✅ Produits :", response.data);
       } else {
         setProducts((prev) => [...prev, ...response.data]);
         console.log(
@@ -175,7 +187,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
         );
       }
 
-      setPagination(response.pagination);
+      setPagination(response.page);
     } catch (error) {
       console.error("❌ Erreur lors du chargement des produits:", error);
       Alert.alert("Erreur", "Impossible de charger les produits");
@@ -194,7 +206,13 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   }, [selectedBusiness]);
 
   const loadMoreProducts = useCallback(async () => {
-    if (loadingMore || !pagination || page >= pagination.totalPages) return;
+    if (
+      loadingMore ||
+      !pagination ||
+      !pagination.totalPages ||
+      page >= pagination.totalPages
+    )
+      return;
 
     const nextPage = page + 1;
     setPage(nextPage);
@@ -205,15 +223,16 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
     if (onProductPress) {
       onProductPress(product);
     } else {
-      // router.push(`/product/${product.id}`);
+      router.push(`/product/${product.id}`);
     }
   };
 
   const handleCreateProduct = () => {
+    console.log("Bouton d'ajout cliqué !"); // Log pour débogage
     if (onCreateProduct) {
       onCreateProduct();
     } else {
-      // router.push("/product/create");
+      router.push("/product/create"); // Navigation activée par défaut
     }
   };
 
@@ -247,9 +266,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
           <Text style={styles.productName} numberOfLines={2}>
             {product.name}
           </Text>
-          <TouchableOpacity style={styles.favoriteButton}>
-            <Heart size={20} color="#666" fill="none" />
-          </TouchableOpacity>
         </View>
 
         <Text style={styles.productDescription} numberOfLines={2}>
@@ -263,12 +279,6 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
             </Text>
             <Text style={styles.productUnit}>Unité: {product.salesUnit}</Text>
           </View>
-
-          {product.price && (
-            <Text style={styles.productPrice}>
-              {product.price.toFixed(2)} XAF
-            </Text>
-          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -306,9 +316,9 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
         />
       </View>
 
-      <TouchableOpacity style={styles.filterButton}>
+      {/* <TouchableOpacity style={styles.filterButton}>
         <Filter size={20} color="#666" />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 
@@ -325,7 +335,11 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
 
       <View style={styles.statItem}>
         <Text style={styles.statNumber}>
-          {products.filter((p) => p.price && p.price > 0).length}
+          {
+            products.filter((p) =>
+              p.variants.some((v) => v.price && parseInt(v.price) > 0)
+            ).length
+          }
         </Text>
         <Text style={styles.statLabel}>Avec prix</Text>
       </View>

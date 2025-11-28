@@ -1,101 +1,92 @@
 // app/(tabs)/index.tsx
-import GraphCard, { SalesData } from "@/components/GraphCard";
-import Sidebar from "@/components/sidebar";
-import SalesDashboard, { DashboardData } from "@/components/StatCard";
-import AnalyticsDashboard, { AnalyticsData } from "@/components/yearSelector";
+import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
+import {
+  AnalyticsOverview,
+  getAnalyticsOverview,
+  getPendingOrdersCount,
+  getProcessingPurchasesCount,
+} from "@/api/analytics";
+import AnalyticsCard from "@/components/accueil/AnalyticsCard";
+import BusinessSelector from "@/components/Business/BusinessSelector";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { useUserStore } from "@/store/userStore";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { Bell } from "lucide-react-native";
-import React, { JSX, useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   Alert,
+  Image,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Float } from "react-native/Libraries/Types/CodegenTypes";
-
-// Import des services API
-import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
-
-// Types
-interface Enterprise {
-  id: number;
-  name: string;
-  rating: number;
-  compare: string;
-  discount?: Float;
-}
-
-interface BusinessAction {
-  id: string;
-  title: string;
-  icon: string;
-  description: string;
-  route: string;
-  color: string;
-}
-
-const enterprises: Enterprise[] = [
-  {
-    id: 1,
-    name: "Chiffre de vente",
-    rating: 10289,
-    compare: "Compared to ($21340 last year)",
-  },
-  {
-    id: 2,
-    name: "Nombre de clients",
-    rating: 20921,
-    compare: "Compared to ($19000 last year)",
-  },
-  {
-    id: 3,
-    name: "Commandes",
-    rating: 149,
-    compare: "Compared to ($165 last year)",
-  },
-  {
-    id: 4,
-    name: "Marketing",
-    rating: 17390,
-    compare: "Compared to ($10500 last year)",
-    discount: 2.5,
-  },
-];
-
+import { SafeAreaView } from "react-native-safe-area-context";
 const HomePage: React.FC = () => {
+  const user = useUserStore.getState().userProfile;
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+const { uri } = useUserAvatar();
+  // ✅ États pour les analytics
+  const [monthlyOverview, setMonthlyOverview] =
+    useState<AnalyticsOverview | null>(null);
+  const [overallOverview, setOverallOverview] =
+    useState<AnalyticsOverview | null>(null);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
+  const [processingPurchases, setProcessingPurchases] = useState<{
+    count: number;
+    totalItems: number;
+  }>({ count: 0, totalItems: 0 });
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useEffect(() => {
     loadInitialData();
   }, []);
 
+  // ✅ Charger les analytics quand une entreprise est sélectionnée
+  useEffect(() => {
+    if (selectedBusiness) {
+      loadAnalytics();
+    }
+  }, [selectedBusiness]);
+
+  // ✅ Fonction pour obtenir les dates du mois en cours
+  const getCurrentMonthDates = (): { startDate: string; endDate: string } => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+
+    // Premier jour du mois
+    const startDate = `${year}-${month}-01`;
+
+    // Dernier jour du mois
+    const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+    const endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+
+    return { startDate, endDate };
+  };
+
   const loadInitialData = async () => {
     try {
       setLoading(true);
-
-      // Charger les entreprises depuis l'API
       const businessesResponse = await BusinessesService.getBusinesses();
       setBusinesses(businessesResponse);
-
-      // Vérifier si une entreprise est déjà sélectionnée
       const selected = await SelectedBusinessManager.getSelectedBusiness();
       setSelectedBusiness(selected);
 
-      // Si une entreprise est sélectionnée mais n'est plus dans la liste, la désélectionner
+      if (selected?.type === "FOURNISSEUR") {
+        router.push("/(fournisseur)");
+      }
+
       if (selected && !businessesResponse.find((b) => b.id === selected.id)) {
         await BusinessesService.clearSelectedBusiness();
         setSelectedBusiness(null);
@@ -108,311 +99,256 @@ const HomePage: React.FC = () => {
     }
   };
 
+  // ✅ Fonction pour charger les analytics
+  const loadAnalytics = async () => {
+    if (!selectedBusiness) return;
+    if (analyticsLoading) return; // ← Évite les appels simultanés
+    try {
+      setAnalyticsLoading(true);
+
+      // Obtenir les dates du mois en cours
+      const { startDate, endDate } = getCurrentMonthDates();
+      // Charger l'overview du mois en cours
+      const monthlyData = await getAnalyticsOverview(
+        selectedBusiness.id,
+        startDate,
+        endDate
+      );
+      setMonthlyOverview(monthlyData);
+
+      // Charger l'overview global (sans dates)
+      const overallData = await getAnalyticsOverview(selectedBusiness.id);
+      setOverallOverview(overallData);
+
+      // Charger le nombre de commandes en attente
+      const pendingCount = await getPendingOrdersCount(
+        selectedBusiness.id,
+        "SALE"
+      );
+      setPendingOrdersCount(pendingCount);
+
+      // Charger les achats en cours
+      const purchasesData = await getProcessingPurchasesCount(
+        selectedBusiness.id
+      );
+      setProcessingPurchases(purchasesData);
+    } catch (error) {
+      console.error("Erreur lors du chargement des analytics:", error);
+      Alert.alert("Erreur", "Impossible de charger les statistiques");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  // 1. Chargement initial (une seule fois)
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  // 2. Recharge les stats quand on revient dans l'onglet
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedBusiness) {
+        loadAnalytics();
+      }
+    }, [selectedBusiness])
+  );
+
+  // 3. Recharge les stats quand on change de commerce
+  useEffect(() => {
+    if (selectedBusiness) {
+      loadAnalytics();
+    }
+  }, [selectedBusiness]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
+    if (selectedBusiness) await loadAnalytics();
     setRefreshing(false);
   };
-
-  const navigateToEnterpriseDetails = (enterpriseId: number): void => {
-    router.push(`/enterprise-details?id=${enterpriseId}`);
-  };
-
   const handleBusinessSelect = async (business: Business) => {
     try {
-      console.log("Sélection de l'entreprise:", business.name);
       await BusinessesService.selectBusiness(business);
       setSelectedBusiness(business);
       Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
+      if (business.type === "FOURNISSEUR") {
+        router.push("/(fournisseur)");
+      }
     } catch (error) {
       console.error("Erreur lors de la sélection:", error);
       Alert.alert("Erreur", "Impossible de sélectionner l'entreprise");
     }
   };
 
-  const getBusinessActions = (): BusinessAction[] => {
-    if (!selectedBusiness) return [];
-
-    return [
-      {
-        id: "details",
-        title: "Détails & Modifier",
-        icon: "business-outline",
-        description: "Voir et modifier les informations",
-        route: `/pro/business-details?id=${selectedBusiness.id}`,
-        color: "#059669",
-      },
-      {
-        id: "members",
-        title: "Gérer les membres",
-        icon: "people-outline",
-        description: "Ajouter, modifier, supprimer des membres",
-        route: `/pro/business-members?id=${selectedBusiness.id}`,
-        color: "#2563eb",
-      },
-      {
-        id: "hours",
-        title: "Horaires d'ouverture",
-        icon: "time-outline",
-        description: "Définir les horaires d'ouverture",
-        route: `/pro/opening-hours?id=${selectedBusiness.id}`,
-        color: "#dc2626",
-      },
-      {
-        id: "analytics",
-        title: "Statistiques",
-        icon: "analytics-outline",
-        description: "Voir les performances",
-        route: `/pro/business-members?id=${selectedBusiness.id}`,
-        color: "#7c3aed",
-      },
-    ];
+  // ✅ Fonction utilitaire pour formater les nombres
+  const formatNumber = (num: number): string => {
+    return new Intl.NumberFormat("fr-FR", {
+      maximumFractionDigits: 0,
+    }).format(num);
+  };
+  // ✅ Calculer le nombre total d'alertes
+  const getTotalAlertsCount = (): number => {
+    if (!pendingOrdersCount) return 0;
+    return pendingOrdersCount;
   };
 
-  const sampleData: SalesData = {
-    id: "1",
-    title: "Sales Chart",
-    amount: "$27632",
-    period: "August",
-    marketingData: [500, 520, 480, 600, 550, 450],
-    casesData: [600, 580, 650, 750, 700, 580],
-    months: ["May", "Jun", "Jul", "Aug", "Sep", "Oct"],
-  };
-
-  const dashboardData: DashboardData = {
-    hitRate: 68,
-    deals: 76,
-    visitors: 10254,
-    visitorsChange: 1.5,
-    onlineSales: [500, 800, 900, 750, 850, 950],
-    offlineSales: [450, 780, 600, 500, 720, 480],
-    months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    year: "2017-2018",
-  };
-
-  const analyticsData: AnalyticsData = {
-    year: 2017,
-    totalVisitors: 22870,
-    visitorsLabel: "Visitors this year",
-    platforms: [
-      { name: "Amazon", visitors: "2.1k", color: "#4F46E5", percentage: 25 },
-      { name: "Alibaba", visitors: "1k", color: "#F97316", percentage: 15 },
-      { name: "Ebay", visitors: "1.9k", color: "#10B981", percentage: 20 },
-      { name: "Shopify", visitors: "15.7k", color: "#EAB308", percentage: 40 },
-    ],
-    topLocation: {
-      country: "United States",
-      flag: "🇺🇸",
-      visitors: "19.870",
-      description: "Our most customers in U",
-    },
-    salesCategories: [
-      { name: "Massive", visitors: "15.7k", color: "#4F46E5", size: "massive" },
-      { name: "Large", visitors: "4.9k", color: "#F97316", size: "large" },
-      { name: "Medium", visitors: "2.4k", color: "#EAB308", size: "medium" },
-      { name: "Small", visitors: "980", color: "#D1D5DB", size: "small" },
-    ],
-  };
-
-  const handlePress = (id: string) => {
-    console.log("Graph card pressed:", id);
-  };
-
-  const renderHeader = (): JSX.Element => (
+  const renderHeader = () => (
     <View style={styles.header}>
-      <Sidebar
+      <BusinessSelector
         businesses={businesses}
         selectedBusiness={selectedBusiness}
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
+        onAddBusiness={() => router.push("/(create-business)/")}
+        onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
       />
-      {renderSearchBar()}
-      <TouchableOpacity style={styles.notificationButton}>
-        <Bell size={30} color="black" />
-      </TouchableOpacity>
-    </View>
-  );
 
-  const renderSearchBar = (): JSX.Element => (
-    <View style={styles.searchContainer}>
-      <Ionicons
-        name="search"
-        size={25}
-        color="gray"
-        style={styles.searchIcon}
-      />
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Rechercher"
-        placeholderTextColor="gray"
-      />
-    </View>
-  );
-
-  const renderSelectedBusinessBanner = (): JSX.Element | null => {
-    if (!selectedBusiness) return null;
-
-    return (
-      <View style={styles.selectedBusinessBanner}>
-        <View style={styles.bannerContent}>
-          <Text style={styles.selectedBusinessTitle}>
-            🏢 {selectedBusiness.name}
-          </Text>
-          <Text style={styles.selectedBusinessType}>
-            {selectedBusiness.type}
-          </Text>
-          <Text style={styles.selectedBusinessAddress} numberOfLines={1}>
-            📍 {selectedBusiness.address}
-          </Text>
-          {selectedBusiness.isVerified && (
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={16} color="#059669" />
-              <Text style={styles.verifiedText}>Vérifié</Text>
+      <View style={styles.headerRight}>
+        {/* <TouchableOpacity style={styles.iconButton}>
+          <Ionicons name="search" size={24} color="#000" />
+        </TouchableOpacity> */}
+        <TouchableOpacity style={styles.iconButton}>
+          {getTotalAlertsCount() > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>{getTotalAlertsCount()}</Text>
             </View>
           )}
-        </View>
+          <Ionicons name="notifications-outline" size={24} color="#000" />
+        </TouchableOpacity>
         <TouchableOpacity
-          style={styles.changeBusiness}
-          onPress={() => {
-            Alert.alert(
-              "Changer d'entreprise",
-              "Ouvrez le menu (☰) pour sélectionner une autre entreprise",
-              [{ text: "OK" }]
-            );
-          }}
+          style={styles.avatar}
+          onPress={() => router.push("/fournisseurSetting")}
         >
-          <Text style={styles.changeBusinessText}>Changer</Text>
+          <Image
+            source={
+              user?.profileImageUrl
+                ? user.profileImageUrl
+                : require("@/assets/images/icon.png")
+            }
+            style={styles.avatar}
+            resizeMode="cover"
+          />
         </TouchableOpacity>
       </View>
-    );
-  };
-
-  const renderBusinessActions = (): JSX.Element | null => {
-    if (!selectedBusiness) return null;
-
-    const actions = getBusinessActions();
-
-    return (
-      <View style={styles.businessActionsContainer}>
-        <Text style={styles.sectionTitle}>Actions rapides</Text>
-        <View style={styles.actionsGrid}>
-          {actions.map((action) => (
-            <TouchableOpacity
-              key={action.id}
-              style={[styles.actionCard, { borderLeftColor: action.color }]}
-              onPress={() => router.push(action.route)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.actionIcon,
-                  { backgroundColor: `${action.color}15` },
-                ]}
-              >
-                <Ionicons
-                  name={action.icon as any}
-                  size={24}
-                  color={action.color}
-                />
-              </View>
-              <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                <Text style={styles.actionDescription}>
-                  {action.description}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-    );
-  };
-
-  const renderQuickStats = (): JSX.Element | null => {
-    if (!selectedBusiness) return null;
-
-    return (
-      <View style={styles.quickStatsContainer}>
-        <Text style={styles.sectionTitle}>Aperçu rapide</Text>
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>
-              {selectedBusiness.averageRating.toFixed(1)}
-            </Text>
-            <Text style={styles.statLabel}>Note moyenne</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{selectedBusiness.reviewCount}</Text>
-            <Text style={styles.statLabel}>Avis</Text>
-          </View>
-          <View style={styles.statCard}>
-            <View style={styles.statBadge}>
-              <Text style={styles.statBadgeText}>
-                {selectedBusiness.isVerified ? "Vérifié" : "En attente"}
-              </Text>
-            </View>
-            <Text style={styles.statLabel}>Statut</Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const renderNoBusinessSelected = (): JSX.Element => (
-    <View style={styles.noBusinessContainer}>
-      <Ionicons name="business-outline" size={60} color="#ccc" />
-      <Text style={styles.noBusinessTitle}>Aucune entreprise sélectionnée</Text>
-      <Text style={styles.noBusinessText}>
-        Sélectionnez une entreprise dans le menu pour accéder aux outils de
-        gestion
-      </Text>
-      <TouchableOpacity
-        style={styles.selectBusinessButton}
-        onPress={() => {
-          Alert.alert(
-            "Sélectionner une entreprise",
-            "Ouvrez le menu (☰) pour sélectionner une entreprise",
-            [{ text: "OK" }]
-          );
-        }}
-      >
-        <Text style={styles.selectBusinessButtonText}>
-          Sélectionner une entreprise
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 
-  const renderEnterpriseCard = (enterprise: Enterprise): JSX.Element => (
-    <TouchableOpacity
-      key={enterprise.id}
-      style={styles.gridItem}
-      onPress={() => navigateToEnterpriseDetails(enterprise.id)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.gridContent}>
-        <Text style={styles.gridTitle} numberOfLines={1}>
-          {enterprise.name}
-        </Text>
-        <Text style={styles.rating}>${enterprise.rating}</Text>
-        <View style={styles.gridFooter}>
-          <View style={styles.ratingContainer}>
-            <Text style={styles.gridCategory}>{enterprise.compare}</Text>
+  const renderOverviewSection = () => {
+    if (!selectedBusiness) return null;
+
+    // ✅ Afficher un loader pendant le chargement des analytics
+    if (analyticsLoading) {
+      return (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Vue d&apos;Ensemble</Text>
+          <View style={styles.analyticsLoadingContainer}>
+            <ActivityIndicator size="large" color="#7C3AED" />
+            <Text style={styles.analyticsLoadingText}>
+              Chargement des statistiques...
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Vue d&apos;Ensemble</Text>
+
+        <View style={styles.cardsRow}>
+          {/* CA Mensuel - Jaune */}
+          <View style={[styles.overviewCard, styles.cardYellow]}>
+            <View style={styles.cardIcon}>
+              <Image
+                source={require("@/assets/images/wallet-money.png")}
+                style={styles.cardEmoji}
+              />
+            </View>
+            <View>
+              <Text style={styles.cardLabel}>CA Mensuel</Text>
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "baseline",
+                }}
+              >
+                <Text style={styles.cardValue}>
+                  {monthlyOverview
+                    ? formatNumber(monthlyOverview.totalSalesAmount)
+                    : "--"}
+                </Text>
+                <Text style={styles.cardUnit}> KMF</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.cardFull}>
+            {/* En attente - Violet */}
+            <View style={[styles.overviewCard, styles.cardPurple]}>
+              <View style={styles.cardIcon}>
+                <Image
+                  source={require("@/assets/images/bag-2.png")}
+                  style={styles.cardEmojiDouble}
+                />
+              </View>
+              <View>
+                <Text style={styles.cardLabel}>En attente</Text>
+                <Text style={styles.cardValue}>
+                  {pendingOrdersCount} commande
+                  {pendingOrdersCount > 1 ? "s" : ""} client
+                  {pendingOrdersCount > 1 ? "s" : ""}
+                </Text>
+              </View>
+            </View>
+
+            {/* Achats en cours - Vert */}
+            <View style={[styles.overviewCard, styles.cardGreen]}>
+              <View style={styles.cardIcon}>
+                <Image
+                  source={require("@/assets/images/money-recive.png")}
+                  style={styles.cardEmojiDouble}
+                />
+              </View>
+              <View>
+                <Text style={styles.cardLabel}>Achats en cours</Text>
+                <Text style={styles.cardValue}>
+                  {processingPurchases.totalItems} article
+                  {processingPurchases.totalItems > 1 ? "s" : ""} commandé
+                  {processingPurchases.totalItems > 1 ? "s" : ""}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    );
+  };
+
+  const renderQuickAccessSection = () => {
+    if (!selectedBusiness) return null;
+    const { id } = selectedBusiness;
+    return <AnalyticsCard id={id} />;
+  };
+
+  const renderNoBusinessSelected = () => (
+    <View style={styles.noBusinessContainer}>
+      <Ionicons name="business-outline" size={80} color="#E0E0E0" />
+      <Text style={styles.noBusinessTitle}>Aucune entreprise sélectionnée</Text>
+      <Text style={styles.noBusinessText}>
+        Sélectionnez une entreprise pour voir vos statistiques
+      </Text>
+    </View>
   );
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor="#00C851" barStyle="light-content" />
-        {renderHeader()}
+        <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#059669" />
-          <Text style={styles.loadingText}>Chargement des données...</Text>
+          <ActivityIndicator size="large" color="#00C851" />
+          <Text style={styles.loadingText}>Chargement...</Text>
         </View>
       </SafeAreaView>
     );
@@ -420,10 +356,8 @@ const HomePage: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#00C851" barStyle="light-content" />
-
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
       {renderHeader()}
-
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
@@ -432,38 +366,18 @@ const HomePage: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#059669"]}
+            colors={["#00C851"]}
           />
         }
       >
-        {renderSelectedBusinessBanner()}
-
         {selectedBusiness ? (
           <>
-            {renderQuickStats()}
-            {renderBusinessActions()}
+            {renderOverviewSection()}
+            {renderQuickAccessSection()}
           </>
         ) : (
           renderNoBusinessSelected()
         )}
-
-        <View style={styles.headerSection2}>
-          <Text style={styles.bannerTitle}>Statistiques générales</Text>
-          {selectedBusiness && (
-            <Text style={styles.businessCount}>
-              {businesses.length} entreprise{businesses.length > 1 ? "s" : ""}{" "}
-              disponible{businesses.length > 1 ? "s" : ""}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.grid}>{enterprises.map(renderEnterpriseCard)}</View>
-
-        <GraphCard salesData={sampleData} onPress={handlePress} />
-
-        <SalesDashboard data={dashboardData} />
-
-        <AnalyticsDashboard data={analyticsData} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -472,7 +386,7 @@ const HomePage: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fafafb",
+    backgroundColor: "#F8F9FA",
   },
   loadingContainer: {
     flex: 1,
@@ -484,363 +398,216 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
   },
+  analyticsLoadingContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  analyticsLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#999",
+  },
   header: {
-    backgroundColor: "#fff",
-    height: 100,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-    paddingHorizontal: 5,
-    paddingRight: 20,
-    alignItems: "center",
-    paddingTop: 10,
-  },
-  selectedBusinessBanner: {
-    backgroundColor: "#e8f5e8",
-    marginHorizontal: 10,
-    marginVertical: 15,
-    borderRadius: 12,
-    padding: 15,
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
-    borderLeftWidth: 4,
-    borderLeftColor: "#059669",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
   },
-  bannerContent: {
-    flex: 1,
-  },
-  selectedBusinessTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1b5e20",
-    marginBottom: 4,
-  },
-  selectedBusinessType: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#2e7d32",
-    marginBottom: 2,
-  },
-  selectedBusinessAddress: {
-    fontSize: 12,
-    color: "#388e3c",
-    marginBottom: 8,
-  },
-  verifiedBadge: {
+  headerRight: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
   },
-  verifiedText: {
-    fontSize: 12,
-    color: "#059669",
-    marginLeft: 4,
-    fontWeight: "600",
+  iconButton: {
+    padding: 8,
+    position: "relative",
   },
-  changeBusiness: {
-    backgroundColor: "#059669",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  notificationBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    backgroundColor: "#FF3B30",
     borderRadius: 8,
-  },
-  changeBusinessText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  businessCount: {
-    fontSize: 14,
-    color: "#666",
-    fontStyle: "italic",
-  },
-  businessActionsContainer: {
-    marginHorizontal: 10,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: 15,
-  },
-  actionsGrid: {
-    gap: 12,
-  },
-  actionCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    borderLeftWidth: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    minWidth: 16,
+    height: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    zIndex: 1,
   },
-  actionContent: {
+  badgeText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
+  },
+  content: {
     flex: 1,
   },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
+  scrollContent: {
+    padding: 16,
   },
-  actionDescription: {
+  section: {
+    marginBottom: 24,
+    alignContent: "center",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 16,
+  },
+  cardsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 12,
+  },
+  overviewCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 16,
+    minHeight: 100,
+    alignContent: "space-between",
+    justifyContent: "space-between",
+  },
+  cardFull: {
+    width: "50%",
+  },
+  cardYellow: {
+    backgroundColor: "#F1E9C7FF",
+    borderWidth: 2,
+    borderColor: "#FACC15",
+    alignContent: "space-between",
+  },
+  cardPurple: {
+    backgroundColor: "#E5E9FFFF",
+    borderWidth: 2,
+    marginBottom: 10,
+    borderColor: "#506EFF",
+    padding: 10,
+  },
+  cardGreen: {
+    backgroundColor: "#F2FCF1FF",
+    borderWidth: 2,
+    borderColor: "#68F755",
+    padding: 10,
+  },
+  cardBlue: {
+    backgroundColor: "#EFF6FF",
+    borderWidth: 2,
+    borderColor: "#3B82F6",
+  },
+  cardOrange: {
+    backgroundColor: "#FFF7ED",
+    borderWidth: 2,
+    borderColor: "#F97316",
+  },
+  cardPink: {
+    backgroundColor: "#FCE7F3",
+    borderWidth: 2,
+    borderColor: "#EC4899",
+  },
+  cardTeal: {
+    backgroundColor: "#F0FDFA",
+    borderWidth: 2,
+    borderColor: "#14B8A6",
+  },
+  cardIcon: {},
+  cardEmoji: {
+    width: 42,
+    height: 42,
+    position: "relative",
+  },
+  cardEmojiDouble: {
+    width: 24,
+    height: 24,
+    position: "relative",
+  },
+  cardLabel: {
     fontSize: 14,
     color: "#666",
+    marginVertical: 12,
   },
-  quickStatsContainer: {
-    marginHorizontal: 10,
-    marginBottom: 20,
+  cardValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
   },
-  statsRow: {
+  cardUnit: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 2,
+  },
+  quickAccessRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
+    marginBottom: 10,
   },
-  statCard: {
+  quickAccessCard: {
     flex: 1,
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: "#F9F9F9",
+    borderRadius: 16,
+    padding: 20,
     alignItems: "center",
+    minHeight: 180,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: 4,
+  quickAccessIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#F3F0FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
   },
-  statLabel: {
-    fontSize: 12,
-    color: "#666",
-    textAlign: "center",
-  },
-  statBadge: {
-    backgroundColor: "#e8f5e8",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 4,
-  },
-  statBadgeText: {
-    fontSize: 12,
-    color: "#059669",
+  quickAccessTitle: {
+    fontSize: 16,
     fontWeight: "600",
+    color: "#000",
+    marginBottom: 6,
+  },
+  quickAccessSubtitle: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "center",
   },
   noBusinessContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
+    paddingVertical: 80,
     paddingHorizontal: 40,
-    marginHorizontal: 10,
-    backgroundColor: "white",
-    borderRadius: 12,
-    marginBottom: 20,
   },
   noBusinessTitle: {
     fontSize: 20,
     fontWeight: "600",
     color: "#333",
     marginTop: 20,
-    marginBottom: 10,
+    marginBottom: 12,
     textAlign: "center",
   },
   noBusinessText: {
     fontSize: 14,
-    color: "#666",
+    color: "#999",
     textAlign: "center",
     lineHeight: 20,
-    marginBottom: 30,
-  },
-  selectBusinessButton: {
-    backgroundColor: "#059669",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  selectBusinessButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  logoContainer: {
-    marginLeft: 12,
-    justifyContent: "flex-start",
-    alignItems: "center",
-    alignContent: "center",
-    flexDirection: "row",
-  },
-  bgImage: {
-    width: 20,
-    height: 20,
-    marginRight: 10,
-    marginTop: 5,
-    resizeMode: "contain",
-  },
-  logoText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  notificationButton: {
-    padding: 4,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 20,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    height: 48,
-    width: "75%",
-    borderWidth: 1,
-  },
-  searchIcon: {
-    marginRight: 12,
-    color: "gray",
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 20,
-    color: "gray",
-    fontWeight: "400",
-  },
-  headerSection2: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 20,
-  },
-  bannerContainer: {
-    padding: 0,
-    marginTop: 1,
-  },
-  banner: {
-    borderRadius: 16,
-    elevation: 1,
-  },
-  bannerBackground: {
-    backgroundColor: "white",
-  },
-  bannerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: 6,
-  },
-  bannerSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 16,
-    fontWeight: "400",
-  },
-  bannerButton: {
-    backgroundColor: "#059669",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignSelf: "flex-start",
-  },
-  bannerButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 10,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  gridItem: {
-    width: "49%",
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  gridContent: {
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    marginTop: 10,
-  },
-  gridTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 10,
-  },
-  gridCategory: {
-    fontSize: 20,
-    color: "#666",
-    opacity: 0.5,
-    marginBottom: 10,
-    fontWeight: "400",
-  },
-  gridFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  rating: {
-    fontSize: 28,
-    color: "#333",
-    marginLeft: 4,
-    fontWeight: "800",
-    marginBottom: 10,
-  },
-  discountBadge: {
-    backgroundColor: "#FFD700",
-    borderRadius: 80,
-    width: 40,
-    height: 40,
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    alignContent: "center",
-  },
-  discountText: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "white",
   },
 });
 

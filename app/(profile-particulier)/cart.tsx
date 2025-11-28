@@ -1,11 +1,12 @@
-import { createOrder } from "@/api/Orders";
+// app/(tabs)/cart.tsx  (ou là où tu l’as)
+import { createOrder } from "@/api/orers/createOrder";
 import BackButton from "@/components/BackButton";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
-import { CreateOrderPayload } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -16,149 +17,118 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
-// 🔹 Image par défaut si produit sans image
 const fallbackImage = require("@/assets/images/store-placeholder.png");
 
-// 🔹 Interface explicite pour CartItem
-interface CartItem {
-  variantId: string;
-  businessId: string;
-  supplierBusinessId: string;
-  name: string;
-  price: string;
-  quantity: number;
-  imageUrl?: string;
-}
+type PaymentOption = "CARD" | "CASH" | "WALLET";
 
 const Cart = () => {
-  const { items, removeItem } = useCartStore();
+  const {
+    items,
+    removeItem,
+    updateQuantity,
+    clearCart,
+    getTotalPrice,
+    getTotalItems,
+  } = useCartStore();
+
   const [isLoading, setIsLoading] = useState(false);
+  const [showPaymentUI, setShowPaymentUI] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentOption>("CARD");
 
-  const handleCheckout = async () => {
-    if (isLoading) return;
+  const totalPrice = getTotalPrice().toFixed(2);
+  const totalItemsCount = getTotalItems();
+
+  // ──────────────────────────────────────────────────────────────
+  // Création de la commande
+  // ──────────────────────────────────────────────────────────────
+  const handleCreateOrder = async () => {
     if (items.length === 0) {
-      Toast.show({
-        type: "info",
-        text1: "Votre panier est vide",
-      });
+      Toast.show({ type: "info", text1: "Votre panier est vide" });
       return;
     }
 
-    // Vérification du premier item pour businessId / supplierBusinessId
     const firstItem = items[0];
-    if (!firstItem.businessId || !firstItem.supplierBusinessId) {
-      Toast.show({
-        type: "error",
-        text1: "Impossible de passer la commande",
-        text2: "Fournisseur ou business manquant pour le produit",
-      });
-      console.error("🛑 Premier item invalide:", firstItem);
-      return;
-    }
 
-    // Vérification que tous les items ont le même businessId et supplierBusinessId
-    const businessId = firstItem.businessId;
-    const supplierBusinessId = firstItem.supplierBusinessId;
-    const invalidBusiness = items.find(
-      (item) =>
-        item.businessId !== businessId ||
-        item.supplierBusinessId !== supplierBusinessId
+    // Vérification que tous les articles viennent du même établissement
+    const invalidItem = items.find(
+      (i) =>
+        i.businessId !== firstItem.businessId ||
+        i.supplierBusinessId !== firstItem.supplierBusinessId
     );
-    if (invalidBusiness) {
-      Toast.show({
-        type: "error",
-        text1: "Erreur",
-        text2: "Tous les articles doivent provenir du même fournisseur.",
-      });
-      console.error("🛑 Articles de fournisseurs différents:", invalidBusiness);
-      return;
-    }
 
-    // Vérification que tous les items ont un variantId
-    const invalidItem = items.find((i) => !i.variantId);
     if (invalidItem) {
       Toast.show({
         type: "error",
-        text1: "Produit invalide dans le panier",
-        text2: invalidItem.name,
+        text1: "Commande impossible",
+        text2: "Tous les produits doivent provenir du même établissement.",
       });
-      console.error("🛑 Item sans variantId:", invalidItem);
       return;
     }
 
-    // Construction du payload
-    const payload: CreateOrderPayload = {
-      type: "SALE",
+    const payload = {
+      type: "SALE" as const,
       businessId: firstItem.businessId,
-      supplierBusinessId: firstItem.supplierBusinessId,
-      notes: "Commande depuis l'app mobile",
+      supplierBusinessId: null,
+      notes: `Commande mobile - Paiement: ${
+        selectedPayment === "CARD"
+          ? "Carte bancaire"
+          : selectedPayment === "CASH"
+          ? "Espèces"
+          : "Portefeuille"
+      }`,
+      tableId: null,
+      reservationDate: new Date().toISOString(),
       lines: items.map((item) => ({
         variantId: item.variantId,
         quantity: item.quantity,
       })),
+      useWallet: false,
+      shippingFee: 0,
+      discountAmount: 0,
     };
 
-    console.log("📦 Payload envoyé à l’API:", JSON.stringify(payload, null, 2));
+    console.log(
+      "Payload envoyé à createOrder :",
+      JSON.stringify(payload, null, 2)
+    );
 
     try {
       setIsLoading(true);
-      const res = await createOrder(payload);
-      console.log("✅ Commande réussie:", res);
-
-      // Vider le panier après succès
-      useCartStore.setState({ items: [] });
+      const response = await createOrder(payload);
 
       Toast.show({
         type: "success",
-        text1: "Commande passée avec succès 🎉",
+        text1: "Commande passée !",
+        text2: `N°${response.orderNumber || response.id}`,
       });
+
+      clearCart(); // Panier vidé après succès
+      setTimeout(() => setShowPaymentUI(false), 1800);
     } catch (err: any) {
-      console.error(
-        "❌ Erreur lors de la création de la commande:",
-        err.response?.data || err.message
-      );
+      console.error("Erreur création commande :", err);
+      const message =
+        err.response?.data?.message ||
+        err.message ||
+        "Impossible de passer la commande";
+
       Toast.show({
         type: "error",
-        text1: "Erreur lors de la commande",
-        text2: err.response?.data?.message?.join?.(", ") || err.message,
+        text1: "Échec de la commande",
+        text2: Array.isArray(message) ? message[0] : message,
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fonction pour incrémenter/décrémenter la quantité
-  const updateQuantity = (variantId: string, delta: number) => {
-    useCartStore.setState((state) => {
-      const updatedItems = [...state.items];
-      const index = updatedItems.findIndex(
-        (item) => item.variantId === variantId
-      );
-      if (index !== -1) {
-        const newQuantity = updatedItems[index].quantity + delta;
-        if (newQuantity <= 0) {
-          return { items: updatedItems.filter((_, i) => i !== index) }; // Supprime si quantité = 0
-        }
-        updatedItems[index].quantity = newQuantity;
-      }
-      return { items: updatedItems };
-    });
+  const handleCheckout = () => items.length > 0 && setShowPaymentUI(true);
+  const handleGoBack = () => {
+    setShowPaymentUI(false);
+    setSelectedPayment("CARD");
   };
 
-  // Calcul du total
-  const totalPrice = items
-    .reduce((sum, item) => {
-      const price = parseFloat(item.price);
-      return isNaN(price) ? sum : sum + price * item.quantity;
-    }, 0)
-    .toFixed(2);
-
-  // Calcul du nombre total d'articles
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-
-  // Rendu d'un item du panier
-  const renderCartItem = (item: CartItem) => (
-    <View key={item.variantId} style={styles.cartItem}>
+  const renderCartItem = (item: (typeof items)[0]) => (
+    <View key={`${item.productId}-${item.variantId}`} style={styles.cartItem}>
       <Image
         source={item.imageUrl ? { uri: item.imageUrl } : fallbackImage}
         style={styles.itemImage}
@@ -166,32 +136,34 @@ const Cart = () => {
       <View style={styles.itemDetails}>
         <Text style={styles.itemName} numberOfLines={2}>
           {item.name}
+          {item.variantName ? ` - ${item.variantName}` : ""}
         </Text>
         <Text style={styles.itemPrice}>
-          {parseFloat(item.price).toFixed(2)} € x {item.quantity}
+          {item.price.toFixed(2)} € × {item.quantity}
         </Text>
         <View style={styles.quantityControls}>
           <TouchableOpacity
-            onPress={() => updateQuantity(item.variantId, -1)}
+            onPress={() =>
+              updateQuantity(item.productId, item.variantId, item.quantity - 1)
+            }
             style={styles.quantityButton}
-            accessibilityLabel="Diminuer la quantité"
           >
             <Ionicons name="remove" size={20} color="#333" />
           </TouchableOpacity>
           <Text style={styles.quantityText}>{item.quantity}</Text>
           <TouchableOpacity
-            onPress={() => updateQuantity(item.variantId, 1)}
+            onPress={() =>
+              updateQuantity(item.productId, item.variantId, item.quantity + 1)
+            }
             style={styles.quantityButton}
-            accessibilityLabel="Augmenter la quantité"
           >
             <Ionicons name="add" size={20} color="#333" />
           </TouchableOpacity>
         </View>
       </View>
       <TouchableOpacity
-        onPress={() => removeItem(item.variantId)}
+        onPress={() => removeItem(item.productId, item.variantId)}
         style={styles.removeButton}
-        accessibilityLabel="Supprimer l'article"
       >
         <Ionicons name="trash-outline" size={24} color="#FF3B30" />
       </TouchableOpacity>
@@ -202,39 +174,120 @@ const Cart = () => {
     <ProtectedRoute>
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <BackButton />
-          <Text style={styles.headerTitle}>Votre Panier ({totalItems})</Text>
+          <TouchableOpacity onPress={showPaymentUI ? handleGoBack : undefined}>
+            <BackButton />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {showPaymentUI ? "Paiement" : `Panier (${totalItemsCount})`}
+          </Text>
         </View>
-        {items.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="cart-outline" size={80} color="#ccc" />
-            <Text style={styles.emptyText}>Votre panier est vide</Text>
-          </View>
-        ) : (
-          <>
-            <ScrollView
-              style={styles.content}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}
-            >
-              {items.map(renderCartItem)}
-            </ScrollView>
-            <View style={styles.footer}>
-              <View style={styles.totalContainer}>
-                <Text style={styles.totalLabel}>Total :</Text>
-                <Text style={styles.totalPrice}>{totalPrice} €</Text>
-              </View>
-              <TouchableOpacity
-                onPress={handleCheckout}
-                style={[styles.checkoutButton, isLoading && { opacity: 0.6 }]}
-                disabled={isLoading}
-                accessibilityLabel="Passer la commande"
-              >
-                <Text style={styles.checkoutButtonText}>
-                  {isLoading ? "En cours..." : "Passer la commande"}
-                </Text>
-              </TouchableOpacity>
+
+        {showPaymentUI ? (
+          /* ────────────────────── ÉCRAN PAIEMENT ────────────────────── */
+          <ScrollView contentContainerStyle={styles.paymentContent}>
+            <View style={styles.paymentHeader}>
+              <Ionicons name="checkmark-circle" size={60} color="#059669" />
+              <Text style={styles.paymentTitle}>Finaliser la commande</Text>
             </View>
+
+            <View style={styles.totalSection}>
+              <Text style={styles.totalLabel}>Total à payer</Text>
+              <Text style={styles.totalAmount}>{totalPrice} €</Text>
+            </View>
+
+            <Text style={styles.paymentMethodLabel}>Mode de paiement</Text>
+            <View style={styles.paymentOptions}>
+              {(["CARD", "CASH", "WALLET"] as PaymentOption[]).map((method) => (
+                <TouchableOpacity
+                  key={method}
+                  style={[
+                    styles.paymentOption,
+                    selectedPayment === method && styles.paymentOptionSelected,
+                  ]}
+                  onPress={() => setSelectedPayment(method)}
+                >
+                  <Ionicons
+                    name={
+                      method === "CARD"
+                        ? "card-outline"
+                        : method === "CASH"
+                        ? "cash-outline"
+                        : "wallet-outline"
+                    }
+                    size={28}
+                    color={selectedPayment === method ? "#059669" : "#666"}
+                  />
+                  <Text
+                    style={[
+                      styles.paymentOptionText,
+                      selectedPayment === method &&
+                        styles.paymentOptionTextSelected,
+                    ]}
+                  >
+                    {method === "CARD"
+                      ? "Carte bancaire"
+                      : method === "CASH"
+                      ? "Espèces"
+                      : "Portefeuille"}
+                  </Text>
+                  {selectedPayment === method && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={24}
+                      color="#059669"
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              onPress={handleCreateOrder}
+              disabled={isLoading}
+              style={[styles.payButton, isLoading && styles.payButtonDisabled]}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="send" size={20} color="#fff" />
+                  <Text style={styles.payButtonText}>
+                    Confirmer • {totalPrice} €
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        ) : (
+          /* ────────────────────── PANIER CLASSIQUE ────────────────────── */
+          <>
+            {items.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="cart-outline" size={80} color="#ccc" />
+                <Text style={styles.emptyText}>Votre panier est vide</Text>
+              </View>
+            ) : (
+              <>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {items.map(renderCartItem)}
+                </ScrollView>
+
+                <View style={styles.footer}>
+                  <View style={styles.totalContainer}>
+                    <Text style={styles.totalLabel}>Total</Text>
+                    <Text style={styles.totalPrice}>{totalPrice} €</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleCheckout}
+                    style={styles.checkoutButton}
+                  >
+                    <Text style={styles.checkoutButtonText}>
+                      Passer la commande
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </>
         )}
       </SafeAreaView>
@@ -243,66 +296,85 @@ const Cart = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 20,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
   header: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 20,
+    padding: 20,
+    paddingBottom: 10,
   },
-  headerTitle: {
-    fontSize: 20,
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#333" },
+  paymentContent: { padding: 20, paddingBottom: 40 },
+  paymentHeader: {
+    alignItems: "center",
+    paddingVertical: 24,
+    marginBottom: 24,
+  },
+  paymentTitle: {
+    fontSize: 24,
     fontWeight: "700",
     color: "#333",
+    marginTop: 12,
   },
-  content: {
-    flex: 1,
+  totalSection: {
+    backgroundColor: "#059669",
+    padding: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    marginBottom: 24,
   },
-  scrollContent: {
-    paddingBottom: 20,
+  totalLabel: { fontSize: 16, color: "#fff", opacity: 0.9 },
+  totalAmount: { fontSize: 36, fontWeight: "800", color: "#fff", marginTop: 8 },
+  paymentMethodLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
   },
+  paymentOptions: { gap: 12, marginVertical: 20 },
+  paymentOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#f9fafb",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  paymentOptionSelected: { borderColor: "#059669", backgroundColor: "#ecfdf5" },
+  paymentOptionText: { flex: 1, marginLeft: 12, fontSize: 16, color: "#333" },
+  paymentOptionTextSelected: { fontWeight: "600", color: "#059669" },
+  payButton: {
+    backgroundColor: "#059669",
+    paddingVertical: 16,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 20,
+  },
+  payButtonDisabled: { opacity: 0.6 },
+  payButtonText: { color: "#fff", fontSize: 18, fontWeight: "700" },
   cartItem: {
     flexDirection: "row",
     backgroundColor: "#fff",
     borderRadius: 12,
     marginBottom: 16,
+    padding: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
-    padding: 10,
   },
-  itemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  itemDetails: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  itemPrice: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-  },
-  quantityControls: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  itemImage: { width: 80, height: 80, borderRadius: 8, marginRight: 12 },
+  itemDetails: { flex: 1, justifyContent: "center" },
+  itemName: { fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 4 },
+  itemPrice: { fontSize: 14, color: "#666", marginBottom: 8 },
+  quantityControls: { flexDirection: "row", alignItems: "center", gap: 8 },
   quantityButton: {
     width: 32,
     height: 32,
@@ -314,62 +386,31 @@ const styles = StyleSheet.create({
   quantityText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333",
     minWidth: 24,
     textAlign: "center",
   },
-  removeButton: {
-    justifyContent: "center",
-    padding: 8,
-  },
+  removeButton: { justifyContent: "center", padding: 8 },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     gap: 16,
   },
-  emptyText: {
-    fontSize: 18,
-    color: "#666",
-    fontWeight: "500",
-  },
-  footer: {
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-  },
+  emptyText: { fontSize: 18, color: "#666", fontWeight: "500" },
+  footer: { padding: 20, borderTopWidth: 1, borderTopColor: "#eee" },
   totalContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 16,
   },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-  },
-  totalPrice: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#059669",
-  },
+  totalPrice: { fontSize: 20, fontWeight: "700", color: "#059669" },
   checkoutButton: {
     backgroundColor: "#059669",
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
-    shadowColor: "#059669",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  checkoutButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  checkoutButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 });
 
 export default Cart;

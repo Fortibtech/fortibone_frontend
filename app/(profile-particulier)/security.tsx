@@ -1,10 +1,13 @@
+import BackButton from "@/components/BackButton";
 import React from "react";
-import { StyleSheet, View, SafeAreaView, Text } from "react-native";
+import {  StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Security = () => {
   return (
     <View>
       <SafeAreaView style={styles.container}>
+        <BackButton />
         <Text>About</Text>
       </SafeAreaView>
     </View>

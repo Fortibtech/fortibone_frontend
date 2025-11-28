@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Image,
   Keyboard,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Polygon } from "react-native-svg";
 
 // 🔹 image fallback si produit n'a pas d'image
@@ -113,7 +113,7 @@ const HomePage: React.FC = () => {
     <View style={styles.header}>
       <View style={styles.header2}>
         <TouchableOpacity
-          onPress={() => router.push("/(profile-particulier)/category")}
+          // onPress={() => router.push("/(profile-particulier)/category")}
           style={{ padding: 8 }}
         >
           <Ionicons name="grid-outline" size={24} color="#fff" />
@@ -221,7 +221,7 @@ const HomePage: React.FC = () => {
       style={styles.gridItem}
       onPress={() =>
         router.push({
-          pathname: "/product-details/[id]",
+          pathname: "/client-produit-details/[id]",
           params: { id: product.productId.toString() },
         })
       }
