@@ -27,6 +27,8 @@ const StockTrackingScreen: React.FC = () => {
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  console.log("ANALITICS id du bussines en VENTE", id);
   const fetchData = async () => {
     if (!id) return;
     setLoading(true);
@@ -144,7 +146,7 @@ const StockTrackingScreen: React.FC = () => {
       icon: "message-circle" as keyof typeof Feather.glyphMap, // équiv. "chatbubble-outline"
       iconColor: "#6366F1",
       iconBgColor: "#E0E7FF",
-    }
+    },
   ];
 
   const handleCardPress = (title: string) => {

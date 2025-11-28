@@ -125,7 +125,7 @@ export const GetWallet = async (): Promise<Wallet | null> => {
 
 export interface DepositPayload {
   amount: number;
-  method: "STRIPE" | "MVOLA";
+  method: "STRIPE" | "KARTAPAY";
   metadata: {
     note?: string;
     paymentMethodId?: string; // pour Stripe

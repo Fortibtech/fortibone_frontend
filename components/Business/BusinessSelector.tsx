@@ -40,7 +40,17 @@ const BusinessSelector: React.FC<BusinessSelectorProps> = ({
 
     return (
       <TouchableOpacity
-        style={[styles.businessItem, isSelected? {borderWidth:1, borderColor: '#00C851', borderRadius: 20, margin: 5} : {borderWidth: 0} ]}
+        style={[
+          styles.businessItem,
+          isSelected
+            ? {
+                borderWidth: 1,
+                borderColor: "#00C851",
+                borderRadius: 20,
+                margin: 5,
+              }
+            : { borderWidth: 0 },
+        ]}
         onPress={() => handleSelect(item)}
         activeOpacity={0.7}
       >
@@ -58,6 +68,8 @@ const BusinessSelector: React.FC<BusinessSelectorProps> = ({
       </TouchableOpacity>
     );
   };
+
+
 
   return (
     <>

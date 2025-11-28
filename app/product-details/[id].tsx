@@ -1,539 +1,403 @@
-import { addToFavorite, deleteFavoris, getProductById } from "@/api/Products";
-import BackButton from "@/components/BackButton";
-import AddProductReviewModal from "@/components/produit/AddProductReviewModal";
-import CategoryInfo from "@/components/produit/CategoryInfo";
-import ProductOptionsSelector from "@/components/produit/ProductOptionsSelector";
-import ProductReviewsListModal from "@/components/produit/ProductReviewModal";
-import ReviewActions from "@/components/produit/ReviewActions";
-import { useCartStore } from "@/stores/useCartStore";
-import { Products } from "@/types/Product";
-import { Variant } from "@/types/v";
-import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { getBusinesses } from "@/api/client/business";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import React, { JSX, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import Carousel from "react-native-reanimated-carousel";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Toast from "react-native-toast-message";
 
-const { width: screenWidth } = Dimensions.get("window");
-const ProductDetails = () => {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { toggleItem, isInCart } = useCartStore();
-  const [product, setProduct] = useState<Products | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeSlide, setActiveSlide] = useState(0);
-  const [favLoading, setFavLoading] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
-  const [showAddReview, setShowAddReview] = useState(false);
-  const [showReviews, setShowReviews] = useState(false);
+const { width } = Dimensions.get("window");
+
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface Enterprise {
+  id: string;
+  name: string;
+  rating: number;
+  category: string;
+  image: string;
+  categoryId: string;
+}
+
+const EnterprisePage: React.FC = () => {
+  const [categories, setCategories] = useState<Category[]>([
+    { id: "all", name: "Tout" },
+  ]);
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [searchText, setSearchText] = useState<string>("");
+  const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    if (!id) return;
-    (async () => {
+    const loadEnterprises = async () => {
       try {
-        const data = await getProductById(id);
-        setProduct(data);
+        setLoading(true);
+        const res = await getBusinesses();
+
+        // 🔥 Debug: Afficher la structure des données reçues
+        if (res.data && res.data.length > 0) {
+          console.log(
+            "Structure API complète:",
+            JSON.stringify(res.data[0], null, 2)
+          );
+        }
+
+        const mapped: Enterprise[] = res.data
+          .filter((b: any) => b.type !== "FOURNISSEUR")
+          .map((b: any) => {
+            // 🔥 Détection intelligente de l'image avec tous les cas possibles
+            let imageUrl =
+              "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image";
+
+            // Essayer différentes propriétés dans l'ordre de priorité
+            const possibleImageFields = [
+              b.image,
+              b.logoUrl,
+              b.logo,
+              b.coverImageUrl,
+              b.coverImage,
+              b.imageUrl,
+              b.thumbnail,
+              b.picture,
+            ];
+
+            // Trouver la première image valide
+            const foundImage = possibleImageFields.find(
+              (img) => img && typeof img === "string" && img.trim() !== ""
+            );
+
+            if (foundImage) {
+              imageUrl = foundImage;
+
+              // 🔥 Corriger les URLs sans protocole
+              if (
+                !imageUrl.startsWith("http://") &&
+                !imageUrl.startsWith("https://")
+              ) {
+                imageUrl = `https://${imageUrl}`;
+              }
+
+              // 🔥 Éviter les placeholders en production
+              if (imageUrl.includes("via.placeholder.com")) {
+                console.warn(`⚠️ Placeholder détecté pour: ${b.name}`);
+              }
+            } else {
+              console.warn(`⚠️ Aucune image trouvée pour: ${b.name}`);
+            }
+
+            return {
+              id: b.id,
+              name: b.name || "Sans nom",
+              rating: b.averageRating || b.rating || 0,
+              category: b.type || "Non classé",
+              image: imageUrl,
+              categoryId: (b.type || "autre").toLowerCase(),
+            };
+          });
+
+        console.log(`✅ ${mapped.length} entreprises chargées`);
+        setEnterprises(mapped);
+
+        // 🔥 Génération dynamique des catégories
+        const uniqueTypes = Array.from(
+          new Set(mapped.map((e) => e.categoryId))
+        );
+
+        const dynamicCategories: Category[] = uniqueTypes.map((type) => ({
+          id: type,
+          name: type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, " "),
+        }));
+
+        setCategories([{ id: "all", name: "Tout" }, ...dynamicCategories]);
       } catch (err) {
-        console.error("Erreur récupération produit :", err);
+        console.error("❌ Erreur chargement entreprises:", err);
       } finally {
         setLoading(false);
       }
-    })();
-  }, [id]);
+    };
 
-  const handleToggleFavorite = async () => {
-    if (favLoading) return;
+    loadEnterprises();
+  }, []);
 
-    try {
-      setFavLoading(true);
-      if (isFavorite) {
-        await deleteFavoris(id);
-        setIsFavorite(false);
-        Toast.show({
-          type: "info",
-          text1: "Produit retiré des favoris",
-        });
-      } else {
-        await addToFavorite(id);
-        setIsFavorite(true);
-        Toast.show({
-          type: "success",
-          text1: "Produit ajouté aux favoris",
-        });
-      }
-    } catch (err) {
-      Toast.show({
-        type: "error",
-        text1: "Erreur lors de la mise à jour du favori",
-      });
-      console.error(err);
-    } finally {
-      setFavLoading(false);
-    }
-  };
-
-  const inCart = (variantId?: string) => {
-    if (variantId) return isInCart(variantId);
-    return isInCart(product?.id || "");
-  };
-
-  const handleAddToCart = () => {
-    if (!product) return;
-
-    const variant = selectedVariant || product.variants?.[0];
-    if (!variant) {
-      Toast.show({
-        type: "error",
-        text1: "Veuillez sélectionner une variante",
-      });
-      return;
-    }
-
-    const alreadyInCart = isInCart(variant.id);
-
-    toggleItem({
-      productId: product.id,
-      businessId: product.businessId,
-      supplierBusinessId: product.businessId,
-      variantId: variant.id,
-      name: product.name,
-      price: variant.price,
-      imageUrl: variant.imageUrl ?? product.imageUrl,
-      quantity: 1,
-    });
-
-    Toast.show({
-      type: alreadyInCart ? "info" : "success",
-      text1: alreadyInCart
-        ? "Produit retiré du panier"
-        : "✅ Le produit a été ajouté au panier avec succès !",
+  const navigateToEnterpriseDetails = (
+    enterpriseId: string,
+    enterpriseName: string
+  ): void => {
+    router.push({
+      pathname: "/enterprise-details/[id]",
+      params: { id: enterpriseId, name: enterpriseName },
     });
   };
 
-  const renderStars = (val: number) =>
-    Array.from({ length: 5 }).map((_, i) => (
-      <Text
-        key={i}
-        style={{ fontSize: 18, color: i < val ? "#FFD700" : "#ccc" }}
+  const filteredEnterprises = useMemo(() => {
+    return enterprises.filter((enterprise) => {
+      const matchCategory =
+        activeCategory === "all" || enterprise.categoryId === activeCategory;
+      const matchSearch = enterprise.name
+        .toLowerCase()
+        .includes(searchText.toLowerCase());
+      return matchCategory && matchSearch;
+    });
+  }, [enterprises, activeCategory, searchText]);
+
+  const renderHeader = (): JSX.Element => (
+    <View style={styles.header}>
+      <Pressable
+        onPress={() => searchInputRef.current?.focus()}
+        accessibilityLabel="Rechercher une entreprise"
       >
-        ★
-      </Text>
-    ));
+        <Ionicons
+          name="search"
+          size={20}
+          color="#999"
+          style={styles.searchIcon}
+        />
+      </Pressable>
+      <TextInput
+        ref={searchInputRef}
+        placeholder="Rechercher par nom ou categorie..."
+        placeholderTextColor="#999"
+        style={styles.searchInput}
+        value={searchText}
+        onChangeText={setSearchText}
+        accessibilityLabel="Barre de recherche"
+      />
+      {searchText.length > 0 && (
+        <Pressable
+          onPress={() => setSearchText("")}
+          accessibilityLabel="Effacer la recherche"
+        >
+          <Ionicons
+            name="close-circle"
+            size={20}
+            color="#999"
+            style={styles.clearIcon}
+          />
+        </Pressable>
+      )}
+    </View>
+  );
 
-  if (loading) {
+  const renderCategoryTabs = (): JSX.Element => (
+    <View style={styles.tabContainer}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabScrollContent}
+      >
+        {categories.map((category: Category) => (
+          <TouchableOpacity
+            key={category.id}
+            style={[
+              styles.tab,
+              activeCategory === category.id && styles.activeTab,
+            ]}
+            onPress={() => setActiveCategory(category.id)}
+            activeOpacity={0.7}
+            accessibilityLabel={`Filtrer par ${category.name}`}
+          >
+            {activeCategory === category.id && (
+              <Ionicons name="flame-outline" size={20} color={"red"} />
+            )}
+            <Text
+              style={[
+                styles.tabText,
+                activeCategory === category.id && styles.activeTabText,
+              ]}
+            >
+              {category.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  const renderEnterpriseCard = ({
+    item,
+  }: {
+    item: Enterprise;
+  }): JSX.Element => (
+    <TouchableOpacity
+      style={styles.enterpriseCard}
+      onPress={() => navigateToEnterpriseDetails(item.id, item.name)}
+      activeOpacity={0.8}
+      accessibilityLabel={`Voir détails de ${item.name}`}
+    >
+      <Image
+        source={{ uri: item.image }}
+        style={styles.enterpriseImage}
+        resizeMode="cover"
+        onError={(error) => {
+          console.log(`❌ Erreur image pour ${item.name}: ${item.image}`);
+        }}
+      />
+      <View style={styles.enterpriseContent}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.enterpriseTitle} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.enterpriseCategory}>{item.category}</Text>
+        </View>
+        <View style={styles.ratingContainer}>
+          <Ionicons name="star" size={14} color="#FFD700" />
+          <Text style={styles.rating}>{item.rating.toFixed(1)}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderEnterpriseGrid = (): JSX.Element => {
+    if (loading) {
+      return (
+        <View style={{ flex: 1, alignItems: "center", marginTop: 50 }}>
+          <ActivityIndicator size="large" color="#00C851" />
+          <Text style={{ marginTop: 10, color: "#666" }}>
+            Chargement des entreprises...
+          </Text>
+        </View>
+      );
+    }
+
+    if (filteredEnterprises.length === 0) {
+      return (
+        <View style={{ alignItems: "center", marginTop: 50 }}>
+          <Ionicons name="search-outline" size={48} color="#ccc" />
+          <Text style={{ marginTop: 10, fontSize: 16, color: "#666" }}>
+            Aucune entreprise trouvée
+          </Text>
+          {searchText.length > 0 && (
+            <Text style={{ marginTop: 5, fontSize: 14, color: "#999" }}>
+              Essayez un autre terme de recherche
+            </Text>
+          )}
+        </View>
+      );
+    }
+
     return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator size="large" color="#000" />
-      </SafeAreaView>
+      <FlatList
+        data={filteredEnterprises}
+        renderItem={renderEnterpriseCard}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        contentContainerStyle={styles.grid}
+        columnWrapperStyle={styles.columnWrapper}
+        showsVerticalScrollIndicator={false}
+      />
     );
-  }
-
-  if (!product) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <Text>Produit introuvable</Text>
-      </SafeAreaView>
-    );
-  }
-
-  const images = product.variants.length
-    ? product.variants.map((v) => ({ uri: v.imageUrl }))
-    : [{ uri: product.imageUrl }];
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topSection}>
-        <Carousel
-          width={screenWidth}
-          height={250}
-          data={images}
-          scrollAnimationDuration={300}
-          onSnapToItem={(index) => setActiveSlide(index)}
-          renderItem={({ item }) => (
-            <View style={styles.carouselContainer}>
-              <Image source={item} style={styles.carouselImage} />
-              <LinearGradient
-                colors={["rgba(0,0,0,0.2)", "transparent"]}
-                style={styles.carouselOverlay}
-              />
-            </View>
-          )}
-        />
-
-        <View style={styles.paginationContainer}>
-          {images.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                activeSlide === index ? styles.activeDot : styles.inactiveDot,
-              ]}
-            />
-          ))}
-        </View>
-
-        <View style={styles.backButtonContainer}>
-          <BackButton />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.cartIconContainer,
-            inCart(selectedVariant?.id) ? styles.cartIconContainerInCart : null,
-          ]}
-          onPress={handleAddToCart}
-          activeOpacity={0.7}
-        >
-          <Image
-            source={require("@/assets/images/logo/cart.png")}
-            style={[
-              styles.icon,
-              inCart(selectedVariant?.id) ? { tintColor: "#fff" } : null,
-            ]}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.favoriteIconContainer,
-            isFavorite ? { backgroundColor: "red" } : null,
-          ]}
-          onPress={handleToggleFavorite}
-          disabled={favLoading}
-          activeOpacity={0.7}
-        >
-          <Image
-            source={require("@/assets/images/logo/heart.png")}
-            style={[
-              styles.icon,
-              favLoading
-                ? { tintColor: "#ccc" }
-                : isFavorite
-                ? { tintColor: "#fff" }
-                : null,
-            ]}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        style={styles.bottomSection}
-        contentContainerStyle={styles.bottomSectionContent}
-      >
-        <Text style={styles.title}>{product.name}</Text>
-        <ScrollView style={styles.descriptionContainer} nestedScrollEnabled>
-          <Text style={styles.description}>{product.description}</Text>
-        </ScrollView>
-
-        <View style={styles.ratingRow}>
-          <View style={{ flexDirection: "row" }}>
-            {renderStars(Math.round(product.averageRating))}
-          </View>
-          <Text style={styles.ratingText}>
-            {product.averageRating.toFixed(1)} ({product.reviewCount} avis)
-          </Text>
-        </View>
-
-        <View style={styles.infoContainer}>
-          <Text style={styles.price}>{product.variants[0].price}</Text>
-          <Text style={styles.stockText}>
-            {product.variants[0].quantityInStock > 0
-              ? `${product.variants[0].quantityInStock} pièces en stock`
-              : "Rupture de stock"}
-          </Text>
-
-          <ProductOptionsSelector
-            product={product}
-            onVariantSelect={setSelectedVariant}
-          />
-          <CategoryInfo category={product.category} />
-
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity
-              style={[
-                styles.addToCartButton,
-                inCart(selectedVariant?.id)
-                  ? styles.addToCartButtonInCart
-                  : null,
-              ]}
-              onPress={handleAddToCart}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.addToCartButtonText}>
-                {inCart(selectedVariant?.id)
-                  ? "Retirer du panier"
-                  : "Ajouter au panier"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.actionsRow}>
-          <ReviewActions
-            onShowReviews={() => setShowReviews(true)}
-            onAddReview={() => setShowAddReview(true)}
-          />
-        </View>
-
-        <ProductReviewsListModal
-          productId={product.id}
-          visible={showReviews}
-          onClose={() => setShowReviews(false)}
-        />
-
-        <AddProductReviewModal
-          productId={product.id}
-          visible={showAddReview}
-          onClose={() => setShowAddReview(false)}
-        />
-      </ScrollView>
+      {renderHeader()}
+      {renderCategoryTabs()}
+      {renderEnterpriseGrid()}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  topSection: {
-    height: 250,
-    position: "relative",
-    backgroundColor: "#f5f5f5",
-    overflow: "hidden",
-  },
-  carouselContainer: {
-    position: "relative",
-    width: "100%",
-    height: "100%",
-  },
-  carouselImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  carouselOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-  },
-  paginationContainer: {
+  container: { flex: 1, backgroundColor: "#FAFAFA" },
+  header: {
     flexDirection: "row",
-    justifyContent: "center",
-    position: "absolute",
-    bottom: 15,
-    width: "100%",
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginHorizontal: 4,
-    transform: [{ scale: 0.8 }],
-  },
-  activeDot: {
-    backgroundColor: "#000",
-    transform: [{ scale: 1.2 }],
-  },
-  inactiveDot: {
-    backgroundColor: "rgba(255,255,255,0.5)",
-  },
-  backButtonContainer: {
-    position: "absolute",
-    top: 15,
-    left: 15,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderRadius: 20,
-    padding: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 10,
-  },
-  cartIconContainer: {
-    position: "absolute",
-    top: 15,
-    right: 15,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 10,
-  },
-  cartIconContainerInCart: {
-    backgroundColor: "#4caf50",
-  },
-  favoriteIconContainer: {
-    position: "absolute",
-    top: 60,
-    right: 15,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 10,
-  },
-  icon: {
-    width: 22,
-    height: 22,
-    tintColor: "#000",
-    resizeMode: "contain",
-  },
-  bottomSection: {
-    flex: 1,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
     backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    marginTop: -20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  bottomSectionContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  descriptionContainer: {
-    maxHeight: 150,
-    marginBottom: 10,
-  },
-  description: {
+  searchIcon: { marginRight: 8 },
+  clearIcon: { marginLeft: 8 },
+  searchInput: {
+    flex: 1,
+    height: 48,
+    color: "#333",
     fontSize: 16,
-    color: "#666",
-    lineHeight: 24,
-    paddingRight: 10,
   },
-  ratingRow: {
+  tabContainer: { paddingVertical: 12 },
+  tabScrollContent: { paddingHorizontal: 16 },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginRight: 8,
+    backgroundColor: "#F5F6FA",
+    borderWidth: 1,
+    borderColor: "#E8E9ED",
+    minHeight: 48,
+  },
+  activeTab: {
+    backgroundColor: "#00C851",
+    borderColor: "#00C851",
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 12,
-    marginBottom: 12,
   },
-  ratingText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: "#555",
+  tabText: { fontSize: 14, fontWeight: "500", color: "#666" },
+  activeTabText: { color: "#fff", fontWeight: "600", marginLeft: 6 },
+  grid: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 120,
   },
-  infoContainer: {
+  columnWrapper: {
+    justifyContent: "space-between",
     marginBottom: 16,
   },
-  price: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 8,
+  enterpriseCard: {
+    width: (width - 56) / 2,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    overflow: "hidden",
   },
-  stockText: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 12,
+  enterpriseImage: {
+    width: "100%",
+    height: 120,
+    backgroundColor: "#F5F6FA",
   },
-  paymentMethodTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-    marginTop: 12,
-  },
-  paymentMethodContainer: {
+  enterpriseContent: {
+    padding: 12,
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 12,
   },
-  paymentMethodButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    marginHorizontal: 4,
-    alignItems: "center",
-  },
-  paymentMethodButtonSelected: {
-    borderColor: "#000",
-    backgroundColor: "#f0f0f0",
-  },
-  paymentMethodText: {
-    fontSize: 14,
+  enterpriseTitle: {
+    fontSize: 15,
+    fontWeight: "600",
     color: "#333",
+    marginBottom: 4,
+    letterSpacing: 0.2,
   },
-  paymentMethodTextSelected: {
-    fontWeight: "600",
-    color: "#000",
-  },
-  actionButtonsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
-  },
-  addToCartButton: {
-    flex: 1,
-    backgroundColor: "#4caf50",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    alignItems: "center",
-    marginRight: 8,
-  },
-  addToCartButtonInCart: {
-    backgroundColor: "#f44336",
-  },
-  addToCartButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  buyButton: {
-    flex: 1,
-    backgroundColor: "#000",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  buyButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  buyButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  actionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
-  },
+  enterpriseCategory: { fontSize: 12, color: "#666", marginBottom: 8 },
+  ratingContainer: { flexDirection: "row", alignItems: "center" },
+  rating: { fontSize: 13, color: "#333", marginLeft: 4, fontWeight: "500" },
 });
 
-export default ProductDetails;
+export default EnterprisePage;

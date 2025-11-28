@@ -49,18 +49,41 @@ const EnterprisePage: React.FC = () => {
         setLoading(true);
         const res = await getBusinesses();
 
-        const mapped: Enterprise[] = res.data.map((b) => ({
-          id: b.id,
-          name: b.name,
-          rating: b.averageRating || 0,
-          category: b.type,
-          image:
-            b.logoUrl || b.coverImageUrl || "https://via.placeholder.com/150",
-          categoryId: b.type.toLowerCase(),
-        }));
+        const mapped: Enterprise[] = res.data
+          .filter((b) => b.type !== "FOURNISSEUR")
+          .map((b) => {
+            // 🔥 Détection intelligente de l'image
+            let imageUrl =
+              "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image";
+
+            // Essayer différentes propriétés possibles
+            const possibleImages = [b.logoUrl, b.coverImageUrl].filter(Boolean); // Retire les valeurs null/undefined
+
+            if (possibleImages.length > 0) {
+              imageUrl = possibleImages[0];
+
+              // 🔥 Vérifier si l'URL est complète
+              if (
+                !imageUrl.startsWith("http://") &&
+                !imageUrl.startsWith("https://")
+              ) {
+                imageUrl = `https://${imageUrl}`;
+              }
+            }
+
+            return {
+              id: b.id,
+              name: b.name,
+              rating: b.averageRating || 0,
+              category: b.type,
+              image: imageUrl,
+              categoryId: b.type.toLowerCase(),
+            };
+          });
 
         setEnterprises(mapped);
 
+        // Génère les catégories dynamiques (seulement à partir des entreprises affichées)
         const uniqueTypes = Array.from(
           new Set(mapped.map((e) => e.categoryId))
         );
@@ -71,7 +94,7 @@ const EnterprisePage: React.FC = () => {
 
         setCategories([{ id: "all", name: "Tout" }, ...dynamicCategories]);
       } catch (err) {
-        console.error("❌ Erreur chargement entreprises:", err);
+        console.error("Erreur chargement entreprises:", err);
       } finally {
         setLoading(false);
       }
@@ -188,6 +211,9 @@ const EnterprisePage: React.FC = () => {
         source={{ uri: item.image }}
         style={styles.enterpriseImage}
         resizeMode="cover"
+        onError={() =>
+          console.log(`Erreur image: ${item.name} - ${item.image}`)
+        }
       />
       <View style={styles.enterpriseContent}>
         <View>
@@ -220,7 +246,7 @@ const EnterprisePage: React.FC = () => {
         </View>
       );
     }
-
+    console.log("XXXX", enterprises);
     return (
       <FlatList
         data={filteredEnterprises}

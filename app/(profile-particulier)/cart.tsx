@@ -195,7 +195,7 @@ const Cart = () => {
               <Text style={styles.totalAmount}>{totalPrice} €</Text>
             </View>
 
-            <Text style={styles.paymentMethodLabel}>Mode de paiement</Text>
+            {/* <Text style={styles.paymentMethodLabel}>Mode de paiement</Text>
             <View style={styles.paymentOptions}>
               {(["CARD", "CASH", "WALLET"] as PaymentOption[]).map((method) => (
                 <TouchableOpacity
@@ -239,7 +239,7 @@ const Cart = () => {
                   )}
                 </TouchableOpacity>
               ))}
-            </View>
+            </View> */}
 
             <TouchableOpacity
               onPress={handleCreateOrder}
@@ -252,7 +252,7 @@ const Cart = () => {
                 <>
                   <Ionicons name="send" size={20} color="#fff" />
                   <Text style={styles.payButtonText}>
-                    Confirmer • {totalPrice} €
+                    Confirmer • {totalPrice} kMF
                   </Text>
                 </>
               )}
@@ -275,7 +275,7 @@ const Cart = () => {
                 <View style={styles.footer}>
                   <View style={styles.totalContainer}>
                     <Text style={styles.totalLabel}>Total</Text>
-                    <Text style={styles.totalPrice}>{totalPrice} €</Text>
+                    <Text style={styles.totalPrice}>{totalPrice} kMF</Text>
                   </View>
                   <TouchableOpacity
                     onPress={handleCheckout}
