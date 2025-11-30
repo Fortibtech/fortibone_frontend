@@ -203,7 +203,7 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
 const styles = StyleSheet.create({
   chartCard: {
     backgroundColor: "#fff",
-    marginHorizontal: 16,
+
     marginBottom: 16,
     borderRadius: 16,
     padding: 16,

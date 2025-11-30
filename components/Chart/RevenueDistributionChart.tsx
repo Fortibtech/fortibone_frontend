@@ -10,9 +10,7 @@ import {
 } from "react-native";
 import { PieChart } from "react-native-chart-kit";
 import { getSales } from "@/api/analytics";
-
 const { width } = Dimensions.get("window");
-
 interface TopSellingProduct {
   variantId: string;
   sku: string;
@@ -216,7 +214,6 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
 const styles = StyleSheet.create({
   chartCard: {
     backgroundColor: "#fff",
-    marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
     padding: 16,

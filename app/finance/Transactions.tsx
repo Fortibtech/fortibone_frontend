@@ -1,4 +1,4 @@
-// TransactionHistory.tsx
+// app/finance/Transactions.tsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -11,8 +11,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   Pressable,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,7 +27,6 @@ import {
   isThisMonth,
   startOfMonth,
   endOfMonth,
-  subMonths,
 } from "date-fns";
 import { fr } from "date-fns/locale/fr";
 import BackButtonAdmin from "@/components/Admin/BackButton";
@@ -68,13 +65,11 @@ const TransactionHistory: React.FC = () => {
     ""
   );
   const [datePreset, setDatePreset] = useState<
-    "all" | "today" | "week" | "month" | "custom"
+    "all" | "today" | "week" | "month"
   >("all");
-
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
 
   const limit = 20;
-
   const activeFiltersCount =
     (selectedType ? 1 : 0) +
     (selectedStatus ? 1 : 0) +
@@ -87,6 +82,7 @@ const TransactionHistory: React.FC = () => {
 
       try {
         isRefresh ? setRefreshing(true) : setLoading(true);
+        setLoadingMore(!isRefresh);
 
         let startDate: string | undefined;
         let endDate: string | undefined;
@@ -96,7 +92,10 @@ const TransactionHistory: React.FC = () => {
           startDate = today;
           endDate = today;
         } else if (datePreset === "week") {
-          startDate = format(subMonths(new Date(), 0), "yyyy-MM-dd"); // simplifié
+          startDate = format(
+            new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+            "yyyy-MM-dd"
+          );
         } else if (datePreset === "month") {
           startDate = format(startOfMonth(new Date()), "yyyy-MM-dd");
           endDate = format(endOfMonth(new Date()), "yyyy-MM-dd");
@@ -109,7 +108,7 @@ const TransactionHistory: React.FC = () => {
           type: selectedType || undefined,
           status: selectedStatus || undefined,
           startDate,
-          endDate, // CORRIGÉ : c'était "end" → erreur TS
+          endDate,
         });
 
         const rawTxs = Array.isArray(response)
@@ -117,21 +116,32 @@ const TransactionHistory: React.FC = () => {
           : response?.data || [];
 
         const formatted: FormattedTransaction[] = rawTxs.map((t: any) => {
-          const isIncome = ["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(
-            t.provider || ""
-          );
+          const provider = (t.provider || "").toString().toUpperCase();
+          const type = (t.type || "").toString().toUpperCase();
+          const amountRaw = Number(t.amount) || 0;
+
+          const isIncome =
+            amountRaw > 0 ||
+            provider === "DEPOSIT" ||
+            provider === "REFUND" ||
+            provider === "ADJUSTMENT" ||
+            type === "DEPOSIT" ||
+            type === "REFUND";
+
           return {
-            id: t.id,
+            id: t.id || t.providerTransactionId || "#",
             title: getTransactionTitle(t),
-            reference: t.providerTransactionId || t.orderId || t.id,
-            date: format(new Date(t.createdAt), "dd MMM yyyy 'à' HH:mm", {
-              locale: fr,
-            }),
-            rawDate: new Date(t.createdAt),
-            amount: Math.abs(t.amount || 0),
+            reference: t.providerTransactionId || t.orderId || t.id || "N/A",
+            date: format(
+              new Date(t.createdAt || t.created_at || Date.now()),
+              "dd MMM yyyy 'à' HH:mm",
+              { locale: fr }
+            ),
+            rawDate: new Date(t.createdAt || t.created_at || Date.now()),
+            amount: Math.abs(amountRaw),
             type: isIncome ? "income" : "expense",
             provider: t.provider || "",
-            status: t.status,
+            status: t.status || "COMPLETED",
           };
         });
 
@@ -163,11 +173,13 @@ const TransactionHistory: React.FC = () => {
   }, [transactions]);
 
   useEffect(() => {
+    setPage(1);
+    setTransactions([]);
     loadTransactions(true);
   }, [searchText, selectedType, selectedStatus, datePreset]);
 
   function getTransactionTitle(t: any): string {
-    switch (t.provider) {
+    switch (t.provider?.toUpperCase()) {
       case "DEPOSIT":
         return "Dépôt d'argent";
       case "WITHDRAWAL":
@@ -192,27 +204,32 @@ const TransactionHistory: React.FC = () => {
   ): TransactionGroup[] {
     const today = new Date();
     const groups: TransactionGroup[] = [];
+
     const todayTx = txs.filter((t) => isToday(t.rawDate));
     const yesterdayTx = txs.filter((t) => isYesterday(t.rawDate));
-    const weekTx = txs.filter(
+    const thisWeekTx = txs.filter(
       (t) =>
         isThisWeek(t.rawDate) && !isToday(t.rawDate) && !isYesterday(t.rawDate)
     );
-    const monthTx = txs.filter(
+    const thisMonthTx = txs.filter(
       (t) => isThisMonth(t.rawDate) && !isThisWeek(t.rawDate)
     );
     const olderTx = txs.filter((t) => t.rawDate < startOfMonth(today));
 
     if (todayTx.length) groups.push({ title: "AUJOURD'HUI", data: todayTx });
     if (yesterdayTx.length) groups.push({ title: "HIER", data: yesterdayTx });
-    if (weekTx.length) groups.push({ title: "CETTE SEMAINE", data: weekTx });
-    if (monthTx.length) groups.push({ title: "CE MOIS-CI", data: monthTx });
+    if (thisWeekTx.length)
+      groups.push({ title: "CETTE SEMAINE", data: thisWeekTx });
+    if (thisMonthTx.length)
+      groups.push({ title: "CE MOIS-CI", data: thisMonthTx });
     if (olderTx.length) groups.push({ title: "PLUS ANCIEN", data: olderTx });
+
     return groups;
   }
 
   const renderTransaction = (t: FormattedTransaction) => (
     <View key={t.id} style={styles.transactionItem}>
+      {/* Icône + infos */}
       <View style={styles.transactionLeft}>
         <View
           style={[
@@ -221,9 +238,10 @@ const TransactionHistory: React.FC = () => {
           ]}
         >
           <Feather
-            name={t.type === "income" ? "arrow-down-left" : "arrow-up-right"}
+            name={t.type === "income" ? "arrow-up-right" : "arrow-down-left"}
             size={18}
-            color={t.type === "income" ? "#00BFA5" : "#F44336"}
+            color={t.type === "income" ? "#00af66" : "#ef4444"}
+            style={{ transform: [{ rotate: "20deg" }] }}
           />
         </View>
         <View style={styles.transactionInfo}>
@@ -233,23 +251,30 @@ const TransactionHistory: React.FC = () => {
         </View>
       </View>
 
-      {/* CORRIGÉ : tout le texte dans un seul <Text> */}
-      <Text
-        style={[
-          styles.transactionAmount,
-          { color: t.type === "income" ? "#00BFA5" : "#F44336" },
-        ]}
-      >
-        {t.type === "income" ? "+ " : "- "}
-        {t.amount.toLocaleString("fr-FR")} KMF
-      </Text>
+      {/* Montant bien visible */}
+      <View style={styles.amountContainer}>
+        <Text
+          style={[
+            styles.transactionAmount,
+            { color: t.type === "income" ? "#00af66" : "#ef4444" },
+          ]}
+        >
+          {t.type === "income" ? "+ " : "− "}
+          {t.amount.toLocaleString("fr-FR", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          })}{" "}
+          KMF
+        </Text>
+      </View>
     </View>
   );
-  // ==================== RENDER ====================
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
+      {/* Header */}
       <View style={styles.header}>
         <BackButtonAdmin />
         <Text style={styles.headerTitle}>Historique</Text>
@@ -267,6 +292,7 @@ const TransactionHistory: React.FC = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Barre de recherche */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Feather name="search" size={20} color="#999" />
@@ -284,6 +310,7 @@ const TransactionHistory: React.FC = () => {
         </View>
       </View>
 
+      {/* Liste */}
       <ScrollView
         refreshControl={
           <RefreshControl
@@ -291,28 +318,31 @@ const TransactionHistory: React.FC = () => {
             onRefresh={() => loadTransactions(true)}
           />
         }
-        onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
           if (
-            Math.round(event.nativeEvent.contentOffset.y + 1) >=
-            Math.round(event.nativeEvent.contentSize.height)
+            layoutMeasurement.height + contentOffset.y >=
+              contentSize.height - 100 &&
+            !loadingMore &&
+            hasMore
           ) {
-            if (!loadingMore && hasMore) {
-              loadTransactions();
-            }
+            loadTransactions();
           }
         }}
-        scrollEventThrottle={200}
+        scrollEventThrottle={100}
       >
-        {groupedTransactions.map((group) => (
-          <View key={group.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{group.title}</Text>
-            {group.data.map(renderTransaction)} {/* CORRIGÉ */}
+        {loading && transactions.length === 0 ? (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              marginTop: 100,
+            }}
+          >
+            <ActivityIndicator size="large" color="#58617b" />
           </View>
-        ))}
-
-        {loadingMore && <ActivityIndicator style={{ margin: 20 }} />}
-
-        {transactions.length === 0 && !loading && (
+        ) : groupedTransactions.length === 0 ? (
           <Animated.View entering={FadeInDown} style={styles.emptyContainer}>
             <Feather name="inbox" size={64} color="#ddd" />
             <Text style={styles.emptyTitle}>Aucune transaction</Text>
@@ -322,10 +352,20 @@ const TransactionHistory: React.FC = () => {
                 : "Elles apparaîtront ici"}
             </Text>
           </Animated.View>
+        ) : (
+          groupedTransactions.map((group) => (
+            <View key={group.title} style={styles.section}>
+              <Text style={styles.sectionTitle}>{group.title}</Text>
+              {group.data.map(renderTransaction)}
+            </View>
+          ))
+        )}
+        {loadingMore && (
+          <ActivityIndicator style={{ margin: 20 }} color="#58617b" />
         )}
       </ScrollView>
 
-      {/* MODAL FILTRES — CORRIGÉ */}
+      {/* Modal Filtres (inchangé) */}
       <Modal
         isVisible={isFilterModalVisible}
         onBackdropPress={() => setFilterModalVisible(false)}
@@ -450,7 +490,7 @@ const TransactionHistory: React.FC = () => {
 
 export default TransactionHistory;
 
-// Styles (inchangés, juste propres)
+// ======================= STYLES =======================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f9fa" },
   header: {
@@ -471,38 +511,57 @@ const styles = StyleSheet.create({
     height: 48,
   },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 16 },
+
   section: { marginTop: 12 },
   sectionTitle: {
     fontSize: 13,
     fontWeight: "600",
     color: "#666",
-    padding: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     backgroundColor: "#e9ecef",
+    textTransform: "uppercase",
   },
+
   transactionItem: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderColor: "#f0f0f0",
+    borderBottomColor: "#f0f0f0",
   },
-  transactionLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  transactionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 12,
+  },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
   },
-  incomeBg: { backgroundColor: "#E0F7EF" },
-  expenseBg: { backgroundColor: "#FDEBEB" },
+  incomeBg: { backgroundColor: "#ecfdf5" },
+  expenseBg: { backgroundColor: "#fef2f2" },
   transactionInfo: { flex: 1 },
-  transactionTitle: { fontSize: 15, fontWeight: "600" },
-  transactionReference: { fontSize: 12, color: "#666" },
-  transactionDate: { fontSize: 12, color: "#999" },
-  transactionAmount: { fontSize: 15, fontWeight: "600",position: "relative" ,right: 100},
+  transactionTitle: { fontSize: 15, fontWeight: "600", color: "#000" },
+  transactionReference: { fontSize: 12, color: "#666", marginTop: 2 },
+  transactionDate: { fontSize: 12, color: "#999", marginTop: 4 },
+
+  amountContainer: {
+    marginLeft: 16,
+    minWidth: 100,
+    alignItems: "flex-end",
+  },
+  transactionAmount: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
   modalContent: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 20,
@@ -556,9 +615,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   applyText: { color: "#fff", fontWeight: "600", fontSize: 16 },
-  emptyContainer: { alignItems: "center", marginTop: 100 },
+
+  emptyContainer: { alignItems: "center", marginTop: 100, padding: 20 },
   emptyTitle: { fontSize: 20, fontWeight: "600", color: "#aaa", marginTop: 16 },
-  emptyText: { fontSize: 15, color: "#ccc", marginTop: 8 },
+  emptyText: { fontSize: 15, color: "#ccc", marginTop: 8, textAlign: "center" },
+
   filterBadge: {
     position: "absolute",
     top: -8,

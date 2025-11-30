@@ -80,11 +80,35 @@ export default function RootLayout() {
           tabBarIcon: ({ color }) => <Cuboid size={24} color={color} />,
         }}
       />
+
       <Tabs.Screen
         name="achats"
         options={{
           title: "Achats",
           tabBarIcon: ({ color }) => <ShoppingCart size={24} color={color} />,
+        }}
+        listeners={{
+          tabPress: async (e) => {
+            e.preventDefault();
+
+            try {
+              const selected =
+                await SelectedBusinessManager.getSelectedBusiness();
+              console.log("Selected business →", selected);
+
+              if (selected) {
+                await BusinessesService.selectBusiness(selected);
+
+                console.log("Navigating to →", `/(achats)/${selected.id}`);
+                router.push(`/(achats)/${selected.id}`);
+              } else {
+                console.log("Navigating to → /(professionnel)");
+                router.push("/(professionnel)");
+              }
+            } catch (err) {
+              console.error("Erreur tabPress →", err);
+            }
+          },
         }}
       />
       <Tabs.Screen
@@ -96,17 +120,31 @@ export default function RootLayout() {
           ),
         }}
         listeners={{
-            tabPress: async (e) => {
-              e.preventDefault();
-              const selected = await SelectedBusinessManager.getSelectedBusiness();
+          tabPress: async (e) => {
+            e.preventDefault();
+
+            try {
+              const selected =
+                await SelectedBusinessManager.getSelectedBusiness();
+              console.log("Selected business →", selected);
+
               if (selected) {
-                 await BusinessesService.selectBusiness(selected);
+                await BusinessesService.selectBusiness(selected);
+
+                console.log(
+                  "Navigating to →",
+                  `/(orders)/details/${selected.id}`
+                );
                 router.push(`/(orders)/details/${selected.id}`);
+              } else {
+                console.log("Navigating to → /(professionnel)");
+                router.push("/(professionnel)");
               }
-              else{
-              router.push('/(professionnel)');}
-            },
-          }}
+            } catch (err) {
+              console.error("Erreur tabPress →", err);
+            }
+          },
+        }}
       />
       <Tabs.Screen
         name="inventaire"
@@ -115,17 +153,18 @@ export default function RootLayout() {
           tabBarIcon: ({ color }) => <Send size={24} color={color} />,
         }}
         listeners={{
-            tabPress: async (e) => {
-              e.preventDefault();
-              const selected = await SelectedBusinessManager.getSelectedBusiness();
-              if (selected) {
-                 await BusinessesService.selectBusiness(selected);
-                router.push(`/(inventory)/details/${selected.id}`);
-              }
-              else{
-              router.push('/(professionnel)');}
-            },
-          }}
+          tabPress: async (e) => {
+            e.preventDefault();
+            const selected =
+              await SelectedBusinessManager.getSelectedBusiness();
+            if (selected) {
+              await BusinessesService.selectBusiness(selected);
+              router.push(`/(inventory)/details/${selected.id}`);
+            } else {
+              router.push("/(professionnel)");
+            }
+          },
+        }}
       />
       <Tabs.Screen
         name="finance"
