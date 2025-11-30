@@ -168,11 +168,7 @@ const SettingsMenu: React.FC = () => {
       <ScrollView style={styles.content}>
         <View style={styles.profileCard}>
           <Image
-            source={
-              user?.profileImageUrl
-                ?    user.profileImageUrl 
-                : require("@/assets/images/icon.png")
-            }
+            source={uri ? { uri } : require("@/assets/images/icon.png")}
             style={styles.avatar}
             resizeMode="cover"
           />

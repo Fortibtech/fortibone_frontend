@@ -1,8 +1,7 @@
-// src/hooks/useUserAvatar.ts
 import { useUserStore } from "@/store/userStore";
 
 // hooks/useUserAvatar.ts
-export const useUserAvatar = () => {
+export const useUserAvatar = (): { uri: string | null } => {
   const user = useUserStore((s) => s.userProfile);
   const version = useUserStore((s) => s._avatarVersion);
 
@@ -10,8 +9,9 @@ export const useUserAvatar = () => {
     return { uri: null };
   }
 
-  // Ajoute un timestamp pour forcer le refresh même si l'URL est la même
+  const url = user.profileImageUrl.trim();
+  const separator = url.includes("?") ? "&" : "?";
   return {
-    uri: `${user.profileImageUrl}?v=${version}`,
+    uri: `${url}${separator}v=${version}`,
   };
 };

@@ -1,4 +1,4 @@
-// components/charts/CashFlowChart.tsx
+// components/charts/CashFlowChart.tsx → VERSION FINALE CORRIGÉE
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -15,7 +15,7 @@ import {
   startOfMonth,
   endOfMonth,
 } from "date-fns";
-import { fr } from "date-fns/locale/fr"; // Import correct (v3 compatible)
+import { fr } from "date-fns/locale/fr";
 
 export type CashFlowData = {
   month: string;
@@ -43,7 +43,7 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
         limit: 100,
         page,
       });
-      const items = res?.data || [];
+      const items = Array.isArray(res) ? res : res?.data || [];
       allTxs.push(...items);
       if (items.length < 100) break;
       page++;
@@ -76,27 +76,34 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
             format(monthDate, "MMM", { locale: fr }).slice(1);
 
           const monthTxs = transactions.filter(
-            (t: any) => format(new Date(t.createdAt), "yyyy-MM") === monthKey
+            (t: any) =>
+              format(new Date(t.createdAt || t.created_at), "yyyy-MM") ===
+              monthKey
           );
 
-          const revenue = monthTxs
-            .filter((t: any) =>
-              ["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
-            )
-            .reduce(
-              (sum: number, t: any) => sum + Math.abs(Number(t.amount || 0)),
-              0
-            );
+          let revenue = 0;
+          let expense = 0;
 
-          const expense = monthTxs
-            .filter(
-              (t: any) =>
-                !["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
-            )
-            .reduce(
-              (sum: number, t: any) => sum + Math.abs(Number(t.amount || 0)),
-              0
-            );
+          monthTxs.forEach((t: any) => {
+            const amount = Number(t.amount) || 0;
+            const provider = (t.provider || "").toString().toUpperCase();
+            const type = (t.type || "").toString().toUpperCase();
+
+            // LOGIQUE ULTRA ROBUSTE — même que partout ailleurs
+            const isIncome =
+              amount > 0 ||
+              provider === "DEPOSIT" ||
+              provider === "REFUND" ||
+              provider === "ADJUSTMENT" ||
+              type === "DEPOSIT" ||
+              type === "REFUND";
+
+            if (isIncome) {
+              revenue += Math.abs(amount);
+            } else {
+              expense += Math.abs(amount);
+            }
+          });
 
           return {
             month: monthName,
@@ -172,11 +179,11 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
 
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.dot, { backgroundColor: "#4CAF50" }]} />
+          <View style={[styles.dot, { backgroundColor: "#00af66" }]} />
           <Text style={styles.legendText}>Revenus</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.dot, { backgroundColor: "#F44336" }]} />
+          <View style={[styles.dot, { backgroundColor: "#ef4444" }]} />
           <Text style={styles.legendText}>Dépenses</Text>
         </View>
       </View>
@@ -186,17 +193,21 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
 
 export default CashFlowChart;
 
+// Couleurs unifiées avec le reste de l’app
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#fff",
     padding: 20,
     marginTop: 12,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#eef0f4",
   },
   title: {
     fontSize: 17,
     fontWeight: "600",
     marginBottom: 16,
+    color: "#000",
   },
   chart: {
     flexDirection: "row",
@@ -235,10 +246,10 @@ const styles = StyleSheet.create({
     minHeight: 4,
   },
   revenueBar: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#00af66", // VERT COMME PARTOUT
   },
   expenseBar: {
-    backgroundColor: "#F44336",
+    backgroundColor: "#ef4444", // ROUGE COMME PARTOUT
   },
   monthLabel: {
     fontSize: 11,

@@ -13,7 +13,6 @@ import { useUserStore } from "@/store/userStore";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-
 import {
   ActivityIndicator,
   Alert,
@@ -28,14 +27,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 const HomePage: React.FC = () => {
-  const user = useUserStore.getState().userProfile;
+
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-const { uri } = useUserAvatar();
+  const { uri } = useUserAvatar();
   // ✅ États pour les analytics
   const [monthlyOverview, setMonthlyOverview] =
     useState<AnalyticsOverview | null>(null);
@@ -221,11 +220,7 @@ const { uri } = useUserAvatar();
           onPress={() => router.push("/fournisseurSetting")}
         >
           <Image
-            source={
-              user?.profileImageUrl
-                ? user.profileImageUrl
-                : require("@/assets/images/icon.png")
-            }
+            source={uri ? { uri } : require("@/assets/images/icon.png")}
             style={styles.avatar}
             resizeMode="cover"
           />
@@ -387,6 +382,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F9FA",
+    paddingBottom: 50,
   },
   loadingContainer: {
     flex: 1,

@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
+  Platform,
+  KeyboardAvoidingView, // ← Ajouté
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -25,8 +27,8 @@ import { createDeposit } from "@/api/wallet";
 
 type Method = "STRIPE" | "KARTAPAY";
 
-const presets = [10000, 20000, 50000, 15000]; // OK pour Stripe (max ~600M XAF safe)
-const MAX_AMOUNT_XAF = 99999; // Limite safe (~1M USD equiv, sous 999k USD Stripe)
+const presets = [10000, 20000, 50000, 15000];
+const MAX_AMOUNT_XAF = 99999;
 
 export default function DepositScreen() {
   const { confirmPayment, createPaymentMethod } = useStripe();
@@ -62,6 +64,8 @@ export default function DepositScreen() {
         return;
       }
       setAmount(nums);
+    } else {
+      setAmount("");
     }
   };
 
@@ -74,15 +78,12 @@ export default function DepositScreen() {
     if (numAmount > MAX_AMOUNT_XAF) {
       Alert.alert(
         "Limite dépassée",
-        `Montant max : ${MAX_AMOUNT_XAF.toLocaleString(
-          "fr-FR"
-        )} XAF (limite Stripe)`
+        `Montant max : ${MAX_AMOUNT_XAF.toLocaleString("fr-FR")} XAF`
       );
       return;
     }
 
-    if (method === "KARTAPAY" && !/^\+(261|237)\d{8,9}$/.test(phoneNumber)) {
-      // Regex affinée
+    if (method === "KARTAPAY" && !/^\+(261|237)\d{8,10}$/.test(phoneNumber)) {
       Alert.alert("Numéro invalide", "Format : +261XXXXXXXXX ou +237XXXXXXXXX");
       return;
     }
@@ -98,15 +99,8 @@ export default function DepositScreen() {
     setLoading(true);
 
     try {
-      // ================== MVOLA ==================
       if (method === "KARTAPAY") {
-        console.log("Envoi dépôt KARTAPAY →", {
-          amount: numAmount,
-          method: "KARTAPAY",
-          phoneNumber,
-        });
-
-        const response = await createDeposit({
+         await createDeposit({
           amount: numAmount,
           method: "KARTAPAY",
           metadata: {
@@ -114,8 +108,6 @@ export default function DepositScreen() {
             note: "Dépôt via application mobile",
           },
         });
-
-        console.log("Réponse KARTAPAY :", response);
 
         Alert.alert(
           "Demande MVola envoyée !",
@@ -125,78 +117,46 @@ export default function DepositScreen() {
         return;
       }
 
-      // ================== STRIPE ==================
-      if (method === "STRIPE") {
-        console.log("Création du PaymentMethod Stripe...");
+      // STRIPE
+      const { paymentMethod, error: pmError } = await createPaymentMethod({
+        paymentMethodType: "Card",
+      });
 
-        const { paymentMethod, error: pmError } = await createPaymentMethod({
+      if (pmError || !paymentMethod) {
+        Alert.alert(
+          "Carte invalide",
+          pmError?.message || "Impossible de lire la carte"
+        );
+        return;
+      }
+
+      const resp = await createDeposit({
+        amount: numAmount,
+        method: "STRIPE",
+        metadata: {
+          paymentMethodId: paymentMethod.id,
+          note: "Dépôt via carte bancaire",
+        },
+      });
+
+      if (resp.data?.clientSecret) {
+        const { error } = await confirmPayment(resp.data.clientSecret, {
           paymentMethodType: "Card",
         });
 
-        if (pmError || !paymentMethod) {
-          console.error("Erreur création PaymentMethod :", pmError);
-          Alert.alert(
-            "Carte invalide",
-            pmError?.message || "Impossible de lire la carte"
-          );
+        if (error) {
+          Alert.alert("Paiement refusé", error.message || "Échec du paiement");
           return;
         }
-
-        console.log("PaymentMethod créé →", paymentMethod.id);
-
-        console.log("Envoi dépôt STRIPE →", {
-          amount: numAmount,
-          method: "STRIPE",
-          paymentMethodId: paymentMethod.id,
-        });
-
-        const resp = await createDeposit({
-          amount: numAmount,
-          method: "STRIPE",
-          metadata: {
-            paymentMethodId: paymentMethod.id, // OBLIGATOIRE
-            note: "Dépôt via carte bancaire",
-          },
-        });
-
-        console.log("Réponse backend STRIPE :", resp);
-
-        // Si ton backend renvoie un clientSecret → 3D Secure requis
-        if (resp.data?.clientSecret) {
-          console.log("3D Secure requis → clientSecret reçu");
-
-          const { error, paymentIntent } = await confirmPayment(
-            resp.data.clientSecret,
-            {
-              paymentMethodType: "Card",
-            }
-          );
-
-          if (error) {
-            console.error("Erreur 3D Secure :", error);
-            Alert.alert(
-              "Paiement refusé",
-              error.message || "Échec du paiement"
-            );
-            return;
-          }
-
-          console.log("Paiement 3D Secure réussi →", paymentIntent?.status);
-        } else {
-          console.log("Paiement direct réussi (sans 3D Secure)");
-        }
-
-        Alert.alert(
-          "Dépôt réussi !",
-          `${formattedAmount} XAF ont été ajoutés à votre portefeuille`,
-          [{ text: "Terminé", onPress: () => router.back() }]
-        );
       }
-    } catch (err: any) {
-      console.error(
-        "Erreur critique dépôt :",
-        err.response?.data || err.message || err
+
+      Alert.alert(
+        "Dépôt réussi !",
+        `${formattedAmount} XAF ont été ajoutés à votre portefeuille`,
+        [{ text: "Terminé", onPress: () => router.back() }]
       );
+    } catch (err: any) {
+      console.error("Erreur dépôt :", err.response?.data || err.message || err);
 
       if (err.message === "TOKEN_EXPIRED") {
         Alert.alert("Session expirée", "Veuillez vous reconnecter");
@@ -240,139 +200,151 @@ export default function DepositScreen() {
           </View>
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+        {/* SOLUTION CLAVIER : KeyboardAvoidingView + ScrollView */}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 20}
         >
-          {/* Méthode */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Méthode</Text>
-            <View style={styles.card}>
-              <View style={styles.tabs}>
-                <TouchableOpacity
-                  style={[styles.tab, method === "STRIPE" && styles.tabActive]}
-                  onPress={() => setMethod("STRIPE")}
-                >
-                  <Text
-                    style={[
-                      styles.tabText,
-                      method === "STRIPE" && styles.tabTextActive,
-                    ]}
-                  >
-                    Carte bancaire
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.tab,
-                    method === "KARTAPAY" && styles.tabActive,
-                  ]}
-                  onPress={() => setMethod("KARTAPAY")}
-                >
-                  <Text
-                    style={[
-                      styles.tabText,
-                      method === "KARTAPAY" && styles.tabTextActive,
-                    ]}
-                  >
-                    MVola / Orange Money
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          {/* Montant */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Montant</Text>
-            <View style={styles.card}>
-              <View style={styles.amountContainer}>
-                <Text style={styles.amountValue}>{formattedAmount}</Text>
-                <Text style={styles.currency}>XAF</Text>{" "}
-                {/* Uniformisé en XAF */}
-              </View>
-
-              <View style={styles.amountOptions}>
-                {presets.map((val) => (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true} // Crucial sur Android
+            automaticallyAdjustKeyboardInsets={Platform.OS === "ios"} // Bonus iOS
+          >
+            {/* Méthode */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Méthode</Text>
+              <View style={styles.card}>
+                <View style={styles.tabs}>
                   <TouchableOpacity
-                    key={val}
                     style={[
-                      styles.amountOption,
-                      parseInt(amount) === val && styles.amountOptionActive,
+                      styles.tab,
+                      method === "STRIPE" && styles.tabActive,
                     ]}
-                    onPress={() => handlePreset(val)}
+                    onPress={() => setMethod("STRIPE")}
                   >
                     <Text
                       style={[
-                        styles.amountOptionText,
-                        parseInt(amount) === val &&
-                          styles.amountOptionTextActive,
+                        styles.tabText,
+                        method === "STRIPE" && styles.tabTextActive,
                       ]}
                     >
-                      {val.toLocaleString("fr-FR")}
+                      Carte bancaire
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-
-              <TextInput
-                style={styles.customAmountInput}
-                placeholder="Montant personnalisé..."
-                keyboardType="numeric"
-                value={
-                  customInput
-                    ? parseInt(customInput).toLocaleString("fr-FR")
-                    : ""
-                }
-                onChangeText={handleCustomAmount}
-              />
-            </View>
-          </View>
-
-          {/* Carte bancaire */}
-          {method === "STRIPE" && (
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Carte bancaire</Text>
-              <View style={styles.card}>
-                <CardField
-                  postalCodeEnabled={false}
-                  placeholders={{ number: "4242 4242 4242 4242" }}
-                  cardStyle={{
-                    backgroundColor: "#FFFFFF",
-                    borderRadius: 12,
-                    textColor: "#000000",
-                    placeholderColor: "#999999",
-                  }}
-                  style={{ width: "100%", height: 50 }}
-                  onCardChange={(cardDetails) =>
-                    setCardComplete(cardDetails.complete)
-                  }
-                />
+                  <TouchableOpacity
+                    style={[
+                      styles.tab,
+                      method === "KARTAPAY" && styles.tabActive,
+                    ]}
+                    onPress={() => setMethod("KARTAPAY")}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        method === "KARTAPAY" && styles.tabTextActive,
+                      ]}
+                    >
+                      MVola / Orange Money
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          )}
 
-          {/* MVola */}
-          {method === "KARTAPAY" && (
+            {/* Montant */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>
-                Numéro MVola / Orange Money
-              </Text>
+              <Text style={styles.sectionLabel}>Montant</Text>
               <View style={styles.card}>
+                <View style={styles.amountContainer}>
+                  <Text style={styles.amountValue}>{formattedAmount}</Text>
+                  <Text style={styles.currency}>XAF</Text>
+                </View>
+
+                <View style={styles.amountOptions}>
+                  {presets.map((val) => (
+                    <TouchableOpacity
+                      key={val}
+                      style={[
+                        styles.amountOption,
+                        parseInt(amount) === val && styles.amountOptionActive,
+                      ]}
+                      onPress={() => handlePreset(val)}
+                    >
+                      <Text
+                        style={[
+                          styles.amountOptionText,
+                          parseInt(amount) === val &&
+                            styles.amountOptionTextActive,
+                        ]}
+                      >
+                        {val.toLocaleString("fr-FR")}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
                 <TextInput
-                  style={styles.phoneInput}
-                  placeholder="+261 34 12 345 67"
-                  keyboardType="phone-pad"
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
+                  style={styles.customAmountInput}
+                  placeholder="Montant personnalisé..."
+                  keyboardType="numeric"
+                  value={
+                    customInput
+                      ? parseInt(customInput).toLocaleString("fr-FR")
+                      : ""
+                  }
+                  onChangeText={handleCustomAmount}
                 />
               </View>
             </View>
-          )}
-        </ScrollView>
 
-        {/* Boutons du bas */}
+            {/* Carte bancaire */}
+            {method === "STRIPE" && (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>Carte bancaire</Text>
+                <View style={styles.card}>
+                  <CardField
+                    postalCodeEnabled={false}
+                    placeholders={{ number: "4242 4242 4242 4242" }}
+                    cardStyle={{
+                      backgroundColor: "#FFFFFF",
+                      borderRadius: 12,
+                      textColor: "#000000",
+                      placeholderColor: "#999999",
+                    }}
+                    style={{ width: "100%", height: 50 }}
+                    onCardChange={(cardDetails) =>
+                      setCardComplete(cardDetails.complete)
+                    }
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* MVola / Orange Money */}
+            {method === "KARTAPAY" && (
+              <View style={styles.section}>
+                <Text style={styles.sectionLabel}>
+                  Numéro MVola / Orange Money
+                </Text>
+                <View style={styles.card}>
+                  <TextInput
+                    style={styles.phoneInput}
+                    placeholder="+261 34 12 345 67"
+                    keyboardType="phone-pad"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    autoComplete="tel"
+                  />
+                </View>
+              </View>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Boutons du bas (sticky) */}
         <View style={styles.bottomContainer}>
           <TouchableOpacity
             style={styles.cancelButton}
@@ -401,7 +373,7 @@ export default function DepositScreen() {
   );
 }
 
-// === TES STYLES ORIGINAUX 100% RESPECTÉS ===
+// === STYLES INCHANGÉS (100% identiques à ton design original) ===
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {

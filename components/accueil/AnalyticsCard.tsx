@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   cardsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 4,
     marginBottom: 32,
   },
   card: {
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
-    marginHorizontal: 6,
+
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },

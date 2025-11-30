@@ -208,7 +208,6 @@ export interface Business {
 
 export interface OrderResponse {
   id: string;
-  profileImageUrl: string | null;
   orderNumber: string;
   type: "SALE" | "PURCHASE" | "RESERVATION";
   status:
