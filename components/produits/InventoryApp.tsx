@@ -12,19 +12,16 @@ import {
   FlatList,
   Alert,
 } from "react-native";
-import { Feather, Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
+import { Feather } from "@expo/vector-icons";
+import { router } from "expo-router";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import Toast from "react-native-toast-message";
 import { format } from "date-fns";
 
 import {
   getBusinessInventory,
   InventoryItem,
-  adjustVariantStock,
-  addVariantBatch,
   getExpiringSoonProducts,
   Batch,
   recordExpiredLosses,
@@ -42,9 +39,15 @@ export interface Product {
   imageUrl: string;
   // expirationDate supprimé → géré via lots
 }
+type InventoryAppProps = {
+  id: string;
+};
 
-export default function InventoryApp() {
-  const { businessId } = useLocalSearchParams();
+const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
+  useEffect(() => {
+    console.log("📦 InventoryApp → id reçu :", id);
+  }, [id]);
+
   const [searchText, setSearchText] = useState("");
   const [inventory, setInventory] = useState<Product[]>([]);
   const [page, setPage] = useState(1);
@@ -66,11 +69,7 @@ export default function InventoryApp() {
       if (loading || pageToLoad > totalPages) return;
       setLoading(true);
       try {
-        const res = await getBusinessInventory(
-          businessId as string,
-          pageToLoad,
-          10
-        );
+        const res = await getBusinessInventory(id as string, pageToLoad, 10);
         const mapped: Product[] = res.data.map((item: InventoryItem) => ({
           id: item.id,
           name: item.product.name,
@@ -95,13 +94,13 @@ export default function InventoryApp() {
         setLoading(false);
       }
     },
-    [loading, totalPages, businessId]
+    [loading, totalPages, id]
   );
 
   // === Charger badge expirations (7 jours) ===
   const fetchExpiringCount = async () => {
     try {
-      const data = await getExpiringSoonProducts(businessId as string, 30);
+      const data = await getExpiringSoonProducts(id as string, 30);
       setExpiringCount(data.length);
     } catch (err) {
       console.error("Erreur badge expirés", err);
@@ -113,7 +112,7 @@ export default function InventoryApp() {
   const fetchExpiringProducts = async () => {
     setLoadingExpiring(true);
     try {
-      const data = await getExpiringSoonProducts(businessId as string, 30);
+      const data = await getExpiringSoonProducts(id as string, 30);
       setExpiringBatches(data);
     } catch (err) {
       Toast.show({
@@ -163,7 +162,7 @@ export default function InventoryApp() {
   const handleRecordLosses = async () => {
     setSubmittingLosses(true);
     try {
-      const response = await recordExpiredLosses(businessId as string);
+      const response = await recordExpiredLosses(id as string);
       Toast.show({
         type: "success",
         text1: "Pertes enregistrées",
@@ -247,7 +246,7 @@ export default function InventoryApp() {
         <TouchableOpacity
           onPress={() => {
             router.push({
-              pathname: `/(inventory)/StockAdjustment/${businessId}/${item.id}`,
+              pathname: `/(inventory)/StockAdjustment/${id}/${item.id}`,
             });
           }}
           style={styles.actionBtn}
@@ -263,15 +262,15 @@ export default function InventoryApp() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerNav}>
-          <TouchableOpacity onPress={() => router.back()}>
+          {/* <TouchableOpacity onPress={() => router.back()}>
             <Feather name="arrow-left" size={24} color="#374151" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
-          <View style={styles.tabContainer}>
+          {/* <View style={styles.tabContainer}>
             <TouchableOpacity style={[styles.tab, styles.activeTabStyle]}>
               <Text style={styles.activeTabText}>Inventaire</Text>
             </TouchableOpacity>
-          </View>
+          </View> */}
 
           {/* Icône alerte → ouvre modal expirés */}
           <TouchableOpacity
@@ -409,7 +408,7 @@ export default function InventoryApp() {
       </Modal>
     </SafeAreaView>
   );
-}
+};
 
 /* ====================== STYLES ====================== */
 const styles = StyleSheet.create({
@@ -604,3 +603,5 @@ const styles = StyleSheet.create({
   closeBtn: { backgroundColor: "#10B981" },
   closeText: { color: "#FFFFFF", fontWeight: "600" },
 });
+
+export default InventoryApp;

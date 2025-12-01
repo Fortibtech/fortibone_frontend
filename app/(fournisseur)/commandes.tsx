@@ -24,7 +24,9 @@ export default function VentesScreen() {
   const router = useRouter();
 
   const [orders, setOrders] = useState<OrderResponse[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
+    null
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -35,7 +37,9 @@ export default function VentesScreen() {
   const MAX_RETRIES = 2;
   const LIMIT = 10;
 
-  const [activeTab, setActiveTab] = useState<"commandes" | "clients">("commandes");
+  const [activeTab, setActiveTab] = useState<"commandes" | "clients">(
+    "commandes"
+  );
   const previousBusinessIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
 
@@ -52,7 +56,8 @@ export default function VentesScreen() {
 
     try {
       isLoadingRef.current = true;
-      const currentBusiness = await SelectedBusinessManager.getSelectedBusiness();
+      const currentBusiness =
+        await SelectedBusinessManager.getSelectedBusiness();
 
       if (!currentBusiness) {
         Alert.alert("Aucune entreprise", "Veuillez en sélectionner une.", [
@@ -67,7 +72,11 @@ export default function VentesScreen() {
         previousBusinessIdRef.current !== currentBusiness.id;
 
       if (hasChanged) {
-        console.log("Entreprise chargée :", currentBusiness.name, `(ID: ${currentBusiness.id})`);
+        console.log(
+          "Entreprise chargée :",
+          currentBusiness.name,
+          `(ID: ${currentBusiness.id})`
+        );
         setSelectedBusiness(currentBusiness);
         previousBusinessIdRef.current = currentBusiness.id;
 
@@ -96,7 +105,11 @@ export default function VentesScreen() {
   // FONCTION CLÉ : AVEC LOGS COMPLÈTES
   const fetchOrders = useCallback(
     async (newPage: number = 1, isRefresh: boolean = false) => {
-      if (!selectedBusiness?.id || isLoading || (newPage > totalPages && !isRefresh)) {
+      if (
+        !selectedBusiness?.id ||
+        isLoading ||
+        (newPage > totalPages && !isRefresh)
+      ) {
         return;
       }
 
@@ -126,19 +139,21 @@ export default function VentesScreen() {
           return;
         }
 
-        const newOrders = response.data as OrderResponse[];
+        const newOrders = response.data as unknown as OrderResponse[];
 
         setOrders((prev) =>
-          isRefresh || newPage === 1
-            ? newOrders
-            : [...prev, ...newOrders]
+          isRefresh || newPage === 1 ? newOrders : [...prev, ...newOrders]
         );
 
         setTotalPages(response.totalPages || 1);
         setPage(newPage);
         setRetryCount(0);
 
-        console.log("Orders mis à jour dans le state :", newOrders.length, "commandes");
+        console.log(
+          "Orders mis à jour dans le state :",
+          newOrders.length,
+          "commandes"
+        );
       } catch (err: any) {
         console.error("ERREUR fetchOrders :", err);
         console.error("Détail erreur :", err.response?.data || err.message);
@@ -146,7 +161,9 @@ export default function VentesScreen() {
         Toast.show({
           type: "error",
           text1: "Erreur",
-          text2: err.response?.data?.message || "Impossible de charger les commandes",
+          text2:
+            err.response?.data?.message ||
+            "Impossible de charger les commandes",
         });
       } finally {
         setIsLoading(false);
@@ -183,7 +200,9 @@ export default function VentesScreen() {
     return {
       id: order.id,
       code: `#${order.orderNumber}`,
-      client: `${order.customer.firstName} ${order.customer.lastName || ""}`.trim(),
+      client: `${order.customer.firstName} ${
+        order.customer.lastName || ""
+      }`.trim(),
       date: formattedDate,
       articles: order.lines?.length || 0,
       color: statusColor,
@@ -212,18 +231,23 @@ export default function VentesScreen() {
             o.customer.lastName || ""
           ).toLowerCase()}@example.com`,
           avatar: o.customer.profileImageUrl,
-          commandes: orders.filter((ord) => ord.customerId === o.customerId).length,
-          ca: orders
-            .filter((ord) => ord.customerId === o.customerId)
-            .reduce((sum, ord) => sum + parseFloat(ord.totalAmount || "0"), 0)
-            .toFixed(2)
-            .replace(".", ",") + " €",
+          commandes: orders.filter((ord) => ord.customerId === o.customerId)
+            .length,
+          ca:
+            orders
+              .filter((ord) => ord.customerId === o.customerId)
+              .reduce((sum, ord) => sum + parseFloat(ord.totalAmount || "0"), 0)
+              .toFixed(2)
+              .replace(".", ",") + " €",
           panierMoyen:
             orders.filter((ord) => ord.customerId === o.customerId).length > 0
               ? (
                   orders
                     .filter((ord) => ord.customerId === o.customerId)
-                    .reduce((sum, ord) => sum + parseFloat(ord.totalAmount || "0"), 0) /
+                    .reduce(
+                      (sum, ord) => sum + parseFloat(ord.totalAmount || "0"),
+                      0
+                    ) /
                   orders.filter((ord) => ord.customerId === o.customerId).length
                 )
                   .toFixed(2)
@@ -237,11 +261,17 @@ export default function VentesScreen() {
   const filteredClients = uniqueClients.filter((client) => {
     const q = searchQueryClients.toLowerCase().trim();
     if (!q) return true;
-    return client.name.toLowerCase().includes(q) || client.email.toLowerCase().includes(q);
+    return (
+      client.name.toLowerCase().includes(q) ||
+      client.email.toLowerCase().includes(q)
+    );
   });
 
   const handleOrderPress = (order: OrderResponse) => {
-    router.push({ pathname: "/order-details/[id]", params: { id: order.id.toString() } });
+    router.push({
+      pathname: "/order-details/[id]",
+      params: { id: order.id.toString() },
+    });
   };
 
   const handleCustomerPress = (customerId: string) => {
@@ -255,23 +285,38 @@ export default function VentesScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#10B981"]} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#10B981"]}
+          />
         }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 30 }}
       >
         {/* HEADER */}
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
             <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
 
           <View style={styles.tabRow}>
             <TouchableOpacity
               onPress={() => setActiveTab("commandes")}
-              style={[styles.tab, activeTab === "commandes" && styles.activeTab]}
+              style={[
+                styles.tab,
+                activeTab === "commandes" && styles.activeTab,
+              ]}
             >
-              <Text style={[styles.tabText, activeTab === "commandes" && styles.activeTabText]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "commandes" && styles.activeTabText,
+                ]}
+              >
                 Commandes
               </Text>
             </TouchableOpacity>
@@ -279,7 +324,12 @@ export default function VentesScreen() {
               onPress={() => setActiveTab("clients")}
               style={[styles.tab, activeTab === "clients" && styles.activeTab]}
             >
-              <Text style={[styles.tabText, activeTab === "clients" && styles.activeTabText]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "clients" && styles.activeTabText,
+                ]}
+              >
                 Clients
               </Text>
             </TouchableOpacity>
@@ -368,7 +418,9 @@ function CommandesList({
         <View style={styles.emptyContainer}>
           <Ionicons name="receipt-outline" size={48} color="#CCC" />
           <Text style={styles.emptyText}>
-            {searchQuery ? "Aucune commande trouvée" : "Aucune commande pour cette entreprise"}
+            {searchQuery
+              ? "Aucune commande trouvée"
+              : "Aucune commande pour cette entreprise"}
           </Text>
         </View>
       ) : (
@@ -387,14 +439,24 @@ function CommandesList({
             scrollEnabled={false}
             renderItem={({ item }) => (
               <View style={styles.row}>
-                <View style={[styles.colorBar, { backgroundColor: item.color }]} />
+                <View
+                  style={[styles.colorBar, { backgroundColor: item.color }]}
+                />
                 <Text style={[styles.cell, { flex: 1 }]}>{item.code}</Text>
-                <TouchableOpacity onPress={() => onCustomerPress(item.originalOrder)} style={{ flex: 2 }}>
-                  <Text style={[styles.cell, styles.clickableText]}>{item.client}</Text>
+                <TouchableOpacity
+                  onPress={() => onCustomerPress(item.originalOrder)}
+                  style={{ flex: 2 }}
+                >
+                  <Text style={[styles.cell, styles.clickableText]}>
+                    {item.client}
+                  </Text>
                 </TouchableOpacity>
                 <Text style={[styles.cell, { flex: 2 }]}>{item.date}</Text>
                 <Text style={[styles.cell, { flex: 1 }]}>{item.articles}</Text>
-                <TouchableOpacity onPress={() => onOrderPress(item.originalOrder)} style={styles.eyeButton}>
+                <TouchableOpacity
+                  onPress={() => onOrderPress(item.originalOrder)}
+                  style={styles.eyeButton}
+                >
                   <Ionicons name="eye-outline" size={20} color="#00A36C" />
                 </TouchableOpacity>
               </View>
@@ -516,7 +578,12 @@ const styles = StyleSheet.create({
     padding: 4,
     marginHorizontal: 12,
   },
-  tab: { flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 20 },
+  tab: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 20,
+  },
   tabText: { fontWeight: "600", color: "#555", fontSize: 14 },
   activeTab: { backgroundColor: "#E8FFF1" },
   activeTabText: { color: "#00A36C", fontWeight: "600" },
@@ -540,23 +607,55 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   newBtnText: { color: "#00A36C", fontWeight: "600", marginLeft: 4 },
-  tableHeader: { flexDirection: "row", paddingVertical: 8, borderBottomWidth: 1, borderColor: "#E5E5E5" },
+  tableHeader: {
+    flexDirection: "row",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: "#E5E5E5",
+  },
   headerCell: { fontWeight: "600", color: "#555", fontSize: 13 },
-  row: { flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderColor: "#F2F2F2" },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: "#F2F2F2",
+  },
   colorBar: { width: 4, height: 30, borderRadius: 2, marginRight: 10 },
   cell: { color: "#333", fontSize: 14 },
   clickableText: { color: "#00A36C", fontWeight: "600" },
   eyeButton: { padding: 8 },
-  clientCard: { flexDirection: "row", backgroundColor: "#F9F9F9", borderRadius: 16, padding: 14, marginBottom: 12 },
+  clientCard: {
+    flexDirection: "row",
+    backgroundColor: "#F9F9F9",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+  },
   avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
   clientName: { fontWeight: "600", fontSize: 16, color: "#111" },
   clientEmail: { color: "#777", fontSize: 13 },
   clientStats: { marginTop: 8, gap: 4 },
   stat: { fontSize: 13, color: "#444" },
   bold: { fontWeight: "600", color: "#000" },
-  detailsLink: { marginTop: 10, color: "#00A36C", fontWeight: "600", fontSize: 14 },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
+  detailsLink: {
+    marginTop: 10,
+    color: "#00A36C",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 100,
+  },
   loadingText: { marginTop: 10, color: "#777" },
-  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", paddingTop: 100 },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 100,
+  },
   emptyText: { color: "#777", marginTop: 12, textAlign: "center" },
 });

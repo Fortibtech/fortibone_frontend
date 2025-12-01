@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import { Heart, Plus, Search } from "lucide-react-native";
+import { Plus, Search } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
 // Import des services API
 import {
   Business,
@@ -286,19 +285,16 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={28} color="#333" />
-      </TouchableOpacity>
-
-      <View style={styles.headerContent}>
+      {/* <View style={styles.headerContent}>
         <Text style={styles.headerTitle}>Mes Produits</Text>
         {selectedBusiness && (
           <Text style={styles.headerSubtitle}>{selectedBusiness.name}</Text>
         )}
-      </View>
+      </View> */}
 
       <TouchableOpacity onPress={handleCreateProduct} style={styles.addButton}>
         <Plus size={28} color="#059669" />
+        <Text style={styles.addButtonText}>Ajouter un produit</Text>
       </TouchableOpacity>
     </View>
   );
@@ -463,10 +459,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    backgroundColor: "#ffffffff",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
@@ -486,6 +482,12 @@ const styles = StyleSheet.create({
   },
   addButton: {
     padding: 4,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addButtonText: {
+    fontSize: 16,
   },
   searchContainer: {
     flexDirection: "row",

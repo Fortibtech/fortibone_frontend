@@ -17,6 +17,7 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import LogoutModal from "./logoutModal";
 import ShareAppModal from "./shareAppModal";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { Ionicons } from "@expo/vector-icons";
 
 interface MenuItem {
   id: string;
@@ -167,11 +168,19 @@ const SettingsMenu: React.FC = () => {
 
       <ScrollView style={styles.content}>
         <View style={styles.profileCard}>
-          <Image
-            source={uri ? { uri } : require("@/assets/images/icon.png")}
-            style={styles.avatar}
-            resizeMode="cover"
-          />
+          {uri ? (
+            <Image
+              key={uri} // Indispensable ici aussi !
+              source={{ uri }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.avatar, styles.placeholder]}>
+              <Ionicons name="person" size={40} color="#ccc" />
+            </View>
+          )}
+
           <View style={styles.profileInfo}>
             <Text style={styles.userName}>
               {user?.firstName || "Jean"} {user?.lastName || "Dupont"}

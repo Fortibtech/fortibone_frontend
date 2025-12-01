@@ -1,5 +1,4 @@
 "use client";
-
 import type React from "react";
 import { useEffect, useState } from "react";
 import {
@@ -18,6 +17,7 @@ import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { uploadUserAvatar } from "@/api/Users";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { Ionicons } from "@expo/vector-icons";
 
 const UserProfileScreen: React.FC = () => {
   const user = useUserStore((state) => state.userProfile);
@@ -119,29 +119,30 @@ const UserProfileScreen: React.FC = () => {
       {/* Avatar + Nom */}
       <View style={styles.profileSection}>
         <View style={styles.avatarContainer}>
-          {isRefreshing ? (
-            /* Loader pendant refresh */
-            <View
-              style={[
-                styles.avatar,
-                {
-                  backgroundColor: "#E8E8E8",
-                  justifyContent: "center",
-                  alignItems: "center",
-                },
-              ]}
-            >
-              <ActivityIndicator size="small" color="#999" />
-            </View>
-          ) : (
-            /* Image réelle avec key pour forcer le rechargement */
-            <Image
-              key={uri} // ← TRÈS IMPORTANT : force React Native à recréer l'Image à chaque nouvelle URL
-              source={uri ? { uri } : require("@/assets/images/icon.png")}
-              style={styles.avatar}
-              resizeMode="cover"
-            />
-          )}
+          <TouchableOpacity
+            onPress={handleChangeAvatar}
+            disabled={loading}
+            activeOpacity={0.8}
+            style={styles.fullAvatarTouchable}
+          >
+            {isRefreshing ? (
+              <View style={[styles.avatar, styles.placeholderLoading]}>
+                <ActivityIndicator size="small" color="#999" />
+              </View>
+            ) : uri ? (
+              <Image
+                key={uri} // Force refresh
+                source={{ uri }}
+                style={styles.avatar}
+                resizeMode="cover"
+                onError={() => console.warn("Avatar failed to load")}
+              />
+            ) : (
+              <View style={[styles.avatar, styles.placeholder]}>
+                <Ionicons name="person" size={50} color="#ccc" />
+              </View>
+            )}
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.editAvatarButton, loading && { opacity: 0.7 }]}
@@ -203,6 +204,16 @@ const UserProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  placeholder: {
+    backgroundColor: "#E8E8E8",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  placeholderLoading: {
+    backgroundColor: "#E8E8E8",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
@@ -241,6 +252,12 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginBottom: 20,
+    alignSelf: "center", // important pour le centrage
+  },
+  fullAvatarTouchable: {
+    // Rend toute la zone de l'image cliquable
+    borderRadius: 50,
+    overflow: "hidden", // important pour que l'image reste ronde
   },
   avatar: {
     width: 100,
@@ -260,7 +277,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 3,
     borderColor: "#FFFFFF",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
+
   userName: {
     fontSize: 20,
     fontWeight: "700",
