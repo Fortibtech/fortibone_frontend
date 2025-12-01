@@ -9,7 +9,6 @@ import {
 import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
-import { useUserStore } from "@/store/userStore";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
@@ -27,7 +26,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 const HomePage: React.FC = () => {
-
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
     null
@@ -216,14 +214,21 @@ const HomePage: React.FC = () => {
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.avatar}
+          style={styles.avatarContainer}
           onPress={() => router.push("/fournisseurSetting")}
         >
-          <Image
-            source={uri ? { uri } : require("@/assets/images/icon.png")}
-            style={styles.avatar}
-            resizeMode="cover"
-          />
+          {uri ? (
+            <Image
+              key={uri} // Force le rechargement même ici
+              source={{ uri }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.avatar, styles.placeholder]}>
+              <Ionicons name="person" size={40} color="#aaa" />
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -384,6 +389,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8F9FA",
     paddingBottom: 50,
   },
+  avatarContainer: {
+    borderRadius: 30,
+    overflow: "hidden",
+    width: 36,
+    height: 36,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
+  },
+
+  placeholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#E8E8E8",
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -440,13 +463,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F5F5F5",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 4,
+    width: "100%",
+    height: "100%",
   },
   content: {
     flex: 1,

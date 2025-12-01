@@ -73,14 +73,14 @@ export default function RootLayout() {
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
+
       <Tabs.Screen
-        name="catalogue"
+        name="produits"
         options={{
-          title: "Catalogue",
+          title: "Produits",
           tabBarIcon: ({ color }) => <Cuboid size={24} color={color} />,
         }}
       />
-
       <Tabs.Screen
         name="achats"
         options={{
