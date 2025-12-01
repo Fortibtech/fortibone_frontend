@@ -1,14 +1,13 @@
-// screens/ProductDetailScreen.tsx - Version ultra-raffinée avec design moderne
+// screens/ProductDetailScreen.tsx - Version moderne avec design des images
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import {
+  ChevronDown,
+  ChevronUp,
   Edit,
-  Heart,
   MapPin,
   Package,
-  Plus,
   Share,
-  Tag,
   Trash2,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -37,10 +36,10 @@ import {
 } from "@/api";
 
 // Import des composants
-import { VariantFormModal } from "@/components/VariantFormModal";
+import { VariantManagementModal } from "@/components/VariantManagementModal";
 import { EditProductScreen } from "./edit";
 
-Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface ProductDetailScreenProps {
   productId?: string;
@@ -54,24 +53,42 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 }) => {
   const params = useLocalSearchParams();
   const productId = propProductId || (params.id as string);
+  
   const [product, setProduct] = useState<Product | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // États pour les variantes
-  const [showVariantModal, setShowVariantModal] = useState(false);
-  const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(
-    null
-  );
+  
+  // États pour le carrousel
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // États pour les sections dépliables
+  const [expandedSections, setExpandedSections] = useState({
+    attributes: true,
+    technicalDescription: false,
+    variants: false,
+  });
+  
+  // États pour les modals
+  const [showVariantManagementModal, setShowVariantManagementModal] = useState(false);
   const [showEditProductModal, setShowEditProductModal] = useState(false);
+
+  // Données de capacité, RAM, couleurs extraites des variantes
+  const [storageOptions, setStorageOptions] = useState<string[]>([]);
+  const [ramOptions, setRamOptions] = useState<string[]>([]);
+  const [colorOptions, setColorOptions] = useState<Array<{ name: string; code: string }>>([]);
 
   useEffect(() => {
     if (productId) {
       loadProductDetails();
     }
   }, [productId]);
+
+  useEffect(() => {
+    if (product?.variants) {
+      extractVariantOptions();
+    }
+  }, [product?.variants]);
 
   const loadProductDetails = async () => {
     if (!productId) {
@@ -83,33 +100,85 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     try {
       setLoading(true);
 
-      // Charger les détails du produit avec variantes
       const productData = await ProductService.getProductById(productId);
       setProduct(productData);
 
-      // Charger les détails de l'entreprise
       try {
         const businessData = await BusinessesService.getBusinessById(
           productData.businessId
         );
         setBusiness(businessData);
       } catch (businessError) {
-        console.warn(
-          "Impossible de charger les détails de l'entreprise:",
-          businessError
-        );
+        console.warn("Impossible de charger les détails de l'entreprise:", businessError);
       }
     } catch (error) {
       console.error("Erreur lors du chargement du produit:", error);
       Alert.alert("Erreur", "Impossible de charger les détails du produit", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
+        { text: "OK", onPress: () => router.back() },
       ]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const extractVariantOptions = () => {
+    if (!product?.variants) return;
+
+    const storages = new Set<string>();
+    const rams = new Set<string>();
+    const colors = new Map<string, string>();
+
+    product.variants.forEach((variant) => {
+      variant.attributeValues.forEach((attr) => {
+        const attrName = attr.attribute.name.toLowerCase();
+        
+        if (attrName.includes("stockage") || attrName.includes("capacité")) {
+          storages.add(attr.value);
+        } else if (attrName.includes("ram") || attrName.includes("mémoire")) {
+          rams.add(attr.value);
+        } else if (attrName.includes("couleur") || attrName.includes("color")) {
+          // Essayer de mapper les couleurs avec des codes hex
+          colors.set(attr.value, getColorCode(attr.value));
+        }
+      });
+    });
+
+    setStorageOptions(Array.from(storages));
+    setRamOptions(Array.from(rams));
+    setColorOptions(
+      Array.from(colors.entries()).map(([name, code]) => ({ name, code }))
+    );
+  };
+
+  const getColorCode = (colorName: string): string => {
+    const colorMap: { [key: string]: string } = {
+      noir: "#000000",
+      black: "#000000",
+      blanc: "#FFFFFF",
+      white: "#FFFFFF",
+      bleu: "#0000FF",
+      blue: "#6200FF",
+      rouge: "#FF0000",
+      red: "#FF0000",
+      vert: "#00FF00",
+      green: "#00FF00",
+      jaune: "#FFFF00",
+      yellow: "#FFFF00",
+      rose: "#FFC0CB",
+      pink: "#FFC0CB",
+      violet: "#8B00FF",
+      purple: "#8B00FF",
+    };
+
+    const key = colorName.toLowerCase();
+    return colorMap[key] || "#CCCCCC";
+  };
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
   };
 
   const handleEditProduct = () => {
@@ -121,17 +190,10 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
     Alert.alert(
       "Supprimer le produit",
-      `Êtes-vous sûr de vouloir supprimer "${product.name}" et toutes ses variantes ? Cette action est irréversible.`,
+      `Êtes-vous sûr de vouloir supprimer "${product.name}" et toutes ses variantes ?`,
       [
-        {
-          text: "Annuler",
-          style: "cancel",
-        },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: confirmDeleteProduct,
-        },
+        { text: "Annuler", style: "cancel" },
+        { text: "Supprimer", style: "destructive", onPress: confirmDeleteProduct },
       ]
     );
   };
@@ -141,18 +203,14 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
     try {
       setIsDeleting(true);
-
       await ProductService.deleteProduct(product.id);
 
       if (onDelete) {
         onDelete(product.id);
       }
 
-      Alert.alert("Succès", "Produit et ses variantes supprimés avec succès", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
+      Alert.alert("Succès", "Produit supprimé avec succès", [
+        { text: "OK", onPress: () => router.back() },
       ]);
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
@@ -162,401 +220,397 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     }
   };
 
-  const handleAddVariant = () => {
-    setEditingVariant(null);
-    setShowVariantModal(true);
-  };
-
-  const handleEditVariant = (variant: ProductVariant) => {
-    setEditingVariant(variant);
-    setShowVariantModal(true);
-  };
-
-  const handleDeleteVariant = (variant: ProductVariant) => {
-    Alert.alert(
-      "Supprimer la variante",
-      `Êtes-vous sûr de vouloir supprimer la variante "${variant.sku}" ?`,
-      [
-        {
-          text: "Annuler",
-          style: "cancel",
-        },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: () => confirmDeleteVariant(variant),
-        },
-      ]
-    );
-  };
-
-  const confirmDeleteVariant = async (variant: ProductVariant) => {
-    try {
-      await ProductService.deleteVariant(variant.id);
-
-      // Recharger les détails du produit
-      await loadProductDetails();
-
-      Alert.alert("Succès", "Variante supprimée avec succès");
-    } catch (error) {
-      console.error("Erreur lors de la suppression de la variante:", error);
-      Alert.alert("Erreur", "Impossible de supprimer la variante");
-    }
-  };
-
-  const onVariantSaved = () => {
-    setShowVariantModal(false);
-    setEditingVariant(null);
-    loadProductDetails();
-  };
-
   const onProductSaved = () => {
     setShowEditProductModal(false);
     loadProductDetails();
   };
 
+  const onVariantsSaved = () => {
+    setShowVariantManagementModal(false);
+    loadProductDetails();
+  };
+
   const handleShare = () => {
     if (product) {
-      Alert.alert(
-        "Partager",
-        `Partage du produit "${product.name}" (fonctionnalité à implémenter)`
-      );
+      Alert.alert("Partager", `Partage du produit "${product.name}"`);
     }
   };
 
-  const toggleLike = () => {
-    setIsLiked(!isLiked);
-  };
+  // Carrousel d'images
+  const images = product?.imageUrl ? [product.imageUrl] : [];
+  
+  const renderImageCarousel = () => (
+    <View style={styles.carouselContainer}>
+      {images.length > 0 ? (
+        <>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={(event) => {
+              const index = Math.round(
+                event.nativeEvent.contentOffset.x / SCREEN_WIDTH
+              );
+              setCurrentImageIndex(index);
+            }}
+            scrollEventThrottle={16}
+          >
+            {images.map((uri, index) => (
+              <Image
+                key={index}
+                source={{ uri }}
+                style={styles.carouselImage}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
 
-  const renderFloatingHeader = () => (
-    <View style={styles.floatingHeader}>
-      <TouchableOpacity
-        onPress={() => router.back()}
-        style={styles.floatingButton}
-      >
-        <Ionicons name="arrow-back" size={22} color="#1f2937" />
-      </TouchableOpacity>
-
-      <View style={styles.floatingActions}>
-        <TouchableOpacity onPress={handleShare} style={styles.floatingButton}>
-          <Share size={18} color="#1f2937" />
-        </TouchableOpacity>
-
-        {/* <TouchableOpacity onPress={toggleLike} style={styles.floatingButton}>
-          <Heart 
-            size={18} 
-            color={isLiked ? "#ef4444" : "#1f2937"} 
-            fill={isLiked ? "#ef4444" : "none"} 
-          />
-        </TouchableOpacity> */}
-      </View>
-    </View>
-  );
-
-  const renderImageSection = () => (
-    <View style={styles.imageContainer}>
-      {product?.imageUrl ? (
-        <Image
-          source={{ uri: product.imageUrl }}
-          style={styles.productImage}
-          resizeMode="cover"
-        />
+          {images.length > 1 && (
+            <View style={styles.paginationDots}>
+              {images.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    currentImageIndex === index && styles.activeDot,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+        </>
       ) : (
         <View style={styles.imagePlaceholder}>
           <View style={styles.placeholderIconCircle}>
-            <Package size={40} color="#d1d5db" />
+            <Package size={48} color="#D1D5DB" />
           </View>
-          <Text style={styles.imagePlaceholderText}>Aucune image</Text>
         </View>
       )}
-      {renderFloatingHeader()}
+
+      {/* Header flottant */}
+      <View style={styles.floatingHeader}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.floatingButton}>
+          <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleShare} style={styles.floatingButton}>
+          <Ionicons name="ellipsis-vertical" size={22} color="#1A1A1A" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
-  const renderVariantCard = ({ item: variant }: { item: ProductVariant }) => (
-    <View style={styles.variantCard}>
-      <View style={styles.variantHeader}>
-        <View style={styles.variantMainInfo}>
-          <Text style={styles.variantSku}>{variant.sku}</Text>
-          <Text style={styles.variantPrice}>
-            {variant.price.toLocaleString()} FCFA
+  const renderProductInfo = () => {
+    const totalStock = product?.variants?.reduce(
+      (sum, v) => sum + (v.quantityInStock || 0),
+      0
+    ) || 0;
+
+    const priceRange = product?.variants?.length
+      ? (() => {
+          const prices = product.variants.map((v) => parseFloat(v.price));
+          const min = Math.min(...prices);
+          const max = Math.max(...prices);
+          return min === max
+            ? `${min.toLocaleString()} KMF`
+            : `${min.toLocaleString()} - ${max.toLocaleString()} KMF`;
+        })()
+      : "-";
+
+    return (
+      <View style={styles.productInfoSection}>
+        {/* Breadcrumb */}
+        <View style={styles.breadcrumb}>
+          <Text style={styles.breadcrumbText}>
+            {product?.category?.name || "Électroniques"}
+          </Text>
+          <Text style={styles.breadcrumbSeparator}> › </Text>
+          <Text style={styles.breadcrumbText}>
+            {product?.salesUnit || "Téléphones"}
           </Text>
         </View>
 
-        <View style={styles.variantActions}>
-          <TouchableOpacity
-            style={styles.variantIconButton}
-            onPress={() => handleEditVariant(variant)}
-          >
-            <Edit size={16} color="#6b7280" />
-          </TouchableOpacity>
+        {/* Nom du produit */}
+        <Text style={styles.productName}>{product?.name}</Text>
 
-          <TouchableOpacity
-            style={styles.variantIconButton}
-            onPress={() => handleDeleteVariant(variant)}
-          >
-            <Trash2 size={16} color="#6b7280" />
-          </TouchableOpacity>
+        {/* SKU et Stock */}
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>SKU produit: </Text>
+          <Text style={styles.metaValue}>{product?.id.slice(0, 12) || "-"}</Text>
         </View>
-      </View>
 
-      {variant.attributeValues.length > 0 && (
-        <View style={styles.attributesContainer}>
-          {variant.attributeValues.map((attr) => (
-            <View key={attr.id} style={styles.attributeTag}>
-              <Text style={styles.attributeTagText}>
-                {attr.attribute.name}: {attr.value}
-              </Text>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>Stock totale disponible: </Text>
+          <Text style={styles.metaValue}>{totalStock}</Text>
+        </View>
+
+        {/* Prix */}
+        <Text style={styles.priceLabel}>Prix</Text>
+        <Text style={styles.priceValue}>{priceRange}</Text>
+
+        {/* Pills des attributs rapides */}
+        <View style={styles.pillsContainer}>
+          {product?.category?.name && (
+            <View style={styles.pill}>
+              <Text style={styles.pillText}>{product.category.name}</Text>
             </View>
-          ))}
-        </View>
-      )}
-
-      <View style={styles.variantDetailsGrid}>
-        <View style={styles.variantDetailRow}>
-          <Text style={styles.variantDetailLabel}>Stock</Text>
-          <Text
-            style={[
-              styles.variantDetailValue,
-              variant.quantityInStock < 10 && styles.lowStockText,
-            ]}
-          >
-            {variant.quantityInStock}
-          </Text>
-        </View>
-
-        <View style={styles.variantDetailDivider} />
-
-        <View style={styles.variantDetailRow}>
-          <Text style={styles.variantDetailLabel}>Prix d&apos;achat</Text>
-          <Text style={styles.variantDetailValue}>
-            {variant.purchasePrice.toLocaleString()} FCFA
-          </Text>
-        </View>
-
-        {variant.barcode && (
-          <>
-            <View style={styles.variantDetailDivider} />
-            <View style={styles.variantDetailRow}>
-              <Text style={styles.variantDetailLabel}>Code-barres</Text>
-              <Text style={styles.variantDetailValue}>{variant.barcode}</Text>
-            </View>
-          </>
-        )}
-      </View>
-
-      {variant.imageUrl && (
-        <View style={styles.variantImageWrapper}>
-          <Image
-            source={{ uri: variant.imageUrl }}
-            style={styles.variantImage}
-            resizeMode="cover"
-          />
-        </View>
-      )}
-    </View>
-  );
-
-  const renderVariantsSection = () => {
-    if (!product?.variants || product.variants.length === 0) {
-      return (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Variantes</Text>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={handleAddVariant}
-            >
-              <Plus size={16} color="#059669" />
-              <Text style={styles.addButtonText}>Ajouter</Text>
-            </TouchableOpacity>
+          )}
+          <View style={styles.pill}>
+            <Text style={styles.pillText}>{product?.name.split(" ")[0]}</Text>
           </View>
-
-          <View style={styles.emptyState}>
-            <View style={styles.emptyStateIcon}>
-              <Package size={32} color="#d1d5db" />
-            </View>
-            <Text style={styles.emptyStateTitle}>Aucune variante</Text>
-            <Text style={styles.emptyStateSubtitle}>
-              Créez des variantes pour ce produit
-            </Text>
+          <View style={styles.pill}>
+            <Text style={styles.pillText}>Neuf scellé</Text>
+          </View>
+          <View style={styles.pill}>
+            <Text style={styles.pillText}>iOS 17</Text>
           </View>
         </View>
-      );
+
+        {/* Toggle Publié */}
+        <View style={styles.publishRow}>
+          <Text style={styles.publishLabel}>Publié</Text>
+          <View style={styles.toggleContainer}>
+            <View style={styles.toggleActive}>
+              <View style={styles.toggleThumb} />
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.variantCountBadge}>
+          <Text style={styles.variantCountText}>
+            {product?.variants?.length || 0} variantes
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderStorageRAMColors = () => {
+    if (
+      storageOptions.length === 0 &&
+      ramOptions.length === 0 &&
+      colorOptions.length === 0
+    ) {
+      return null;
     }
 
     return (
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            Variantes ({product.variants.length})
-          </Text>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddVariant}>
-            <Plus size={16} color="#059669" />
-            <Text style={styles.addButtonText}>Ajouter</Text>
-          </TouchableOpacity>
+      <View style={styles.optionsSection}>
+        {/* Capacité Stockage */}
+        {storageOptions.length > 0 && (
+          <View style={styles.optionGroup}>
+            <Text style={styles.optionGroupTitle}>Capacité Stockage</Text>
+            <View style={styles.optionChips}>
+              {storageOptions.map((storage, index) => (
+                <View key={index} style={styles.optionChip}>
+                  <Text style={styles.optionChipText}>{storage}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* RAM */}
+        {ramOptions.length > 0 && (
+          <View style={styles.optionGroup}>
+            <Text style={styles.optionGroupTitle}>RAM</Text>
+            <View style={styles.optionChips}>
+              {ramOptions.map((ram, index) => (
+                <View key={index} style={styles.optionChip}>
+                  <Text style={styles.optionChipText}>{ram}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Couleurs */}
+        {colorOptions.length > 0 && (
+          <View style={styles.optionGroup}>
+            <Text style={styles.optionGroupTitle}>Couleurs</Text>
+            <View style={styles.colorOptions}>
+              {colorOptions.map((color, index) => (
+                <View key={index} style={styles.colorCircleWrapper}>
+                  <View
+                    style={[
+                      styles.colorCircle,
+                      { backgroundColor: color.code },
+                      color.code === "#FFFFFF" && styles.colorCircleWhite,
+                    ]}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderCollapsibleSection = (
+    title: string,
+    sectionKey: keyof typeof expandedSections,
+    content: React.ReactNode
+  ) => {
+    const isExpanded = expandedSections[sectionKey];
+
+    return (
+      <View style={styles.collapsibleSection}>
+        <TouchableOpacity
+          style={styles.collapsibleHeader}
+          onPress={() => toggleSection(sectionKey)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.collapsibleTitle}>{title}</Text>
+          {isExpanded ? (
+            <ChevronUp size={20} color="#6B7280" />
+          ) : (
+            <ChevronDown size={20} color="#6B7280" />
+          )}
+        </TouchableOpacity>
+
+        {isExpanded && <View style={styles.collapsibleContent}>{content}</View>}
+      </View>
+    );
+  };
+
+  const renderAttributesSection = () => {
+    return (
+      <View style={styles.attributesContent}>
+        <View style={styles.attributeRow}>
+          <Text style={styles.attributeLabel}>Système d'exploitation:</Text>
+          <Text style={styles.attributeValue}>iOS 17</Text>
         </View>
+        <View style={styles.attributeRow}>
+          <Text style={styles.attributeLabel}>Caméra:</Text>
+          <Text style={styles.attributeValue}>12MP/64MP</Text>
+        </View>
+        <View style={styles.attributeRow}>
+          <Text style={styles.attributeLabel}>Stockage interne:</Text>
+          <Text style={styles.attributeValue}>128Go/256Go/512Go</Text>
+        </View>
+        <View style={styles.attributeRow}>
+          <Text style={styles.attributeLabel}>RAM:</Text>
+          <Text style={styles.attributeValue}>4Go/8Go</Text>
+        </View>
+        <View style={styles.attributeRow}>
+          <Text style={styles.attributeLabel}>Couleurs:</Text>
+          <Text style={styles.attributeValue}>Noir, Blanc, Bleu</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderTechnicalDescription = () => {
+    return (
+      <View style={styles.technicalContent}>
+        <Text style={styles.technicalText}>
+          {product?.description || "Aucune description technique disponible."}
+        </Text>
+
+        <View style={styles.technicalDetails}>
+          <Text style={styles.technicalDetailItem}>
+            <Text style={styles.technicalDetailLabel}>Marque: </Text>
+            <Text style={styles.technicalDetailValue}>
+              {product?.category?.name || "Apple"}
+            </Text>
+          </Text>
+
+          <Text style={styles.technicalDetailItem}>
+            <Text style={styles.technicalDetailLabel}>Modèle: </Text>
+            <Text style={styles.technicalDetailValue}>
+              {product?.name || "iPhone 14"}
+            </Text>
+          </Text>
+
+          <Text style={styles.technicalDetailItem}>
+            <Text style={styles.technicalDetailLabel}>RAM: </Text>
+            <Text style={styles.technicalDetailValue}>4Go/8Go</Text>
+          </Text>
+
+          <Text style={styles.technicalDetailItem}>
+            <Text style={styles.technicalDetailLabel}>Stockage interne: </Text>
+            <Text style={styles.technicalDetailValue}>128Go/256Go/512Go</Text>
+          </Text>
+
+          <Text style={styles.technicalDetailItem}>
+            <Text style={styles.technicalDetailLabel}>Système d'exploitation: </Text>
+            <Text style={styles.technicalDetailValue}>iOS 16</Text>
+          </Text>
+
+          <Text style={styles.technicalDetailItem}>
+            <Text style={styles.technicalDetailLabel}>Processeur: </Text>
+            <Text style={styles.technicalDetailValue}>A15 Bionic chip</Text>
+          </Text>
+
+          <Text style={styles.technicalDetailItem}>
+            <Text style={styles.technicalDetailLabel}>Taille d'écran: </Text>
+            <Text style={styles.technicalDetailValue}>6.1"</Text>
+          </Text>
+
+          <Text style={styles.technicalDetailItem}>
+            <Text style={styles.technicalDetailLabel}>Carte sim: </Text>
+            <Text style={styles.technicalDetailValue}>1 nano sim... </Text>
+            <Text style={styles.viewMoreLink}>Voir Plus</Text>
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderVariantsSection = () => {
+    return (
+      <View style={styles.variantsContent}>
+        <TouchableOpacity
+          style={styles.manageVariantsButton}
+          onPress={() => setShowVariantManagementModal(true)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.manageVariantsButtonText}>Gérer les variantes</Text>
+        </TouchableOpacity>
 
         <View style={styles.variantsList}>
-          {product.variants.map((variant) => (
-            <View key={variant.id}>{renderVariantCard({ item: variant })}</View>
+          {product?.variants?.slice(0, 3).map((variant, index) => (
+            <View key={variant.id} style={styles.variantRow}>
+              <View style={styles.variantIndicator} />
+              <View style={styles.variantInfo}>
+                <Text style={styles.variantNumber}>{index + 1}</Text>
+                <Text style={styles.variantName}>{variant.sku}</Text>
+                <Text style={styles.variantPrice}>
+                  {parseFloat(variant.price).toLocaleString()} KMF
+                </Text>
+                <Text style={styles.variantSKU}>{variant.barcode || "-"}</Text>
+              </View>
+            </View>
           ))}
         </View>
       </View>
     );
   };
 
-  const renderProductInfo = () => (
-    <View style={styles.contentContainer}>
-      <View style={styles.productTitleSection}>
-        <Text style={styles.productName}>{product?.name}</Text>
-
-        <View style={styles.productMetaRow}>
-          {product?.category && (
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>
-                {product.category.name}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.metaItem}>
-            <Tag size={13} color="#9ca3af" />
-            <Text style={styles.metaText}>{product?.salesUnit}</Text>
-          </View>
-        </View>
-
-        {product?.averageRating && (
-          <View style={styles.ratingRow}>
-            <Ionicons name="star" size={15} color="#fbbf24" />
-            <Text style={styles.ratingText}>
-              {product.averageRating.toFixed(1)}
-            </Text>
-            <Text style={styles.ratingCount}>
-              ({product.reviewCount || 0} avis)
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Description</Text>
-        <Text style={styles.descriptionText}>
-          {product?.description || "Aucune description disponible"}
-        </Text>
-      </View>
-
-      <View style={styles.divider} />
-
-      {renderVariantsSection()}
-
-      {business && (
-        <>
-          <View style={styles.divider} />
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Vendu par</Text>
-            <View style={styles.businessCard}>
-              <View style={styles.businessInfo}>
-                <Text style={styles.businessName}>{business.name}</Text>
-                <Text style={styles.businessType}>{business.type}</Text>
-
-                {business.address && (
-                  <View style={styles.addressRow}>
-                    <MapPin size={13} color="#9ca3af" />
-                    <Text style={styles.addressText} numberOfLines={1}>
-                      {business.address}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {business.logoUrl && (
-                <Image
-                  source={{ uri: business.logoUrl }}
-                  style={styles.businessLogo}
-                  resizeMode="contain"
-                />
-              )}
-            </View>
-          </View>
-        </>
-      )}
-
-      <View style={styles.divider} />
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Informations</Text>
-        <View style={styles.infoGrid}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Stock total</Text>
-            <Text style={styles.infoValue}>
-              {product ? ProductService.getTotalStock(product) : 0}
-            </Text>
-          </View>
-
-          <View style={styles.infoDivider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Créé le</Text>
-            <Text style={styles.infoValue}>
-              {product?.createdAt
-                ? new Date(product.createdAt).toLocaleDateString("fr-FR")
-                : "-"}
-            </Text>
-          </View>
-
-          <View style={styles.infoDivider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>ID Produit</Text>
-            <Text style={styles.infoValue} numberOfLines={1}>
-              {product?.id.slice(0, 8)}...
-            </Text>
-          </View>
-
-          {product?.updatedAt && product.updatedAt !== product.createdAt && (
-            <>
-              <View style={styles.infoDivider} />
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Modifié le</Text>
-                <Text style={styles.infoValue}>
-                  {new Date(product.updatedAt).toLocaleDateString("fr-FR")}
-                </Text>
-              </View>
-            </>
-          )}
-        </View>
-      </View>
-    </View>
-  );
-
   const renderActions = () => (
     <View style={styles.actionsContainer}>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={handleDeleteProduct}
+        disabled={isDeleting}
+        activeOpacity={0.7}
+      >
+        {isDeleting && (
+          <ActivityIndicator size="small" color="white" />
+        )}
+        <Text style={styles.deleteButtonText}>
+          {isDeleting ? "Suppression..." : "Supprimer"}
+        </Text>
+      </TouchableOpacity>
+
       <TouchableOpacity
         style={styles.editButton}
         onPress={handleEditProduct}
         activeOpacity={0.7}
       >
-        <Edit size={18} color="white" />
+        {/* <Edit size={18} color="white" /> */}
         <Text style={styles.editButtonText}>Modifier</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
-        onPress={handleDeleteProduct}
-        disabled={isDeleting}
-        activeOpacity={0.7}
-      >
-        {isDeleting ? (
-          <ActivityIndicator size="small" color="white" />
-        ) : (
-          <Trash2 size={18} color="white" />
-        )}
-        <Text style={styles.deleteButtonText}>
-          {isDeleting ? "Suppression..." : "Supprimer"}
-        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -566,7 +620,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#059669" />
+          <ActivityIndicator size="large" color="#00D991" />
           <Text style={styles.loadingText}>Chargement...</Text>
         </View>
       </SafeAreaView>
@@ -578,17 +632,9 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
         <View style={styles.errorContainer}>
-          <View style={styles.errorIcon}>
-            <Package size={48} color="#d1d5db" />
-          </View>
+          <Package size={48} color="#D1D5DB" />
           <Text style={styles.errorTitle}>Produit introuvable</Text>
-          <Text style={styles.errorSubtitle}>
-            Ce produit n&apos;existe plus ou a été supprimé
-          </Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>Retour</Text>
           </TouchableOpacity>
         </View>
@@ -605,22 +651,46 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {renderImageSection()}
+        {renderImageCarousel()}
         {renderProductInfo()}
+        {renderStorageRAMColors()}
+
+        {/* Sections dépliables */}
+        {renderCollapsibleSection(
+          "Attributs Spécifiques",
+          "attributes",
+          renderAttributesSection()
+        )}
+
+        {renderCollapsibleSection(
+          "Description Technique",
+          "technicalDescription",
+          renderTechnicalDescription()
+        )}
+
+        {renderCollapsibleSection(
+          "Variantes",
+          "variants",
+          renderVariantsSection()
+        )}
       </ScrollView>
 
       {renderActions()}
 
-      {/* Modal pour créer/modifier une variante */}
-      <VariantFormModal
-        visible={showVariantModal}
-        product={product}
-        variant={editingVariant}
-        onClose={() => setShowVariantModal(false)}
-        onSaved={onVariantSaved}
-      />
+      {/* Modal Gestion des Variantes */}
+      <Modal
+        visible={showVariantManagementModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <VariantManagementModal
+          product={product}
+          onClose={() => setShowVariantManagementModal(false)}
+          onSaved={onVariantsSaved}
+        />
+      </Modal>
 
-      {/* Modal pour modifier le produit */}
+      {/* Modal Modifier Produit */}
       <Modal
         visible={showEditProductModal}
         animationType="slide"
@@ -639,7 +709,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
@@ -648,7 +718,54 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Floating Header (par dessus l'image)
+  // Carrousel d'images
+  carouselContainer: {
+    height: 320,
+    backgroundColor: "#F5F7FA",
+    position: "relative",
+  },
+  carouselImage: {
+    width: SCREEN_WIDTH,
+    height: 320,
+  },
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#F5F7FA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  placeholderIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E8ECF0",
+  },
+  paginationDots: {
+    position: "absolute",
+    bottom: 16,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  activeDot: {
+    backgroundColor: "#FFFFFF",
+    width: 24,
+  },
+
+  // Header flottant
   floatingHeader: {
     position: "absolute",
     top: 15,
@@ -656,410 +773,336 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 12,
-    zIndex: 10,
   },
   floatingButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
-    borderWidth: 0.5,
-    borderColor: "rgba(0, 0, 0, 0.04)",
-  },
-  floatingActions: {
-    flexDirection: "row",
-    gap: 8,
   },
 
-  // Image Section
-  imageContainer: {
-    height: 320,
-    backgroundColor: "#fafafa",
-    position: "relative",
+  // Section info produit
+  productInfoSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    backgroundColor: "#FFFFFF",
   },
-  productImage: {
-    width: "100%",
-    height: "100%",
-  },
-  imagePlaceholder: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#fafafa",
+  breadcrumb: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
+    marginBottom: 12,
   },
-  placeholderIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-  imagePlaceholderText: {
+  breadcrumbText: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#8B8B8B",
     fontWeight: "500",
   },
-
-  // Content Container
-  contentContainer: {
-    backgroundColor: "#ffffff",
-    paddingBottom: 24,
-  },
-
-  // Product Title Section
-  productTitleSection: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 20,
+  breadcrumbSeparator: {
+    fontSize: 13,
+    color: "#8B8B8B",
   },
   productName: {
-    fontSize: 26,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 14,
-    lineHeight: 32,
-    letterSpacing: -0.3,
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    marginBottom: 12,
+    letterSpacing: -0.5,
   },
-  productMetaRow: {
+  metaRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 10,
+    marginBottom: 6,
   },
-  categoryBadge: {
-    backgroundColor: "#ecfdf5",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: "rgba(5, 150, 105, 0.1)",
-  },
-  categoryBadgeText: {
-    color: "#059669",
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 13,
-    color: "#6b7280",
-    fontWeight: "500",
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  ratingText: {
+  metaLabel: {
     fontSize: 14,
+    color: "#8B8B8B",
+    fontWeight: "400",
+  },
+  metaValue: {
+    fontSize: 14,
+    color: "#1A1A1A",
     fontWeight: "600",
-    color: "#111827",
   },
-  ratingCount: {
+  priceLabel: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#8B8B8B",
+    marginTop: 16,
+    marginBottom: 4,
   },
-
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: "#f3f4f6",
-    marginHorizontal: 20,
-    marginVertical: 4,
+  priceValue: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#00D991",
+    marginBottom: 16,
+    letterSpacing: -0.5,
   },
-
-  // Sections
-  section: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  pillsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 20,
   },
-  sectionHeader: {
+  pill: {
+    backgroundColor: "#F5F7FA",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E8ECF0",
+  },
+  pillText: {
+    fontSize: 13,
+    color: "#1A1A1A",
+    fontWeight: "600",
+  },
+  publishRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 16,
+  publishLabel: {
+    fontSize: 15,
+    color: "#1A1A1A",
     fontWeight: "600",
-    color: "#111827",
-    letterSpacing: -0.2,
   },
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
+  toggleContainer: {
+    width: 51,
+    height: 31,
+  },
+  toggleActive: {
+    width: 51,
+    height: 31,
+    backgroundColor: "#00D991",
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "flex-end",
+    paddingHorizontal: 2,
+  },
+  toggleThumb: {
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+  },
+  variantCountBadge: {
+    alignSelf: "flex-end",
+    backgroundColor: "#F5F7FA",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 10,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  addButtonText: {
-    color: "#059669",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
-  // Description
-  descriptionText: {
-    fontSize: 14,
-    color: "#4b5563",
-    lineHeight: 22,
-    letterSpacing: 0.1,
-  },
-
-  // Empty State
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 48,
-    backgroundColor: "#fafafa",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-  emptyStateIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-  emptyStateTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#6b7280",
-    marginBottom: 4,
-  },
-  emptyStateSubtitle: {
-    fontSize: 13,
-    color: "#9ca3af",
-    textAlign: "center",
-  },
-
-  // Variants List
-  variantsList: {
-    gap: 10,
-  },
-  variantCard: {
-    backgroundColor: "#fafafa",
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-  variantHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  variantMainInfo: {
-    flex: 1,
-  },
-  variantSku: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 4,
-    letterSpacing: -0.1,
-  },
-  variantPrice: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#059669",
-    letterSpacing: -0.2,
-  },
-  variantActions: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  variantIconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-
-  // Attributes
-  attributesContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginBottom: 12,
-  },
-  attributeTag: {
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  attributeTagText: {
-    fontSize: 12,
-    color: "#4b5563",
-    fontWeight: "500",
-  },
-
-  // Variant Details Grid
-  variantDetailsGrid: {
-    backgroundColor: "#ffffff",
-    borderRadius: 10,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-  variantDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 2,
-  },
-  variantDetailDivider: {
-    height: 1,
-    backgroundColor: "#f3f4f6",
-    marginVertical: 8,
-  },
-  variantDetailLabel: {
-    fontSize: 13,
-    color: "#6b7280",
-    fontWeight: "500",
-  },
-  variantDetailValue: {
-    fontSize: 13,
-    color: "#111827",
-    fontWeight: "600",
-  },
-  lowStockText: {
-    color: "#ef4444",
-  },
-
-  // Variant Image
-  variantImageWrapper: {
-    alignItems: "flex-start",
-    marginTop: 12,
-  },
-  variantImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 10,
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-
-  // Business Card
-  businessCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fafafa",
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
-  businessInfo: {
-    flex: 1,
-  },
-  businessName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 4,
-    letterSpacing: -0.1,
-  },
-  businessType: {
-    fontSize: 13,
-    color: "#059669",
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  addressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  addressText: {
-    fontSize: 12,
-    color: "#6b7280",
-    flex: 1,
-    fontWeight: "500",
-  },
-  businessLogo: {
-    width: 52,
-    height: 52,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#f0f0f0",
+    borderColor: "#E8ECF0",
+  },
+  variantCountText: {
+    fontSize: 12,
+    color: "#00D991",
+    fontWeight: "600",
   },
 
-  // Info Grid
-  infoGrid: {
-    backgroundColor: "#fafafa",
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
+  // Options (Capacité, RAM, Couleurs)
+  optionsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F5F7FA",
   },
-  infoRow: {
+  optionGroup: {
+    marginBottom: 20,
+  },
+  optionGroupTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    marginBottom: 12,
+  },
+  optionChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  optionChip: {
+    backgroundColor: "#F5F7FA",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E8ECF0",
+  },
+  optionChipText: {
+    fontSize: 14,
+    color: "#1A1A1A",
+    fontWeight: "600",
+  },
+  colorOptions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  colorCircleWrapper: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  colorCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#E8ECF0",
+  },
+  colorCircleWhite: {
+    borderColor: "#D1D5DB",
+  },
+
+  // Sections dépliables
+  collapsibleSection: {
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F5F7FA",
+  },
+  collapsibleHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 2,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  infoDivider: {
-    height: 1,
-    backgroundColor: "#f3f4f6",
-    marginVertical: 10,
+  collapsibleTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1A1A1A",
   },
-  infoLabel: {
-    fontSize: 13,
-    color: "#6b7280",
+  collapsibleContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+
+  // Attributs Spécifiques
+  attributesContent: {
+    gap: 12,
+  },
+  attributeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  attributeLabel: {
+    fontSize: 14,
+    color: "#8B8B8B",
+    flex: 1,
+  },
+  attributeValue: {
+    fontSize: 14,
+    color: "#1A1A1A",
+    fontWeight: "600",
+    flex: 1,
+    textAlign: "right",
+  },
+
+  // Description Technique
+  technicalContent: {
+    gap: 16,
+  },
+  technicalText: {
+    fontSize: 14,
+    color: "#1A1A1A",
+    lineHeight: 22,
+  },
+  technicalDetails: {
+    gap: 8,
+  },
+  technicalDetailItem: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  technicalDetailLabel: {
+    color: "#8B8B8B",
+  },
+  technicalDetailValue: {
+    color: "#1A1A1A",
     fontWeight: "500",
   },
-  infoValue: {
-    fontSize: 13,
-    color: "#111827",
+  viewMoreLink: {
+    color: "#00D991",
     fontWeight: "600",
-    textAlign: "right",
+  },
+
+  // Variantes
+  variantsContent: {
+    gap: 16,
+  },
+  manageVariantsButton: {
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#00D991",
+    alignItems: "center",
+  },
+  manageVariantsButtonText: {
+    fontSize: 15,
+    color: "#00D991",
+    fontWeight: "600",
+  },
+  variantsList: {
+    gap: 1,
+    backgroundColor: "#F5F7FA",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  variantRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  variantIndicator: {
+    width: 3,
+    height: 40,
+    backgroundColor: "#00D991",
+    borderRadius: 2,
+    marginRight: 12,
+  },
+  variantInfo: {
     flex: 1,
-    marginLeft: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  variantNumber: {
+    fontSize: 14,
+    color: "#8B8B8B",
+    fontWeight: "600",
+    width: 20,
+  },
+  variantName: {
+    fontSize: 14,
+    color: "#1A1A1A",
+    fontWeight: "600",
+    flex: 1.5,
+  },
+  variantPrice: {
+    fontSize: 14,
+    color: "#1A1A1A",
+    fontWeight: "600",
+    flex: 1,
+  },
+  variantSKU: {
+    fontSize: 13,
+    color: "#8B8B8B",
+    flex: 1.5,
   },
 
   // Actions Container
@@ -1068,69 +1111,51 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-
     flexDirection: "row",
     padding: 16,
-
-    paddingVertical: 35,
-    backgroundColor: "#ffffff",
+    paddingBottom: 32,
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: "#f3f4f6",
-    gap: 10,
+    borderTopColor: "#F5F7FA",
+    gap: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 4,
-  },
-  editButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#059669",
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-    shadowColor: "#059669",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  editButtonText: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "600",
-    letterSpacing: 0.2,
   },
   deleteButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ef4444",
-    paddingVertical: 14,
+    backgroundColor: "#FFEAE9FF",
+    paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-    shadowColor: "#ef4444",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  deleteButtonDisabled: {
-    backgroundColor: "#9ca3af",
-    shadowOpacity: 0,
   },
   deleteButtonText: {
-    color: "#ffffff",
+    color: "#FF3B30",
     fontSize: 15,
     fontWeight: "600",
-    letterSpacing: 0.2,
+  },
+  editButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#00D991",
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  editButtonText: {
+    color: "#000000",
+    fontSize: 15,
+    fontWeight: "600",
   },
 
-  // Loading & Error States
+  // Loading & Error
   loadingContainer: {
     flex: 1,
     alignItems: "center",
@@ -1139,7 +1164,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: "#6b7280",
+    color: "#8B8B8B",
     fontWeight: "500",
   },
   errorContainer: {
@@ -1149,47 +1174,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     gap: 12,
   },
-  errorIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#fafafa",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-  },
   errorTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#111827",
-    letterSpacing: -0.2,
-  },
-  errorSubtitle: {
-    fontSize: 14,
-    color: "#6b7280",
-    textAlign: "center",
-    lineHeight: 20,
-    fontWeight: "500",
+    color: "#1A1A1A",
   },
   backButton: {
-    backgroundColor: "#059669",
+    backgroundColor: "#00D991",
     paddingHorizontal: 28,
     paddingVertical: 12,
     borderRadius: 12,
     marginTop: 12,
-    shadowColor: "#059669",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
   },
   backButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "600",
-    letterSpacing: 0.2,
   },
 });
 

@@ -1,13 +1,17 @@
 // app/(tabs)/_layout.tsx
-import { Tabs } from "expo-router";
+import { router, Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   CircleDollarSign,
   CreditCard,
   Cuboid,
   Home,
+  ShoppingBasket,
+  
 } from "lucide-react-native";
 import { Platform } from "react-native";
+import { SelectedBusinessManager } from "@/api/selectedBusinessManager";
+import { BusinessesService } from "@/api/services/businessesService";
 
 export default function RootLayout() {
   const insets = useSafeAreaInsets();
@@ -73,7 +77,7 @@ export default function RootLayout() {
         name="catalogue"
         options={{
           title: "Catalogue",
-          tabBarIcon: ({ color }) => <Cuboid size={24} color={color} />,
+          tabBarIcon: ({ color }) => <ShoppingBasket size={24} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -83,6 +87,18 @@ export default function RootLayout() {
           tabBarIcon: ({ color }) => (
             <CircleDollarSign size={24} color={color} />
           ),
+        }}
+        listeners={{
+          tabPress: async (e) => {
+            e.preventDefault();
+            const selected = await SelectedBusinessManager.getSelectedBusiness();
+            if (selected) {
+               await BusinessesService.selectBusiness(selected);
+              router.push(`/(orders)/details/${selected.id}`);
+            }
+            else{
+            router.push('/(professionnel)');}
+          },
         }}
       />
       <Tabs.Screen

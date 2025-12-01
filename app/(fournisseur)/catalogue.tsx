@@ -21,6 +21,7 @@ import {
 // Import des services API
 import {
   Business,
+  BusinessesService,
   Category,
   CategoryService,
   Product,
@@ -49,7 +50,7 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   const [pagination, setPagination] = useState<any>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
-
+  const [activeTab, setActiveTab] = useState<'catalogue' | 'inventaire'>('catalogue');
   const previousBusinessIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
 
@@ -397,16 +398,44 @@ export const ProductListScreen: React.FC<ProductListScreenProps> = ({
   };
 
   const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#333" />
-      </TouchableOpacity>
+    <View style={styles.headerContainer}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
 
-      <Text style={styles.headerTitle}>Catalogue de Produits</Text>
+        <Text style={styles.headerTitle}>Produits</Text>
 
-      <TouchableOpacity onPress={handleCreateProduct} style={styles.iconButton}>
-        <Ionicons name="cube-outline" size={24} color="#10B981" />
-      </TouchableOpacity>
+        <TouchableOpacity onPress={handleCreateProduct} style={styles.iconButton}>
+          <Ionicons name="cube-outline" size={24} color="#10B981" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Onglets Catalogue / Inventaire */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity 
+          style={[styles.tab, styles.tabActive]}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabText, styles.tabTextActive]}>Catalogue</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.tab}
+          onPress={async () => {
+            const selected = await SelectedBusinessManager.getSelectedBusiness();
+              if (selected) {
+                 await BusinessesService.selectBusiness(selected);
+                router.push(`/(inventory)/details/${selected.id}`);
+              }
+              else{
+              router.push('/(professionnel)');}
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.tabText}>Inventaire</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -581,8 +610,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: "#FFFFFF",
+    // borderBottomWidth: 1,
+    // borderBottomColor: "#F3F4F6",
+  },
+  headerContainer: {
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
+  },
+  tabsContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: "#F9FAFB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabActive: {
+    backgroundColor: "#10B981",
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  tabTextActive: {
+    color: "#FFFFFF",
   },
   backButton: {
     padding: 4,
