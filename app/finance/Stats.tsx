@@ -4,7 +4,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import CashFlowChart from "@/components/Chart/CashFlowChart";
@@ -12,8 +11,6 @@ import ExpenseBreakdownChart from "@/components/Chart/ExpenseBreakdownChart";
 import TotalExpensesCard from "@/components/cards/TotalExpensesCard";
 import AvailableBalanceCard from "@/components/cards/AvailableBalanceCard";
 import BackButtonAdmin from "@/components/Admin/BackButton";
-
-const { width } = Dimensions.get("window");
 
 export default function StatsDashboard() {
   return (

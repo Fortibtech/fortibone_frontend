@@ -1,4 +1,4 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -50,13 +50,13 @@ const BalanceCard = ({ balance }: { balance: number }) => {
         </TouchableOpacity>
 
         {/* Transfert */}
-        {/* <TouchableOpacity
+        <TouchableOpacity
           style={[styles.actionBtn, styles.transferBtn]}
           onPress={() => router.push("/finance/TransfertScreen")}
         >
           <MaterialIcons name="swap-horiz" size={24} color="#fff" />
           <Text style={styles.transferText}>Transfert</Text>
-        </TouchableOpacity> */}
+        </TouchableOpacity>
       </View>
     </View>
   );

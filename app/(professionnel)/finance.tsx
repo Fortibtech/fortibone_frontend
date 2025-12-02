@@ -1,9 +1,16 @@
-import { GetWallet, GetWalletTransactions, Wallet } from "@/api/wallet";
+import { GetWallet, Wallet } from "@/api/wallet";
 import WalletHeaderCard from "@/components/Wallet/GetWalletDeposits";
 import StatsCard from "@/components/Wallet/StatsCard";
 import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useFocusEffect } from "expo-router"; // ← La clé
+import { useCallback, useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BackButtonAdmin from "@/components/Admin/BackButton";
 import { RecentTransactions } from "@/components/Wallet/RecentTransactions";
@@ -13,7 +20,6 @@ const WalletScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Récupération du portefeuille
   const fetchWallet = useCallback(async () => {
     try {
       setLoading(true);
@@ -21,32 +27,24 @@ const WalletScreen = () => {
       const data = await GetWallet();
       setWallet(data);
     } catch (err: any) {
-      setError(err.message || "Impossible de récupérer le portefeuille");
+      setError(err.message || "Impossible de charger le portefeuille");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Correction importante : on ne passe PLUS de paramètre "status" invalide
-  // GetWalletTransactions attend soit rien, soit status en MAJUSCULES exactes, ou un filtre valide
-  const fetchTransactions = async () => {
-    try {
-      // Solution 1 (recommandée) : on ne passe aucun filtre status
-      await GetWalletTransactions({ page: 1, limit: 10 });
+  // Recharge TOUT (solde + enfants via focus) quand on revient sur l'écran
+  useFocusEffect(
+    useCallback(() => {
+      fetchWallet();
+    }, [fetchWallet])
+  );
 
-      // Solution 2 (si tu veux vraiment filtrer) :
-      // const res = await GetWalletTransactions({ page: 1, limit: 10, status: "COMPLETED" });
-
-      // Mettre à jour ton composant RecentTransactions avec res.data
-    } catch (err) {
-      console.log("Erreur lors du chargement des transactions", err);
-    }
-  };
-
-  useEffect(() => {
+  // Optionnel : bouton refresh manuel dans le header
+  const handleRefresh = () => {
     fetchWallet();
-    fetchTransactions(); // si RecentTransactions a besoin des données ici
-  }, [fetchWallet]);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -54,27 +52,48 @@ const WalletScreen = () => {
       <View style={styles.header}>
         <BackButtonAdmin />
         <Text style={styles.title}>Finances</Text>
-        <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="ellipsis-vertical" size={22} color="#000" />
+
+        <TouchableOpacity onPress={handleRefresh} style={styles.iconButton}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#58617b" />
+          ) : (
+            <Ionicons name="refresh" size={22} color="#000" />
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* Contenu principal */}
+      {/* Contenu */}
       <View style={styles.content}>
-        {wallet ? (
-          <WalletHeaderCard balance={parseFloat(wallet.balance) || 0} />
+        {loading ? (
+          <View style={{ padding: 40, alignItems: "center" }}>
+            <ActivityIndicator size="large" color="#00af66" />
+            <Text style={{ marginTop: 12, color: "#58617b" }}>
+              Mise à jour du solde...
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={{ padding: 20, alignItems: "center" }}>
+            <Text style={{ color: "red" }}>{error}</Text>
+            <TouchableOpacity onPress={fetchWallet}>
+              <Text style={{ color: "#00af66", marginTop: 10 }}>Réessayer</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
-          <WalletHeaderCard balance={0} />
+          <>
+            <WalletHeaderCard
+              balance={parseFloat(wallet?.balance || "0") || 0}
+            />
+            <StatsCard />
+            <RecentTransactions />
+          </>
         )}
-        <StatsCard />
-        <RecentTransactions />
       </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: "#f8f9fa" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -82,18 +101,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#f2f2f2",
+    borderBottomColor: "#eef0f4",
+    backgroundColor: "#fff",
   },
   iconButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "#eef0f4",
+    backgroundColor: "#f6f8f9",
     alignItems: "center",
     justifyContent: "center",
   },
-  title: { fontSize: 18, fontWeight: "600", color: "#000" },
+  title: { fontSize: 18, fontWeight: "700", color: "#000" },
   content: { flex: 1, padding: 16 },
 });
 
