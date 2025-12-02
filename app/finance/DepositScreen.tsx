@@ -260,7 +260,7 @@ export default function DepositScreen() {
               <View style={styles.card}>
                 <View style={styles.amountContainer}>
                   <Text style={styles.amountValue}>{formattedAmount}</Text>
-                  <Text style={styles.currency}>XAF</Text>
+                  <Text style={styles.currency}>KMF</Text>
                 </View>
 
                 <View style={styles.amountOptions}>

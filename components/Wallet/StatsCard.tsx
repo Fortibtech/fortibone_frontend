@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router"; // ← La magie
 import {
   Dimensions,
   StyleSheet,
@@ -24,7 +24,7 @@ const StatsCard = () => {
       const [inflowResp, outflowResp] = await Promise.all([
         GetWalletTransactions({
           type: "DEPOSIT",
-          status: "COMPLETED", // valeur exacte acceptée par le back
+          status: "COMPLETED",
           limit: 100,
         }),
         GetWalletTransactions({
@@ -34,45 +34,58 @@ const StatsCard = () => {
         }),
       ]);
 
-      const totalInflow = (inflowResp?.data || []).reduce(
-        (sum: number, t: any) => sum + Number(t.amount || 0),
-        0
-      );
-      const totalOutflow = (outflowResp?.data || []).reduce(
-        (sum: number, t: any) => sum + Number(t.amount || 0),
-        0
-      );
+      const totalInflow = (
+        Array.isArray(inflowResp?.data) ? inflowResp.data : []
+      ).reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+      const totalOutflow = (
+        Array.isArray(outflowResp?.data) ? outflowResp.data : []
+      ).reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
 
       setTotalIn(totalInflow);
       setTotalOut(totalOutflow);
     } catch (err) {
       console.error("Erreur fetchTotals:", err);
+      setTotalIn(0);
+      setTotalOut(0);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchTotals();
-  }, []);
+  // Rechargement automatique quand l'écran revient au focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchTotals();
+    }, [])
+  );
 
   return (
     <View style={[styles.container, { width: width - 32 }]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Statistiques</Text>
-        <TouchableOpacity
-          onPress={() => router.push("/finance/Stats")}
-          style={styles.seeMore}
-        >
-          <Text style={styles.seeMoreText}>Voir plus</Text>
-          <Ionicons name="chevron-forward" size={16} color="#58617b" />
-        </TouchableOpacity>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          {/* Bouton refresh manuel (optionnel mais propre) */}
+          <TouchableOpacity onPress={fetchTotals}>
+            <Ionicons name="refresh" size={22} color="#58617b" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/finance/Stats")}
+            style={styles.seeMore}
+          >
+            <Text style={styles.seeMoreText}>Voir plus</Text>
+            <Ionicons name="chevron-forward" size={16} color="#58617b" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Contenu */}
       {loading ? (
-        <ActivityIndicator size="large" color="#00af66" />
+        <View style={{ paddingVertical: 20, alignItems: "center" }}>
+          <ActivityIndicator size="large" color="#00af66" />
+        </View>
       ) : (
         <View style={styles.statsRow}>
           {/* Entrées */}
@@ -80,14 +93,14 @@ const StatsCard = () => {
             <View style={styles.ligne}>
               <Feather
                 name="arrow-up-right"
-                size={16}
+                size={18}
                 color="#00af66"
                 style={styles.arrow}
               />
               <Text style={styles.statLabel}>Entrées</Text>
             </View>
             <Text style={styles.statAmount}>
-              {totalIn.toLocaleString()} KMF
+              {totalIn.toLocaleString("fr-FR")} KMF
             </Text>
           </View>
 
@@ -96,7 +109,7 @@ const StatsCard = () => {
             <View style={styles.ligne}>
               <Feather
                 name="arrow-down-left"
-                size={16}
+                size={18}
                 color="#ef4444"
                 style={styles.arrow}
               />
@@ -105,7 +118,7 @@ const StatsCard = () => {
               </Text>
             </View>
             <Text style={[styles.statAmount, { color: "#ef4444" }]}>
-              {totalOut.toLocaleString()} KMF
+              {totalOut.toLocaleString("fr-FR")} KMF
             </Text>
           </View>
         </View>
@@ -119,6 +132,8 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: "#fff",
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#eef0f4",
     marginTop: 16,
   },
   header: {
@@ -141,7 +156,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   ligne: { flexDirection: "row", gap: 6, alignItems: "center" },
-  arrow: { marginRight: 4 },
+  arrow: { transform: [{ rotate: "20deg" }] },
   statLabel: { fontSize: 13, color: "#58617b", fontWeight: "500" },
   statAmount: { fontSize: 18, fontWeight: "700", color: "#000" },
 });

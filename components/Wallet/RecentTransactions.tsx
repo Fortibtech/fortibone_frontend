@@ -1,5 +1,5 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+
 import {
   Dimensions,
   ScrollView,
@@ -9,23 +9,19 @@ import {
   View,
   ActivityIndicator,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router"; // ← LA clé magique
 import { GetWalletTransactions } from "@/api/wallet";
+
 export const RecentTransactions = () => {
   const router = useRouter();
   const { width } = Dimensions.get("window");
-
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
-
-  useEffect(() => {
-    loadTransactions();
-  }, []);
 
   const loadTransactions = async () => {
     try {
       setLoading(true);
-
       const res = await GetWalletTransactions({ limit: 15 });
 
       // Normalisation robuste du format de réponse
@@ -64,6 +60,13 @@ export const RecentTransactions = () => {
     }
   };
 
+  // Rechargement automatique quand l'écran revient au premier plan
+  useFocusEffect(
+    useCallback(() => {
+      loadTransactions();
+    }, [])
+  );
+
   if (loading) {
     return (
       <View
@@ -85,14 +88,20 @@ export const RecentTransactions = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Transactions Récentes</Text>
 
-        {/* ➜ Bouton "Voir plus" pour aller vers la page détaillée */}
-        <TouchableOpacity
-          onPress={() => router.push("/finance/Transactions")}
-          style={styles.seeMore}
-        >
-          <Text style={styles.seeMoreText}>Voir plus</Text>
-          <Ionicons name="chevron-forward" size={16} color="#58617b" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          {/* Bouton refresh manuel (optionnel mais sympa) */}
+          <TouchableOpacity onPress={loadTransactions}>
+            <Ionicons name="refresh" size={22} color="#58617b" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/finance/Transactions")}
+            style={styles.seeMore}
+          >
+            <Text style={styles.seeMoreText}>Voir plus</Text>
+            <Ionicons name="chevron-forward" size={16} color="#58617b" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ---------- Liste scrollable ---------- */}
@@ -102,7 +111,13 @@ export const RecentTransactions = () => {
         showsVerticalScrollIndicator={false}
       >
         {transactions.length === 0 ? (
-          <Text style={{ textAlign: "center", paddingVertical: 20 }}>
+          <Text
+            style={{
+              textAlign: "center",
+              paddingVertical: 30,
+              color: "#58617b",
+            }}
+          >
             Aucune transaction trouvée.
           </Text>
         ) : (
@@ -160,9 +175,8 @@ export const RecentTransactions = () => {
 export default RecentTransactions;
 
 /* ------------------------------------------------------------------
- STYLES (inchangés, on respecte totalement ton UI/UX existant)
+   STYLES (j'ai juste ajouté un petit truc pour le bouton refresh)
 ------------------------------------------------------------------ */
-
 const styles = StyleSheet.create({
   container: {
     padding: 12,
