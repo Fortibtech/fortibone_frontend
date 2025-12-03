@@ -1,0 +1,15 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:1907",
+  "executionArgs": {
+    "projectName": "fortibone_frontend",
+    "projectPath": "D:\\workspace\\fortibone_frontend",
+    "testIds": [],
+    "additionalInstruction": "Run all frontend tests; include login flow if needed; report failures and screenshots if available.",
+    "envs": {
+      "API_KEY": "sk-user-3ivshdP2iND1SbmqGUNlw8y9x3N-XjyhnwGBtdnHu8FQ-tI_HQRHDYpNOf-_O9ZfWN9MIOU7mna3o4NkmFb5MTsljPdukudUjsOV0Mf980SHgphqECkL9BynE0j4AWfHrsc"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "project": "fortibone_frontend",
+  "baseUrl": "http://localhost:1907",
+  "description": "Minimal frontend test plan for KomoraLink — smoke tests to verify startup, home page and auth navigation.",
+  "tests": [
+    {
+      "id": "startup-001",
+      "name": "Dev server reachable",
+      "description": "Verify the web app is reachable at the baseUrl and returns HTTP 200.",
+      "type": "http",
+      "target": "/",
+      "assert": { "status": 200 }
+    },
+    {
+      "id": "ui-001",
+      "name": "Home page loads",
+      "description": "Open the home page and check for main app container or header text.",
+      "type": "e2e",
+      "path": "/",
+      "assert_selector": ["[data-testid=app-root]", "header"]
+    },
+    {
+      "id": "auth-001",
+      "name": "Navigate to login",
+      "description": "Navigate to the login screen and check login form presence.",
+      "type": "e2e",
+      "path": "/login",
+      "assert_selector": ["input[name='email']", "input[name='password']"]
+    }
+  ]
+}

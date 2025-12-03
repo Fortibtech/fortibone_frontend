@@ -30,7 +30,7 @@ const Index = () => {
           source={require("../assets/images/logo/white.png")}
           style={styles.logo}
         />
-        <Text style={styles.title}>FortibOne</Text>
+        <Text style={styles.title}>KomoraLink</Text>
       </View>
 
       <View style={styles.loader}>

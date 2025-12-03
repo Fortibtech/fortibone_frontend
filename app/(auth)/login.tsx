@@ -167,7 +167,7 @@ const Login = () => {
         />
         <View style={styles.titleText}>
           <Text style={styles.mainTitle}>
-            Connexion au compte{" "}
+            Connexion –{" "}
             <Text style={styles.subTitle}>{capitalizedProfile}</Text>
           </Text>
         </View>
@@ -213,7 +213,7 @@ const Login = () => {
         />
 
         <View style={styles.forgotRow}>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.checkboxContainer}
             onPress={() => setRememberMe(!rememberMe)}
           >
@@ -225,7 +225,7 @@ const Login = () => {
               color={rememberMe ? "#059669" : "#ccc"}
             />
             <Text style={styles.rememberText}>Se rappeler de moi</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             onPress={() => router.push("/(auth)/ResetPassword")}

@@ -1,10 +1,17 @@
-"use client"
+"use client";
 
-import { Ionicons } from "@expo/vector-icons"
-import * as ImagePicker from "expo-image-picker"
-import { Camera, ChevronDown, Package, Search, Tag, X } from "lucide-react-native"
-import type React from "react"
-import { useEffect, useState } from "react"
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import {
+  Camera,
+  ChevronDown,
+  Package,
+  Search,
+  Tag,
+  X,
+} from "lucide-react-native";
+import type React from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,35 +27,47 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native"
+} from "react-native";
 
-import { type Category, CategoryService, type CreateProductData, type Product, ProductService } from "@/api"
+import {
+  type Category,
+  CategoryService,
+  type CreateProductData,
+  type Product,
+  ProductService,
+} from "@/api";
 
 interface EditProductScreenProps {
-  product: Product
-  onClose: () => void
-  onSaved: () => void
+  product: Product;
+  onClose: () => void;
+  onSaved: () => void;
 }
 
-export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, onClose, onSaved }) => {
-  const [loading, setLoading] = useState(false)
-  const [imageUri, setImageUri] = useState<string>(product.imageUrl || "")
+export const EditProductScreen: React.FC<EditProductScreenProps> = ({
+  product,
+  onClose,
+  onSaved,
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [imageUri, setImageUri] = useState<string>(product.imageUrl || "");
 
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loadingCategories, setLoadingCategories] = useState(true)
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
-  const [categoryModalVisible, setCategoryModalVisible] = useState(false)
-  const [categorySearchText, setCategorySearchText] = useState("")
-  const [filteredCategories, setFilteredCategories] = useState<Category[]>([])
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+    null
+  );
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [categorySearchText, setCategorySearchText] = useState("");
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
 
   const [formData, setFormData] = useState<CreateProductData>({
     name: product.name,
     description: product.description,
     categoryId: product.categoryId,
     salesUnit: product.salesUnit,
-  })
+  });
 
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const salesUnitOptions = [
     {
@@ -61,124 +80,144 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
       label: "LOT",
       description: "Vente par lot ou pack groupé",
     },
-  ]
+  ];
 
-  const [salesUnitModalVisible, setSalesUnitModalVisible] = useState(false)
+  const [salesUnitModalVisible, setSalesUnitModalVisible] = useState(false);
   const [selectedSalesUnit, setSelectedSalesUnit] = useState<{
-    value: string
-    label: string
-    description: string
-  } | null>(null)
+    value: string;
+    label: string;
+    description: string;
+  } | null>(null);
 
   useEffect(() => {
-    loadCategories()
-    initializeSalesUnit()
-  }, [])
+    loadCategories();
+    initializeSalesUnit();
+  }, []);
 
   useEffect(() => {
     if (categorySearchText.trim()) {
       const filtered = categories.filter(
         (category) =>
-          category.name.toLowerCase().includes(categorySearchText.toLowerCase()) ||
-          (category.description && category.description.toLowerCase().includes(categorySearchText.toLowerCase())),
-      )
-      setFilteredCategories(filtered)
+          category.name
+            .toLowerCase()
+            .includes(categorySearchText.toLowerCase()) ||
+          (category.description &&
+            category.description
+              .toLowerCase()
+              .includes(categorySearchText.toLowerCase()))
+      );
+      setFilteredCategories(filtered);
     } else {
-      setFilteredCategories(categories)
+      setFilteredCategories(categories);
     }
-  }, [categorySearchText, categories])
+  }, [categorySearchText, categories]);
 
   const initializeSalesUnit = () => {
-    const defaultUnit = salesUnitOptions.find((unit) => unit.value === product.salesUnit)
+    const defaultUnit = salesUnitOptions.find(
+      (unit) => unit.value === product.salesUnit
+    );
     if (defaultUnit) {
-      setSelectedSalesUnit(defaultUnit)
+      setSelectedSalesUnit(defaultUnit);
     }
-  }
+  };
 
   const loadCategories = async () => {
     try {
-      setLoadingCategories(true)
-      const categoriesData = await CategoryService.getCategories()
-      setCategories(categoriesData)
-      setFilteredCategories(categoriesData)
+      setLoadingCategories(true);
+      const categoriesData = await CategoryService.getCategories();
+      setCategories(categoriesData);
+      setFilteredCategories(categoriesData);
 
-      const currentCategory = categoriesData.find((cat) => cat.id === product.categoryId)
+      const currentCategory = categoriesData.find(
+        (cat) => cat.id === product.categoryId
+      );
       if (currentCategory) {
-        setSelectedCategory(currentCategory)
+        setSelectedCategory(currentCategory);
       }
     } catch (error) {
-      console.error("Erreur lors du chargement des catégories:", error)
-      Alert.alert("Erreur", "Impossible de charger les catégories")
+      console.error("Erreur lors du chargement des catégories:", error);
+      Alert.alert("Erreur", "Impossible de charger les catégories");
     } finally {
-      setLoadingCategories(false)
+      setLoadingCategories(false);
     }
-  }
+  };
 
   const updateFormData = (field: keyof CreateProductData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData((prev) => ({ ...prev, [field]: value }));
 
     if (formErrors[field]) {
-      setFormErrors((prev) => ({ ...prev, [field]: "" }))
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
     }
-  }
+  };
 
   const handleCategorySelect = (category: Category) => {
-    setSelectedCategory(category)
-    setFormData((prev) => ({ ...prev, categoryId: category.id }))
-    setCategoryModalVisible(false)
-    setCategorySearchText("")
+    setSelectedCategory(category);
+    setFormData((prev) => ({ ...prev, categoryId: category.id }));
+    setCategoryModalVisible(false);
+    setCategorySearchText("");
 
     if (formErrors.categoryId) {
-      setFormErrors((prev) => ({ ...prev, categoryId: "" }))
+      setFormErrors((prev) => ({ ...prev, categoryId: "" }));
     }
-  }
+  };
 
-  const handleSalesUnitSelect = (unit: { value: string; label: string; description: string }) => {
-    setSelectedSalesUnit(unit)
-    setFormData((prev) => ({ ...prev, salesUnit: unit.value as "UNIT" | "LOT" }))
-    setSalesUnitModalVisible(false)
+  const handleSalesUnitSelect = (unit: {
+    value: string;
+    label: string;
+    description: string;
+  }) => {
+    setSelectedSalesUnit(unit);
+    setFormData((prev) => ({
+      ...prev,
+      salesUnit: unit.value as "UNIT" | "LOT",
+    }));
+    setSalesUnitModalVisible(false);
 
     if (formErrors.salesUnit) {
-      setFormErrors((prev) => ({ ...prev, salesUnit: "" }))
+      setFormErrors((prev) => ({ ...prev, salesUnit: "" }));
     }
-  }
+  };
 
   const validateForm = (): boolean => {
-    const errors: Record<string, string> = {}
+    const errors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      errors.name = "Le nom du produit est obligatoire"
+      errors.name = "Le nom du produit est obligatoire";
     } else if (formData.name.trim().length < 3) {
-      errors.name = "Le nom doit contenir au moins 3 caractères"
+      errors.name = "Le nom doit contenir au moins 3 caractères";
     }
 
     if (!formData.description.trim()) {
-      errors.description = "La description est obligatoire"
+      errors.description = "La description est obligatoire";
     } else if (formData.description.trim().length < 10) {
-      errors.description = "La description doit contenir au moins 10 caractères"
+      errors.description =
+        "La description doit contenir au moins 10 caractères";
     }
 
     if (!formData.categoryId || !selectedCategory) {
-      errors.categoryId = "Veuillez sélectionner une catégorie"
+      errors.categoryId = "Veuillez sélectionner une catégorie";
     }
 
     if (!formData.salesUnit) {
-      errors.salesUnit = "L'unité de vente est obligatoire"
+      errors.salesUnit = "L'unité de vente est obligatoire";
     }
 
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return
+    if (!validateForm()) return;
 
     try {
-      setLoading(true)
+      setLoading(true);
 
-      const updatedProduct = await ProductService.updateProduct(product.id, formData)
+      const updatedProduct = await ProductService.updateProduct(
+        product.id,
+        formData
+      );
 
-      console.log("✅ Produit mis à jour:", updatedProduct.name)
+      console.log("✅ Produit mis à jour:", updatedProduct.name);
 
       if (imageUri && imageUri !== product.imageUrl) {
         try {
@@ -186,31 +225,38 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
             uri: imageUri,
             type: "image/jpeg",
             name: "product.jpg",
-          } as any)
+          } as any);
         } catch (uploadError) {
-          console.warn("⚠️ Erreur lors de l'upload de l'image:", uploadError)
+          console.warn("⚠️ Erreur lors de l'upload de l'image:", uploadError);
         }
       }
 
-      Alert.alert("Succès", `Produit "${updatedProduct.name}" mis à jour avec succès !`)
+      Alert.alert(
+        "Succès",
+        `Produit "${updatedProduct.name}" mis à jour avec succès !`
+      );
 
-      onSaved()
+      onSaved();
     } catch (error) {
-      console.error("❌ Erreur lors de la modification du produit:", error)
-      Alert.alert("Erreur", "Impossible de modifier le produit. Veuillez réessayer.")
+      console.error("❌ Erreur lors de la modification du produit:", error);
+      Alert.alert(
+        "Erreur",
+        "Impossible de modifier le produit. Veuillez réessayer."
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
       Alert.alert(
         "Permission refusée",
-        "Vous devez autoriser l'accès à la bibliothèque de photos pour ajouter une image.",
-      )
-      return
+        "Vous devez autoriser l'accès à la bibliothèque de photos pour ajouter une image."
+      );
+      return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -218,38 +264,41 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
-    })
+    });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setImageUri(result.assets[0].uri)
+      setImageUri(result.assets[0].uri);
     }
-  }
+  };
 
   const takePhoto = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert("Permission refusée", "Vous devez autoriser l'accès à la caméra pour prendre une photo.")
-      return
+      Alert.alert(
+        "Permission refusée",
+        "Vous devez autoriser l'accès à la caméra pour prendre une photo."
+      );
+      return;
     }
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
-    })
+    });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setImageUri(result.assets[0].uri)
+      setImageUri(result.assets[0].uri);
     }
-  }
+  };
 
   const showImageOptions = () => {
     Alert.alert("Changer l'image", "Choisissez une option", [
       { text: "Annuler", style: "cancel" },
       { text: "Galerie", onPress: pickImage },
       { text: "Caméra", onPress: takePhoto },
-    ])
-  }
+    ]);
+  };
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -264,16 +313,24 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
         disabled={loading}
         style={[styles.saveButton, loading && styles.saveButtonDisabled]}
       >
-        {loading ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.saveButtonText}>Sauver</Text>}
+        {loading ? (
+          <ActivityIndicator size="small" color="white" />
+        ) : (
+          <Text style={styles.saveButtonText}>Sauver</Text>
+        )}
       </TouchableOpacity>
     </View>
-  )
+  );
 
   const renderImageSection = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>📷 Image du produit</Text>
 
-      <TouchableOpacity style={styles.imageContainer} onPress={showImageOptions} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.imageContainer}
+        onPress={showImageOptions}
+        activeOpacity={0.7}
+      >
         {imageUri ? (
           <>
             <Image source={{ uri: imageUri }} style={styles.productImage} />
@@ -286,31 +343,40 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
           <View style={styles.imagePlaceholder}>
             <Package size={48} color="#d1d5db" />
             <Text style={styles.imagePlaceholderText}>Ajouter une image</Text>
-            <Text style={styles.imagePlaceholderSubtext}>Touchez pour sélectionner</Text>
+            <Text style={styles.imagePlaceholderSubtext}>
+              Touchez pour sélectionner
+            </Text>
           </View>
         )}
       </TouchableOpacity>
     </View>
-  )
+  );
 
   const renderCategorySelector = () => (
     <View style={styles.formGroup}>
       <Text style={styles.label}>Catégorie *</Text>
       <TouchableOpacity
-        style={[styles.categorySelector, formErrors.categoryId && styles.inputError]}
+        style={[
+          styles.categorySelector,
+          formErrors.categoryId && styles.inputError,
+        ]}
         onPress={() => setCategoryModalVisible(true)}
         disabled={loadingCategories}
       >
         {loadingCategories ? (
           <View style={styles.categorySelectorContent}>
             <ActivityIndicator size="small" color="#8b92a1" />
-            <Text style={styles.categorySelectorText}>Chargement des catégories...</Text>
+            <Text style={styles.categorySelectorText}>
+              Chargement des catégories...
+            </Text>
           </View>
         ) : selectedCategory ? (
           <View style={styles.categorySelectorContent}>
             <View style={styles.selectedCategoryInfo}>
               <Tag size={16} color="#059669" />
-              <Text style={styles.selectedCategoryName}>{selectedCategory.name}</Text>
+              <Text style={styles.selectedCategoryName}>
+                {selectedCategory.name}
+              </Text>
               {selectedCategory.description && (
                 <Text style={styles.selectedCategoryDesc} numberOfLines={1}>
                   {selectedCategory.description}
@@ -321,27 +387,36 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
           </View>
         ) : (
           <View style={styles.categorySelectorContent}>
-            <Text style={styles.categorySelectorPlaceholder}>Sélectionner une catégorie</Text>
+            <Text style={styles.categorySelectorPlaceholder}>
+              Sélectionner une catégorie
+            </Text>
             <ChevronDown size={20} color="#8b92a1" />
           </View>
         )}
       </TouchableOpacity>
-      {formErrors.categoryId && <Text style={styles.errorText}>{formErrors.categoryId}</Text>}
+      {formErrors.categoryId && (
+        <Text style={styles.errorText}>{formErrors.categoryId}</Text>
+      )}
     </View>
-  )
+  );
 
   const renderSalesUnitSelector = () => (
     <View style={styles.formGroup}>
       <Text style={styles.label}>Unité de vente *</Text>
       <TouchableOpacity
-        style={[styles.categorySelector, formErrors.salesUnit && styles.inputError]}
+        style={[
+          styles.categorySelector,
+          formErrors.salesUnit && styles.inputError,
+        ]}
         onPress={() => setSalesUnitModalVisible(true)}
       >
         {selectedSalesUnit ? (
           <View style={styles.categorySelectorContent}>
             <View style={styles.selectedCategoryInfo}>
               <Package size={16} color="#059669" />
-              <Text style={styles.selectedCategoryName}>{selectedSalesUnit.label}</Text>
+              <Text style={styles.selectedCategoryName}>
+                {selectedSalesUnit.label}
+              </Text>
               <Text style={styles.selectedCategoryDesc} numberOfLines={1}>
                 {selectedSalesUnit.description}
               </Text>
@@ -350,14 +425,18 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
           </View>
         ) : (
           <View style={styles.categorySelectorContent}>
-            <Text style={styles.categorySelectorPlaceholder}>Sélectionner une unité de vente</Text>
+            <Text style={styles.categorySelectorPlaceholder}>
+              Sélectionner une unité de vente
+            </Text>
             <ChevronDown size={20} color="#8b92a1" />
           </View>
         )}
       </TouchableOpacity>
-      {formErrors.salesUnit && <Text style={styles.errorText}>{formErrors.salesUnit}</Text>}
+      {formErrors.salesUnit && (
+        <Text style={styles.errorText}>{formErrors.salesUnit}</Text>
+      )}
     </View>
-  )
+  );
 
   const renderCategoryModal = () => (
     <Modal
@@ -401,16 +480,28 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
             keyExtractor={(item) => item.id}
             renderItem={({ item: category }) => (
               <TouchableOpacity
-                style={[styles.categoryItem, selectedCategory?.id === category.id && styles.selectedCategoryItem]}
+                style={[
+                  styles.categoryItem,
+                  selectedCategory?.id === category.id &&
+                    styles.selectedCategoryItem,
+                ]}
                 onPress={() => handleCategorySelect(category)}
               >
                 <View style={styles.categoryItemContent}>
-                  <Tag size={20} color={selectedCategory?.id === category.id ? "#059669" : "#8b92a1"} />
+                  <Tag
+                    size={20}
+                    color={
+                      selectedCategory?.id === category.id
+                        ? "#059669"
+                        : "#8b92a1"
+                    }
+                  />
                   <View style={styles.categoryItemInfo}>
                     <Text
                       style={[
                         styles.categoryItemName,
-                        selectedCategory?.id === category.id && styles.selectedCategoryItemText,
+                        selectedCategory?.id === category.id &&
+                          styles.selectedCategoryItemText,
                       ]}
                     >
                       {category.name}
@@ -419,7 +510,8 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
                       <Text
                         style={[
                           styles.categoryItemDesc,
-                          selectedCategory?.id === category.id && styles.selectedCategoryItemDesc,
+                          selectedCategory?.id === category.id &&
+                            styles.selectedCategoryItemDesc,
                         ]}
                       >
                         {category.description}
@@ -428,7 +520,9 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
                   </View>
                 </View>
 
-                {selectedCategory?.id === category.id && <Ionicons name="checkmark" size={24} color="#059669" />}
+                {selectedCategory?.id === category.id && (
+                  <Ionicons name="checkmark" size={24} color="#059669" />
+                )}
               </TouchableOpacity>
             )}
             showsVerticalScrollIndicator={false}
@@ -436,7 +530,9 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
               <View style={styles.emptyContainer}>
                 <Tag size={48} color="#d1d5db" />
                 <Text style={styles.emptyTitle}>
-                  {categorySearchText ? "Aucune catégorie trouvée" : "Aucune catégorie disponible"}
+                  {categorySearchText
+                    ? "Aucune catégorie trouvée"
+                    : "Aucune catégorie disponible"}
                 </Text>
                 <Text style={styles.emptySubtitle}>
                   {categorySearchText
@@ -449,7 +545,7 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
         )}
       </SafeAreaView>
     </Modal>
-  )
+  );
 
   const renderSalesUnitModal = () => (
     <Modal
@@ -474,18 +570,40 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
           keyExtractor={(item) => item.value}
           renderItem={({ item: unit }) => (
             <TouchableOpacity
-              style={[styles.categoryItem, selectedSalesUnit?.value === unit.value && styles.selectedCategoryItem]}
+              style={[
+                styles.categoryItem,
+                selectedSalesUnit?.value === unit.value &&
+                  styles.selectedCategoryItem,
+              ]}
               onPress={() => handleSalesUnitSelect(unit)}
             >
               <View style={styles.categoryItemContent}>
                 {unit.value === "UNIT" ? (
-                  <Package size={20} color={selectedSalesUnit?.value === unit.value ? "#059669" : "#8b92a1"} />
+                  <Package
+                    size={20}
+                    color={
+                      selectedSalesUnit?.value === unit.value
+                        ? "#059669"
+                        : "#8b92a1"
+                    }
+                  />
                 ) : (
                   <View style={styles.lotIcon}>
-                    <Package size={16} color={selectedSalesUnit?.value === unit.value ? "#059669" : "#8b92a1"} />
                     <Package
                       size={16}
-                      color={selectedSalesUnit?.value === unit.value ? "#059669" : "#8b92a1"}
+                      color={
+                        selectedSalesUnit?.value === unit.value
+                          ? "#059669"
+                          : "#8b92a1"
+                      }
+                    />
+                    <Package
+                      size={16}
+                      color={
+                        selectedSalesUnit?.value === unit.value
+                          ? "#059669"
+                          : "#8b92a1"
+                      }
                       style={{ marginLeft: -4 }}
                     />
                   </View>
@@ -494,7 +612,8 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
                   <Text
                     style={[
                       styles.categoryItemName,
-                      selectedSalesUnit?.value === unit.value && styles.selectedCategoryItemText,
+                      selectedSalesUnit?.value === unit.value &&
+                        styles.selectedCategoryItemText,
                     ]}
                   >
                     {unit.label}
@@ -502,7 +621,8 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
                   <Text
                     style={[
                       styles.categoryItemDesc,
-                      selectedSalesUnit?.value === unit.value && styles.selectedCategoryItemDesc,
+                      selectedSalesUnit?.value === unit.value &&
+                        styles.selectedCategoryItemDesc,
                     ]}
                   >
                     {unit.description}
@@ -510,20 +630,25 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
                 </View>
               </View>
 
-              {selectedSalesUnit?.value === unit.value && <Ionicons name="checkmark" size={24} color="#059669" />}
+              {selectedSalesUnit?.value === unit.value && (
+                <Ionicons name="checkmark" size={24} color="#059669" />
+              )}
             </TouchableOpacity>
           )}
           showsVerticalScrollIndicator={false}
         />
       </SafeAreaView>
     </Modal>
-  )
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       {renderHeader()}
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+      >
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.scrollContent}
@@ -541,16 +666,22 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
                 style={[styles.input, formErrors.name && styles.inputError]}
                 value={formData.name}
                 onChangeText={(text) => updateFormData("name", text)}
-                placeholder="Ex: T-shirt Logo FortiBone"
+                placeholder="Ex: T-shirt logo KomoraLink"
                 placeholderTextColor="#b0b8c0"
               />
-              {formErrors.name && <Text style={styles.errorText}>{formErrors.name}</Text>}
+              {formErrors.name && (
+                <Text style={styles.errorText}>{formErrors.name}</Text>
+              )}
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Description *</Text>
               <TextInput
-                style={[styles.input, styles.textArea, formErrors.description && styles.inputError]}
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  formErrors.description && styles.inputError,
+                ]}
                 value={formData.description}
                 onChangeText={(text) => updateFormData("description", text)}
                 placeholder="Décrivez votre produit en détail..."
@@ -559,7 +690,9 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
                 numberOfLines={4}
                 textAlignVertical="top"
               />
-              {formErrors.description && <Text style={styles.errorText}>{formErrors.description}</Text>}
+              {formErrors.description && (
+                <Text style={styles.errorText}>{formErrors.description}</Text>
+              )}
             </View>
 
             {renderCategorySelector()}
@@ -571,8 +704,8 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({ product, o
       {renderCategoryModal()}
       {renderSalesUnitModal()}
     </SafeAreaView>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -883,4 +1016,4 @@ const styles = StyleSheet.create({
     color: "#8b92a1",
     fontWeight: "400",
   },
-})
+});

@@ -9,13 +9,12 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 // Interface pour les props de CustomButton
-
 
 // Type pour le profil
 type ProfileType = "particulier" | "professionnel" | null;
@@ -64,7 +63,7 @@ const Onboarding: React.FC = () => {
         <View style={styles.headerContainer}>
           <Text style={styles.headerTitle}>Quel est votre profil ?</Text>
           <Text style={styles.headerSubtitle}>
-            Sélectionnez le type de profil qui vous correspond
+            Veuillez sélectionner votre profil !
           </Text>
         </View>
         <View style={styles.optionsContainer}>
@@ -78,9 +77,7 @@ const Onboarding: React.FC = () => {
             <Ionicons name="person-outline" size={32} color="#059669" />
             <View style={styles.optionTextContainer}>
               <Text style={styles.optionTitle}>Particulier</Text>
-              <Text style={styles.optionDescription}>
-                Acheteur, client ou restaurant
-              </Text>
+              <Text style={styles.optionDescription}>Consommateur</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity

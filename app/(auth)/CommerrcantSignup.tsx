@@ -1075,7 +1075,7 @@ const FortibOneOnboarding: React.FC = () => {
       <Header />
       <View style={styles.content}>
         <Text style={styles.question}>
-          Que souhaitez-vous faire sur FortibOne ?
+          Que souhaitez-vous faire sur KomoraLink ?
         </Text>
         {[
           { id: "COMMERCANT", title: "Je suis COMMERÇANT" },
@@ -1677,8 +1677,8 @@ const FortibOneOnboarding: React.FC = () => {
             <Text style={styles.stepTitle}>Mot de passe</Text>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Mot de passe *</Text>
-           0   <View style={styles.passwordInput}>
+              <Text style={styles.label}>Mot de passe *</Text>0{" "}
+              <View style={styles.passwordInput}>
                 <TextInput
                   style={[
                     styles.inputPassword,
@@ -1806,7 +1806,7 @@ const FortibOneOnboarding: React.FC = () => {
         </View>
         <Text style={styles.successTitle}>Compte créé avec succès !</Text>
         <Text style={styles.successSubtitle}>
-          Bienvenue sur FortibOne {personalData.prenom} !{"\n"}
+          Bienvenue sur KomoraLink {personalData.prenom} !{"\n"}
           Votre commerce {businessData.name} est maintenant actif.
         </Text>
         <TouchableOpacity

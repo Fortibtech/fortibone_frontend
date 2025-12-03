@@ -1,0 +1,23 @@
+{
+  "title": "KomoraLink Frontend - Standardized PRD",
+  "summary": "Minimal PRD generated for TestSprite runs. Contains main user flows: onboarding, authentication, product browsing, cart & checkout, inventory and orders.",
+  "primary_flows": [
+    {
+      "name": "User onboarding and authentication",
+      "description": "User can register, login, reset password via OTP flows."
+    },
+    {
+      "name": "Product discovery and cart",
+      "description": "Users can browse products, view details, add to cart and view shopping cart."
+    },
+    {
+      "name": "Inventory management",
+      "description": "Business users can view inventory, receive stock, and view expiring products."
+    },
+    {
+      "name": "Orders and transactions",
+      "description": "Users can view orders and transactions, and manage orders."
+    }
+  ],
+  "notes": "This is a minimal PRD to satisfy TestSprite MCP CLI requirements for test generation."
+}

@@ -60,7 +60,7 @@ const Index = () => {
             <BackButtonAdmin />
           </View>
           <Text style={styles.question}>
-            Que souhaitez-vous faire sur FortibOne ?
+            Que souhaitez-vous faire sur KomoraLink ?
           </Text>
         </View>
 

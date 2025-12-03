@@ -1,0 +1,123 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "React 19",
+    "React Native (Expo)",
+    "expo-router",
+    "Expo SDK 54",
+    "React Native Web",
+    "Zustand (state management)",
+    "Axios (http client)",
+    "Stripe (payments)",
+    "React Navigation",
+    "Lottie",
+    "Node.js / npm"
+  ],
+  "features": [
+    {
+      "name": "Routing & Screens",
+      "description": "App routing and page structure using `expo-router`. Contains nested route groups and many screens for analytics, auth, inventory, orders, product-details, tabs, and more.",
+      "files": [
+        "app/_layout.tsx",
+        "app/index.tsx",
+        "app/onboarding.tsx",
+        "app/(analytics)/_layout.tsx",
+        "app/(analytics)/index.tsx",
+        "app/(auth)/_layout.tsx",
+        "app/(auth)/login.tsx",
+        "app/(achats)/[bussinessId].tsx",
+        "app/(achats)/[productid].tsx",
+        "app/(achats)/shopping-cart.tsx"
+      ]
+    },
+    {
+      "name": "API / Services",
+      "description": "API wrappers, service modules and helpers that call backend endpoints (axios instance, caching, authentication helpers, product/order/customer services).",
+      "files": [
+        "api/index.ts",
+        "api/axiosInstance.ts",
+        "api/authService.ts",
+        "api/Products.ts",
+        "api/Orders.ts",
+        "api/customers.ts",
+        "client/services/productService.ts",
+        "client/services/paiement.ts",
+        "client/business.ts"
+      ]
+    },
+    {
+      "name": "Components",
+      "description": "Shared UI components (buttons, inputs, charts, modals, date pickers, sidebar, etc). Reused across screens.",
+      "files": [
+        "components/CustomButton.tsx",
+        "components/InputField.tsx",
+        "components/GraphCard.tsx",
+        "components/BackButton.tsx",
+        "components/DatePickerModal.tsx",
+        "components/SalesPieChart.tsx",
+        "components/sidebar.tsx",
+        "components/Achat/",
+        "components/Business/",
+        "components/common/"
+      ]
+    },
+    {
+      "name": "State Management / Stores",
+      "description": "Lightweight stores using Zustand and some custom onboarding & user stores.",
+      "files": [
+        "store/onboardingStore.ts",
+        "store/userStore.ts",
+        "stores/achatCartStore.ts",
+        "stores/useCartStore.ts",
+        "stores/useOnboardingStore.ts"
+      ]
+    },
+    {
+      "name": "Types & Validation",
+      "description": "Type definitions and validation schemas for forms and API payloads.",
+      "files": [
+        "types/app.ts",
+        "types/auth.ts",
+        "api/validation.ts",
+        "types/Product.ts"
+      ]
+    },
+    {
+      "name": "Assets & Fonts",
+      "description": "Project assets including fonts and images used by the app and web build.",
+      "files": ["assets/fonts/", "assets/images/"]
+    },
+    {
+      "name": "Scripts & Tooling",
+      "description": "Project scripts and configuration (expo start scripts, linting, TypeScript config).",
+      "files": [
+        "package.json",
+        "scripts/reset-project.js",
+        "tsconfig.json",
+        "eslint.config.js"
+      ]
+    },
+    {
+      "name": "Payments",
+      "description": "Stripe integration and payment helpers used in client/service modules and screens.",
+      "files": [
+        "client/services/paiement.ts",
+        "api/payments (if present)",
+        "@stripe/react-stripe-js",
+        "@stripe/stripe-react-native"
+      ]
+    },
+    {
+      "name": "Web target (Expo web)",
+      "description": "Expo configured to run on web via `expo start --web`. Default web dev port is 19006 (expo web).",
+      "files": ["package.json", "expo-env.d.ts"]
+    }
+  ],
+  "notes": {
+    "entrypoint": "expo-router/entry (from package.json main)",
+    "web_dev_port": 19006,
+    "recommended_start": "Use `npm run web` or `expo start --web` to run the app on web so TestSprite can access it.",
+    "generated_by": "assistant",
+    "generated_at": "2025-11-12T00:00:00Z"
+  }
+}

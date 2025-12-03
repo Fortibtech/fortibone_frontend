@@ -1,22 +1,34 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { View, Text, TouchableOpacity, Modal, Clipboard } from "react-native"
-import MaterialIcons from "react-native-vector-icons/MaterialIcons"
+import { useState } from "react";
+import { View, Text, TouchableOpacity, Modal, Clipboard } from "react-native";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
-export default function ShareAppModal({ visible, onClose }: {visible: boolean, onClose: () => void}) {
-  const [copied, setCopied] = useState(false)
-  const shareLink = "https://fortibon.fortitech.com/qGmm8Ly8?"
+export default function ShareAppModal({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const shareLink = "https://fortibon.fortitech.com/qGmm8Ly8?";
 
   const handleCopy = () => {
-    Clipboard.setString(shareLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    Clipboard.setString(shareLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <Modal transparent={true} animationType="fade" visible={visible}>
-      <View style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "flex-end" }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          justifyContent: "flex-end",
+        }}
+      >
         <View
           style={{
             backgroundColor: "#FFFFFF",
@@ -28,13 +40,30 @@ export default function ShareAppModal({ visible, onClose }: {visible: boolean, o
           }}
         >
           {/* Title */}
-          <Text style={{ fontSize: 18, fontWeight: "600", color: "#333333", marginBottom: 8, textAlign: "center" }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "600",
+              color: "#333333",
+              marginBottom: 8,
+              textAlign: "center",
+            }}
+          >
             Partager l'application
           </Text>
 
           {/* Description */}
-          <Text style={{ fontSize: 14, color: "#666666", textAlign: "center", marginBottom: 16, lineHeight: 20 }}>
-            Inviter vos proches à utiliser l'application FortibOne et recevez des bonus.
+          <Text
+            style={{
+              fontSize: 14,
+              color: "#666666",
+              textAlign: "center",
+              marginBottom: 16,
+              lineHeight: 20,
+            }}
+          >
+            Inviter vos proches à utiliser l'application KomoraLink et recevez
+            des bonus.
           </Text>
 
           {/* Link Input */}
@@ -50,7 +79,11 @@ export default function ShareAppModal({ visible, onClose }: {visible: boolean, o
             }}
           >
             <MaterialIcons name="link" size={20} color="#1BB874" />
-            <Text style={{ fontSize: 13, color: "#1BB874", marginLeft: 8, flex: 1 }}>{shareLink}</Text>
+            <Text
+              style={{ fontSize: 13, color: "#1BB874", marginLeft: 8, flex: 1 }}
+            >
+              {shareLink}
+            </Text>
           </View>
 
           {/* Buttons */}
@@ -66,7 +99,11 @@ export default function ShareAppModal({ visible, onClose }: {visible: boolean, o
               }}
               onPress={handleCopy}
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#1BB874" }}>{copied ? "✓" : "Copier"}</Text>
+              <Text
+                style={{ fontSize: 14, fontWeight: "600", color: "#1BB874" }}
+              >
+                {copied ? "✓" : "Copier"}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -80,16 +117,24 @@ export default function ShareAppModal({ visible, onClose }: {visible: boolean, o
               }}
               onPress={onClose}
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>Partager le lien</Text>
+              <Text
+                style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}
+              >
+                Partager le lien
+              </Text>
             </TouchableOpacity>
           </View>
 
           {/* Close Button */}
           <TouchableOpacity onPress={onClose} style={{ marginTop: 12 }}>
-            <Text style={{ fontSize: 14, color: "#999999", textAlign: "center" }}>Fermer</Text>
+            <Text
+              style={{ fontSize: 14, color: "#999999", textAlign: "center" }}
+            >
+              Fermer
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
     </Modal>
-  )
+  );
 }
