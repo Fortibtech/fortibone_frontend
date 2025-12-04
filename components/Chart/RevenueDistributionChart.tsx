@@ -41,7 +41,7 @@ const COLORS = [
 const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
   businessId,
 }) => {
-  const [revenuFilter, setRevenuFilter] = useState<"Jan" | "Mensuel">(
+  const [revenuFilter, setRevenuFilter] = useState<"Janvier" | "Mensuel">(
     "Mensuel"
   );
   const [loading, setLoading] = useState(true);
@@ -118,17 +118,17 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
           <TouchableOpacity
             style={[
               styles.filterBtn,
-              revenuFilter === "Jan" && styles.filterBtnActive,
+              revenuFilter === "Janvier" && styles.filterBtnActive,
             ]}
-            onPress={() => setRevenuFilter("Jan")}
+            onPress={() => setRevenuFilter("Janvier")}
           >
             <Text
               style={[
                 styles.filterBtnText,
-                revenuFilter === "Jan" && styles.filterBtnTextActive,
+                revenuFilter === "Janvier" && styles.filterBtnTextActive,
               ]}
             >
-              Jan
+              Janvier
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -226,8 +226,9 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: "column",
+    justifyContent: "center",
+    gap: 8,
     alignItems: "center",
     marginBottom: 16,
   },

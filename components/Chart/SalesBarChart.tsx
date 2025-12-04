@@ -13,7 +13,7 @@ import { AbstractChartConfig } from "react-native-chart-kit/dist/AbstractChart";
 
 const { width } = Dimensions.get("window");
 
-type FilterType = "Jan" | "Mensuel";
+type FilterType = "Janvier" | "Mensuel";
 
 interface SalesByCategoryChartProps {
   data: SalesByProductCategory[];
@@ -22,7 +22,7 @@ interface SalesByCategoryChartProps {
 export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
   data = [], // protection si data est undefined
 }) => {
-  const [filter, setFilter] = useState<FilterType>("Jan");
+  const [filter, setFilter] = useState<FilterType>("Janvier");
 
   // Utilisation de useMemo pour éviter les recalculs inutiles + nettoyage des données
   const processedData = useMemo(() => {
@@ -30,7 +30,7 @@ export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
       return { labels: ["Aucune donnée"], values: [0] };
     }
 
-    const filtered = filter === "Jan" ? data.slice(0, 3) : data;
+    const filtered = filter === "Janvier" ? data.slice(0, 3) : data;
 
     const labels = filtered.map((item) => {
       const name = item.categoryName?.trim();
@@ -40,7 +40,7 @@ export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
     });
 
     const values = filtered.map((item) => {
-      if (filter === "Jan") {
+      if (filter === "Janvier") {
         return Number(item.totalItemsSold) || 0;
       } else {
         return Math.round((Number(item.totalRevenue) || 0) / 1000); // en milliers, arrondi
@@ -66,13 +66,13 @@ export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
     formatYLabel: (yValue) => {
       const value = parseFloat(yValue);
       if (isNaN(value) || value === 0) return "0";
-      return filter === "Jan" ? value.toString() : `${value}k`;
+      return filter === "Janvier" ? value.toString() : `${value}k`;
     },
     // Formatage du tooltip (très important pour éviter NaN/undefined)
     formatTopBarValue: (value: any) => {
       const num = Number(value);
       if (isNaN(num)) return "0";
-      return filter === "Jan" ? `${num} articles` : `${num}k XAF`;
+      return filter === "Janvier" ? `${num} articles` : `${num}k XAF`;
     },
   };
 
@@ -107,25 +107,25 @@ export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
     <View style={styles.chartCard}>
       <View style={styles.chartHeader}>
         <Text style={styles.chartTitle}>
-          {filter === "Jan"
-            ? "Top 3 catégories (Jan)"
+          {filter === "Janvier"
+            ? "Top 3 catégories (Janvier)"
             : "Revenus par catégorie"}
         </Text>
         <View style={styles.filterButtons}>
           <TouchableOpacity
             style={[
               styles.filterBtn,
-              filter === "Jan" && styles.filterBtnActive,
+              filter === "Janvier" && styles.filterBtnActive,
             ]}
-            onPress={() => setFilter("Jan")}
+            onPress={() => setFilter("Janvier")}
           >
             <Text
               style={[
                 styles.filterBtnText,
-                filter === "Jan" && styles.filterBtnTextActive,
+                filter === "Janvier" && styles.filterBtnTextActive,
               ]}
             >
-              Jan
+              Janvier
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -161,7 +161,7 @@ export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
         withHorizontalLabels={true}
         withInnerLines={true}
         // Le plus important pour de beaux tooltips lisibles :
-        segments={filter === "Jan" ? 4 : 5}
+        segments={filter === "Janvier" ? 4 : 5}
         formatTopBarValue={chartConfig.formatTopBarValue}
       />
 
@@ -188,8 +188,9 @@ const styles = StyleSheet.create({
     borderColor: "#00D09C",
   },
   chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: "column",
+    justifyContent: "center",
+    gap: 8,
     alignItems: "center",
     marginBottom: 16,
   },
