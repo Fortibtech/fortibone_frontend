@@ -120,7 +120,7 @@ const HomePage: React.FC = () => {
               source={require("@/assets/images/logo/white.png")}
               style={[styles.bgImage, { top: 0, left: 0 }]}
             />
-            <Text style={styles.logoText}>ForthOne</Text>
+         
           </View>
         </View>
         <TouchableOpacity
