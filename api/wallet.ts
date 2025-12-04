@@ -183,3 +183,92 @@ export const createDeposit = async (
     throw new Error(msg);
   }
 };
+
+// api/wallet.ts ou types/wallet.ts
+
+export type WithdrawMethod = "STRIPE" | "KARTAPAY";
+// Tu peux garder "KARTAPAY" si tu veux rester cohérent avec le dépôt, mais je recommande de clarifier
+
+export interface WithdrawPayload {
+  amount: number;
+  method: WithdrawMethod;
+  metadata?: {
+    mobileMoneyNumber?: string;
+    note?: string;
+  };
+}
+
+export interface WithdrawResponse {
+  success: boolean;
+  data?: {
+    id: string;
+    status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+    amount: number;
+    description?: string;
+    createdAt: string;
+  };
+  message?: string;
+  onboardingUrl?: string;
+}
+
+export const createWithdraw = async (
+  payload: WithdrawPayload
+): Promise<WithdrawResponse> => {
+  try {
+    // ON FORCE LE NETTOYAGE : on reconstruit l'objet à la main
+    let cleanPayload: any = {
+      amount: payload.amount,
+      method: payload.method,
+    };
+
+    // On ajoute metadata UNIQUEMENT si c'est KARTAPAY et qu'il existe
+    if (payload.method === "KARTAPAY" && payload.metadata) {
+      cleanPayload.metadata = {
+        ...(payload.metadata.mobileMoneyNumber && {
+          mobileMoneyNumber: payload.metadata.mobileMoneyNumber,
+        }),
+        ...(payload.metadata.note && { note: payload.metadata.note }),
+      };
+      // Si metadata est vide après nettoyage → on le supprime
+      if (Object.keys(cleanPayload.metadata).length === 0) {
+        delete cleanPayload.metadata;
+      }
+    }
+    // Pour STRIPE → on ne touche à rien → pas de metadata du tout
+
+    console.log("Payload envoyé au backend :", cleanPayload); // à garder temporairement pour debug
+
+    const response = await axiosInstance.post("/wallet/withdraw", cleanPayload);
+
+    return {
+      success: true,
+      data: response.data.data || response.data,
+      message: response.data.message,
+    };
+  } catch (error: any) {
+    console.error("Erreur createWithdraw :", error.response?.data || error);
+
+    const status = error.response?.status;
+    const serverMessage =
+      error.response?.data?.message || error.message || "Erreur inconnue";
+
+    if (status === 401) {
+      throw new Error("TOKEN_EXPIRED");
+    }
+
+    if (status === 428) {
+      return {
+        success: false,
+        message: Array.isArray(serverMessage)
+          ? serverMessage[0]
+          : serverMessage,
+        onboardingUrl: error.response?.data?.onboardingUrl,
+      };
+    }
+
+    return {
+      success: false,
+      message: Array.isArray(serverMessage) ? serverMessage[0] : serverMessage,
+    };
+  }
+};
