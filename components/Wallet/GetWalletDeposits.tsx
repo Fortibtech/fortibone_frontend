@@ -36,7 +36,7 @@ const BalanceCard = ({ balance }: { balance: number }) => {
           style={[styles.actionBtn, styles.depositBtn]}
           onPress={() => router.push("/finance/DepositScreen")}
         >
-          <Feather name="arrow-down-left" size={24} color="#fff" />
+          <Feather name="arrow-down-left" size={20} color="#fff" />
           <Text style={styles.depositText}>Dépôt</Text>
         </TouchableOpacity>
 
@@ -45,7 +45,7 @@ const BalanceCard = ({ balance }: { balance: number }) => {
           style={[styles.actionBtn, styles.withdrawBtn]}
           onPress={() => router.push("/finance/RetraitArgent")}
         >
-          <Feather name="arrow-up-right" size={24} color="#ff4444" />
+          <Feather name="arrow-up-right" size={20} color="#ff4444" />
           <Text style={styles.withdrawText}>Retrait</Text>
         </TouchableOpacity>
 
@@ -54,7 +54,7 @@ const BalanceCard = ({ balance }: { balance: number }) => {
           style={[styles.actionBtn, styles.transferBtn]}
           onPress={() => router.push("/finance/TransfertScreen")}
         >
-          <MaterialIcons name="swap-horiz" size={24} color="#fff" />
+          <MaterialIcons name="swap-horiz" size={20} color="#fff" />
           <Text style={styles.transferText}>Transfert</Text>
         </TouchableOpacity>
       </View>
@@ -94,21 +94,20 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: "row",
-    gap: 12, // espacement régulier et confortable entre les boutons
-    paddingHorizontal: 4, // petite marge pour éviter que ça colle aux bords
+    gap: 8, // ✅ Réduit de 12 à 8
     justifyContent: "space-between",
   },
   actionBtn: {
+    flex: 1, // ✅ Utilise flex: 1 au lieu de width: "30%"
     flexDirection: "row",
-    width: "30%",
     alignItems: "center",
-    justifyContent: "center", // centre parfaitement icône + texte
-    height: 50,
-    borderRadius: 28,
-    paddingHorizontal: 12, // espacement interne identique
-    gap: 8,
+    justifyContent: "center",
+    height: 48, // ✅ Réduit de 50 à 48
+    borderRadius: 24,
+    paddingHorizontal: 10, // ✅ Réduit de 12 à 10
+    gap: 6, // ✅ Réduit de 8 à 6
+    minWidth: 0, // ✅ Permet la compression si nécessaire
   },
-
   // Dépôt
   depositBtn: {
     backgroundColor: "#00af66",
@@ -116,9 +115,9 @@ const styles = StyleSheet.create({
   depositText: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 15,
+    fontSize: 14, // ✅ Réduit de 15 à 14
+    flexShrink: 1, // ✅ Permet au texte de s'adapter
   },
-
   // Retrait
   withdrawBtn: {
     backgroundColor: "#fff",
@@ -128,9 +127,9 @@ const styles = StyleSheet.create({
   withdrawText: {
     color: "#ff4444",
     fontWeight: "600",
-    fontSize: 15,
+    fontSize: 14, // ✅ Réduit de 15 à 14
+    flexShrink: 1, // ✅ Permet au texte de s'adapter
   },
-
   // Transfert
   transferBtn: {
     backgroundColor: "#3366ff",
@@ -138,7 +137,8 @@ const styles = StyleSheet.create({
   transferText: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 15,
+    fontSize: 14, // ✅ Réduit de 15 à 14
+    flexShrink: 1, // ✅ Permet au texte de s'adapter
   },
 });
 

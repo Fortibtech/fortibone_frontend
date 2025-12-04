@@ -10,15 +10,16 @@ import {
 } from "react-native";
 import { BarChart } from "react-native-chart-kit";
 import { AbstractChartConfig } from "react-native-chart-kit/dist/AbstractChart";
+import { BarChartProps } from "react-native-chart-kit/dist/BarChart";
 
 const { width } = Dimensions.get("window");
-
 type FilterType = "Janvier" | "Mensuel";
-
 interface SalesByCategoryChartProps {
   data: SalesByProductCategory[];
 }
-
+type CustomBarChartProps = BarChartProps & {
+  formatTopBarValue?: (topBarValue: number) => string | number;
+};
 export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
   data = [], // protection si data est undefined
 }) => {
@@ -31,7 +32,6 @@ export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
     }
 
     const filtered = filter === "Janvier" ? data.slice(0, 3) : data;
-
     const labels = filtered.map((item) => {
       const name = item.categoryName?.trim();
       return name && name.length > 12
@@ -72,7 +72,7 @@ export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
     formatTopBarValue: (value: any) => {
       const num = Number(value);
       if (isNaN(num)) return "0";
-      return filter === "Janvier" ? `${num} articles` : `${num}k XAF`;
+      return filter === "Janvier" ? `${num} articles` : `${num}k KMF`;
     },
   };
 
@@ -169,7 +169,9 @@ export const SalesByCategoryChart: React.FC<SalesByCategoryChartProps> = ({
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: "#00D09C" }]} />
           <Text style={styles.legendText}>
-            {filter === "Jan" ? "Articles vendus" : "Revenus (milliers XAF)"}
+            {filter === "Janvier"
+              ? "Articles vendus"
+              : "Revenus (milliers KMF)"}
           </Text>
         </View>
       </View>
