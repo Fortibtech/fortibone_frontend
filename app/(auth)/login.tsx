@@ -174,13 +174,7 @@ const Login = () => {
 
       <View style={styles.resgister}>
         <Text>Nouveau sur KomoraLink ?</Text>
-        <TouchableOpacity
-          onPress={() =>
-            profileType === "particulier"
-              ? router.push("/(auth)/register")
-              : router.push("/(auth)/FournisseurSignUp")
-          }
-        >
+        <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
           <Text style={{ color: "#059669", fontWeight: "600" }}>
             inscrivez-vous
           </Text>

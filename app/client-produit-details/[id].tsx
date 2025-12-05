@@ -197,7 +197,7 @@ const ProductDetails = () => {
 
         {/* Back */}
         <View style={styles.backButtonContainer}>
-          <BackButtonAdmin/>
+          <BackButtonAdmin />
         </View>
 
         {/* Panier rapide */}
@@ -332,20 +332,6 @@ const ProductDetails = () => {
           <Text style={styles.buyNowText}>Acheter maintenant</Text>
         </TouchableOpacity> */}
       </View>
-
-      {/* Bouton flottant (apparaît après scroll) */}
-      <Animated.View
-        style={[styles.floatingCartButton, { opacity: floatingButtonOpacity }]}
-      >
-        <TouchableOpacity
-          onPress={handleAddToCart}
-          style={styles.floatingButtonInner}
-        >
-          <Text style={styles.floatingButtonText}>
-            {inCart ? "Retirer" : "Ajouter"}
-          </Text>
-        </TouchableOpacity>
-      </Animated.View>
 
       {/* Modals */}
       <ProductReviewsListModal
