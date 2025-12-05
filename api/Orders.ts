@@ -8,7 +8,7 @@ import {
 } from "@/types/orders";
 import axiosInstance from "./axiosInstance";
 import { AxiosError } from "axios";
-
+import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 // ----------------------
 export const createOrder = async (
   payload: CreateOrderPayload
@@ -237,6 +237,68 @@ export const updateOrderStatus = async (
       error.response?.data || error.message
     );
     throw error;
+  }
+};
+
+/**
+ * Payer une commande
+ * POST https://dash.fortibtech.com/orders/{orderId}/pay
+ */
+export const payOrder = async (payload: {
+  orderId: string;
+  method: "STRIPE" | "KARTAPAY" | "WALLET";
+  paymentMethodId?: string; // seulement pour STRIPE
+  phoneNumber?: string; // seulement pour KARTAPAY
+}): Promise<{
+  success: boolean;
+  clientSecret?: string; // renvoyé par le backend uniquement pour STRIPE (3D Secure ou confirmation)
+  message?: string;
+}> => {
+  try {
+    let body: any = {
+      method: payload.method,
+    };
+
+    // Construction du metadata selon la méthode
+    if (payload.method === "STRIPE") {
+      if (!payload.paymentMethodId) {
+        throw new Error("paymentMethodId requis pour Stripe");
+      }
+      body.metadata = {
+        paymentMethodId: payload.paymentMethodId,
+        note: "achat via carte bancaire",
+      };
+    } else if (payload.method === "KARTAPAY") {
+      if (!payload.phoneNumber) {
+        throw new Error("phoneNumber requis pour KARTAPAY");
+      }
+      body.metadata = {
+        phoneNumber: payload.phoneNumber,
+        note: "achat via mobile",
+      };
+    } else if (payload.method === "WALLET") {
+      // Rien à ajouter → juste { "method": "WALLET" }
+    }
+
+    const response = await axiosInstance.post(
+      `/orders/${payload.orderId}/pay`,
+      body
+    );
+
+    return {
+      success: true,
+      clientSecret: response.data?.clientSecret || undefined,
+      message: response.data?.message || "Paiement initié avec succès",
+    };
+  } catch (error: any) {
+    console.error("Erreur payOrder :", error.response?.data || error.message);
+
+    const msg =
+      error.response?.data?.message ||
+      error.message ||
+      "Une erreur est survenue lors du paiement";
+
+    throw new Error(msg);
   }
 };
 

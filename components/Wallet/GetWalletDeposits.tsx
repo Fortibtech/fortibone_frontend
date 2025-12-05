@@ -52,7 +52,7 @@ const BalanceCard = ({ balance }: { balance: number }) => {
         {/* Transfert */}
         <TouchableOpacity
           style={[styles.actionBtn, styles.transferBtn]}
-          onPress={() => router.push("/finance/TransfertScreen")}
+          onPress={() => router.push("/finance/TransferMoney")}
         >
           <MaterialIcons name="swap-horiz" size={20} color="#fff" />
           <Text style={styles.transferText}>Transfert</Text>
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   depositText: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 14, // ✅ Réduit de 15 à 14
+    fontSize: 10, // ✅ Réduit de 15 à 14
     flexShrink: 1, // ✅ Permet au texte de s'adapter
   },
   // Retrait
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   withdrawText: {
     color: "#ff4444",
     fontWeight: "600",
-    fontSize: 14, // ✅ Réduit de 15 à 14
+    fontSize: 10, // ✅ Réduit de 15 à 14
     flexShrink: 1, // ✅ Permet au texte de s'adapter
   },
   // Transfert
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   transferText: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 14, // ✅ Réduit de 15 à 14
+    fontSize: 10,
     flexShrink: 1, // ✅ Permet au texte de s'adapter
   },
 });

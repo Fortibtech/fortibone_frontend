@@ -1,420 +1,680 @@
-import React, { useState, useEffect, useCallback } from "react";
+// app/order-details/[id].tsx
+import { getOrderById, updateOrderStatus, payOrder } from "@/api/Orders";
+import { OrderResponse } from "@/types/orders";
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  StatusBar,
   ActivityIndicator,
-  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Modal,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 import {
-  GetWalletTransactions,
-  TransactionType,
-  TransactionStatus,
-} from "@/api/wallet";
-import {
-  format,
-  isToday,
-  isYesterday,
-  isThisWeek,
-  isThisMonth,
-  startOfMonth,
-} from "date-fns";
-import { fr } from "date-fns/locale";
-import BackButtonAdmin from "@/components/Admin/BackButton";
+  CardField,
+  useStripe,
+  StripeProvider,
+} from "@stripe/stripe-react-native";
 
-// Types locaux
-type TransactionGroup = {
-  title: string;
-  data: FormattedTransaction[];
-};
+export default function CommandeDetails() {
+  const { id } = useLocalSearchParams();
+  const router = useRouter();
+  const [order, setOrder] = useState<OrderResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  // Modal de paiement
+  const [paymentModal, setPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<
+    "STRIPE" | "KARTAPAY" | "WALLET"
+  >("WALLET");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [cardComplete, setCardComplete] = useState(false);
+  const [paying, setPaying] = useState(false);
 
-type FormattedTransaction = {
-  id: string;
-  title: string;
-  reference: string;
-  date: string;
-  rawDate: Date;
-  amount: number;
-  type: "income" | "expense";
-  provider: string;
-  status: TransactionStatus;
-};
+  const { confirmPayment } = useStripe();
 
-const TransactionHistory: React.FC = () => {
-  const [transactions, setTransactions] = useState<FormattedTransaction[]>([]);
-  const [groupedTransactions, setGroupedTransactions] = useState<
-    TransactionGroup[]
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const fetchOrderDetails = async () => {
+    if (!id) return;
+    try {
+      setIsLoading(true);
+      const response = await getOrderById(id as string);
+      setOrder(response);
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible de charger la commande",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Filtres
-  const [selectedType, setSelectedType] = useState<TransactionType | "">("");
-  const [selectedStatus, setSelectedStatus] = useState<TransactionStatus | "">(
-    ""
-  );
+  useEffect(() => {
+    fetchOrderDetails();
+  }, [id]);
 
-  const limit = 20;
+  const formatDate = (iso: string) => {
+    return new Date(iso).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
-  // Charger les transactions
-  const loadTransactions = useCallback(
-    async (isRefresh = false) => {
-      if (!hasMore && !isRefresh) return;
+  const getStatusConfig = (status: OrderResponse["status"]) => {
+    const map: Record<
+      OrderResponse["status"],
+      { text: string; color: string; bg: string }
+    > = {
+      PENDING_PAYMENT: {
+        text: "En attente de paiement",
+        color: "#F97316",
+        bg: "#FFF7ED",
+      },
+      PENDING: { text: "Nouvelle commande", color: "#EA580C", bg: "#FFEDD5" },
+      CONFIRMED: { text: "Confirmée", color: "#8B5CF6", bg: "#F5F3FF" },
+      PROCESSING: { text: "En préparation", color: "#D97706", bg: "#FFFBEB" },
+      SHIPPED: { text: "Expédiée", color: "#2563EB", bg: "#EFF6FF" },
+      DELIVERED: { text: "Livrée", color: "#16A34A", bg: "#F0FDF4" },
+      COMPLETED: { text: "Terminée", color: "#059669", bg: "#ECFDF5" },
+      CANCELLED: { text: "Annulée", color: "#EF4444", bg: "#FEF2F2" },
+      REFUNDED: { text: "Remboursée", color: "#6B7280", bg: "#F3F4F6" },
+    };
+    return map[status] || { text: status, color: "#666", bg: "#F3F4F6" };
+  };
 
-      const currentPage = isRefresh ? 1 : page;
+  const handlePay = async () => {
+    if (!order) return;
 
-      try {
-        isRefresh
-          ? setRefreshing(true)
-          : loadingMore
-          ? setLoadingMore(true)
-          : setLoading(true);
+    if (
+      paymentMethod === "KARTAPAY" &&
+      !/^\+(261|237)\d{8,10}$/.test(phoneNumber)
+    ) {
+      Alert.alert("Numéro invalide", "Format : +261XXXXXXXXX ou +237XXXXXXXXX");
+      return;
+    }
 
-        const response = await GetWalletTransactions({
-          page: currentPage,
-          limit,
-          search: searchText || undefined,
-          type: selectedType || undefined,
-          status: selectedStatus || undefined,
-        });
+    if (paymentMethod === "STRIPE" && !cardComplete) {
+      Alert.alert(
+        "Carte incomplète",
+        "Veuillez remplir tous les champs de la carte"
+      );
+      return;
+    }
 
-        const rawTxs = response.data || [];
+    setPaying(true);
+    try {
+      const payload: any = {
+        orderId: order.id,
+        method: paymentMethod,
+      };
 
-        const formatted: FormattedTransaction[] = rawTxs.map((t) => {
-          const isIncome = ["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(
-            t.provider
-          );
-          const absAmount = Math.abs(t.amount);
-
-          return {
-            id: t.id,
-            title: getTransactionTitle(t),
-            reference: t.providerTransactionId || t.orderId || t.id,
-            date: format(new Date(t.createdAt), "dd MMM yyyy 'à' HH:mm", {
-              locale: fr,
-            }),
-            rawDate: new Date(t.createdAt),
-            amount: absAmount,
-            type: isIncome ? "income" : "expense",
-            provider: t.provider,
-            status: t.status,
-          };
-        });
-
-        setTransactions(
-          isRefresh ? formatted : (prev) => [...prev, ...formatted]
-        );
-        setHasMore(response.page < response.totalPages);
-        if (!isRefresh) setPage((p) => p + 1);
-      } catch (err) {
-        console.error("Erreur chargement transactions", err);
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-        setLoadingMore(false);
+      if (paymentMethod === "KARTAPAY") {
+        payload.phoneNumber = phoneNumber;
       }
-    },
-    [page, searchText, selectedType, selectedStatus]
-  );
 
-  // Grouper par période
-  useEffect(() => {
-    const groups = groupTransactionsByPeriod(transactions);
-    setGroupedTransactions(groups);
-  }, [transactions]);
+      const response = await payOrder(payload);
 
-  useEffect(() => {
-    loadTransactions(true);
-  }, [searchText, selectedType, selectedStatus]);
+      if (paymentMethod === "STRIPE" && response.clientSecret) {
+        const { error } = await confirmPayment(response.clientSecret, {
+          paymentMethodType: "Card",
+        });
+        if (error) throw error;
+      }
 
-  // Titre intelligent selon le type
-  function getTransactionTitle(t: any): string {
-    switch (t.provider) {
-      case "DEPOSIT":
-        return "Dépôt d'argent";
-      case "WITHDRAWAL":
-        return "Retrait d'argent";
-      case "PAYMENT":
-        return t.metadata?.customer_name
-          ? `Paiement de ${t.metadata.customer_name}`
-          : "Paiement reçu";
-      case "REFUND":
-        return "Remboursement";
-      case "ADJUSTMENT":
-        return "Ajustement manuel";
-      case "TRANSFER":
-        return "Transfert";
-      default:
-        return t.provider || "Transaction";
-    }
-  }
+      Toast.show({
+        type: "success",
+        text1: "Paiement réussi !",
+        text2:
+          paymentMethod === "WALLET"
+            ? "Déduit de votre portefeuille"
+            : "Commande payée",
+      });
 
-  // Groupement par période
-  function groupTransactionsByPeriod(
-    txs: FormattedTransaction[]
-  ): TransactionGroup[] {
-    const today = new Date();
-    const groups: TransactionGroup[] = [];
-
-    const todayTx = txs.filter((t) => isToday(t.rawDate));
-    const yesterdayTx = txs.filter((t) => isYesterday(t.rawDate));
-    const thisWeekTx = txs.filter(
-      (t) =>
-        isThisWeek(t.rawDate) && !isToday(t.rawDate) && !isYesterday(t.rawDate)
-    );
-    const thisMonthTx = txs.filter(
-      (t) => isThisMonth(t.rawDate) && !isThisWeek(t.rawDate)
-    );
-    const olderTx = txs.filter((t) => t.rawDate < startOfMonth(today));
-
-    if (todayTx.length) groups.push({ title: "AUJOURD'HUI", data: todayTx });
-    if (yesterdayTx.length) groups.push({ title: "HIER", data: yesterdayTx });
-    if (thisWeekTx.length)
-      groups.push({ title: "CETTE SEMAINE", data: thisWeekTx });
-    if (thisMonthTx.length)
-      groups.push({ title: "CE MOIS-CI", data: thisMonthTx });
-    if (olderTx.length) groups.push({ title: "PLUS ANCIEN", data: olderTx });
-
-    return groups;
-  }
-
-  const onRefresh = () => {
-    setPage(1);
-    setHasMore(true);
-    loadTransactions(true);
-  };
-
-  const onEndReached = () => {
-    if (!loadingMore && hasMore) {
-      loadTransactions();
+      // Recharger la commande
+      await fetchOrderDetails();
+      setPaymentModal(false);
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: "Paiement échoué",
+        text2: err.message || "Une erreur est survenue",
+      });
+    } finally {
+      setPaying(false);
     }
   };
+  const handleStatusUpdate = async (newStatus: OrderResponse["status"]) => {
+    if (!order || updating) return;
 
-  const renderTransaction = (t: FormattedTransaction) => {
-    const amountColor = t.type === "income" ? "#00BFA5" : "#F44336";
-    const iconName = t.type === "income" ? "arrow-down-left" : "arrow-up-right";
+    setUpdating(true);
+    try {
+      const updatedOrder = await updateOrderStatus(order.id, {
+        status: newStatus,
+      });
 
+      const mergedOrder = {
+        ...updatedOrder,
+        customer: order.customer,
+        business: order.business,
+        lines: updatedOrder.lines || order.lines,
+      };
+
+      setOrder(mergedOrder as OrderResponse);
+      Toast.show({
+        type: "success",
+        text1: "Succès",
+        text2: `Commande marquée comme ${getStatusStyle(
+          newStatus
+        ).text.toLowerCase()}`,
+      });
+    } catch (err: any) {
+      const apiMessage = err.response?.data?.message;
+      const fallback = err.message || "Impossible de mettre à jour le statut";
+
+      const displayMessage = apiMessage
+        ? Array.isArray(apiMessage)
+          ? apiMessage.join(", ")
+          : apiMessage
+        : fallback;
+
+      Toast.show({
+        type: "error",
+        text1: "Action impossible",
+        text2: displayMessage,
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+  if (isLoading || !order) {
     return (
-      <View key={t.id} style={styles.transactionItem}>
-        <View style={styles.transactionLeft}>
-          <View
-            style={[
-              styles.iconContainer,
-              t.type === "income" ? styles.incomeBg : styles.expenseBg,
-            ]}
-          >
-            <Feather
-              name={iconName}
-              size={18}
-              color={t.type === "income" ? "#00BFA5" : "#F44336"}
-            />
-          </View>
-          <View style={styles.transactionInfo}>
-            <Text style={styles.transactionTitle} numberOfLines={1}>
-              {t.title}
-            </Text>
-            <Text style={styles.transactionReference}>{t.reference}</Text>
-            <Text style={styles.transactionDate}>{t.date}</Text>
-          </View>
-        </View>
-        <Text style={[styles.transactionAmount, { color: amountColor }]}>
-          {t.type === "income" ? "+" : "-"}
-          {t.amount.toLocaleString("fr-FR", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}{" "}
-          KMF
-        </Text>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00A36C" />
+        <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
-  };
-
-  if (loading && transactions.length === 0) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <ActivityIndicator size="large" color="#58617b" />
-          <Text style={{ marginTop: 12, color: "#666" }}>
-            Chargement des transactions...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
   }
 
+  const total = parseFloat(order.totalAmount).toFixed(2).replace(".", ",");
+  const statusConfig = getStatusConfig(order.status);
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <BackButtonAdmin />
-        <Text style={styles.headerTitle}>Historique des Transactions</Text>
-        <TouchableOpacity style={styles.menuButton}>
-          <Feather name="more-vertical" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Search & Filters */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Feather name="search" size={20} color="#999" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher (ID, client...)"
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-        </View>
-        <TouchableOpacity style={styles.filterButton}>
-          <Feather name="filter" size={20} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Liste */}
-      <ScrollView
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        onScroll={({ nativeEvent }) => {
-          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-          const isCloseToBottom =
-            layoutMeasurement.height + contentOffset.y >=
-            contentSize.height - 200;
-          if (isCloseToBottom && !loadingMore && hasMore) onEndReached();
-        }}
-        scrollEventThrottle={400}
-      >
-        {groupedTransactions.map((group) => (
-          <View key={group.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{group.title}</Text>
-            {group.data.map(renderTransaction)}
+    <StripeProvider publishableKey="pk_test_ton_cle_stripe_ici">
+      <SafeAreaView style={styles.container}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backBtn}
+            >
+              <Ionicons name="arrow-back-outline" size={24} color="#111" />
+            </TouchableOpacity>
+            <Text style={styles.cmdCode}>Commande #{order.orderNumber}</Text>
+            <View style={{ width: 40 }} />
           </View>
-        ))}
 
-        {loadingMore && (
-          <View style={{ padding: 20, alignItems: "center" }}>
-            <ActivityIndicator size="small" color="#58617b" />
+          {/* Client + Statut */}
+          <View style={styles.clientCard}>
+            <View style={styles.clientInfo}>
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarText}>
+                  {order.customer.firstName[0]}
+                  {order.customer.lastName?.[0] || ""}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.clientLabel}>Client</Text>
+                <Text style={styles.clientName}>
+                  {order.customer.firstName} {order.customer.lastName || ""}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.statusBox}>
+              <Text style={styles.statusLabel}>Statut</Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: statusConfig.bg },
+                ]}
+              >
+                <Text
+                  style={[styles.statusText, { color: statusConfig.color }]}
+                >
+                  {statusConfig.text}
+                </Text>
+              </View>
+            </View>
           </View>
-        )}
 
-        {!hasMore && transactions.length > 0 && (
-          <Text style={{ textAlign: "center", padding: 20, color: "#999" }}>
-            Fin de l&apos;historique
-          </Text>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+          {/* Infos rapides */}
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Date</Text>
+              <Text style={styles.infoValue}>
+                {formatDate(order.createdAt)}
+              </Text>
+            </View>
+            {order.tableNumber && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Table</Text>
+                <Text style={styles.infoValue}>N°{order.tableNumber}</Text>
+              </View>
+            )}
+            {order.notes && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Notes</Text>
+                <Text style={styles.infoValue}>{order.notes}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Produits */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Articles commandés</Text>
+            {order.lines.map((line) => {
+              const pu = parseFloat(line.price).toFixed(2).replace(".", ",");
+              const totalLine = (parseFloat(line.price) * line.quantity)
+                .toFixed(2)
+                .replace(".", ",");
+              return (
+                <View key={line.id} style={styles.tableRow}>
+                  <Text style={[styles.td, { flex: 2 }]}>
+                    {line.variant?.name || "Article"}
+                  </Text>
+                  <Text style={[styles.td, { flex: 1, textAlign: "center" }]}>
+                    x{line.quantity}
+                  </Text>
+                  <Text style={[styles.td, { flex: 1, textAlign: "right" }]}>
+                    {pu} KMF
+                  </Text>
+                  <Text style={[styles.td, { flex: 1, textAlign: "right" }]}>
+                    {totalLine} KMF
+                  </Text>
+                </View>
+              );
+            })}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>{total} KMF</Text>
+            </View>
+          </View>
+
+          {/* Footer avec bouton Payer */}
+          <View style={styles.footer}>
+            {order.status === "PENDING_PAYMENT" && (
+              <TouchableOpacity
+                style={styles.payBtn}
+                onPress={() => {
+                  setPaymentModal(true);
+                  setPaymentMethod("WALLET"); // par défaut
+                }}
+              >
+                <Text style={styles.payText}>
+                  Payer la commande • {total} KMF
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Autres boutons d'action (annuler, confirmer, etc.) */}
+            {order.status === "PENDING" && (
+              <>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => handleStatusUpdate("CANCELLED")}
+                >
+                  <Text style={styles.cancelText}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={() => handleStatusUpdate("CONFIRMED")}
+                >
+                  <Text style={styles.actionText}>Confirmer</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* MODAL DE PAIEMENT */}
+        <Modal visible={paymentModal} transparent animationType="slide">
+          <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+            <View style={styles.modalOverlay}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={{ flex: 1, justifyContent: "flex-end" }}
+              >
+                <View style={styles.modalContent}>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>Payer {total} KMF</Text>
+                    <TouchableOpacity onPress={() => setPaymentModal(false)}>
+                      <Ionicons name="close" size={28} color="#999" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Méthodes */}
+                  <View style={styles.paymentTabs}>
+                    {(["WALLET", "STRIPE", "KARTAPAY"] as const).map(
+                      (method) => (
+                        <TouchableOpacity
+                          key={method}
+                          style={[
+                            styles.tab,
+                            paymentMethod === method && styles.tabActive,
+                          ]}
+                          onPress={() => setPaymentMethod(method)}
+                        >
+                          <Text
+                            style={[
+                              styles.tabText,
+                              paymentMethod === method && styles.tabTextActive,
+                            ]}
+                          >
+                            {method === "WALLET"
+                              ? "Portefeuille"
+                              : method === "STRIPE"
+                              ? "Carte bancaire"
+                              : "MVola / Orange Money"}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    )}
+                  </View>
+
+                  {/* Contenu selon méthode */}
+                  {paymentMethod === "KARTAPAY" && (
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>Numéro de téléphone</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="+261 34 12 345 67"
+                        keyboardType="phone-pad"
+                        value={phoneNumber}
+                        onChangeText={setPhoneNumber}
+                      />
+                    </View>
+                  )}
+
+                  {paymentMethod === "STRIPE" && (
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>Carte bancaire</Text>
+                      <View style={styles.cardFieldWrapper}>
+                        <CardField
+                          postalCodeEnabled={false}
+                          placeholders={{ number: "4242 4242 4242 4242" }}
+                          cardStyle={{
+                            backgroundColor: "#fff",
+                            textColor: "#000",
+                          }}
+                          style={{ height: 50 }}
+                          onCardChange={(e) => setCardComplete(e.complete)}
+                        />
+                      </View>
+                    </View>
+                  )}
+
+                  {paymentMethod === "WALLET" && (
+                    <View style={styles.walletInfo}>
+                      <Ionicons name="wallet" size={48} color="#00A36C" />
+                      <Text style={styles.walletText}>
+                        Payer avec votre solde
+                      </Text>
+                      <Text style={styles.walletAmount}>
+                        {total} KMF seront débités
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={styles.modalFooter}>
+                    <TouchableOpacity
+                      style={styles.modalCancel}
+                      onPress={() => setPaymentModal(false)}
+                    >
+                      <Text style={styles.modalCancelText}>Annuler</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalPay, paying && { opacity: 0.7 }]}
+                      onPress={handlePay}
+                      disabled={
+                        paying || (paymentMethod === "STRIPE" && !cardComplete)
+                      }
+                    >
+                      {paying ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.modalPayText}>
+                          Payer maintenant
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </KeyboardAvoidingView>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      </SafeAreaView>
+    </StripeProvider>
   );
-};
+}
 
+// ====================== STYLES ======================
 const styles = StyleSheet.create({
-  // ... (tous tes styles originaux, je les garde intacts + quelques ajouts mineurs)
-  container: { flex: 1, backgroundColor: "#F5F5F5" },
+  container: { flex: 1, backgroundColor: "#fff" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 12, color: "#666", fontSize: 16 },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    padding: 16,
   },
-  backButton: { padding: 4 },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-    flex: 1,
-    marginLeft: 16,
-  },
-  menuButton: { padding: 4 },
-  searchContainer: {
+  backBtn: { padding: 8 },
+  cmdCode: { fontSize: 18, fontWeight: "700", color: "#111" },
+
+  clientCard: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
-    gap: 12,
+    justifyContent: "space-between",
+    backgroundColor: "#F9F9F9",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 12,
   },
-  searchInputContainer: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 44,
-    gap: 8,
-  },
-  searchInput: { flex: 1, fontSize: 14, color: "#000" },
-  filterButton: {
+  clientInfo: { flexDirection: "row", alignItems: "center" },
+  avatarPlaceholder: {
     width: 44,
     height: 44,
-    alignItems: "center",
+    borderRadius: 22,
+    backgroundColor: "#00A36C",
     justifyContent: "center",
-    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  avatarText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  clientLabel: { fontSize: 13, color: "#666" },
+  clientName: { fontSize: 16, fontWeight: "600", color: "#111" },
+  statusBox: { alignItems: "flex-end", justifyContent: "center" },
+  statusLabel: { fontSize: 13, color: "#666" },
+  statusBadge: {
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
   },
-  section: { marginTop: 8 },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#999",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#f5f5f5",
+  statusText: { fontSize: 13, fontWeight: "600" },
+
+  infoCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: "#F9F9F9",
+    borderRadius: 12,
   },
-  transactionItem: {
+  infoRow: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    marginVertical: 4,
+  },
+  infoLabel: { color: "#666", fontSize: 14 },
+  infoValue: { color: "#333", fontWeight: "500", fontSize: 14 },
+
+  card: {
+    marginHorizontal: 16,
+    marginBottom: 20,
     backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f5f5f5",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
+    padding: 16,
   },
-  transactionLeft: {
+  cardTitle: { fontSize: 17, fontWeight: "700", marginBottom: 12 },
+  tableRow: {
     flexDirection: "row",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: "#f0f0f0",
+  },
+  td: { fontSize: 14, color: "#333" },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderColor: "#ddd",
+  },
+  totalLabel: { fontSize: 18, fontWeight: "700" },
+  totalValue: { fontSize: 18, fontWeight: "700", color: "#00A36C" },
+
+  footer: { marginHorizontal: 16, marginBottom: 40, gap: 12 },
+  payBtn: {
+    backgroundColor: "#00A36C",
+    padding: 18,
+    borderRadius: 12,
     alignItems: "center",
+  },
+  payText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+
+  actionBtn: {
+    backgroundColor: "#00A36C",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  actionText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+
+  cancelBtn: {
+    backgroundColor: "#FEE2E2",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  cancelText: { color: "#EF4444", fontWeight: "600", fontSize: 15 },
+
+  footerPlaceholder: { padding: 20, alignItems: "center" },
+  footerInfo: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  modalOverlay: {
     flex: 1,
-    gap: 12,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
   },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 40,
+    maxHeight: "90%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
+    marginBottom: 20,
   },
-  incomeBg: { backgroundColor: "#E0F7EF" },
-  expenseBg: { backgroundColor: "#FDEBEB" },
-  transactionInfo: { flex: 1 },
-  transactionTitle: {
+  modalTitle: { fontSize: 20, fontWeight: "700", color: "#111" },
+
+  paymentTabs: {
+    flexDirection: "row",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+  },
+  tab: { flex: 1, paddingVertical: 12, alignItems: "center", borderRadius: 10 },
+  tabActive: { backgroundColor: "#00A36C" },
+  tabText: { fontWeight: "600", color: "#666" },
+  tabTextActive: { color: "#fff" },
+
+  inputContainer: { marginBottom: 20 },
+  inputLabel: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#000",
-    marginBottom: 4,
+    marginBottom: 8,
+    color: "#333",
   },
-  transactionReference: { fontSize: 12, color: "#666", marginBottom: 2 },
-  transactionDate: { fontSize: 12, color: "#999" },
-  transactionAmount: { fontSize: 15, fontWeight: "600" },
-});
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    backgroundColor: "#fafafa",
+  },
+  cardFieldWrapper: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+  },
 
-export default TransactionHistory;
-;
+  walletInfo: { alignItems: "center", paddingVertical: 30 },
+  walletText: { fontSize: 18, fontWeight: "600", marginTop: 12 },
+  walletAmount: {
+    fontSize: 16,
+    color: "#00A36C",
+    marginTop: 8,
+    fontWeight: "600",
+  },
+
+  modalFooter: { flexDirection: "row", gap: 12, marginTop: 20 },
+  modalCancel: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalCancelText: { fontWeight: "600", color: "#666" },
+  modalPay: {
+    flex: 2,
+    padding: 16,
+    backgroundColor: "#00A36C",
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalPayText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+});
