@@ -202,7 +202,7 @@ export type OrderStatus =
   | "REFUNDED"
   | "PARTIALLY_REFUNDED";
 
-export type OrderType = "SALE" | "PURCHASE" | "RESERVATION";
+export type OrderType = "SALE" | "PURCHASE" | "RESERVATION" | "PAID";
 
 export type PaymentMethod = "STRIPE" | "CASH" | "CARD" | "TRANSFER";
 
@@ -303,7 +303,7 @@ export const getPendingOrdersCount = async (
 ): Promise<number> => {
   try {
     const response = await getOrders(businessId, {
-      status: "PENDING",
+      status: "PENDING_PAYMENT",
       type,
       limit: 1, // On ne récupère qu'une seule commande pour avoir le total
     });
@@ -323,7 +323,7 @@ export const getProcessingPurchasesCount = async (
 ): Promise<{ count: number; totalItems: number }> => {
   try {
     const response = await getOrders(businessId, {
-      type: "PURCHASE",
+      type: "PAID",
       limit: 100, // On récupère jusqu'à 100 commandes pour compter les items
     });
 
@@ -332,6 +332,7 @@ export const getProcessingPurchasesCount = async (
       (order) =>
         order.status === "PENDING" ||
         order.status === "PROCESSING" ||
+        order.status === "PAID" ||
         order.status === "CONFIRMED"
     );
 

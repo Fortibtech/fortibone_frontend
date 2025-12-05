@@ -95,9 +95,9 @@ export default function CommandeDetails() {
       COMPLETED: { text: "Terminée", color: "#059669", bg: "#ECFDF5" },
       CANCELLED: { text: "Annulée", color: "#EF4444", bg: "#FEF2F2" },
       REFUNDED: { text: "Remboursée", color: "#6B7280", bg: "#F3F4F6" },
-      PAID:   { text: "Payée", color: "#059669", bg: "#D1FAE5" }
+      PAID: { text: "Payée", color: "#059669", bg: "#D1FAE5" },
     };
-   
+
     return map[status] || { text: status, color: "#666", bg: "#F3F4F6" };
   };
 

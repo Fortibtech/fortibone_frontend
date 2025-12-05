@@ -4,14 +4,12 @@ import {
   AnalyticsOverview,
   getAnalyticsOverview,
   getPendingOrdersCount,
-  getProcessingPurchasesCount,
 } from "@/api/analytics";
 import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import BusinessSelector from "@/components/Business/BusinessSelector";
-import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -32,12 +30,13 @@ const HomePage: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { uri } = useUserAvatar();
+
   // ✅ États pour les analytics
   const [monthlyOverview, setMonthlyOverview] =
     useState<AnalyticsOverview | null>(null);
   const [overallOverview, setOverallOverview] =
     useState<AnalyticsOverview | null>(null);
+
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
   const [processingPurchases, setProcessingPurchases] = useState<{
     count: number;
@@ -99,7 +98,7 @@ const HomePage: React.FC = () => {
   // ✅ Fonction pour charger les analytics
   const loadAnalytics = async () => {
     if (!selectedBusiness) return;
-    if (analyticsLoading) return; // ← Évite les appels simultanés
+
     try {
       setAnalyticsLoading(true);
 
@@ -122,13 +121,8 @@ const HomePage: React.FC = () => {
         selectedBusiness.id,
         "SALE"
       );
-      setPendingOrdersCount(pendingCount);
 
-      // Charger les achats en cours
-      const purchasesData = await getProcessingPurchasesCount(
-        selectedBusiness.id
-      );
-      setProcessingPurchases(purchasesData);
+      setPendingOrdersCount(pendingCount);
     } catch (error) {
       console.error("Erreur lors du chargement des analytics:", error);
       Alert.alert("Erreur", "Impossible de charger les statistiques");
@@ -137,33 +131,15 @@ const HomePage: React.FC = () => {
     }
   };
 
-  // 1. Chargement initial (une seule fois)
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  // 2. Recharge les stats quand on revient dans l'onglet
-  useFocusEffect(
-    useCallback(() => {
-      if (selectedBusiness) {
-        loadAnalytics();
-      }
-    }, [selectedBusiness])
-  );
-
-  // 3. Recharge les stats quand on change de commerce
-  useEffect(() => {
-    if (selectedBusiness) {
-      loadAnalytics();
-    }
-  }, [selectedBusiness]);
-
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (selectedBusiness) await loadAnalytics();
+    if (selectedBusiness) {
+      await loadAnalytics();
+    }
     setRefreshing(false);
   };
+
   const handleBusinessSelect = async (business: Business) => {
     try {
       await BusinessesService.selectBusiness(business);
@@ -184,11 +160,6 @@ const HomePage: React.FC = () => {
       maximumFractionDigits: 0,
     }).format(num);
   };
-  // ✅ Calculer le nombre total d'alertes
-  const getTotalAlertsCount = (): number => {
-    if (!pendingOrdersCount) return 0;
-    return pendingOrdersCount;
-  };
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -197,38 +168,22 @@ const HomePage: React.FC = () => {
         selectedBusiness={selectedBusiness}
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
-        onAddBusiness={() => router.push("/(create-business)/")}
-        onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
+        onAddBusiness={() => router.push("/pro/createBusiness")}
+        onManageBusiness={() => router.push("/pro/profile")}
       />
 
       <View style={styles.headerRight}>
-        {/* <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="search" size={24} color="#000" />
-        </TouchableOpacity> */}
         <TouchableOpacity style={styles.iconButton}>
-          {getTotalAlertsCount() > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>{getTotalAlertsCount()}</Text>
-            </View>
-          )}
+          <Ionicons name="search" size={24} color="#000" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.iconButton}>
+          <View style={styles.notificationBadge}>
+            <Text style={styles.badgeText}>3</Text>
+          </View>
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.avatarContainer}
-          onPress={() => router.push("/fournisseurSetting")}
-        >
-          {uri ? (
-            <Image
-              key={uri} // Force le rechargement même ici
-              source={{ uri }}
-              style={styles.avatar}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.avatar, styles.placeholder]}>
-              <Ionicons name="person" size={40} color="#aaa" />
-            </View>
-          )}
+        <TouchableOpacity style={styles.avatar}>
+          <Ionicons name="person" size={20} color="#666" />
         </TouchableOpacity>
       </View>
     </View>
@@ -275,9 +230,7 @@ const HomePage: React.FC = () => {
                 }}
               >
                 <Text style={styles.cardValue}>
-                  {monthlyOverview
-                    ? formatNumber(monthlyOverview.totalSalesAmount)
-                    : "--"}
+                  {overallOverview?.totalSalesAmount}
                 </Text>
                 <Text style={styles.cardUnit}> KMF</Text>
               </View>
@@ -312,11 +265,13 @@ const HomePage: React.FC = () => {
                 />
               </View>
               <View>
-                <Text style={styles.cardLabel}>Achats en cours</Text>
+                <Text style={styles.cardLabel}>Achats </Text>
                 <Text style={styles.cardValue}>
-                  {processingPurchases.totalItems} article
-                  {processingPurchases.totalItems > 1 ? "s" : ""} commandé
-                  {processingPurchases.totalItems > 1 ? "s" : ""}
+                  {overallOverview?.totalSalesOrders
+                    ? `${overallOverview.totalSalesOrders} article${
+                        overallOverview.totalSalesOrders > 1 ? "s" : ""
+                      }`
+                    : ""}
                 </Text>
               </View>
             </View>
@@ -387,25 +342,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F9FA",
-    paddingBottom: 50,
-  },
-  avatarContainer: {
-    borderRadius: 30,
-    overflow: "hidden",
-    width: 36,
-    height: 36,
-    backgroundColor: "#F5F5F5",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 4,
-  },
-
-  placeholder: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E8E8E8",
   },
   loadingContainer: {
     flex: 1,
@@ -463,8 +399,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   avatar: {
-    width: "100%",
-    height: "100%",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
   },
   content: {
     flex: 1,
