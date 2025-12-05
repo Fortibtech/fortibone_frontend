@@ -6,6 +6,7 @@ export default function RootLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="about" />
       <Stack.Screen name="cart" />
+      <Stack.Screen name="pay/[orderId]" />
       <Stack.Screen name="help" />
       <Stack.Screen name="category" />
       <Stack.Screen name="custumer-order-details/[id]" />

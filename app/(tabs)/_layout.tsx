@@ -89,6 +89,17 @@ export default function RootLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="finance"
+        options={{
+          title: "Finance",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="wallet-outline" color={color} size={size} />
+            // ou <Ionicons name="card-outline" color={color} size={size} />
+            // ou <Ionicons name="cash-outline" color={color} size={size} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

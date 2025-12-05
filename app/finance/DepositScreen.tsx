@@ -100,7 +100,7 @@ export default function DepositScreen() {
 
     try {
       if (method === "KARTAPAY") {
-         await createDeposit({
+        await createDeposit({
           amount: numAmount,
           method: "KARTAPAY",
           metadata: {

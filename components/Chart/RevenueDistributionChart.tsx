@@ -10,7 +10,27 @@ import {
 } from "react-native";
 import { PieChart } from "react-native-chart-kit";
 import { getSales } from "@/api/analytics";
+
 const { width } = Dimensions.get("window");
+
+// Mois en français
+const MONTHS = [
+  "Janvier",
+  "Février",
+  "Mars",
+  "Avril",
+  "Mai",
+  "Juin",
+  "Juillet",
+  "Août",
+  "Septembre",
+  "Octobre",
+  "Novembre",
+  "Décembre",
+];
+
+type FilterType = "currentMonth" | "annual";
+
 interface TopSellingProduct {
   variantId: string;
   sku: string;
@@ -24,8 +44,8 @@ interface PieDataItem {
   name: string;
   amount: number;
   color: string;
-  legendFontColor?: string;
-  legendFontSize?: number;
+  legendFontColor: string;
+  legendFontSize: number;
 }
 
 const COLORS = [
@@ -36,58 +56,67 @@ const COLORS = [
   "#FECA57",
   "#FF6B6B",
   "#DDA0DD",
+  "#B0BEC5",
 ];
 
 const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
   businessId,
 }) => {
-  const [revenuFilter, setRevenuFilter] = useState<"Janvier" | "Mensuel">(
-    "Mensuel"
-  );
+  const [filter, setFilter] = useState<FilterType>("currentMonth");
   const [loading, setLoading] = useState(true);
   const [pieData, setPieData] = useState<PieDataItem[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRevenueData = async () => {
+  // Mois et année actuels
+  const currentMonthName = MONTHS[new Date().getMonth()];
+  const currentYear = new Date().getFullYear();
+
+  const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await getSales(businessId);
       const topProducts: TopSellingProduct[] = data.topSellingProducts || [];
 
-      // Calcul du total
+      if (topProducts.length === 0) {
+        setPieData([]);
+        setTotalRevenue(0);
+        setLoading(false);
+        return;
+      }
+
       const total = topProducts.reduce((sum, p) => sum + p.totalRevenue, 0);
       setTotalRevenue(total);
 
-      // Préparer les données pour PieChart (max 6 produits pour lisibilité)
-      const sorted = topProducts.sort(
+      const sorted = [...topProducts].sort(
         (a, b) => b.totalRevenue - a.totalRevenue
       );
-      const top6 = sorted.slice(0, 6);
+      const maxItems = filter === "currentMonth" ? 6 : 8;
+      const top = sorted.slice(0, maxItems);
 
-      const chartData: PieDataItem[] = top6.map((item, index) => ({
+      const chartData: PieDataItem[] = top.map((item, i) => ({
         name:
-          item.productName.length > 15
-            ? item.productName.slice(0, 12) + "..."
+          item.productName.length > 18
+            ? item.productName.slice(0, 15) + "..."
             : item.productName,
         amount: item.totalRevenue,
-        color: COLORS[index % COLORS.length],
+        color: COLORS[i % COLORS.length],
         legendFontColor: "#333",
-        legendFontSize: 14,
+        legendFontSize: 13,
       }));
 
-      // Ajouter "Autres" si plus de 6 produits
-      if (sorted.length > 6) {
-        const othersAmount = sorted
-          .slice(6)
+      // Ajouter "Autres" si besoin
+      if (sorted.length > maxItems) {
+        const others = sorted
+          .slice(maxItems)
           .reduce((sum, p) => sum + p.totalRevenue, 0);
         chartData.push({
-          name: "Autres",
-          amount: othersAmount,
-          color: "#CCCCCC",
+          name: "Autres produits",
+          amount: others,
+          color: "#E0E0E0",
           legendFontColor: "#666",
-          legendFontSize: 14,
+          legendFontSize: 13,
         });
       }
 
@@ -101,8 +130,8 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
   };
 
   useEffect(() => {
-    fetchRevenueData();
-  }, [businessId, revenuFilter]);
+    fetchData();
+  }, [businessId, filter]);
 
   const chartConfig = {
     backgroundGradientFrom: "#fff",
@@ -113,38 +142,47 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
   return (
     <View style={styles.chartCard}>
       <View style={styles.chartHeader}>
-        <Text style={styles.chartTitle}>Répartition des Revenus</Text>
+        <Text style={styles.chartTitle}>
+          Répartition des revenus par produit
+        </Text>
+        <Text style={styles.subtitle}>
+          {filter === "currentMonth"
+            ? `${currentMonthName} ${currentYear}`
+            : `Année ${currentYear}`}
+        </Text>
+
         <View style={styles.filterButtons}>
           <TouchableOpacity
             style={[
               styles.filterBtn,
-              revenuFilter === "Janvier" && styles.filterBtnActive,
+              filter === "currentMonth" && styles.filterBtnActive,
             ]}
-            onPress={() => setRevenuFilter("Janvier")}
+            onPress={() => setFilter("currentMonth")}
           >
             <Text
               style={[
                 styles.filterBtnText,
-                revenuFilter === "Janvier" && styles.filterBtnTextActive,
+                filter === "currentMonth" && styles.filterBtnTextActive,
               ]}
             >
-              Janvier
+              {currentMonthName}
             </Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[
               styles.filterBtn,
-              revenuFilter === "Mensuel" && styles.filterBtnActive,
+              filter === "annual" && styles.filterBtnActive,
             ]}
-            onPress={() => setRevenuFilter("Mensuel")}
+            onPress={() => setFilter("annual")}
           >
             <Text
               style={[
                 styles.filterBtnText,
-                revenuFilter === "Mensuel" && styles.filterBtnTextActive,
+                filter === "annual" && styles.filterBtnTextActive,
               ]}
             >
-              Mensuel
+              Annuel
             </Text>
           </TouchableOpacity>
         </View>
@@ -152,7 +190,7 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#00D09C" />
+          <ActivityIndicator size="large" color="#00D09C" />
           <Text style={styles.loadingText}>Chargement...</Text>
         </View>
       ) : error ? (
@@ -160,47 +198,45 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : pieData.length === 0 ? (
-        <Text style={styles.noDataText}>Aucune vente enregistrée</Text>
+        <View style={styles.noDataContainer}>
+          <Text style={styles.noDataText}>Aucune vente enregistrée</Text>
+        </View>
       ) : (
         <>
           <View style={styles.donutContainer}>
             <PieChart
               data={pieData}
               width={width - 48}
-              height={200}
+              height={220}
               chartConfig={chartConfig}
               accessor="amount"
               backgroundColor="transparent"
-              paddingLeft="15"
+              paddingLeft="0"
               absolute={false}
               hasLegend={false}
             />
+
             <View style={styles.donutCenter}>
-              <Text style={styles.donutCenterLabel}>CA Général</Text>
+              <Text style={styles.donutCenterLabel}>Chiffre d&apos;affaires</Text>
               <Text style={styles.donutCenterValue}>
-                {totalRevenue.toLocaleString("fr-FR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {totalRevenue.toLocaleString("fr-FR")} KMF
               </Text>
-              <Text style={styles.donutCenterCurrency}>XAF</Text>
             </View>
           </View>
 
-          <View style={styles.revenusLegend}>
-            {pieData.map((item, index) => (
-              <View key={index} style={styles.revenuLegendItem}>
-                <View style={styles.revenuLegendLeft}>
+          <View style={styles.legend}>
+            {pieData.map((item, i) => (
+              <View key={i} style={styles.legendItem}>
+                <View style={styles.legendLeft}>
                   <View
                     style={[styles.legendDot, { backgroundColor: item.color }]}
                   />
-                  <Text style={styles.revenuLegendText}>{item.name}</Text>
+                  <Text style={styles.legendName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
                 </View>
-                <Text style={styles.revenuLegendAmount}>
-                  {item.amount.toLocaleString("fr-FR", {
-                    minimumFractionDigits: 2,
-                  })}{" "}
-                  kmf
+                <Text style={styles.legendAmount}>
+                  {item.amount.toLocaleString("fr-FR")} KMF
                 </Text>
               </View>
             ))}
@@ -219,58 +255,66 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: "#00D09C",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    elevation: 3,
+    shadowColor: "#00D09C",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
   chartHeader: {
-    flexDirection: "column",
-    justifyContent: "center",
-    gap: 8,
     alignItems: "center",
     marginBottom: 16,
+    gap: 6,
   },
   chartTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    textAlign: "center",
   },
-  filterButtons: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  filterBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#F5F5F5",
-  },
-  filterBtnActive: {
-    backgroundColor: "#E8FFF6",
-  },
-  filterBtnText: {
-    fontSize: 12,
+  subtitle: {
+    fontSize: 13,
     color: "#666",
     fontWeight: "500",
   },
+  filterButtons: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+  },
+  filterBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: "#F0FFFB",
+    borderWidth: 1,
+    borderColor: "#E8FFF6",
+  },
+  filterBtnActive: {
+    backgroundColor: "#E8FFF6",
+    borderColor: "#00D09C",
+  },
+  filterBtnText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+  },
   filterBtnTextActive: {
     color: "#00D09C",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   donutContainer: {
     position: "relative",
     alignItems: "center",
-    marginVertical: 16,
+    marginVertical: 10,
   },
   donutCenter: {
     position: "absolute",
     top: "50%",
     left: "50%",
-    transform: [{ translateX: -75 }, { translateY: -40 }],
+    transform: [{ translateX: -80 }, { translateY: -50 }],
     alignItems: "center",
-    width: 150,
+    width: 160,
   },
   donutCenterLabel: {
     fontSize: 12,
@@ -278,71 +322,69 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   donutCenterValue: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 19,
+    fontWeight: "800",
     color: "#000",
-    textAlign: "center",
   },
-  donutCenterCurrency: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-  },
-  revenusLegend: {
+  legend: {
     marginTop: 16,
-    gap: 12,
+    gap: 10,
   },
-  revenuLegendItem: {
+  legendItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  revenuLegendLeft: {
+  legendLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     flex: 1,
   },
   legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 13,
+    height: 13,
+    borderRadius: 7,
   },
-  revenuLegendText: {
+  legendName: {
     fontSize: 14,
     color: "#333",
     flexShrink: 1,
   },
-  revenuLegendAmount: {
+  legendAmount: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#000",
   },
   loadingContainer: {
-    height: 200,
+    height: 240,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 8,
+    marginTop: 12,
     color: "#666",
     fontSize: 14,
   },
   errorContainer: {
-    height: 200,
+    height: 240,
     justifyContent: "center",
     alignItems: "center",
   },
   errorText: {
     color: "#FF6B6B",
-    fontSize: 14,
+    fontSize: 15,
     textAlign: "center",
   },
+  noDataContainer: {
+    height: 240,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   noDataText: {
-    textAlign: "center",
     color: "#999",
-    fontSize: 14,
-    marginVertical: 20,
+    fontSize: 15,
+    fontStyle: "italic",
   },
 });
 

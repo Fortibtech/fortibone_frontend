@@ -272,3 +272,73 @@ export const createWithdraw = async (
     };
   }
 };
+
+
+// Types basés sur la réponse réelle de l'API (pas sur la doc obsolète)
+export interface TransferResponse {
+  id: string;
+  type: "TRANSFER";
+  amount: string;                  // vient en string : "-100" ou "+100"
+  status: "COMPLETED" | "PENDING" | "FAILED";
+  description: string;
+  createdAt: string;
+  walletId: string;
+  metadata: any | null;
+  relatedOrderId: string | null;
+  relatedPaymentTransactionId: string | null;
+  transferPeerTransactionId: string; // ID de la transaction chez le destinataire
+}
+
+export interface TransferRequest {
+  amount: number;                    // tu envoies un nombre positif
+  recipientIdentifier: string;       // email ou phone ou username
+}
+
+/**
+ * Transfère de l'argent à un autre utilisateur FortiBone
+ * @param amount Montant à envoyer (doit être > 0)
+ * @param recipientIdentifier Email, téléphone ou identifiant du destinataire
+ * @returns Les détails de la transaction de débit (côté expéditeur)
+ */
+export const transferMoney = async (
+  amount: number,
+  recipientIdentifier: string
+): Promise<TransferResponse> => {
+  if (amount <= 0) {
+    throw new Error("Le montant doit être supérieur à 0");
+  }
+
+  const payload: TransferRequest = {
+    amount,                         // l'API attend un nombre positif
+    recipientIdentifier: recipientIdentifier.trim(),
+  };
+
+  try {
+    const response = await axiosInstance.post<TransferResponse>(
+      "/wallet/transfer",
+      payload
+    );
+
+    // Tout s'est bien passé
+    console.log("Transfert réussi :", response.data);
+    return response.data;
+  } catch (error: any) {
+    // Gestion propre des erreurs fréquentes
+    if (error.response?.status === 400) {
+      const msg = error.response.data?.message || "Solde insuffisant ou destinataire invalide";
+      throw new Error(msg);
+    }
+    if (error.response?.status === 404) {
+      throw new Error("Destinataire non trouvé");
+    }
+    if (error.response?.status === 401) {
+      throw new Error("Session expirée, veuillez vous reconnecter");
+    }
+
+    // Erreur inconnue
+    console.error("Erreur transfert :", error);
+    throw new Error(
+      error.response?.data?.message || "Échec du transfert, réessayez"
+    );
+  }
+};
