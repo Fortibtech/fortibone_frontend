@@ -167,14 +167,13 @@ const Login = () => {
         />
         <View style={styles.titleText}>
           <Text style={styles.mainTitle}>
-            Connexion au compte{" "}
-            <Text style={styles.subTitle}>{capitalizedProfile}</Text>
+            Accès <Text style={styles.subTitle}>{capitalizedProfile}</Text>
           </Text>
         </View>
       </View>
 
       <View style={styles.resgister}>
-        <Text>Vous êtes nouveau ?</Text>
+        <Text>Nouveau sur KomoraLink ?</Text>
         <TouchableOpacity
           onPress={() =>
             profileType === "particulier"
@@ -213,7 +212,7 @@ const Login = () => {
         />
 
         <View style={styles.forgotRow}>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.checkboxContainer}
             onPress={() => setRememberMe(!rememberMe)}
           >
@@ -225,7 +224,7 @@ const Login = () => {
               color={rememberMe ? "#059669" : "#ccc"}
             />
             <Text style={styles.rememberText}>Se rappeler de moi</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             onPress={() => router.push("/(auth)/ResetPassword")}

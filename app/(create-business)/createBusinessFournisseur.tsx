@@ -747,7 +747,7 @@ const CreateBusinessFournisseur: React.FC = () => {
 
         <View style={styles.footer}>
           <TouchableOpacity style={styles.saveButton} onPress={validateAndSave}>
-            <Text style={styles.saveButtonText}>Créer mon entreprise</Text>
+            <Text style={styles.saveButtonText}>Lancer mon entreprise</Text>
           </TouchableOpacity>
         </View>
 

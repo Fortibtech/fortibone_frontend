@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Image, StyleSheet, Text, View } from "react-native";
 import * as Progress from "react-native-progress";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -55,15 +55,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   imgLogo: {
-    width: "100%",
-    flex: 1,
+    flex: 0.5,
     justifyContent: "center",
     alignItems: "center",
+    width: "100%",
   },
   logo: {
-    width: 53,
-    height: 53,
-    marginBottom: 20,
+    width: Dimensions.get("window").width * 0.4,
+    height: Dimensions.get("window").width * 0.4,
+    resizeMode: "contain" as const,
   },
   title: {
     fontSize: 28,

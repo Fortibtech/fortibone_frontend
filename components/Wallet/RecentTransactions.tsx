@@ -104,10 +104,6 @@ export const RecentTransactions = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Transactions récentes</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={loadRecent} style={styles.refreshBtn}>
-            <Ionicons name="refresh" size={22} color="#58617b" />
-          </TouchableOpacity>
-
           <TouchableOpacity
             onPress={() => router.push("/finance/Transactions")}
             style={styles.seeMore}
@@ -118,7 +114,7 @@ export const RecentTransactions = () => {
         </View>
       </View>
 
-      {/* Contenu */}
+      {/* Content */}
       {loading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="small" color="#58617b" />
@@ -132,7 +128,8 @@ export const RecentTransactions = () => {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 8 }}
+          contentContainerStyle={{ paddingBottom: 70 }}
+          style={{ maxHeight: 330 }} // 👈 SCROLL FIX
         >
           {transactions.map((t) => (
             <View key={t.id} style={styles.transactionItem}>
@@ -190,6 +187,7 @@ const styles = StyleSheet.create({
   container: {
     width: width - 32,
     backgroundColor: "#fff",
+
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
@@ -225,7 +223,6 @@ const styles = StyleSheet.create({
     color: "#58617b",
     fontWeight: "500",
   },
-
   loading: {
     alignItems: "center",
     paddingVertical: 30,
@@ -235,7 +232,6 @@ const styles = StyleSheet.create({
     color: "#58617b",
     fontSize: 14,
   },
-
   empty: {
     alignItems: "center",
     paddingVertical: 40,
@@ -245,7 +241,6 @@ const styles = StyleSheet.create({
     color: "#999",
     fontSize: 15,
   },
-
   transactionItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -263,7 +258,6 @@ const styles = StyleSheet.create({
   },
   incomeBg: { backgroundColor: "#ecfdf5" },
   expenseBg: { backgroundColor: "#fef2f2" },
-
   info: {
     flex: 1,
   },
