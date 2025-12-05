@@ -275,9 +275,7 @@ const HomePage: React.FC = () => {
                 }}
               >
                 <Text style={styles.cardValue}>
-                  {monthlyOverview
-                    ? formatNumber(monthlyOverview.totalSalesAmount)
-                    : "--"}
+                  {overallOverview?.totalSalesAmount}
                 </Text>
                 <Text style={styles.cardUnit}> KMF</Text>
               </View>
@@ -312,11 +310,13 @@ const HomePage: React.FC = () => {
                 />
               </View>
               <View>
-                <Text style={styles.cardLabel}>Achats en cours</Text>
+                <Text style={styles.cardLabel}>Achats </Text>
                 <Text style={styles.cardValue}>
-                  {processingPurchases.totalItems} article
-                  {processingPurchases.totalItems > 1 ? "s" : ""} commandé
-                  {processingPurchases.totalItems > 1 ? "s" : ""}
+                  {overallOverview?.totalSalesOrders
+                    ? `${overallOverview.totalSalesOrders} article${
+                        overallOverview.totalSalesOrders > 1 ? "s" : ""
+                      }`
+                    : ""}
                 </Text>
               </View>
             </View>

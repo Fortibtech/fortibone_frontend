@@ -303,7 +303,7 @@ export const getPendingOrdersCount = async (
 ): Promise<number> => {
   try {
     const response = await getOrders(businessId, {
-      status: "PENDING",
+      status: "PENDING_PAYMENT",
       type,
       limit: 1, // On ne récupère qu'une seule commande pour avoir le total
     });

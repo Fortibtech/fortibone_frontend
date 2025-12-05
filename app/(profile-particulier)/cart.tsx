@@ -139,7 +139,7 @@ const Cart = () => {
           {item.variantName ? ` - ${item.variantName}` : ""}
         </Text>
         <Text style={styles.itemPrice}>
-          {item.price.toFixed(2)} € × {item.quantity}
+          {item.price.toFixed(2)} KMF × {item.quantity}
         </Text>
         <View style={styles.quantityControls}>
           <TouchableOpacity
@@ -192,7 +192,7 @@ const Cart = () => {
 
             <View style={styles.totalSection}>
               <Text style={styles.totalLabel}>Total à payer</Text>
-              <Text style={styles.totalAmount}>{totalPrice} €</Text>
+              <Text style={styles.totalAmount}>{totalPrice} KMF</Text>
             </View>
 
             {/* <Text style={styles.paymentMethodLabel}>Mode de paiement</Text>

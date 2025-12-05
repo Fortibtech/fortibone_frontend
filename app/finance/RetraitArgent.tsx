@@ -67,7 +67,7 @@ function WithdrawContent() {
     if (val > (walletBalance || 0)) {
       Alert.alert(
         "Solde insuffisant",
-        `Vous avez seulement ${(walletBalance || 0).toLocaleString()} XAF`
+        `Vous avez seulement ${(walletBalance || 0).toLocaleString()} KMF`
       );
       return;
     }
@@ -91,7 +91,7 @@ function WithdrawContent() {
         Alert.alert(
           "Limite dépassée",
           method === "STRIPE"
-            ? `Maximum Stripe : ${MAX_AMOUNT_STRIPE.toLocaleString()} XAF`
+            ? `Maximum Stripe : ${MAX_AMOUNT_STRIPE.toLocaleString()} KMF`
             : "Vous n'avez pas assez sur votre solde"
         );
         return;
@@ -109,7 +109,7 @@ function WithdrawContent() {
         "Montant invalide",
         `Doit être entre ${MIN_AMOUNT} et ${(
           walletBalance || 0
-        ).toLocaleString()} XAF`
+        ).toLocaleString()} KMF`
       );
       return;
     }
@@ -168,7 +168,7 @@ function WithdrawContent() {
 
         Alert.alert(
           "Retrait envoyé !",
-          `${amount.toLocaleString()} XAF seront versés sur ${phoneNumber}\nDélai : 1 à 48h`,
+          `${amount.toLocaleString()} KMF seront versés sur ${phoneNumber}\nDélai : 1 à 48h`,
           [{ text: "Super !", onPress: () => router.back() }]
         );
         return;
@@ -203,7 +203,7 @@ function WithdrawContent() {
 
       Alert.alert(
         "Retrait sur carte demandé !",
-        `${amount.toLocaleString()} XAF seront crédités sur votre carte sous 2 à 7 jours ouvrés`,
+        `${amount.toLocaleString()} KMF seront crédités sur votre carte sous 2 à 7 jours ouvrés`,
         [{ text: "Parfait", onPress: () => router.back() }]
       );
     } catch (err: any) {
@@ -253,7 +253,7 @@ function WithdrawContent() {
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>Solde disponible</Text>
             <Text style={styles.balanceAmount}>
-              {(walletBalance || 0).toLocaleString("fr-FR")} XAF
+              {(walletBalance || 0).toLocaleString("fr-FR")} KMF
             </Text>
           </View>
 
@@ -295,7 +295,7 @@ function WithdrawContent() {
             <Text style={styles.sectionTitle}>Montant à retirer</Text>
             <Text style={styles.amountDisplay}>
               {amount.toLocaleString("fr-FR")}{" "}
-              <Text style={styles.currency}>XAF</Text>
+              <Text style={styles.currency}>KMF</Text>
             </Text>
 
             <View style={styles.presetsGrid}>

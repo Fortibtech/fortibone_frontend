@@ -18,7 +18,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 // 🔥 Get screen width for responsive design
 const { width } = Dimensions.get("window");
-
 interface Category {
   id: string;
   name: string;

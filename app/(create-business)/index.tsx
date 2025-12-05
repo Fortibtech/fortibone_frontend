@@ -59,9 +59,7 @@ const Index = () => {
           <View style={styles.backButton}>
             <BackButtonAdmin />
           </View>
-          <Text style={styles.question}>
-            Que souhaitez-vous faire sur FortibOne ?
-          </Text>
+          <Text style={styles.question}>Qui êtes-vous ?</Text>
         </View>
 
         {proTypes.map((type) => (
@@ -118,16 +116,13 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "relative",
-
-    right: 25,
+    left: 10,
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 40,
-
-    gap: 16,
+    marginBottom: 90,
+    gap: 20,
   },
   content: {
     flex: 1,
@@ -136,11 +131,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   question: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
-    textAlign: "center",
     color: "#111",
-
     lineHeight: 30,
   },
 

@@ -1,19 +1,27 @@
-import { useCallback, useState } from "react";
-import { Feather, Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router"; // ← La magie
+// components/dashboard/StatsCard.tsx
+import { useState, useCallback } from "react";
 import {
-  Dimensions,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
-import { GetWalletTransactions } from "@/api/wallet";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
+import {
+  GetWalletTransactions,
+  TransactionType,
+  TransactionStatus,
+} from "@/api/wallet";
+import TotalExpensesCard from "@/components/cards/TotalExpensesCard";
+import AvailableBalanceCard from "@/components/cards/AvailableBalanceCard";
 
 const StatsCard = () => {
   const router = useRouter();
   const { width } = Dimensions.get("window");
+
   const [loading, setLoading] = useState(true);
   const [totalIn, setTotalIn] = useState(0);
   const [totalOut, setTotalOut] = useState(0);
@@ -21,28 +29,36 @@ const StatsCard = () => {
   const fetchTotals = async () => {
     setLoading(true);
     try {
-      const [inflowResp, outflowResp] = await Promise.all([
+      // Pour éviter l'erreur 400, on suit la structure valide du endpoint
+      const [inResp, outResp] = await Promise.all([
         GetWalletTransactions({
-          type: "DEPOSIT",
-          status: "COMPLETED",
+          page: 1,
           limit: 100,
+          type: "DEPOSIT" as TransactionType,
+          status: "COMPLETED" as TransactionStatus,
         }),
         GetWalletTransactions({
-          type: "WITHDRAWAL",
-          status: "COMPLETED",
+          page: 1,
           limit: 100,
+          type: "WITHDRAWAL" as TransactionType,
+          status: "COMPLETED" as TransactionStatus,
         }),
       ]);
 
-      const totalInflow = (
-        Array.isArray(inflowResp?.data) ? inflowResp.data : []
-      ).reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
-      const totalOutflow = (
-        Array.isArray(outflowResp?.data) ? outflowResp.data : []
-      ).reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
+      const inflows = Array.isArray(inResp?.data) ? inResp.data : [];
+      const outflows = Array.isArray(outResp?.data) ? outResp.data : [];
 
-      setTotalIn(totalInflow);
-      setTotalOut(totalOutflow);
+      const sumIn = inflows.reduce(
+        (acc, t: any) => acc + Number(t.amount || 0),
+        0
+      );
+      const sumOut = outflows.reduce(
+        (acc, t: any) => acc + Number(t.amount || 0),
+        0
+      );
+
+      setTotalIn(sumIn);
+      setTotalOut(sumOut);
     } catch (err) {
       console.error("Erreur fetchTotals:", err);
       setTotalIn(0);
@@ -52,7 +68,7 @@ const StatsCard = () => {
     }
   };
 
-  // Rechargement automatique quand l'écran revient au focus
+  // Auto refresh quand l'écran est focus
   useFocusEffect(
     useCallback(() => {
       fetchTotals();
@@ -64,13 +80,7 @@ const StatsCard = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Statistiques</Text>
-
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          {/* Bouton refresh manuel (optionnel mais propre) */}
-          <TouchableOpacity onPress={fetchTotals}>
-            <Ionicons name="refresh" size={22} color="#58617b" />
-          </TouchableOpacity>
-
           <TouchableOpacity
             onPress={() => router.push("/finance/Stats")}
             style={styles.seeMore}
@@ -89,38 +99,9 @@ const StatsCard = () => {
       ) : (
         <View style={styles.statsRow}>
           {/* Entrées */}
-          <View style={styles.statBox}>
-            <View style={styles.ligne}>
-              <Feather
-                name="arrow-up-right"
-                size={18}
-                color="#00af66"
-                style={styles.arrow}
-              />
-              <Text style={styles.statLabel}>Entrées</Text>
-            </View>
-            <Text style={styles.statAmount}>
-              {totalIn.toLocaleString("fr-FR")} KMF
-            </Text>
-          </View>
-
+          <AvailableBalanceCard />
           {/* Sorties */}
-          <View style={styles.statBox}>
-            <View style={styles.ligne}>
-              <Feather
-                name="arrow-down-left"
-                size={18}
-                color="#ef4444"
-                style={styles.arrow}
-              />
-              <Text style={[styles.statLabel, { color: "#ef4444" }]}>
-                Sorties
-              </Text>
-            </View>
-            <Text style={[styles.statAmount, { color: "#ef4444" }]}>
-              {totalOut.toLocaleString("fr-FR")} KMF
-            </Text>
-          </View>
+          <TotalExpensesCard />
         </View>
       )}
     </View>
