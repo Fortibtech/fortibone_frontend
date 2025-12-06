@@ -412,7 +412,11 @@ const HomePage: React.FC = () => {
           onPress={() => router.push("/fournisseurSetting")}
         >
           <Image
-            source={uri ? { uri } : require("@/assets/images/icon.png")}
+            source={
+              user?.profileImageUrl
+                ? user.profileImageUrl
+                : require("@/assets/images/icon.png")
+            }
             style={styles.avatar}
             resizeMode="cover"
           />
@@ -628,30 +632,27 @@ const HomePage: React.FC = () => {
     const stats = [
       {
         id: 1,
-        bussinesId: selectedBusiness?.id,
+        bussinesId: businesses[0].id,
         label: "Ventes",
         icon: "cash",
         route: "/(accueil)/analytics-vente/[id]" as const,
       },
       {
         id: 2,
-        bussinesId: selectedBusiness?.id,
+        bussinesId: businesses[0].id,
         label: "Achats",
         icon: "cart",
         route: "/(accueil)/analytics-achats/[id]" as const,
       },
       {
         id: 3,
-        bussinesId: selectedBusiness?.id,
+        bussinesId: businesses[0].id,
         label: "Stock",
         icon: "cube",
         route: "/(accueil)/analytics-stocks/[id]" as const,
       },
     ] as const;
-    console.log(
-      "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX selectedBusiness",
-      selectedBusiness?.id
-    );
+    console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", businesses[0].id);
     return (
       <View style={styles.section}>
         <View style={styles.sectionViewTitle}>

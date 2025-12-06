@@ -191,11 +191,10 @@ const HomePage: React.FC = () => {
         </Svg>
         <View style={styles.bannerContentWrapper}>
           <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>Don&apos;t Miss Out!</Text>
-            <Text style={styles.bannerSubtitle}>Discount up to 50%</Text>
-            <TouchableOpacity style={styles.bannerButton}>
-              <Text style={styles.bannerButtonText}>Check Now</Text>
-            </TouchableOpacity>
+            <Text style={styles.bannerTitle}>Ne ratez pas ça !</Text>
+            <Text style={styles.bannerSubtitle}>
+              Jusqu&apos;à 50 % de réduction
+            </Text>
           </View>
           <View style={styles.bannerImageContainer}>
             <Image

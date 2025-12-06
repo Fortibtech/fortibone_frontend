@@ -20,9 +20,11 @@ import {
   View,
   ScrollView,
   StyleSheet,
+  SafeAreaView,
+  StatusBar, // ← CORRECT IMPORT
 } from "react-native";
 import Carousel from "react-native-reanimated-carousel";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -30,6 +32,7 @@ const { width: screenWidth } = Dimensions.get("window");
 const ProductDetails = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { toggleItem, isInCart } = useCartStore();
+  const insets = useSafeAreaInsets();
 
   const [product, setProduct] = useState<Products | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,6 +43,15 @@ const ProductDetails = () => {
   const [showAddReview, setShowAddReview] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+
+  // Cacher la barre de statut (batterie, heure, wifi...) UNIQUEMENT sur cette page
+  useEffect(() => {
+    StatusBar.setHidden(true, "fade"); // "fade" ou "slide" pour une belle animation
+
+    return () => {
+      StatusBar.setHidden(false, "fade");
+    };
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -61,6 +73,8 @@ const ProductDetails = () => {
       }
     })();
   }, [id]);
+
+  // ... tout le reste de ton code (handleAddToCart, etc.) reste IDENTIQUE
 
   const handleToggleFavorite = async () => {
     if (favLoading || !id) return;
@@ -155,7 +169,7 @@ const ProductDetails = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* IMAGE CAROUSEL */}
+      {/* TON UI RESTE 100% IDENTIQUE */}
       <View style={styles.hero}>
         <Carousel
           width={screenWidth}
@@ -166,7 +180,7 @@ const ProductDetails = () => {
             <Image source={item} style={styles.heroImage} resizeMode="cover" />
           )}
         />
-
+        {/* ... tout le reste de ton UI (dots, topActions, etc.) */}
         {hasImages && images.length > 1 && (
           <View style={styles.dots}>
             {images.map((_, i) => (
@@ -177,9 +191,8 @@ const ProductDetails = () => {
             ))}
           </View>
         )}
-
         <View style={styles.topActions}>
-          <BackButtonAdmin />
+          <BackButtonAdmin backgroundColor="rgba(255, 255, 255, 0.9)" />
           <View style={{ flexDirection: "row", gap: 10 }}>
             <TouchableOpacity
               style={[styles.iconBtn, inCart && styles.cartActive]}
@@ -207,19 +220,16 @@ const ProductDetails = () => {
         </View>
       </View>
 
-      {/* PARTIE FIXE (toujours visible sans scroll) */}
+      {/* Le reste de ton UI (fixedInfo, ScrollView, bottomBar, modals) → inchangé */}
       <View style={styles.fixedInfo}>
         <Text style={styles.title}>{product.name}</Text>
-
         <View style={styles.ratingRow}>
           {renderStars(product.averageRating)}
           <Text style={styles.ratingText}>
             {product.averageRating.toFixed(1)} ({product.reviewCount} avis)
           </Text>
         </View>
-
         <Text style={styles.price}>{currentVariant?.price ?? "0"} KMF</Text>
-
         {outOfStock ? (
           <Text style={styles.outOfStock}>Rupture de stock</Text>
         ) : (
@@ -227,16 +237,13 @@ const ProductDetails = () => {
             {currentVariant?.quantityInStock} en stock
           </Text>
         )}
-
         <ReviewActions
           onShowReviews={() => setShowReviews(true)}
           onAddReview={() => setShowAddReview(true)}
         />
       </View>
 
-      {/* PARTIE SCROLLABLE */}
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        {/* Description */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Description</Text>
           <Text
@@ -256,7 +263,6 @@ const ProductDetails = () => {
           )}
         </View>
 
-        {/* Options */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Options du produit</Text>
           <ProductOptionsSelector
@@ -265,7 +271,6 @@ const ProductDetails = () => {
           />
         </View>
 
-        {/* Catégorie */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Catégorie</Text>
           <CategoryInfo category={product.category} />
@@ -274,8 +279,7 @@ const ProductDetails = () => {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* BOUTON FIXE EN BAS */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         <TouchableOpacity
           style={[
             styles.addButton,
@@ -291,7 +295,6 @@ const ProductDetails = () => {
         </TouchableOpacity>
       </View>
 
-      {/* MODALS */}
       <ProductReviewsListModal
         productId={product.id}
         visible={showReviews}
@@ -309,10 +312,8 @@ const ProductDetails = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
-  hero: { position: "relative" },
-  heroImage: { width: "100%", height: 340 },
-
+  hero: { position: "relative", backgroundColor: "#371616ff", height: 250 },
+  heroImage: { width: "100%", height: 250 },
   dots: {
     position: "absolute",
     bottom: 16,
@@ -328,7 +329,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.5)",
   },
   activeDot: { backgroundColor: "#fff", width: 24 },
-
   topActions: {
     position: "absolute",
     top: 12,
@@ -353,7 +353,6 @@ const styles = StyleSheet.create({
   cartActive: { backgroundColor: "#22c55e" },
   heartActive: { backgroundColor: "#e74c3c" },
   icon: { width: 22, height: 22, tintColor: "#000" },
-
   fixedInfo: {
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -372,7 +371,6 @@ const styles = StyleSheet.create({
   price: { fontSize: 28, fontWeight: "800", color: "#111", marginBottom: 6 },
   outOfStock: { color: "#e11d48", fontWeight: "700", fontSize: 15 },
   inStock: { color: "#16a34a", fontWeight: "600", fontSize: 15 },
-
   section: {
     paddingHorizontal: 16,
     paddingVertical: 18,
@@ -387,16 +385,21 @@ const styles = StyleSheet.create({
   },
   description: { fontSize: 15, lineHeight: 23, color: "#444" },
   readMore: { marginTop: 10, color: "#111", fontWeight: "600" },
-
   bottomBar: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 16,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#eee",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    elevation: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   addButton: {
     backgroundColor: "#22c55e",
