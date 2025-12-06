@@ -1,11 +1,51 @@
+// components/BackButtonAdmin.tsx (ou où tu veux)
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { StyleSheet, TouchableOpacity } from "react-native";
+import {
+  StyleSheet,
+  TouchableOpacity,
+  TouchableOpacityProps,
+} from "react-native";
+import React from "react";
 
-const BackButtonAdmin = () => {
+interface BackButtonAdminProps extends TouchableOpacityProps {
+  /**
+   * Couleur de fond du bouton
+   * - Par défaut : transparent (comme ta version actuelle)
+   * - Exemples : "#ffffff", "rgba(255,255,255,0.9)", "#00C851", etc.
+   */
+  backgroundColor?: string;
+  /**
+   * Couleur de l'icône (par défaut noir)
+   */
+  iconColor?: string;
+  /**
+   * Taille de l'icône
+   */
+  iconSize?: number;
+}
+
+const BackButtonAdmin: React.FC<BackButtonAdminProps> = ({
+  backgroundColor, // ← nouvelle prop dynamique
+  iconColor = "#000",
+  iconSize = 24,
+  style,
+  ...restProps
+}) => {
   return (
-    <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
-      <Ionicons name="arrow-back-outline" size={24} color="#000" />
+    <TouchableOpacity
+      style={[
+        styles.iconButton,
+        backgroundColor
+          ? { backgroundColor }
+          : { backgroundColor: "transparent" }, // fond dynamique
+        style,
+      ]}
+      onPress={() => router.back()}
+      activeOpacity={0.7}
+      {...restProps}
+    >
+      <Ionicons name="arrow-back-outline" size={iconSize} color={iconColor} />
     </TouchableOpacity>
   );
 };
