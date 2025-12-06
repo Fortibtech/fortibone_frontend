@@ -95,9 +95,9 @@ export default function CommandeDetails() {
       COMPLETED: { text: "Terminée", color: "#059669", bg: "#ECFDF5" },
       CANCELLED: { text: "Annulée", color: "#EF4444", bg: "#FEF2F2" },
       REFUNDED: { text: "Remboursée", color: "#6B7280", bg: "#F3F4F6" },
-      PAID:   { text: "Payée", color: "#059669", bg: "#D1FAE5" }
+      PAID: { text: "Payée", color: "#059669", bg: "#D1FAE5" },
     };
-   
+
     return map[status] || { text: status, color: "#666", bg: "#F3F4F6" };
   };
 
@@ -337,7 +337,7 @@ export default function CommandeDetails() {
                 }}
               >
                 <Text style={styles.payText}>
-                  Payer la commande • {total} KMF
+                  Payer la commande : {total} KMF
                 </Text>
               </TouchableOpacity>
             )}
@@ -371,7 +371,7 @@ export default function CommandeDetails() {
               >
                 <View style={styles.modalContent}>
                   <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Payer {total} KMF</Text>
+                    <Text style={styles.modalTitle}>Payer : {total} KMF</Text>
                     <TouchableOpacity onPress={() => setPaymentModal(false)}>
                       <Ionicons name="close" size={28} color="#999" />
                     </TouchableOpacity>
@@ -394,12 +394,14 @@ export default function CommandeDetails() {
                               styles.tabText,
                               paymentMethod === method && styles.tabTextActive,
                             ]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
                           >
                             {method === "WALLET"
                               ? "Portefeuille"
                               : method === "STRIPE"
                               ? "Carte bancaire"
-                              : "MVola / Orange Money"}
+                              : "KARTAPAY"}
                           </Text>
                         </TouchableOpacity>
                       )
@@ -484,30 +486,46 @@ export default function CommandeDetails() {
 }
 
 // ====================== STYLES ======================
+// ====================== STYLES ======================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
+
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 12, color: "#666", fontSize: 16 },
 
+  // HEADER
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    backgroundColor: "#fff",
   },
-  backBtn: { padding: 8 },
-  cmdCode: { fontSize: 18, fontWeight: "700", color: "#111" },
+  backBtn: { padding: 6 },
+  cmdCode: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111",
+    flexShrink: 1,
+    textAlign: "center",
+  },
 
+  // CLIENT + STATUT
   clientCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     backgroundColor: "#F9F9F9",
     marginHorizontal: 16,
+    marginTop: 12,
     marginBottom: 16,
     padding: 16,
     borderRadius: 12,
+    gap: 12,
   },
-  clientInfo: { flexDirection: "row", alignItems: "center" },
+  clientInfo: { flexDirection: "row", alignItems: "center", flexShrink: 1 },
   avatarPlaceholder: {
     width: 44,
     height: 44,
@@ -519,17 +537,22 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   clientLabel: { fontSize: 13, color: "#666" },
-  clientName: { fontSize: 16, fontWeight: "600", color: "#111" },
-  statusBox: { alignItems: "flex-end", justifyContent: "center" },
-  statusLabel: { fontSize: 13, color: "#666" },
-  statusBadge: {
-    marginTop: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  statusText: { fontSize: 13, fontWeight: "600" },
+  clientName: { fontSize: 16, fontWeight: "600", color: "#111", flexShrink: 1 },
 
+  statusBox: {
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  statusLabel: { fontSize: 13, color: "#666", marginBottom: 4 },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignSelf: "flex-end",
+  },
+  statusText: { fontSize: 12, fontWeight: "600" },
+
+  // INFOS RAPIDES
   infoCard: {
     marginHorizontal: 16,
     marginBottom: 16,
@@ -540,11 +563,20 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     marginVertical: 4,
+    gap: 8,
   },
   infoLabel: { color: "#666", fontSize: 14 },
-  infoValue: { color: "#333", fontWeight: "500", fontSize: 14 },
+  infoValue: {
+    color: "#333",
+    fontWeight: "500",
+    fontSize: 14,
+    flexShrink: 1,
+    textAlign: "right",
+  },
 
+  // ARTICLES
   card: {
     marginHorizontal: 16,
     marginBottom: 20,
@@ -573,18 +605,25 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 18, fontWeight: "700" },
   totalValue: { fontSize: 18, fontWeight: "700", color: "#00A36C" },
 
+  // FOOTER ACTIONS
   footer: { marginHorizontal: 16, marginBottom: 40, gap: 12 },
   payBtn: {
     backgroundColor: "#00A36C",
-    padding: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     borderRadius: 12,
     alignItems: "center",
   },
-  payText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  payText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+  },
 
   actionBtn: {
     backgroundColor: "#00A36C",
-    padding: 16,
+    paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
   },
@@ -592,7 +631,7 @@ const styles = StyleSheet.create({
 
   cancelBtn: {
     backgroundColor: "#FEE2E2",
-    padding: 16,
+    paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
   },
@@ -605,6 +644,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontStyle: "italic",
   },
+
+  // MODAL
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -615,7 +656,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 32,
     maxHeight: "90%",
   },
   modalHeader: {
@@ -624,20 +665,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: "#111" },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: "#111", flexShrink: 1 },
 
+  // TABS PAIEMENT
   paymentTabs: {
     flexDirection: "row",
+    flexWrap: "wrap",
     backgroundColor: "#f5f5f5",
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
+    columnGap: 4,
+    rowGap: 4,
   },
-  tab: { flex: 1, paddingVertical: 12, alignItems: "center", borderRadius: 10 },
+  tab: {
+    flexGrow: 1,
+    flexBasis: "30%",
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
   tabActive: { backgroundColor: "#00A36C" },
-  tabText: { fontWeight: "600", color: "#666" },
+  tabText: {
+    fontWeight: "600",
+    color: "#666",
+    fontSize: 13,
+    textAlign: "center",
+  },
   tabTextActive: { color: "#fff" },
 
+  // INPUTS
   inputContainer: { marginBottom: 20 },
   inputLabel: {
     fontSize: 15,
@@ -649,7 +708,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     fontSize: 16,
     backgroundColor: "#fafafa",
   },
@@ -661,19 +720,31 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
 
-  walletInfo: { alignItems: "center", paddingVertical: 30 },
-  walletText: { fontSize: 18, fontWeight: "600", marginTop: 12 },
+  // WALLET
+  walletInfo: {
+    alignItems: "center",
+    paddingVertical: 28,
+    paddingHorizontal: 8,
+  },
+  walletText: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 12,
+    textAlign: "center",
+  },
   walletAmount: {
     fontSize: 16,
     color: "#00A36C",
     marginTop: 8,
     fontWeight: "600",
+    textAlign: "center",
   },
 
-  modalFooter: { flexDirection: "row", gap: 12, marginTop: 20 },
+  // MODAL FOOTER
+  modalFooter: { flexDirection: "row", gap: 12, marginTop: 12 },
   modalCancel: {
     flex: 1,
-    padding: 16,
+    paddingVertical: 14,
     backgroundColor: "#f0f0f0",
     borderRadius: 12,
     alignItems: "center",
@@ -681,7 +752,7 @@ const styles = StyleSheet.create({
   modalCancelText: { fontWeight: "600", color: "#666" },
   modalPay: {
     flex: 2,
-    padding: 16,
+    paddingVertical: 14,
     backgroundColor: "#00A36C",
     borderRadius: 12,
     alignItems: "center",

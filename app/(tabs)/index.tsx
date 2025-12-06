@@ -116,13 +116,10 @@ const HomePage: React.FC = () => {
         </TouchableOpacity>
         <View style={styles.headerLeft}>
           <View style={styles.logoContainer}>
-            <Image
-              source={require("@/assets/images/logo/white.png")}
-              style={[styles.bgImage, { top: 0, left: 0 }]}
-            />
-         
+            <Text style={styles.logoText}>KomoraLink</Text>
           </View>
         </View>
+
         <TouchableOpacity
           style={styles.notificationButton}
           onPress={() => router.push("/(profile-particulier)/cart")}
@@ -299,15 +296,13 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   headerLeft: {
-    flexDirection: "row",
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   logoContainer: {
-    marginLeft: 12,
-    justifyContent: "flex-start",
+    justifyContent: "center",
     alignItems: "center",
-    alignContent: "center",
-    flexDirection: "row",
   },
   bgImage: {
     width: 20,
@@ -318,9 +313,9 @@ const styles = StyleSheet.create({
   },
   logoText: {
     color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
   notificationButton: {
     padding: 4,
