@@ -116,7 +116,7 @@ const YourOrders = () => {
         return { text: "Terminée", color: "#059669", bg: "#D1FAE5" };
       case "CANCELLED":
         return { text: "Annulée", color: "#EF4444", bg: "#FECACA" };
-        case "PAID":
+      case "PAID":
         return { text: "Payée", color: "#059669", bg: "#D1FAE5" };
       case "REFUNDED":
         return { text: "Remboursée", color: "#6B7280", bg: "#E5E7EB" };
@@ -223,6 +223,7 @@ const YourOrders = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f9f9f9" },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -251,21 +252,34 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+
   orderDetails: { flex: 1 },
+
   orderNumber: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
     color: "#111",
-    marginBottom: 6,
+    marginBottom: 4,
   },
+
   rowBetween: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 6,
+    flexWrap: "wrap", // s’adapte aux petits écrans
+    gap: 6,
   },
-  orderInfo: { fontSize: 15, color: "#374151", fontWeight: "600" },
+
+  orderInfo: {
+    fontSize: 15,
+    color: "#374151",
+    fontWeight: "600",
+    flexShrink: 1, // évite que le texte pousse le badge hors écran
+  },
+
   orderDate: { fontSize: 13, color: "#6b7280" },
+
   orderNotes: {
     fontSize: 13,
     color: "#6b7280",
@@ -274,14 +288,14 @@ const styles = StyleSheet.create({
   },
 
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    position: "relative",
-    bottom: 30,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignSelf: "flex-start",
   },
+
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -293,12 +307,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 40,
   },
+
   emptyTitle: {
     fontSize: 20,
     fontWeight: "600",
     color: "#4b5563",
     marginTop: 16,
   },
+
   emptySubtitle: {
     fontSize: 15,
     color: "#9ca3af",
