@@ -13,7 +13,7 @@ const CreateBusinessLivreur = () => {
 
         {/* Titre centré */}
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>Créer mon restaurant</Text>
+          <Text style={styles.title}>Créer mon activité de livraison</Text>
         </View>
 
         {/* Espace vide à droite pour équilibrer */}

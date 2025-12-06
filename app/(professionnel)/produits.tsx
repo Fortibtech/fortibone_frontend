@@ -72,7 +72,7 @@ const Produits = () => {
                   activeTab === "products" && styles.tabTextActive,
                 ]}
               >
-                Catalogue produits
+                Catalogue
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
