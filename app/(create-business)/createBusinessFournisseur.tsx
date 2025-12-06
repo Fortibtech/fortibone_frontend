@@ -356,9 +356,7 @@ const CreateBusinessFournisseur: React.FC = () => {
             <BackButtonAdmin />
             {/* Titre centré */}
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>
-                Créer mon entreprise de fourniture
-              </Text>
+              <Text style={styles.title}>Créer mon activité fournisseur</Text>
             </View>
 
             {/* Espace vide à droite pour équilibrer le layout */}

@@ -368,9 +368,9 @@ const CreateBusinessCommercant: React.FC = () => {
                         ]}
                       >
                         {type === "PHYSICAL"
-                          ? "Boutique physique"
+                          ? "Physique"
                           : type === "ONLINE"
-                          ? "En ligne uniquement"
+                          ? "En ligne"
                           : "Hybride"}
                       </Text>
                       {business.commerceType === type && (
