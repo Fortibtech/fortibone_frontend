@@ -80,7 +80,7 @@ export default function RootLayout() {
       <Tabs.Screen
         name="catalogue"
         options={{
-          title: "Catalogue",
+          title: "Produits",
           tabBarIcon: ({ color }) => (
             <ShoppingBasket size={ICON_SIZE} color={color} />
           ),
