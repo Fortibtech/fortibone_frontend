@@ -15,16 +15,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-
 import { Business, BusinessesService, SelectedBusinessManager } from "@/api"; // même types que commerçant
 import { getStatRestaurant, RestaurantStats } from "@/api/restaurant"; // stats spécifiques resto
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+import BusinessSelector from "@/components/Business/BusinessSelector";
 
 const RestaurantHome: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
     null
   );
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { uri } = useUserAvatar();
@@ -87,49 +88,58 @@ const RestaurantHome: React.FC = () => {
     try {
       await BusinessesService.selectBusiness(business);
       setSelectedBusiness(business);
-      Alert.alert("Succès", `Restaurant "${business.name}" sélectionné`);
-      await loadStats(business.id);
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Erreur", "Impossible de sélectionner le restaurant.");
+
+      Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
+
+      setTimeout(() => {
+        switch (business.type) {
+          case "COMMERCANT":
+            router.push("/(professionnel)");
+            break;
+          case "RESTAURATEUR":
+            router.push("/(restaurants)");
+            break;
+          case "FOURNISSEUR":
+            router.push("/(fournisseur)");
+            break;
+          default:
+            console.warn("Type d'entreprise inconnu:", business.type);
+        }
+      }, 100); // 100ms suffit
+    } catch (error) {
+      console.error("Erreur lors de la sélection:", error);
+      Alert.alert("Erreur", "Impossible de sélectionner l'entreprise");
     }
   };
 
   const renderHeader = () => (
     <View style={styles.header}>
-      {/* À toi d’adapter/extraire un BusinessSelectorRestaurateur si tu veux
-         recycler le composant existant */}
-      <TouchableOpacity
-        style={styles.businessSwitcher}
-        onPress={() => router.push("/(create-business)/")}
-      >
-        <Ionicons name="restaurant-outline" size={20} color="#000" />
-        <Text style={styles.businessName}>
-          {selectedBusiness?.name ?? "Sélectionner un restaurant"}
-        </Text>
-        <Ionicons name="chevron-down" size={18} color="#000" />
-      </TouchableOpacity>
+      <BusinessSelector
+        businesses={businesses}
+        selectedBusiness={selectedBusiness}
+        onBusinessSelect={handleBusinessSelect}
+        loading={loading}
+        onAddBusiness={() => router.push("/(create-business)/")}
+        onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
+      />
 
       <View style={styles.headerRight}>
         <TouchableOpacity style={styles.iconButton}>
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.avatarContainer}
-          onPress={() => router.push("/(profile)")}
+          style={styles.avatar}
+          onPress={() => router.push("/fournisseurSetting")}
         >
-          {uri ? (
-            <Image source={{ uri }} style={styles.avatar} resizeMode="cover" />
-          ) : (
-            <View style={[styles.avatar, styles.placeholder]}>
-              <Ionicons name="person" size={24} color="#aaa" />
-            </View>
-          )}
+          <Image
+            source={uri ? { uri } : require("@/assets/images/icon.png")}
+            style={styles.avatar}
+            resizeMode="cover"
+          />
         </TouchableOpacity>
       </View>
     </View>
   );
-
   const renderOverviewSection = () => {
     if (!selectedBusiness) return null;
 
@@ -204,88 +214,120 @@ const RestaurantHome: React.FC = () => {
     </View>
   );
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00C851" />
-          <Text style={styles.loadingText}>Chargement...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
-      {renderHeader()}
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#00C851"]}
-          />
-        }
-      >
-        {selectedBusiness ? (
-          <>
-            {renderOverviewSection()}
-            {renderQuickAccess()}
-          </>
+      {/* HEADER TOUJOURS VISIBLE */}
+      <View style={styles.fixedHeader}>{renderHeader()}</View>
+
+      {/* CONTENU */}
+      <View style={styles.bodyContainer}>
+        {loading ? (
+          // Écran de chargement qui laisse le header visible
+          <View style={styles.initialLoadingContainer}>
+            <ActivityIndicator size="large" color="#00C851" />
+            <Text style={styles.initialLoadingText}>
+              Chargement du tableau de bord...
+            </Text>
+          </View>
         ) : (
-          renderNoBusiness()
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={["#00C851"]}
+                tintColor="#00C851"
+              />
+            }
+          >
+            {selectedBusiness ? (
+              <>
+                {renderOverviewSection()}
+                {renderQuickAccess()}
+              </>
+            ) : (
+              renderNoBusiness()
+            )}
+          </ScrollView>
         )}
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA", paddingBottom: 50 },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: { marginTop: 10, fontSize: 16, color: "#666" },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8F9FA",
+  },
 
-  header: {
+  fixedHeader: {
     backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
+    zIndex: 10,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
-  businessSwitcher: {
-    flex: 1,
+
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  businessName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
+
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  iconButton: { padding: 8 },
-  avatarContainer: {
-    borderRadius: 30,
+
+  iconButton: {
+    padding: 8,
+  },
+
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     overflow: "hidden",
-    width: 32,
-    height: 32,
-    backgroundColor: "#F5F5F5",
+  },
+
+  bodyContainer: {
+    flex: 1,
+  },
+
+  scrollView: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    padding: 16,
+    paddingTop: 12,
+    paddingBottom: 80,
+  },
+
+  initialLoadingContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#F8F9FA",
   },
-  avatar: { width: "100%", height: "100%" },
-  placeholder: { justifyContent: "center", alignItems: "center" },
 
-  content: { flex: 1 },
-  scrollContent: { padding: 16 },
+  initialLoadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+  },
 
   section: { marginBottom: 24, alignItems: "center" },
   sectionTitle: {

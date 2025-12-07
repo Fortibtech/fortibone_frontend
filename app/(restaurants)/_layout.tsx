@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Platform } from "react-native";
-import { Home, Cafe, UtensilsCrossed } from "lucide-react-native"; // ou Ionicons
+import { Platform, View } from "react-native";
+import { Home, UtensilsCrossed, Coffee, User } from "lucide-react-native";
 
 export default function RestaurantsLayout() {
   const insets = useSafeAreaInsets();
@@ -62,7 +62,7 @@ export default function RestaurantsLayout() {
         name="tables"
         options={{
           title: "Tables",
-          tabBarIcon: ({ color }) => <Cafe size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Coffee size={24} color={color} />,
         }}
       />
 
@@ -73,6 +73,31 @@ export default function RestaurantsLayout() {
           tabBarIcon: ({ color }) => (
             <UtensilsCrossed size={24} color={color} />
           ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="tables-menus"
+        options={{
+          title: "Tables & Menus",
+          tabBarIcon: ({ color }) => (
+            <View style={{ flexDirection: "row", justifyContent: "center" }}>
+              <Coffee size={18} color={color} />
+              <UtensilsCrossed
+                size={18}
+                color={color}
+                style={{ marginLeft: 2 }}
+              />
+            </View>
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profil",
+          tabBarIcon: ({ color }) => <User size={24} color={color} />,
         }}
       />
     </Tabs>

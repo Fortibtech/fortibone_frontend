@@ -2,7 +2,7 @@ export interface Business {
   id: string;
   name: string;
   description?: string;
-  type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+  type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR" | "LIVREUR";
   logoUrl?: string;
   coverImageUrl?: string;
   address?: string;
@@ -23,7 +23,11 @@ export interface Business {
 }
 
 export type CommerceType = "PHYSICAL" | "ONLINE" | "HYBRID";
-export type BusinessType = "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+export type BusinessType =
+  | "COMMERCANT"
+  | "FOURNISSEUR"
+  | "RESTAURATEUR"
+  | "LIVREUR";
 export type PriceRange = "ENTRY_LEVEL" | "MID_RANGE" | "PREMIUM" | "LUXURY";
 export type Civility = "MR" | "MME" | "MLLE" | "OTHER";
 
