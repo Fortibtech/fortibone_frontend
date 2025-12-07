@@ -319,7 +319,7 @@ const CreateBusinessFournisseur: React.FC = () => {
           {
             text: "Continuer",
             onPress: () => {
-              router.replace("/(professionnel)");
+              router.replace("/(fournisseur)");
             },
           },
         ],
