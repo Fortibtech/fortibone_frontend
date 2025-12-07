@@ -13,50 +13,55 @@ import { BusinessesService } from "@/api/services/businessesService";
 export default function RootLayout() {
   const insets = useSafeAreaInsets();
 
-  // Hauteur de la tab bar sans le padding système
-  const TAB_BAR_HEIGHT = 58; // Hauteur "naturelle" des icônes + label
-  const EXTRA_PADDING_TOP = 8;
+  // Hauteur fixe confortable sur les deux plateformes
+  const TAB_BAR_HEIGHT = 62;
+  const ICON_SIZE = 26;
 
-  // Sur Android avec navigation gestuelle, on veut que la tab bar soit AU-DESSUS
-  const androidBottomOffset = Platform.OS === "android" ? insets.bottom : 0;
-  const totalHeight = TAB_BAR_HEIGHT + EXTRA_PADDING_TOP + androidBottomOffset;
+  // Padding bottom dynamique (très important sur Android gestuel)
+  const bottomPadding =
+    Platform.OS === "ios"
+      ? Math.max(insets.bottom, 20) // iPhone X+ → espace pour le home indicator
+      : Math.max(insets.bottom + 8, 16); // Android → au-dessus de la barre gestuelle
+
+  const totalHeight = TAB_BAR_HEIGHT + bottomPadding;
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: true,
         tabBarActiveTintColor: "#00C851",
-        tabBarInactiveTintColor: "#999",
+        tabBarInactiveTintColor: "#94A3B8",
+        tabBarShowLabel: true,
 
-        // LA CLÉ : style de la tab bar
+        // LA CLÉ : style parfait sur iOS + Android
         tabBarStyle: {
-          backgroundColor: "#fff",
-          borderTopWidth: 1,
-          borderTopColor: "#F0F0F0",
-          height: totalHeight,
-          paddingTop: EXTRA_PADDING_TOP,
-          paddingBottom: androidBottomOffset + 8, // +8 pour un peu d'air en bas
-          paddingHorizontal: 12,
-
-          // Très important sur Android
           position: "absolute",
+          bottom: 0,
           left: 0,
           right: 0,
-          bottom: androidBottomOffset > 10 ? 0 : undefined, // seulement si gesture nav
-
-          // Ombre propre
+          height: totalHeight,
+          paddingBottom: bottomPadding,
+          paddingTop: 10,
+          paddingHorizontal: 20,
+          backgroundColor: "#FFFFFF",
+          borderTopWidth: 1,
+          borderTopColor: "#E2E8F0",
+          elevation: 20,
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: -3 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 12,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
         },
 
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",
           marginTop: 4,
+          marginBottom: 4,
+        },
+
+        tabBarIconStyle: {
+          marginBottom: 2,
         },
 
         tabBarItemStyle: {
@@ -68,22 +73,26 @@ export default function RootLayout() {
         name="index"
         options={{
           title: "Accueil",
-          tabBarIcon: ({ color }) => <Home size={24} color={color} />,
+          tabBarIcon: ({ color }) => <Home size={ICON_SIZE} color={color} />,
         }}
       />
+
       <Tabs.Screen
         name="catalogue"
         options={{
           title: "Catalogue",
-          tabBarIcon: ({ color }) => <ShoppingBasket size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <ShoppingBasket size={ICON_SIZE} color={color} />
+          ),
         }}
       />
+
       <Tabs.Screen
         name="commandes"
         options={{
           title: "Commandes",
           tabBarIcon: ({ color }) => (
-            <CircleDollarSign size={24} color={color} />
+            <CircleDollarSign size={ICON_SIZE} color={color} />
           ),
         }}
         listeners={{
@@ -100,11 +109,14 @@ export default function RootLayout() {
           },
         }}
       />
+
       <Tabs.Screen
         name="finances"
         options={{
           title: "Finances",
-          tabBarIcon: ({ color }) => <CreditCard size={24} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <CreditCard size={ICON_SIZE} color={color} />
+          ),
         }}
       />
     </Tabs>
