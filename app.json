@@ -14,7 +14,6 @@
     },
     "android": {
       "package": "com.fortibone",
-
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -51,7 +50,9 @@
           "locationAlwaysAndWhenInUsePermission": "Permet de localiser votre commerce sur la carte."
         }
       ],
-      "expo-router"
+      "expo-router",
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
