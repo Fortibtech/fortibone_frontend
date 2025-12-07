@@ -632,27 +632,27 @@ const HomePage: React.FC = () => {
     const stats = [
       {
         id: 1,
-        bussinesId: businesses[0].id,
+        bussinesId: selectedBusiness?.id,
         label: "Ventes",
         icon: "cash",
         route: "/(accueil)/analytics-vente/[id]" as const,
       },
       {
         id: 2,
-        bussinesId: businesses[0].id,
+        bussinesId: selectedBusiness?.id,
         label: "Achats",
         icon: "cart",
         route: "/(accueil)/analytics-achats/[id]" as const,
       },
       {
         id: 3,
-        bussinesId: businesses[0].id,
+        bussinesId: selectedBusiness?.id,
         label: "Stock",
         icon: "cube",
         route: "/(accueil)/analytics-stocks/[id]" as const,
       },
     ] as const;
-    console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", businesses[0].id);
+    console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", selectedBusiness?.id);
     return (
       <View style={styles.section}>
         <View style={styles.sectionViewTitle}>
