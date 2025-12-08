@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Platform, View } from "react-native";
-import { Home, UtensilsCrossed, Coffee, User } from "lucide-react-native";
+import { Platform } from "react-native";
+import { Home, UtensilsCrossed, Coffee } from "lucide-react-native";
 
 export default function RestaurantsLayout() {
   const insets = useSafeAreaInsets();
@@ -75,7 +75,7 @@ export default function RestaurantsLayout() {
           ),
         }}
       />
-
+      {/* 
       <Tabs.Screen
         name="tables-menus"
         options={{
@@ -92,14 +92,7 @@ export default function RestaurantsLayout() {
           ),
         }}
       />
-
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profil",
-          tabBarIcon: ({ color }) => <User size={24} color={color} />,
-        }}
-      />
+      */}
     </Tabs>
   );
 }
