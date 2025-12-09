@@ -16,13 +16,53 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 
-import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
 import { getStatRestaurant, RestaurantStats } from "@/api/restaurant";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+/***************************************************************
+ * 📦 IMPORTS MÉTIER (API & MODELS)
+ *
+ * Business :
+ *   - Type/Interface représentant une entreprise (id, type, nom…)
+ *
+ * BusinessesService :
+ *   - Service qui permet de récupérer toutes les entreprises,
+ *     sélectionner une entreprise, etc. (API/storage)
+ *
+ * SelectedBusinessManager :
+ *   - Gestionnaire dédié à la “dernière entreprise sélectionnée”.
+ *   - Sert à charger + stocker l’entreprise active (persistance locale).
+ ***************************************************************/
+import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
+
+/***************************************************************
+ * 🎛️ COMPOSANT UI — SÉLECTEUR D’ENTREPRISE
+ *
+ * BusinessSelector :
+ *   - Composant affiché dans le header dynamique.
+ *   - Permet à l'utilisateur de choisir l'entreprise active.
+ *   - Interagit directement avec handleBusinessSelect().
+ ***************************************************************/
 import BusinessSelector from "@/components/Business/BusinessSelector";
 
 const RestaurantHome: React.FC = () => {
+  /***************************************************************
+   * 🏢 LISTE DES ENTREPRISES + ENTREPRISE SÉLECTIONNÉE
+   *
+   * businesses :
+   *   - Contient toutes les entreprises liées au compte de l'utilisateur.
+   *   - Récupérées via l’API / BusinessesService au montage de l’écran.
+   *   - Sert à alimenter le composant <BusinessSelector />.
+   *
+   * selectedBusiness :
+   *   - Représente l’entreprise actuellement active dans l’application.
+   *   - Contrôle l’UI globale (header dynamique, navigation, permissions).
+   *   - Peut être null au premier chargement si aucune sélection n’a été faite.
+   *
+   * ⚠️ Toute modification sur l’une de ces deux states impacte
+   * le fonctionnement global du header et de la navigation.
+   ***************************************************************/
   const [businesses, setBusinesses] = useState<Business[]>([]);
+
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
     null
   );
@@ -33,33 +73,77 @@ const RestaurantHome: React.FC = () => {
   const [stats, setStats] = useState<RestaurantStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
+  /***************************************************************
+   * 📌 CHARGEMENT INITIAL + RAFRAICHISSEMENT LORS DU FOCUS
+   *
+   * useEffect :
+   *   - S’exécute au premier montage de l’écran.
+   *   - Appelle loadInitialData() pour charger :
+   *        → la liste complète des entreprises de l’utilisateur
+   *        → l’entreprise sélectionnée précédemment (storage)
+   *
+   * useFocusEffect :
+   *   - Se déclenche à chaque fois que l’écran redevient actif.
+   *   - Si une entreprise est sélectionnée :
+   *        → recharge les statistiques liées à cette entreprise.
+   *   - Permet d’avoir des données toujours fraîches sans recharger
+   *     toute la page (optimisation pour l’UX).
+   *
+   * loadInitialData :
+   *   - Charge les données essentielles au démarrage :
+   *        1) setLoading(true) → active un éventuel spinner UI
+   *        2) Récupère toutes les entreprises via BusinessesService
+   *        3) Récupère l’entreprise sélectionnée (storage)
+   *        4) Met à jour l’état React (businesses + selectedBusiness)
+   *
+   *   - En cas d’erreur :
+   *        → log console
+   *        → alerte utilisateur claire
+   *
+   *   - finally :
+   *        → désactive le loading quoi qu’il arrive
+   *
+   * ⚠️ Ces fonctions déterminent l’état global de l’app.
+   *    Toute modification doit être faite avec prudence.
+   ***************************************************************/
+
   useEffect(() => {
+    // Chargement initial au montage de l’écran
     loadInitialData();
   }, []);
 
   useFocusEffect(
     useCallback(() => {
+      // Rafraîchit uniquement les stats lorsque l’écran revient en focus
       if (selectedBusiness) {
         loadStats(selectedBusiness.id);
       }
     }, [selectedBusiness])
   );
 
+  /****************************************************
+   * 🔄 CHARGEMENT INITIAL DES ENTREPRISES & SELECTION
+   ****************************************************/
   const loadInitialData = async () => {
     try {
-      setLoading(true);
+      setLoading(true); // Active l'état de chargement global
+
+      // 1) Charger toutes les entreprises de l'utilisateur
       const all = await BusinessesService.getBusinesses();
       setBusinesses(all);
+
+      // 2) Charger l’entreprise sélectionnée précédemment (storage)
       const selected = await SelectedBusinessManager.getSelectedBusiness();
       setSelectedBusiness(selected ?? null);
     } catch (e) {
       console.error(e);
+      // Erreur → informer l'utilisateur
       Alert.alert("Erreur", "Impossible de charger vos restaurants.");
     } finally {
+      // Désactiver le loader dans tous les cas
       setLoading(false);
     }
   };
-
   const loadStats = async (businessId: string) => {
     if (statsLoading) return;
     try {
@@ -80,30 +164,86 @@ const RestaurantHome: React.FC = () => {
     setRefreshing(false);
   };
 
+  /***************************************************************
+   * 📌 handleBusinessSelect(business: Business)
+   *
+   * INFO GÉNÉRALE :
+   * Cette fonction gère la sélection d'une entreprise depuis le
+   * sélecteur (header). Elle persiste la sélection via le service
+   * `BusinessesService`, met à jour l'état local, notifie l'utilisateur,
+   * puis redirige vers la section de l'app correspondant au type
+   * d'entreprise sélectionné.
+   *
+   * USAGE :
+   * - Appelée depuis <BusinessSelector /> quand l'utilisateur choisit
+   *   une entreprise.
+   * - Effets :
+   *    1) Persistance (API / storage local)
+   *    2) Mise à jour de l'état local (React state)
+   *    3) Notification UI (Alert)
+   *    4) Navigation / redirection conditionnelle selon `business.type`
+   *
+   * REMARQUES IMPORTANTES :
+   * - Le `setTimeout` (100 ms) laisse le temps au state / storage
+   *   d'être stabilisé avant la redirection (évite certains problèmes
+   *   de race condition visuelle).
+   * - Si la persistance échoue, on intercepte l'erreur et on affiche
+   *   une alerte d'erreur sans changer l'état ni naviguer.
+   ***************************************************************/
   const handleBusinessSelect = async (business: Business) => {
     try {
+      // 1) Persister la sélection côté service
+      //    - Appel asynchrone vers BusinessesService.selectBusiness
+      //    - Peut écrire en storage local, cookie, ou appeler une API.
+      //    - Si cette opération échoue, on saute directement au catch.
       await BusinessesService.selectBusiness(business);
+
+      // 2) Mettre à jour l'état local
+      //    - Permet à l'UI réactive (header, listes, etc.) d'afficher
+      //      la nouvelle entreprise sélectionnée immédiatement.
       setSelectedBusiness(business);
+
+      // 3) Notifier l'utilisateur (feedback immédiat)
+      //    - Alerte simple confirmant la sélection.
+      //    - Améliore l'UX : l'utilisateur voit que son action a été prise en compte.
       Alert.alert("Succès", `${business.name} sélectionné`);
 
+      // 4) Redirection conditionnelle après un court délai
+      //    - Le délai (100ms) réduit les risques que la navigation
+      //      interfère avec la mise à jour de l'état ou les effets secondaires.
+      //    - Selon business.type, on remplace la route courante par
+      //      la route dédiée à ce type d'entreprise.
       setTimeout(() => {
         switch (business.type) {
           case "COMMERCANT":
+            // Redirige vers l'espace professionnel général
             router.replace("/(professionnel)");
             break;
           case "RESTAURATEUR":
+            // Redirige vers l'espace restaurants
             router.replace("/(restaurants)");
             break;
           case "FOURNISSEUR":
+            // Redirige vers l'espace fournisseurs
             router.replace("/(fournisseur)");
             break;
           case "LIVREUR":
+            // Redirige vers l'espace livreurs
             router.replace("/(livreur)");
+            break;
+          default:
+            // Optionnel : gérer les types inconnus (sécurité)
+            // console.warn(`Type d'entreprise inconnu: ${business.type}`);
             break;
         }
       }, 100);
     } catch (error) {
+      // ERREUR => feedback utilisateur
+      // - Si la persistance a échoué, on informe l'utilisateur.
+      // - On n'effectue aucune navigation ni modification d'état supplémentaire.
       Alert.alert("Erreur", "Impossible de changer de restaurant");
+      // Optionnel : logger l'erreur pour le debug
+      // console.error("handleBusinessSelect error:", error);
     }
   };
 
@@ -116,8 +256,22 @@ const RestaurantHome: React.FC = () => {
 
   const totalAlerts = pendingOrders + inPreparation;
 
+  /****************************************************
+   * 🚨 HEADER GLOBAL & DYNAMIQUE — PRÉSENT DANS CHAQUE index.ts 🚨
+   *
+   * ➜ Ce composant est rendu automatiquement sur toutes les pages principales.
+   * ➜ Il adapte son contenu selon :
+   *      - l’entreprise sélectionnée
+   *      - le nombre d’alertes
+   *      - le profil utilisateur (avatar)
+   *
+   * ⚠️ Toute modification ici impacte toute l’application.
+   * ⚠️ À manipuler avec précaution : c’est un header partagé globalement.
+   ****************************************************/
+
   const renderHeader = () => (
     <View style={styles.header}>
+      {/* /************ SÉLECTEUR D’ENTREPRISE — DYNAMIQUE ************/}
       <BusinessSelector
         businesses={businesses}
         selectedBusiness={selectedBusiness}
@@ -126,9 +280,10 @@ const RestaurantHome: React.FC = () => {
         onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
       />
-
-
+      {/* /************************************************************/}
+      {/* ZONE DE DROITE : Notifications + Avatar */}
       <View style={styles.headerRight}>
+        {/*     /***************** BADGE NOTIFICATIONS *****************/}
         <TouchableOpacity style={styles.iconButton}>
           {totalAlerts > 0 && (
             <View style={styles.notificationBadge}>
@@ -139,7 +294,8 @@ const RestaurantHome: React.FC = () => {
           )}
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
-
+        {/*  /*******************************************************/
+        /********************** AVATAR USER **********************/}
         <TouchableOpacity
           style={styles.avatarContainer}
           onPress={() => router.push("/restaurant/settings")}
@@ -152,10 +308,10 @@ const RestaurantHome: React.FC = () => {
             </View>
           )}
         </TouchableOpacity>
+        {/*    /*********************************************************/}
       </View>
     </View>
   );
-
   const renderOverview = () => {
     if (!selectedBusiness) return null;
 
@@ -339,7 +495,13 @@ const RestaurantHome: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
+      {/* 🚨 SECTION IMPORTANTE — HEADER DYNAMIQUE 🚨 */}
+      {/* Ce bloc gère l’affichage du header selon l’état de l’application.
+    👉 Si tu modifies une logique globale, vérifie impérativement ici.
+    👉 Ce header peut changer en fonction de la page, de l'utilisateur ou du contexte.
+*/}
       {renderHeader()}
+      {/* 🚨 FIN DE LA SECTION HEADER DYNAMIQUE 🚨 */}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
