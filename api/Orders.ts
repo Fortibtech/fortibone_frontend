@@ -8,7 +8,7 @@ import {
 } from "@/types/orders";
 import axiosInstance from "./axiosInstance";
 import { AxiosError } from "axios";
-import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
+
 // ----------------------
 export const createOrder = async (
   payload: CreateOrderPayload

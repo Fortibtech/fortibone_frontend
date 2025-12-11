@@ -1,9 +1,10 @@
+// app/(delivery)/_layout.tsx
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Platform } from "react-native";
-import { Home, UtensilsCrossed, Coffee, CreditCard } from "lucide-react-native";
+import { Home, Route, Wallet, Settings } from "lucide-react-native";
 
-export default function RestaurantsLayout() {
+export default function DeliveryLayout() {
   const insets = useSafeAreaInsets();
   const baseTabBarHeight = Platform.OS === "ios" ? 68 : 60;
   const bottomPadding =
@@ -42,44 +43,36 @@ export default function RestaurantsLayout() {
           fontWeight: "600",
           marginTop: 4,
         },
-        tabBarIconStyle: {
-          marginBottom: 2,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 4,
-        },
+        tabBarIconStyle: { marginBottom: 2 },
+        tabBarItemStyle: { paddingVertical: 4 },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Accueil",
+          title: "Home",
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
-
       <Tabs.Screen
-        name="tables"
+        name="tasks"
         options={{
-          title: "Tables",
-          tabBarIcon: ({ color }) => <Coffee size={24} color={color} />,
-        }}
-      />
-
-      <Tabs.Screen
-        name="menus"
-        options={{
-          title: "Menus",
-          tabBarIcon: ({ color }) => (
-            <UtensilsCrossed size={24} color={color} />
-          ),
+          title: "Courses",
+          tabBarIcon: ({ color }) => <Route size={24} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="finance"
+        name="earnings"
         options={{
-          title: "Finance",
-          tabBarIcon: ({ color }) => <CreditCard size={24} color={color} />,
+          title: "Earnings",
+          tabBarIcon: ({ color }) => <Wallet size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
         }}
       />
     </Tabs>
