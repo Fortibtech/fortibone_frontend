@@ -168,24 +168,10 @@ const HomePage: React.FC = () => {
     try {
       await BusinessesService.selectBusiness(business);
       setSelectedBusiness(business);
-
       Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
-
-      setTimeout(() => {
-        switch (business.type) {
-          case "COMMERCANT":
-            router.push("/(professionnel)");
-            break;
-          case "RESTAURATEUR":
-            router.push("/(restaurants)");
-            break;
-          case "FOURNISSEUR":
-            router.push("/(fournisseur)");
-            break;
-          default:
-            console.warn("Type d'entreprise inconnu:", business.type);
-        }
-      }, 100); // 100ms suffit
+      if (business.type === "FOURNISSEUR") {
+        router.push("/(fournisseur)");
+      }
     } catch (error) {
       console.error("Erreur lors de la sélection:", error);
       Alert.alert("Erreur", "Impossible de sélectionner l'entreprise");
