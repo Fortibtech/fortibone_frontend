@@ -413,6 +413,8 @@ const styles = StyleSheet.create({
     alignContent: "center",
     justifyContent: "center",
     alignItems: "center",
+
+    paddingHorizontal: 20,
   },
   sectionTitle: {
     fontSize: 18,
