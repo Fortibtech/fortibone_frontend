@@ -15,7 +15,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 const { width } = Dimensions.get("window");
 
 const FavoritesPage: React.FC = () => {
@@ -70,10 +69,10 @@ const FavoritesPage: React.FC = () => {
                   style={styles.card}
                   onPress={() =>
                     router.push({
-                      pathname: `/(restaurants)/restaurants-details/[restaurantsId]`,
-                      params: { restaurantsId: item.id }, 
+                      pathname: `/(client-restaurant)/restaurants-details/[restaurantsId]`,
+                      params: { restaurantsId: item.id },
                     })
-                  } 
+                  }
                 >
                   <Image
                     source={{ uri: item.coverImageUrl || item.logoUrl }}
@@ -123,7 +122,7 @@ const styles = StyleSheet.create({
     maxWidth: width - 80,
     textAlign: "center",
   },
-  content: { flex: 1, justifyContent: "center" },
+  content: { flex: 1, justifyContent: "center", paddingBottom: 70 },
   emptyState: { alignItems: "center", paddingHorizontal: 40 },
   emptyTitle: {
     fontSize: 18,

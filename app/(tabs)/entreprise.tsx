@@ -49,19 +49,17 @@ const EnterprisePage: React.FC = () => {
         const res = await getBusinesses();
 
         const mapped: Enterprise[] = res.data
-          .filter((b) => b.type !== "FOURNISSEUR")
+          .filter((b) => b.type !== "FOURNISSEUR" && b.type !== "LIVREUR") // On vire les deux
           .map((b) => {
-            // 🔥 Détection intelligente de l'image
+            // Détection intelligente de l'image (inchangé)
             let imageUrl =
               "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image";
 
-            // Essayer différentes propriétés possibles
-            const possibleImages = [b.logoUrl, b.coverImageUrl].filter(Boolean); // Retire les valeurs null/undefined
+            const possibleImages = [b.logoUrl, b.coverImageUrl].filter(Boolean);
 
             if (possibleImages.length > 0) {
               imageUrl = possibleImages[0];
 
-              // 🔥 Vérifier si l'URL est complète
               if (
                 !imageUrl.startsWith("http://") &&
                 !imageUrl.startsWith("https://")
@@ -82,13 +80,17 @@ const EnterprisePage: React.FC = () => {
 
         setEnterprises(mapped);
 
-        // Génère les catégories dynamiques (seulement à partir des entreprises affichées)
+        // Catégories dynamiques (sans FOURNISSEUR ni LIVREUR)
         const uniqueTypes = Array.from(
           new Set(mapped.map((e) => e.categoryId))
         );
+
         const dynamicCategories: Category[] = uniqueTypes.map((type) => ({
           id: type,
-          name: type.charAt(0).toUpperCase() + type.slice(1),
+          name:
+            type === "restaurateur"
+              ? "Restaurants"
+              : type.charAt(0).toUpperCase() + type.slice(1),
         }));
 
         setCategories([{ id: "all", name: "Tout" }, ...dynamicCategories]);
