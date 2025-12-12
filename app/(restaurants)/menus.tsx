@@ -35,7 +35,7 @@ import {
 export default function MenuScreen() {
   const { selectedBusiness } = useSelectedBusiness();
   const businessId = selectedBusiness?.id;
-
+  console.log("xxxxxxxXXXXXXXXXXXXXXXX", businessId);
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
