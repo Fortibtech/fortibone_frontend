@@ -108,14 +108,23 @@ const DeliveryHome: React.FC = () => {
       setBusiness(selected);
       Alert.alert("Succès", `"${selected.name}" sélectionné`);
 
-      if (selected.type !== "LIVREUR") {
-        router.replace("/(tabs)");
-      }
+      // Redirection immédiate selon le type
+      setTimeout(() => {
+        const routes: Record<string, string> = {
+          COMMERCANT: "/(professionnel)",
+          RESTAURATEUR: "/(restaurants)",
+          FOURNISSEUR: "/(fournisseur)",
+          LIVREUR: "/(delivery)",
+        };
+        const target = routes[selected.type];
+        if (target) {
+          router.replace(target);
+        }
+      }, 100);
     } catch (error) {
-      Alert.alert("Erreur", "Impossible de changer de profil");
+      Alert.alert("Erreur", "Impossible de changer d'entreprise");
     }
   };
-
   const formatNumber = (num: number) =>
     new Intl.NumberFormat("fr-FR").format(num);
 

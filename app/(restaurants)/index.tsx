@@ -83,9 +83,9 @@ const RestaurantHome: React.FC = () => {
     try {
       await BusinessesService.selectBusiness(selected);
       setBusiness(selected);
-
       Alert.alert("Succès", `"${selected.name}" sélectionné`);
 
+      // Redirection immédiate selon le type
       setTimeout(() => {
         const routes: Record<string, string> = {
           COMMERCANT: "/(professionnel)",
@@ -93,10 +93,13 @@ const RestaurantHome: React.FC = () => {
           FOURNISSEUR: "/(fournisseur)",
           LIVREUR: "/(delivery)",
         };
-        router.replace(routes[selected.type] || "/(restaurants)");
+        const target = routes[selected.type];
+        if (target) {
+          router.replace(target);
+        }
       }, 100);
-    } catch {
-      Alert.alert("Erreur", "Impossible de changer de commerce");
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de changer d'entreprise");
     }
   };
 

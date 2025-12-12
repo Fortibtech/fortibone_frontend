@@ -234,10 +234,20 @@ const HomePage: React.FC = () => {
       setBusiness(selected);
       Alert.alert("Succès", `"${selected.name}" sélectionné`);
 
-      if (selected.type !== "FOURNISSEUR") {
-        router.replace("/(tabs)");
-      }
-    } catch (e) {
+      // Redirection immédiate selon le type
+      setTimeout(() => {
+        const routes: Record<string, string> = {
+          COMMERCANT: "/(professionnel)",
+          RESTAURATEUR: "/(restaurants)",
+          FOURNISSEUR: "/(fournisseur)",
+          LIVREUR: "/(delivery)",
+        };
+        const target = routes[selected.type];
+        if (target) {
+          router.replace(target);
+        }
+      }, 100);
+    } catch (error) {
       Alert.alert("Erreur", "Impossible de changer d'entreprise");
     }
   };
@@ -934,6 +944,7 @@ const HomePage: React.FC = () => {
             colors={["#10B981"]}
           />
         }
+        style={styles.pd}
       >
         {business ? (
           <>
@@ -965,6 +976,9 @@ const HomePage: React.FC = () => {
 export default HomePage;
 
 const styles = StyleSheet.create({
+  pd: {
+    marginHorizontal: 20,
+  },
   statisticsRow: {
     flexDirection: "row",
     gap: 12,
@@ -977,7 +991,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
     padding: 16,
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     gap: 12,
     shadowColor: "#000",
