@@ -1,4 +1,3 @@
-// app/(delivery)/index.tsx
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,28 +16,23 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 
 import { useUserAvatar } from "@/hooks/useUserAvatar";
-import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
+import { Business, BusinessesService } from "@/api";
 import BusinessSelector from "@/components/Business/BusinessSelector";
+import { useBusinessStore } from "@/store/businessStore";
 
-/**
- * À brancher plus tard sur ton backend livreur :
- *  - /delivery/requests/incoming
- *  - /delivery/requests/active
- *  - éventuellement un /delivery/driver/stats
- */
 export interface DeliveryStats {
-  pendingRequests: number; // demandes en attente
-  activeDeliveries: number; // ACCEPTED + PICKED_UP
-  completedToday: number; // livraisons livrées aujourd'hui
-  distanceTodayKm: number; // km parcourus aujourd'hui
-  earningsToday: number; // revenus du jour
+  pendingRequests: number;
+  activeDeliveries: number;
+  completedToday: number;
+  distanceTodayKm: number;
+  earningsToday: number;
 }
 
 const DeliveryHome: React.FC = () => {
+  const business = useBusinessStore((state) => state.business);
+  const setBusiness = useBusinessStore((state) => state.setBusiness);
+
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
-    null
-  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { uri } = useUserAvatar();
@@ -47,46 +41,44 @@ const DeliveryHome: React.FC = () => {
   const [statsLoading, setStatsLoading] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
-  // 🔄 Chargement initial
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  // 🔄 Rafraîchir les stats quand l’écran redevient actif
-  useFocusEffect(
-    useCallback(() => {
-      if (selectedBusiness) {
-        loadStats(selectedBusiness.id);
-      }
-    }, [selectedBusiness])
-  );
-
+  // Load initial data
   const loadInitialData = async () => {
     try {
       setLoading(true);
       const all = await BusinessesService.getBusinesses();
       setBusinesses(all);
 
-      const selected = await SelectedBusinessManager.getSelectedBusiness();
-      setSelectedBusiness(selected ?? null);
-
-      if (selected) {
-        await loadStats(selected.id);
+      if (!business && all.length > 0) {
+        const firstLivreur = all.find((b) => b.type === "LIVREUR") || all[0];
+        setBusiness(firstLivreur);
+        await BusinessesService.selectBusiness(firstLivreur);
       }
     } catch (e) {
-      console.error(e);
       Alert.alert("Erreur", "Impossible de charger vos données livreur.");
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  // Load stats on focus
+  useFocusEffect(
+    useCallback(() => {
+      if (business?.id) {
+        loadStats(business.id);
+      }
+    }, [business?.id])
+  );
+
+  // Fake stats (replace with API)
   const loadStats = async (businessId: string) => {
     if (statsLoading) return;
+    setStatsLoading(true);
+
     try {
-      setStatsLoading(true);
-      // TODO: brancher sur une vraie API livreur.
-      // Pour l’instant, valeurs mockées cohérentes.
       setTimeout(() => {
         setStats({
           pendingRequests: 3,
@@ -106,34 +98,19 @@ const DeliveryHome: React.FC = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (selectedBusiness) await loadStats(selectedBusiness.id);
+    if (business?.id) await loadStats(business.id);
     setRefreshing(false);
   };
 
-  const handleBusinessSelect = async (business: Business) => {
+  const handleBusinessSelect = async (selected: Business) => {
     try {
-      await BusinessesService.selectBusiness(business);
-      setSelectedBusiness(business);
-      Alert.alert("Succès", `${business.name} sélectionné`);
+      await BusinessesService.selectBusiness(selected);
+      setBusiness(selected);
+      Alert.alert("Succès", `"${selected.name}" sélectionné`);
 
-      setTimeout(() => {
-        switch (business.type) {
-          case "COMMERCANT":
-            router.push("/(professionnel)");
-            break;
-          case "RESTAURATEUR":
-            router.push("/(restaurants)");
-            break;
-          case "FOURNISSEUR":
-            router.push("/(fournisseur)");
-            break;
-          case "LIVREUR":
-            router.push("/(delivery)");
-            break;
-          default:
-            console.warn("Type d'entreprise inconnu:", business.type);
-        }
-      }, 100); // 100ms suffit
+      if (selected.type !== "LIVREUR") {
+        router.replace("/(tabs)");
+      }
     } catch (error) {
       Alert.alert("Erreur", "Impossible de changer de profil");
     }
@@ -146,16 +123,15 @@ const DeliveryHome: React.FC = () => {
     (stats?.pendingRequests || 0) + (stats?.activeDeliveries || 0);
 
   const toggleOnline = () => {
-    // TODO: appeler un endpoint type DriverService.setStatus
     setIsOnline((prev) => !prev);
   };
 
-  /********************** HEADER GÉNÉRIQUE **********************/
+  // ============ HEADER ============
   const renderHeader = () => (
     <View style={styles.header}>
       <BusinessSelector
         businesses={businesses}
-        selectedBusiness={selectedBusiness}
+        selectedBusiness={business}
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
@@ -163,7 +139,6 @@ const DeliveryHome: React.FC = () => {
       />
 
       <View style={styles.headerRight}>
-        {/* Statut en ligne / hors-ligne */}
         <TouchableOpacity style={styles.statusPill} onPress={toggleOnline}>
           <View
             style={[
@@ -176,7 +151,6 @@ const DeliveryHome: React.FC = () => {
           </Text>
         </TouchableOpacity>
 
-        {/* Notifications */}
         <TouchableOpacity style={styles.iconButton}>
           {totalAlerts > 0 && (
             <View style={styles.notificationBadge}>
@@ -188,7 +162,6 @@ const DeliveryHome: React.FC = () => {
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
 
-        {/* Avatar */}
         <TouchableOpacity
           style={styles.avatarContainer}
           onPress={() => router.push("/(delivery)/settings")}
@@ -205,9 +178,9 @@ const DeliveryHome: React.FC = () => {
     </View>
   );
 
-  /********************** VUE D’ENSEMBLE LIVREUR **********************/
+  // ============ OVERVIEW ============
   const renderOverview = () => {
-    if (!selectedBusiness) return null;
+    if (!business) return null;
 
     if (statsLoading && !stats) {
       return (
@@ -233,7 +206,6 @@ const DeliveryHome: React.FC = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
 
-        {/* Ligne 1 : demandes */}
         <View style={styles.cardsRow}>
           <View style={[styles.card, styles.cardYellow]}>
             <View style={styles.cardIcon}>
@@ -274,7 +246,6 @@ const DeliveryHome: React.FC = () => {
           </View>
         </View>
 
-        {/* Ligne 2 : distance + revenus */}
         <View style={[styles.cardsRow, { marginTop: 12 }]}>
           <View style={[styles.card, styles.cardBlue]}>
             <View style={styles.cardIcon}>
@@ -304,7 +275,7 @@ const DeliveryHome: React.FC = () => {
     );
   };
 
-  /********************** ACCÈS RAPIDES LIVREUR **********************/
+  // ============ QUICK ACTIONS ============
   const renderQuickActions = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Accès rapide</Text>
@@ -350,6 +321,7 @@ const DeliveryHome: React.FC = () => {
     </View>
   );
 
+  // ============ MAIN ============
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -379,7 +351,7 @@ const DeliveryHome: React.FC = () => {
           />
         }
       >
-        {selectedBusiness ? (
+        {business ? (
           <>
             {renderOverview()}
             {renderQuickActions()}
@@ -400,9 +372,11 @@ const DeliveryHome: React.FC = () => {
   );
 };
 
+export default DeliveryHome;
+
+// ====== STYLES ======
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8F9FA", paddingBottom: 60 },
-
   header: {
     backgroundColor: "#FFFFFF",
     flexDirection: "row",
@@ -414,7 +388,6 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
   },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-
   statusPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -430,7 +403,6 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: { fontSize: 12, fontWeight: "600", color: "#111827" },
-
   iconButton: { padding: 8, position: "relative" },
   notificationBadge: {
     position: "absolute",
@@ -445,7 +417,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
-
   avatarContainer: {
     borderRadius: 20,
     overflow: "hidden",
@@ -459,6 +430,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  // Sections
   section: { padding: 16 },
   sectionTitle: {
     fontSize: 18,
@@ -467,9 +439,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
+  // Cards
   cardsRow: { flexDirection: "row", gap: 12 },
   rightColumn: { flex: 1, gap: 12 },
-
   card: {
     flex: 1,
     backgroundColor: "#FFF",
@@ -493,6 +465,7 @@ const styles = StyleSheet.create({
   cardValue: { fontSize: 20, fontWeight: "700", color: "#000" },
   unit: { fontSize: 14, color: "#666", fontWeight: "500" },
 
+  // Quick actions
   quickRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
   quickCard: {
     flex: 1,
@@ -523,6 +496,7 @@ const styles = StyleSheet.create({
   },
   quickSubtitle: { fontSize: 12, color: "#888", textAlign: "center" },
 
+  // No business
   noBusiness: {
     flex: 1,
     justifyContent: "center",
@@ -539,8 +513,7 @@ const styles = StyleSheet.create({
 
   loadingContainer: { alignItems: "center", paddingVertical: 40 },
   loadingText: { marginTop: 12, color: "#888" },
+
   fullLoading: { flex: 1, justifyContent: "center", alignItems: "center" },
   fullLoadingText: { marginTop: 16, fontSize: 16, color: "#666" },
 });
-
-export default DeliveryHome;

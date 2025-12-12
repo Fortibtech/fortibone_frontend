@@ -1,4 +1,5 @@
-import { router, Tabs } from "expo-router";
+// app/(fournisseur)/_layout.tsx
+import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   CircleDollarSign,
@@ -7,23 +8,26 @@ import {
   ShoppingBasket,
 } from "lucide-react-native";
 import { Platform } from "react-native";
-import { SelectedBusinessManager } from "@/api/selectedBusinessManager";
-import { BusinessesService } from "@/api/services/businessesService";
+
+// Zustand → on lit le business actuel directement
+import { useBusinessStore } from "@/store/businessStore";
+import { router } from "expo-router";
 
 export default function RootLayout() {
   const insets = useSafeAreaInsets();
 
-  // Hauteur fixe confortable sur les deux plateformes
   const TAB_BAR_HEIGHT = 62;
   const ICON_SIZE = 26;
 
-  // Padding bottom dynamique (très important sur Android gestuel)
   const bottomPadding =
     Platform.OS === "ios"
-      ? Math.max(insets.bottom, 20) // iPhone X+ → espace pour le home indicator
-      : Math.max(insets.bottom + 8, 16); // Android → au-dessus de la barre gestuelle
+      ? Math.max(insets.bottom, 20)
+      : Math.max(insets.bottom + 8, 16);
 
   const totalHeight = TAB_BAR_HEIGHT + bottomPadding;
+
+  // Business actuel depuis le store (toujours à jour)
+  const business = useBusinessStore((state) => state.business);
 
   return (
     <Tabs
@@ -32,8 +36,6 @@ export default function RootLayout() {
         tabBarActiveTintColor: "#00C851",
         tabBarInactiveTintColor: "#94A3B8",
         tabBarShowLabel: true,
-
-        // LA CLÉ : style parfait sur iOS + Android
         tabBarStyle: {
           position: "absolute",
           bottom: 0,
@@ -52,21 +54,14 @@ export default function RootLayout() {
           shadowOpacity: 0.08,
           shadowRadius: 12,
         },
-
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600",
           marginTop: 4,
           marginBottom: 4,
         },
-
-        tabBarIconStyle: {
-          marginBottom: 2,
-        },
-
-        tabBarItemStyle: {
-          paddingVertical: 6,
-        },
+        tabBarIconStyle: { marginBottom: 2 },
+        tabBarItemStyle: { paddingVertical: 6 },
       }}
     >
       <Tabs.Screen
@@ -87,6 +82,7 @@ export default function RootLayout() {
         }}
       />
 
+      {/* COMMANDES */}
       <Tabs.Screen
         name="commandes"
         options={{
@@ -96,15 +92,14 @@ export default function RootLayout() {
           ),
         }}
         listeners={{
-          tabPress: async (e) => {
+          tabPress: (e) => {
             e.preventDefault();
-            const selected =
-              await SelectedBusinessManager.getSelectedBusiness();
-            if (selected) {
-              await BusinessesService.selectBusiness(selected);
-              router.push(`/(orders)/details/${selected.id}`);
+
+            if (business) {
+              router.replace(`/(orders)/details/${business.id}`);
             } else {
-              router.push("/(professionnel)");
+              // Pas d'entreprise sélectionnée → on redirige vers l'accueil général
+              router.replace("/(tabs)");
             }
           },
         }}

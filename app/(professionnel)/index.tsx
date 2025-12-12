@@ -1,16 +1,3 @@
-// app/(tabs)/index.tsx
-import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
-import {
-  AnalyticsOverview,
-  getAnalyticsOverview,
-  getPendingOrdersCount,
-  getProcessingPurchasesCount,
-} from "@/api/analytics";
-import AnalyticsCard from "@/components/accueil/AnalyticsCard";
-import BusinessSelector from "@/components/Business/BusinessSelector";
-import { useUserAvatar } from "@/hooks/useUserAvatar";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,22 +5,42 @@ import {
   Image,
   RefreshControl,
   ScrollView,
-  StatusBar,
   StyleSheet,
+  StatusBar,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
+
+import { Business, BusinessesService } from "@/api";
+import {
+  AnalyticsOverview,
+  getAnalyticsOverview,
+  getPendingOrdersCount,
+  getProcessingPurchasesCount,
+} from "@/api/analytics";
+
+import BusinessSelector from "@/components/Business/BusinessSelector";
+import AnalyticsCard from "@/components/accueil/AnalyticsCard";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
+
+// Zustand → seule source de vérité
+import { useBusinessStore } from "@/store/businessStore";
+
 const HomePage: React.FC = () => {
+  // Zustand
+  const business = useBusinessStore((state) => state.business);
+  const setBusiness = useBusinessStore((state) => state.setBusiness);
+
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
-    null
-  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { uri } = useUserAvatar();
-  // ✅ États pour les analytics
+
+  // Analytics states
   const [monthlyOverview, setMonthlyOverview] =
     useState<AnalyticsOverview | null>(null);
   const [overallOverview, setOverallOverview] =
@@ -45,171 +52,117 @@ const HomePage: React.FC = () => {
   }>({ count: 0, totalItems: 0 });
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  // ✅ Charger les analytics quand une entreprise est sélectionnée
-  useEffect(() => {
-    if (selectedBusiness) {
-      loadAnalytics();
-    }
-  }, [selectedBusiness]);
-
-  // ✅ Fonction pour obtenir les dates du mois en cours
+  // Dates du mois en cours
   const getCurrentMonthDates = (): { startDate: string; endDate: string } => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
-
-    // Premier jour du mois
     const startDate = `${year}-${month}-01`;
-
-    // Dernier jour du mois
     const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
     const endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
-
     return { startDate, endDate };
   };
 
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const businessesResponse = await BusinessesService.getBusinesses();
-      setBusinesses(businessesResponse);
-      const selected = await SelectedBusinessManager.getSelectedBusiness();
-      setSelectedBusiness(selected);
+      const all = await BusinessesService.getBusinesses();
+      setBusinesses(all);
 
-      if (selected?.type === "FOURNISSEUR") {
-        router.push("/(fournisseur)");
-      }
-
-      if (selected && !businessesResponse.find((b) => b.id === selected.id)) {
-        await BusinessesService.clearSelectedBusiness();
-        setSelectedBusiness(null);
+      // Si aucun business dans le store, on en prend un par défaut
+      if (!business && all.length > 0) {
+        const first = all[0];
+        setBusiness(first);
+        await BusinessesService.selectBusiness(first);
       }
     } catch (error) {
-      console.error("Erreur lors du chargement:", error);
-      Alert.alert("Erreur", "Impossible de charger les données");
+      Alert.alert("Erreur", "Impossible de charger les entreprises");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Fonction pour charger les analytics
   const loadAnalytics = async () => {
-    if (!selectedBusiness) return;
-    if (analyticsLoading) return; // ← Évite les appels simultanés
+    if (!business?.id || analyticsLoading) return;
+
     try {
       setAnalyticsLoading(true);
-
-      // Obtenir les dates du mois en cours
       const { startDate, endDate } = getCurrentMonthDates();
-      // Charger l'overview du mois en cours
-      const monthlyData = await getAnalyticsOverview(
-        selectedBusiness.id,
-        startDate,
-        endDate
-      );
-      setMonthlyOverview(monthlyData);
 
-      // Charger l'overview global (sans dates)
-      const overallData = await getAnalyticsOverview(selectedBusiness.id);
-      setOverallOverview(overallData);
+      const [monthly, overall, pendingCount, purchases] = await Promise.all([
+        getAnalyticsOverview(business.id, startDate, endDate),
+        getAnalyticsOverview(business.id),
+        getPendingOrdersCount(business.id, "SALE"),
+        getProcessingPurchasesCount(business.id),
+      ]);
 
-      // Charger le nombre de commandes en attente
-      const pendingCount = await getPendingOrdersCount(
-        selectedBusiness.id,
-        "SALE"
-      );
+      setMonthlyOverview(monthly);
+      setOverallOverview(overall);
       setPendingOrdersCount(pendingCount);
-
-      // Charger les achats en cours
-      const purchasesData = await getProcessingPurchasesCount(
-        selectedBusiness.id
-      );
-      setProcessingPurchases(purchasesData);
+      setProcessingPurchases(purchases);
     } catch (error) {
-      console.error("Erreur lors du chargement des analytics:", error);
+      console.error("Erreur analytics:", error);
       Alert.alert("Erreur", "Impossible de charger les statistiques");
     } finally {
       setAnalyticsLoading(false);
     }
   };
 
-  // 1. Chargement initial (une seule fois)
+  // Chargement initial
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  // 2. Recharge les stats quand on revient dans l'onglet
+  // Recharge analytics quand business change ou quand on revient dans l'onglet
   useFocusEffect(
     useCallback(() => {
-      if (selectedBusiness) {
+      if (business?.id) {
         loadAnalytics();
       }
-    }, [selectedBusiness])
+    }, [business?.id])
   );
-
-  // 3. Recharge les stats quand on change de commerce
-  useEffect(() => {
-    if (selectedBusiness) {
-      loadAnalytics();
-    }
-  }, [selectedBusiness]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (selectedBusiness) await loadAnalytics();
+    if (business?.id) await loadAnalytics();
     setRefreshing(false);
   };
-  const handleBusinessSelect = async (business: Business) => {
+
+  const handleBusinessSelect = async (selected: Business) => {
     try {
-      await BusinessesService.selectBusiness(business);
-      setSelectedBusiness(business);
-      Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
+      await BusinessesService.selectBusiness(selected);
+      setBusiness(selected);
+      Alert.alert("Succès", `"${selected.name}" sélectionné`);
+
+      // Redirection immédiate selon le type
       setTimeout(() => {
-        switch (business.type) {
-          case "COMMERCANT":
-            router.push("/(professionnel)");
-            break;
-          case "RESTAURATEUR":
-            router.push("/(restaurants)");
-            break;
-          case "FOURNISSEUR":
-            router.push("/(fournisseur)");
-            break;
-          case "LIVREUR":
-            router.push("/(delivery)");
-            break;
-          default:
-            console.warn("Type d'entreprise inconnu:", business.type);
+        const routes: Record<string, string> = {
+          COMMERCANT: "/(professionnel)",
+          RESTAURATEUR: "/(restaurants)",
+          FOURNISSEUR: "/(fournisseur)",
+          LIVREUR: "/(delivery)",
+        };
+        const target = routes[selected.type];
+        if (target) {
+          router.replace(target);
         }
-      }, 100); // 100ms suffit
+      }, 100);
     } catch (error) {
-      console.error("Erreur lors de la sélection:", error);
-      Alert.alert("Erreur", "Impossible de sélectionner l'entreprise");
+      Alert.alert("Erreur", "Impossible de changer d'entreprise");
     }
   };
 
-  // ✅ Fonction utilitaire pour formater les nombres
-  const formatNumber = (num: number): string => {
-    return new Intl.NumberFormat("fr-FR", {
-      maximumFractionDigits: 0,
-    }).format(num);
-  };
-  // ✅ Calculer le nombre total d'alertes
-  const getTotalAlertsCount = (): number => {
-    if (!pendingOrdersCount) return 0;
-    return pendingOrdersCount;
-  };
+  const formatNumber = (num: number = 0): string =>
+    new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(num);
+
+  const totalAlerts = pendingOrdersCount;
 
   const renderHeader = () => (
     <View style={styles.header}>
       <BusinessSelector
         businesses={businesses}
-        selectedBusiness={selectedBusiness}
+        selectedBusiness={business} // ← toujours à jour grâce au store
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
@@ -217,24 +170,24 @@ const HomePage: React.FC = () => {
       />
 
       <View style={styles.headerRight}>
-        {/* <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="search" size={24} color="#000" />
-        </TouchableOpacity> */}
         <TouchableOpacity style={styles.iconButton}>
-          {getTotalAlertsCount() > 0 && (
+          {totalAlerts > 0 && (
             <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>{getTotalAlertsCount()}</Text>
+              <Text style={styles.badgeText}>
+                {totalAlerts > 99 ? "99+" : totalAlerts}
+              </Text>
             </View>
           )}
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.avatarContainer}
           onPress={() => router.push("/fournisseurSetting")}
         >
           {uri ? (
             <Image
-              key={uri} // Force le rechargement même ici
+              key={uri}
               source={{ uri }}
               style={styles.avatar}
               resizeMode="cover"
@@ -246,114 +199,6 @@ const HomePage: React.FC = () => {
           )}
         </TouchableOpacity>
       </View>
-    </View>
-  );
-
-  const renderOverviewSection = () => {
-    if (!selectedBusiness) return null;
-
-    // ✅ Afficher un loader pendant le chargement des analytics
-    if (analyticsLoading) {
-      return (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Vue d&apos;Ensemble</Text>
-          <View style={styles.analyticsLoadingContainer}>
-            <ActivityIndicator size="large" color="#7C3AED" />
-            <Text style={styles.analyticsLoadingText}>
-              Chargement des statistiques...
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Vue d&apos;Ensemble</Text>
-
-        <View style={styles.cardsRow}>
-          {/* CA Mensuel - Jaune */}
-          <View style={[styles.overviewCard, styles.cardYellow]}>
-            <View style={styles.cardIcon}>
-              <Image
-                source={require("@/assets/images/wallet-money.png")}
-                style={styles.cardEmoji}
-              />
-            </View>
-            <View>
-              <Text style={styles.cardLabel}>CA Mensuel</Text>
-              <View
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                  alignItems: "baseline",
-                }}
-              >
-                <Text style={styles.cardValue}>
-                  {overallOverview?.totalSalesAmount}
-                </Text>
-                <Text style={styles.cardUnit}> KMF</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.cardFull}>
-            {/* En attente - Violet */}
-            <View style={[styles.overviewCard, styles.cardPurple]}>
-              <View style={styles.cardIcon}>
-                <Image
-                  source={require("@/assets/images/bag-2.png")}
-                  style={styles.cardEmojiDouble}
-                />
-              </View>
-              <View>
-                <Text style={styles.cardLabel}>En attente</Text>
-                <Text style={styles.cardValue}>
-                  {pendingOrdersCount} commande
-                  {pendingOrdersCount > 1 ? "s" : ""} client
-                  {pendingOrdersCount > 1 ? "s" : ""}
-                </Text>
-              </View>
-            </View>
-
-            {/* Achats en cours - Vert */}
-            <View style={[styles.overviewCard, styles.cardGreen]}>
-              <View style={styles.cardIcon}>
-                <Image
-                  source={require("@/assets/images/money-recive.png")}
-                  style={styles.cardEmojiDouble}
-                />
-              </View>
-              <View>
-                <Text style={styles.cardLabel}>Achats </Text>
-                <Text style={styles.cardValue}>
-                  {overallOverview?.totalSalesOrders
-                    ? `${overallOverview.totalSalesOrders} article${
-                        overallOverview.totalSalesOrders > 1 ? "s" : ""
-                      }`
-                    : ""}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const renderQuickAccessSection = () => {
-    if (!selectedBusiness) return null;
-    const { id } = selectedBusiness;
-    return <AnalyticsCard id={id} />;
-  };
-
-  const renderNoBusinessSelected = () => (
-    <View style={styles.noBusinessContainer}>
-      <Ionicons name="business-outline" size={80} color="#E0E0E0" />
-      <Text style={styles.noBusinessTitle}>Aucune entreprise sélectionnée</Text>
-      <Text style={styles.noBusinessText}>
-        Sélectionnez une entreprise pour voir vos statistiques
-      </Text>
     </View>
   );
 
@@ -373,10 +218,9 @@ const HomePage: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
       {renderHeader()}
+
       <ScrollView
-        style={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -385,13 +229,90 @@ const HomePage: React.FC = () => {
           />
         }
       >
-        {selectedBusiness ? (
+        {business ? (
           <>
-            {renderOverviewSection()}
-            {renderQuickAccessSection()}
+            {/* Vue d'ensemble */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Vue d&apos;Ensemble</Text>
+
+              {analyticsLoading ? (
+                <View style={styles.analyticsLoadingContainer}>
+                  <ActivityIndicator size="large" color="#7C3AED" />
+                  <Text style={styles.analyticsLoadingText}>
+                    Chargement des statistiques...
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.cardsRow}>
+                  {/* CA Global */}
+                  <View style={[styles.overviewCard, styles.cardYellow]}>
+                    <View style={styles.cardIcon}>
+                      <Image
+                        source={require("@/assets/images/wallet-money.png")}
+                        style={styles.cardEmoji}
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.cardLabel}>CA Global</Text>
+                      <Text style={styles.cardValue}>
+                        {formatNumber(overallOverview?.totalSalesAmount)}{" "}
+                        <Text style={styles.cardUnit}>KMF</Text>
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.cardFull}>
+                    <View style={[styles.overviewCard, styles.cardPurple]}>
+                      <View style={styles.cardIcon}>
+                        <Image
+                          source={require("@/assets/images/bag-2.png")}
+                          style={styles.cardEmojiDouble}
+                        />
+                      </View>
+                      <View>
+                        <Text style={styles.cardLabel}>
+                          Commandes en attente
+                        </Text>
+                        <Text style={styles.cardValue}>
+                          {pendingOrdersCount} client
+                          {pendingOrdersCount > 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.overviewCard, styles.cardGreen]}>
+                      <View style={styles.cardIcon}>
+                        <Image
+                          source={require("@/assets/images/money-recive.png")}
+                          style={styles.cardEmojiDouble}
+                        />
+                      </View>
+                      <View>
+                        <Text style={styles.cardLabel}>Articles vendus</Text>
+                        <Text style={styles.cardValue}>
+                          {overallOverview?.totalSalesOrders || 0} article
+                          {overallOverview?.totalSalesOrders > 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Accès rapide */}
+            <AnalyticsCard id={business.id} />
           </>
         ) : (
-          renderNoBusinessSelected()
+          <View style={styles.noBusinessContainer}>
+            <Ionicons name="business-outline" size={80} color="#E0E0E0" />
+            <Text style={styles.noBusinessTitle}>
+              Aucune entreprise sélectionnée
+            </Text>
+            <Text style={styles.noBusinessText}>
+              Sélectionnez une entreprise pour voir vos statistiques
+            </Text>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>

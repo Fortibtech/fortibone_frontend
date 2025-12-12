@@ -1,4 +1,3 @@
-import { router, Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   CircleDollarSign,
@@ -9,23 +8,24 @@ import {
   ShoppingCart,
 } from "lucide-react-native";
 import { Platform } from "react-native";
-import { SelectedBusinessManager } from "@/api/selectedBusinessManager";
-import { BusinessesService } from "@/api/services/businessesService";
+
+// Zustand → on prend le business directement depuis le store
+import { useBusinessStore } from "@/store/businessStore";
+import { router, Tabs } from "expo-router";
 
 export default function RootLayout() {
   const insets = useSafeAreaInsets();
 
-  // Hauteur de base de la tab bar
+  // Hauteur de la tab bar proprement calculée
   const baseTabBarHeight = Platform.OS === "ios" ? 68 : 60;
-
-  // Padding bottom dynamique selon la plateforme et les insets
   const bottomPadding =
     Platform.OS === "ios"
       ? Math.max(insets.bottom, 16)
-      : Math.max(insets.bottom, 8); // Utilise insets.bottom sur Android aussi
-
-  // Hauteur totale de la tab bar
+      : Math.max(insets.bottom, 8);
   const totalTabBarHeight = baseTabBarHeight + bottomPadding;
+
+  // On récupère le business actuel depuis le store (toujours à jour)
+  const business = useBusinessStore((state) => state.business);
 
   return (
     <Tabs
@@ -39,7 +39,7 @@ export default function RootLayout() {
           borderTopWidth: 1,
           borderTopColor: "#eee",
           height: totalTabBarHeight,
-          paddingBottom: bottomPadding, // S'adapte dynamiquement
+          paddingBottom: bottomPadding,
           paddingTop: 8,
           paddingHorizontal: 6,
           shadowColor: "#000",
@@ -47,7 +47,6 @@ export default function RootLayout() {
           shadowOpacity: 0.08,
           shadowRadius: 8,
           elevation: 10,
-          // Force la position au-dessus de la navigation système
           position: "absolute",
           bottom: 0,
           left: 0,
@@ -58,12 +57,8 @@ export default function RootLayout() {
           fontWeight: "600",
           marginTop: 4,
         },
-        tabBarIconStyle: {
-          marginBottom: 2,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 4,
-        },
+        tabBarIconStyle: { marginBottom: 2 },
+        tabBarItemStyle: { paddingVertical: 4 },
       }}
     >
       <Tabs.Screen
@@ -81,6 +76,8 @@ export default function RootLayout() {
           tabBarIcon: ({ color }) => <Cuboid size={24} color={color} />,
         }}
       />
+
+      {/* ACHATS */}
       <Tabs.Screen
         name="achats"
         options={{
@@ -88,29 +85,18 @@ export default function RootLayout() {
           tabBarIcon: ({ color }) => <ShoppingCart size={24} color={color} />,
         }}
         listeners={{
-          tabPress: async (e) => {
+          tabPress: (e) => {
             e.preventDefault();
-
-            try {
-              const selected =
-                await SelectedBusinessManager.getSelectedBusiness();
-              console.log("Selected business →", selected);
-
-              if (selected) {
-                await BusinessesService.selectBusiness(selected);
-
-                console.log("Navigating to →", `/(achats)/${selected.id}`);
-                router.push(`/(achats)/${selected.id}`);
-              } else {
-                console.log("Navigating to → /(professionnel)");
-                router.push("/(professionnel)");
-              }
-            } catch (err) {
-              console.error("Erreur tabPress →", err);
+            if (business) {
+              router.replace(`/(achats)/${business.id}`);
+            } else {
+              router.replace("/(professionnel)");
             }
           },
         }}
       />
+
+      {/* COMMANDES / VENTES */}
       <Tabs.Screen
         name="commande"
         options={{
@@ -120,32 +106,18 @@ export default function RootLayout() {
           ),
         }}
         listeners={{
-          tabPress: async (e) => {
+          tabPress: (e) => {
             e.preventDefault();
-
-            try {
-              const selected =
-                await SelectedBusinessManager.getSelectedBusiness();
-              console.log("Selected business →", selected);
-
-              if (selected) {
-                await BusinessesService.selectBusiness(selected);
-
-                console.log(
-                  "Navigating to →",
-                  `/(orders)/details/${selected.id}`
-                );
-                router.push(`/(orders)/details/${selected.id}`);
-              } else {
-                console.log("Navigating to → /(professionnel)");
-                router.push("/(professionnel)");
-              }
-            } catch (err) {
-              console.error("Erreur tabPress →", err);
+            if (business) {
+              router.replace(`/(orders)/details/${business.id}`);
+            } else {
+              router.replace("/(professionnel)");
             }
           },
         }}
       />
+
+      {/* INVENTAIRE */}
       <Tabs.Screen
         name="inventaire"
         options={{
@@ -153,19 +125,17 @@ export default function RootLayout() {
           tabBarIcon: ({ color }) => <Send size={24} color={color} />,
         }}
         listeners={{
-          tabPress: async (e) => {
+          tabPress: (e) => {
             e.preventDefault();
-            const selected =
-              await SelectedBusinessManager.getSelectedBusiness();
-            if (selected) {
-              await BusinessesService.selectBusiness(selected);
-              router.push(`/(inventory)/details/${selected.id}`);
+            if (business) {
+              router.replace(`/(inventory)/details/${business.id}`);
             } else {
-              router.push("/(professionnel)");
+              router.replace("/(professionnel)");
             }
           },
         }}
       />
+
       <Tabs.Screen
         name="finance"
         options={{

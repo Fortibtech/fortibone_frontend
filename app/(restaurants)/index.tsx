@@ -1,4 +1,3 @@
-// app/(restaurants)/index.tsx
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,29 +17,44 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-
 import { useUserAvatar } from "@/hooks/useUserAvatar";
-import { Business, BusinessesService, SelectedBusinessManager } from "@/api";
+import { Business, BusinessesService } from "@/api";
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import { getStatRestaurant, RestaurantStats } from "@/api/menu/tableApi";
 import { getOrdersByRestaurant, Order } from "@/api/menu/ordersApi";
+import { useBusinessStore } from "@/store/businessStore";
 
 const RestaurantHome: React.FC = () => {
+  const business = useBusinessStore((state) => state.business);
+  const setBusiness = useBusinessStore((state) => state.setBusiness);
+
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
-    null
-  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { uri } = useUserAvatar();
-
   const [stats, setStats] = useState<RestaurantStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
-
-  // États pour la modale des commandes
   const [ordersModalVisible, setOrdersModalVisible] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+
+  // --------------------------- INIT ---------------------------
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      const all = await BusinessesService.getBusinesses();
+      setBusinesses(all);
+
+      if (!business && all.length > 0) {
+        setBusiness(all[0]);
+      }
+    } catch (e) {
+      Alert.alert("Erreur", "Impossible de charger vos commerces.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadInitialData();
@@ -48,55 +62,10 @@ const RestaurantHome: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (selectedBusiness) {
-        loadStats(selectedBusiness.id);
-      }
-    }, [selectedBusiness])
+      if (business?.id) loadStats(business.id);
+    }, [business?.id])
   );
 
-  const loadInitialData = async () => {
-    try {
-      setLoading(true);
-      const all = await BusinessesService.getBusinesses();
-      setBusinesses(all);
-      const selected = await SelectedBusinessManager.getSelectedBusiness();
-      setSelectedBusiness(selected ?? null);
-    } catch (e) {
-      Alert.alert("Erreur", "Impossible de charger vos restaurants.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  const handleBusinessSelect = async (business: Business) => {
-    try {
-      await BusinessesService.selectBusiness(business);
-      setSelectedBusiness(business);
-
-      Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
-
-      setTimeout(() => {
-        switch (business.type) {
-          case "COMMERCANT":
-            router.push("/(professionnel)");
-            break;
-          case "RESTAURATEUR":
-            router.push("/(restaurants)");
-            break;
-          case "FOURNISSEUR":
-            router.push("/(fournisseur)");
-            break;
-          case "LIVREUR":
-            router.push("/(delivery)");
-            break;
-          default:
-            console.warn("Type d'entreprise inconnu:", business.type);
-        }
-      }, 100); // 100ms suffit
-    } catch (error) {
-      console.error("Erreur lors de la sélection:", error);
-      Alert.alert("Erreur", "Impossible de sélectionner l'entreprise");
-    }
-  };
   const loadStats = async (businessId: string) => {
     if (statsLoading) return;
     try {
@@ -104,27 +73,47 @@ const RestaurantHome: React.FC = () => {
       const data = await getStatRestaurant(businessId);
       setStats(data);
     } catch (e) {
-      console.error(e);
+      console.error("Erreur stats:", e);
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  const handleBusinessSelect = async (selected: Business) => {
+    try {
+      await BusinessesService.selectBusiness(selected);
+      setBusiness(selected);
+
+      Alert.alert("Succès", `"${selected.name}" sélectionné`);
+
+      setTimeout(() => {
+        const routes: Record<string, string> = {
+          COMMERCANT: "/(professionnel)",
+          RESTAURATEUR: "/(restaurants)",
+          FOURNISSEUR: "/(fournisseur)",
+          LIVREUR: "/(delivery)",
+        };
+        router.replace(routes[selected.type] || "/(restaurants)");
+      }, 100);
+    } catch {
+      Alert.alert("Erreur", "Impossible de changer de commerce");
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (selectedBusiness) await loadStats(selectedBusiness.id);
+    if (business?.id) await loadStats(business.id);
     setRefreshing(false);
   };
 
-  // === CHARGEMENT DES COMMANDES EN COURS ===
   const loadOrders = async () => {
-    if (!selectedBusiness) return;
+    if (!business?.id) return;
     try {
       setOrdersLoading(true);
-      const response = await getOrdersByRestaurant(selectedBusiness.id);
-      setOrders(response.data);
-    } catch (err: any) {
+      const res = await getOrdersByRestaurant(business.id);
+      setOrders(res.data || []);
+    } catch {
       Alert.alert("Erreur", "Impossible de charger les commandes");
     } finally {
       setOrdersLoading(false);
@@ -136,7 +125,6 @@ const RestaurantHome: React.FC = () => {
     setOrdersModalVisible(true);
   };
 
-  // === STYLE SELON STATUT DE COMMANDE ===
   const getStatusStyle = (status: Order["status"]) => {
     switch (status) {
       case "PENDING_PAYMENT":
@@ -147,8 +135,6 @@ const RestaurantHome: React.FC = () => {
         return { text: "Confirmée", color: "#7C3AED", bg: "#EDE9FE" };
       case "PROCESSING":
         return { text: "En préparation", color: "#D97706", bg: "#FFFBEB" };
-      // case "READY":
-      //   return { text: "Prête", color: "#059669", bg: "#D1FAE5" };
       case "DELIVERED":
         return { text: "Livrée", color: "#16A34A", bg: "#DCFCE7" };
       case "COMPLETED":
@@ -160,47 +146,45 @@ const RestaurantHome: React.FC = () => {
     }
   };
 
-  const formatNumber = (num: number) =>
-    new Intl.NumberFormat("fr-FR").format(num);
+  const formatNumber = (n: number) => new Intl.NumberFormat("fr-FR").format(n);
+
+  // --------------------------- UI ---------------------------
 
   const pendingOrders = stats?.pendingOrders || 0;
   const inPreparation = stats?.inPreparationOrders || 0;
   const readyOrders = stats?.readyOrders || 0;
   const totalAlerts = pendingOrders + inPreparation;
 
-  // === HEADER ===
   const renderHeader = () => (
     <View style={styles.header}>
       <BusinessSelector
         businesses={businesses}
-        selectedBusiness={selectedBusiness}
+        selectedBusiness={business}
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
       />
+
       <View style={styles.headerRight}>
+        {totalAlerts > 0 && (
+          <View style={styles.notificationBadge}>
+            <Text style={styles.badgeText}>
+              {totalAlerts > 99 ? "99+" : totalAlerts}
+            </Text>
+          </View>
+        )}
+
         <TouchableOpacity style={styles.iconButton}>
-          {totalAlerts > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>
-                {totalAlerts > 99 ? "99+" : totalAlerts}
-              </Text>
-            </View>
-          )}
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.avatarContainer}
           onPress={() => router.push("/fournisseurSetting")}
         >
           {uri ? (
-            <Image
-              key={uri} // Force le rechargement même ici
-              source={{ uri }}
-              style={styles.avatar}
-              resizeMode="cover"
-            />
+            <Image key={uri} source={{ uri }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.placeholder]}>
               <Ionicons name="person" size={40} color="#aaa" />
@@ -211,108 +195,8 @@ const RestaurantHome: React.FC = () => {
     </View>
   );
 
-  // === CARTE COMMANDE DANS LA MODALE ===
-  const renderOrderCard = ({ item }: { item: Order }) => {
-    const status = getStatusStyle(item.status);
-    return (
-      <Pressable
-        style={styles.orderCard}
-        onPress={() => {
-          setOrdersModalVisible(false);
-          router.push(`/order-details/${item.id}`);
-        }}
-      >
-        <View style={styles.orderCardHeader}>
-          <Text style={styles.orderCardNumber}>#{item.orderNumber}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-            <Text style={[styles.statusText, { color: status.color }]}>
-              {status.text}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.orderCardBody}>
-          <View style={styles.amountRow}>
-            <Text style={styles.amountLabel}>Total</Text>
-            <Text style={styles.amountValue}>
-              {Number(item.totalAmount).toLocaleString("fr-FR")} KMF
-            </Text>
-          </View>
-          <View style={styles.dateRow}>
-            <Ionicons name="time-outline" size={14} color="#9CA3AF" />
-            <Text style={styles.dateText}>
-              {new Date(item.createdAt).toLocaleDateString("fr-FR", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
-          </View>
-          {item.notes && (
-            <Text style={styles.notesText} numberOfLines={2}>
-              {item.notes}
-            </Text>
-          )}
-        </View>
-        <Ionicons name="chevron-forward" size={24} color="#C9C9C9" />
-      </Pressable>
-    );
-  };
-
-  // === MODALE DES COMMANDES ===
-  const OrdersModal = () => (
-    <Modal visible={ordersModalVisible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setOrdersModalVisible(false)}>
-              <Ionicons name="close" size={28} color="#000" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Commandes en cours</Text>
-            <View style={{ width: 28 }} />
-          </View>
-
-          {ordersLoading ? (
-            <View style={styles.center}>
-              <ActivityIndicator size="large" color="#7C3AED" />
-            </View>
-          ) : orders.length === 0 ? (
-            <View style={styles.emptyOrders}>
-              <Ionicons name="receipt-outline" size={80} color="#E0E0E0" />
-              <Text style={styles.emptyTitle}>Aucune commande active</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={orders}
-              renderItem={renderOrderCard}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={{ padding: 16 }}
-              ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            />
-          )}
-        </SafeAreaView>
-      </View>
-    </Modal>
-  );
-
-  // === VUE D'ENSEMBLE ===
   const renderOverview = () => {
-    if (!selectedBusiness) return null;
-
-    if (statsLoading && !stats) {
-      return (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#7C3AED" />
-            <Text style={styles.loadingText}>
-              Chargement des statistiques...
-            </Text>
-          </View>
-        </View>
-      );
-    }
+    if (!business) return null;
 
     return (
       <View style={styles.section}>
@@ -322,7 +206,7 @@ const RestaurantHome: React.FC = () => {
           <View style={[styles.card, styles.cardYellow]}>
             <View style={styles.cardIcon}>
               <Image
-                source={require("@/assets/images/wallet-money.png")}
+                source={require("../../assets/images/wallet-money.png")}
                 style={styles.emoji}
               />
             </View>
@@ -379,7 +263,6 @@ const RestaurantHome: React.FC = () => {
           </View>
         </View>
 
-        {/* Bouton pour ouvrir la liste des commandes */}
         <TouchableOpacity style={styles.ordersButton} onPress={openOrdersModal}>
           <Ionicons name="receipt" size={20} color="#7C3AED" />
           <Text style={styles.ordersButtonText}>
@@ -392,7 +275,6 @@ const RestaurantHome: React.FC = () => {
     );
   };
 
-  // === ACCÈS RAPIDE ===
   const renderQuickActions = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Accès rapide</Text>
@@ -403,7 +285,6 @@ const RestaurantHome: React.FC = () => {
             <Ionicons name="receipt-outline" size={32} color="#FF9500" />
           </View>
           <Text style={styles.quickTitle}>Commandes</Text>
-          <Text style={styles.quickSubtitle}>Voir toutes les commandes</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -414,7 +295,6 @@ const RestaurantHome: React.FC = () => {
             <Ionicons name="restaurant-outline" size={32} color="#00A8E8" />
           </View>
           <Text style={styles.quickTitle}>Menu</Text>
-          <Text style={styles.quickSubtitle}>Gérer les plats & catégories</Text>
         </TouchableOpacity>
       </View>
 
@@ -427,11 +307,12 @@ const RestaurantHome: React.FC = () => {
             <Ionicons name="grid-outline" size={32} color="#7C3AED" />
           </View>
           <Text style={styles.quickTitle}>Tables</Text>
-          <Text style={styles.quickSubtitle}>Plan de salle & QR codes</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
+
+  // --------------------------- LOADING ---------------------------
 
   if (loading) {
     return (
@@ -446,6 +327,8 @@ const RestaurantHome: React.FC = () => {
       </SafeAreaView>
     );
   }
+
+  // --------------------------- MAIN RETURN ---------------------------
 
   return (
     <SafeAreaView style={styles.container}>
@@ -462,7 +345,7 @@ const RestaurantHome: React.FC = () => {
           />
         }
       >
-        {selectedBusiness ? (
+        {business ? (
           <>
             {renderOverview()}
             {renderQuickActions()}
@@ -480,11 +363,85 @@ const RestaurantHome: React.FC = () => {
         )}
       </ScrollView>
 
-      <OrdersModal />
+      {/* ----------------------- MODAL COMMANDES ----------------------- */}
+
+      <Modal visible={ordersModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <SafeAreaView style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setOrdersModalVisible(false)}>
+                <Ionicons name="close" size={28} color="#000" />
+              </TouchableOpacity>
+
+              <Text style={styles.modalTitle}>Commandes en cours</Text>
+
+              <View style={{ width: 28 }} />
+            </View>
+
+            {ordersLoading ? (
+              <View style={styles.center}>
+                <ActivityIndicator size="large" color="#7C3AED" />
+              </View>
+            ) : orders.length === 0 ? (
+              <View style={styles.emptyOrders}>
+                <Ionicons name="receipt-outline" size={80} color="#E0E0E0" />
+                <Text style={styles.emptyTitle}>Aucune commande active</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={orders}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ padding: 16 }}
+                ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+                renderItem={({ item }) => {
+                  const status = getStatusStyle(item.status);
+
+                  return (
+                    <Pressable
+                      style={styles.orderCard}
+                      onPress={() => {
+                        setOrdersModalVisible(false);
+                        router.push(`/order-details/${item.id}`);
+                      }}
+                    >
+                      <View style={styles.orderCardHeader}>
+                        <Text style={styles.orderCardNumber}>
+                          #{item.orderNumber}
+                        </Text>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: status.bg },
+                          ]}
+                        >
+                          <Text
+                            style={[styles.statusText, { color: status.color }]}
+                          >
+                            {status.text}
+                          </Text>
+                        </View>
+                      </View>
+                      {/* 
+                      <Text style={styles.orderClient}>
+                        {item.customer?.firstName}
+                      </Text>
+
+                      <Text style={styles.orderTotal}>
+                        Total : {formatNumber(item.total)} KMF
+                      </Text> */}
+                    </Pressable>
+                  );
+                }}
+              />
+            )}
+          </SafeAreaView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
 
+export default RestaurantHome;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8F9FA", paddingBottom: 60 },
   header: {
@@ -687,5 +644,3 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 14, color: "#888" },
   notesText: { fontSize: 14, color: "#666", marginTop: 8, fontStyle: "italic" },
 });
-
-export default RestaurantHome;
