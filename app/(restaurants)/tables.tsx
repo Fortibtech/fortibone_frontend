@@ -1,5 +1,5 @@
 // app/(restaurants)/tables/index.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,19 +15,26 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { getTables, Table } from "@/api/menu/tableApi";
+import { router, useFocusEffect } from "expo-router";
+
+// Zustand store
+import { useBusinessStore } from "@/store/businessStore";
+
 import {
+  getTables,
+  Table,
   createRestaurantTable,
   updateRestaurantTable,
   deleteRestaurantTable,
   type TablePayload,
 } from "@/api/menu/tableApi";
-import { useSelectedBusiness } from "@/api/hooks";
 
 const TablesScreen = () => {
-  const { selectedBusiness, loading: businessLoading } = useSelectedBusiness();
-  const restaurantId = selectedBusiness?.id;
+  // On utilise le store global → toujours à jour
+  const business = useBusinessStore((state) => state.business);
+  const version = useBusinessStore((state) => state.version);
+
+  const restaurantId = business?.id;
 
   const [tables, setTables] = useState<Table[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,25 +50,42 @@ const TablesScreen = () => {
   const [isAvailable, setIsAvailable] = useState(true);
 
   const loadTables = async () => {
-    if (!restaurantId) return;
+    if (!restaurantId) {
+      setTables([]);
+      return;
+    }
+
     try {
       setLoadingTables(true);
       const data = await getTables(restaurantId);
-      setTables(data);
-    } catch (error) {
-      Alert.alert("Erreur", "Impossible de charger les tables");
+      setTables(data || []);
+    } catch (error: any) {
+      Alert.alert(
+        "Erreur",
+        error.message || "Impossible de charger les tables"
+      );
     } finally {
       setLoadingTables(false);
       setRefreshing(false);
     }
   };
 
+  // Recharge quand :
+  // - l'écran revient au premier plan (tab bar)
+  // - l'entreprise change
+  // - on force un refresh via version
+  useFocusEffect(
+    useCallback(() => {
+      loadTables();
+    }, [restaurantId, version])
+  );
+
+  // Au cas où l'entreprise change pendant que l'écran est ouvert
   useEffect(() => {
-    if (restaurantId) loadTables();
+    loadTables();
   }, [restaurantId]);
 
   const onRefresh = () => {
-    if (!restaurantId) return;
     setRefreshing(true);
     loadTables();
   };
@@ -77,12 +101,11 @@ const TablesScreen = () => {
   const openEditModal = (table: Table) => {
     setEditingTable(table);
     setTableName(table.name);
-    setCapacity(String(table.capacity)); // ← String garanti
+    setCapacity(String(table.capacity));
     setIsAvailable(table.isAvailable);
     setModalVisible(true);
   };
 
-  // FONCTION CORRIGÉE – Plus jamais de capacity = 0 ou NaN
   const saveTable = async () => {
     if (!tableName.trim()) {
       Alert.alert("Erreur", "Le nom de la table est obligatoire");
@@ -107,7 +130,7 @@ const TablesScreen = () => {
         // MISE À JOUR
         const payload: TablePayload = {};
 
-        if (tableName !== editingTable.name) payload.name = tableName;
+        if (tableName !== editingTable.name) payload.name = tableName.trim();
         if (capacityNum !== editingTable.capacity)
           payload.capacity = capacityNum;
         if (isAvailable !== editingTable.isAvailable)
@@ -123,16 +146,19 @@ const TablesScreen = () => {
           editingTable.id,
           payload
         );
+
         setTables((prev) =>
           prev.map((t) => (t.id === updatedTable.id ? updatedTable : t))
         );
+
         Alert.alert("Succès", "Table modifiée avec succès");
       } else {
         // CRÉATION
         const payload: TablePayload = {
-          name: tableName,
+          name: tableName.trim(),
           capacity: capacityNum,
         };
+
         const newTable = await createRestaurantTable(restaurantId, payload);
         setTables((prev) => [...prev, newTable]);
         Alert.alert("Succès", `Table "${newTable.name}" créée !`);
@@ -150,7 +176,6 @@ const TablesScreen = () => {
     }
   };
 
-  // SUPPRESSION (inchangée)
   const removeTable = async (tableId: string) => {
     if (!restaurantId) return;
 
@@ -181,19 +206,8 @@ const TablesScreen = () => {
     ]);
   };
 
-  // Reste du code (render, loading, etc.) identique
-  if (businessLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#7C3AED" />
-          <Text style={styles.loadingText}>Chargement du restaurant...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!selectedBusiness) {
+  // Si pas de restaurant sélectionné
+  if (!business) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
@@ -307,6 +321,7 @@ const TablesScreen = () => {
         )}
       </View>
 
+      {/* MODAL (identique) */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -334,7 +349,7 @@ const TablesScreen = () => {
                 value={capacity}
                 onChangeText={(text) =>
                   setCapacity(text.replace(/[^0-9]/g, ""))
-                } // ← Bonus : accepte seulement les chiffres
+                }
                 keyboardType="numeric"
                 placeholder="4"
               />
@@ -373,6 +388,7 @@ const TablesScreen = () => {
 
 export default TablesScreen;
 
+// Styles inchangés
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8F9FA" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },

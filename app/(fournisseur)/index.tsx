@@ -1,28 +1,7 @@
+// app/(fournisseur)/index.tsx
 "use client";
 
-import {
-  type Business,
-  BusinessesService,
-  SelectedBusinessManager,
-} from "@/api";
-import {
-  type AnalyticsOverview,
-  getAnalyticsOverview,
-  getInventory,
-  getOrders,
-  getPendingOrdersCount,
-  getSales,
-  type InventoryResponse,
-  type OrdersResponse,
-  type SalesResponse,
-} from "@/api/analytics";
-import BusinessSelector from "@/components/Business/BusinessSelector";
-import { useUserAvatar } from "@/hooks/useUserAvatar";
-import { useUserStore } from "@/store/userStore";
-import { Ionicons } from "@expo/vector-icons";
-import { type Route, router, useFocusEffect } from "expo-router";
-import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -30,39 +9,55 @@ import {
   RefreshControl,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
   Image,
+  StyleSheet,
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
 import Svg, { G, Path, Text as SvgText } from "react-native-svg";
+
+import { Business, BusinessesService } from "@/api";
+import {
+  AnalyticsOverview,
+  getAnalyticsOverview,
+  getInventory,
+  getOrders,
+  getPendingOrdersCount,
+  getSales,
+  InventoryResponse,
+  OrdersResponse,
+  SalesResponse,
+} from "@/api/analytics";
+
+import BusinessSelector from "@/components/Business/BusinessSelector";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { useBusinessStore } from "@/store/businessStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type PeriodUnit = "DAY" | "WEEK" | "MONTH" | "YEAR";
-type AnalyticsRoutes =
-  | "/(accueil)/analytics-vente/[id]"
-  | "/(accueil)/analytics-achats/[id]"
-  | "/(accueil)/analytics-stocks/[id]";
+
 interface PeriodSelection {
   unit: PeriodUnit;
   year: number;
-  month?: number; // Pour MONTH et DAY
+  month?: number;
   label: string;
 }
 
 const HomePage: React.FC = () => {
+  const business = useBusinessStore((state) => state.business);
+  const setBusiness = useBusinessStore((state) => state.setBusiness);
+
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
-    null
-  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { uri } = useUserAvatar();
-  // ✅ État dynamique pour la période des top produits
+
   const [topProductsPeriod, setTopProductsPeriod] = useState<PeriodSelection>({
     unit: "MONTH",
     year: new Date().getFullYear(),
@@ -71,7 +66,6 @@ const HomePage: React.FC = () => {
   });
   const [showPeriodModal, setShowPeriodModal] = useState(false);
 
-  // ✅ États pour les analytics
   const [monthlyOverview, setMonthlyOverview] =
     useState<AnalyticsOverview | null>(null);
   const [inventoryData, setInventoryData] = useState<InventoryResponse | null>(
@@ -87,34 +81,8 @@ const HomePage: React.FC = () => {
   const [recentOrders, setRecentOrders] = useState<OrdersResponse | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [topProductsLoading, setTopProductsLoading] = useState(false);
-  const user = useUserStore.getState().userProfile;
 
-  // Recharge quand on revient sur l'écran OU quand on change de commerce
-  useFocusEffect(
-    useCallback(() => {
-      const refreshAllData = async () => {
-        if (!selectedBusiness) return;
-
-        setAnalyticsLoading(true);
-        setTopProductsLoading(true);
-
-        try {
-          await Promise.all([loadAnalytics(), loadTopProducts()]);
-        } catch (err) {
-          console.error("Erreur refresh global:", err);
-        }
-      };
-
-      refreshAllData();
-    }, [selectedBusiness, topProductsPeriod]) // Ajout de topProductsPeriod ici aussi !
-  );
-
-  // On garde juste le chargement initial
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  // ✅ Fonction utilitaire pour obtenir le nom du mois
+  // ===================== UTILITAIRES =====================
   function getMonthName(monthIndex: number): string {
     const months = [
       "Janvier",
@@ -133,45 +101,7 @@ const HomePage: React.FC = () => {
     return months[monthIndex];
   }
 
-  // ✅ Fonction pour obtenir les dates selon la période sélectionnée
-  const getPeriodDates = (
-    period: PeriodSelection
-  ): { startDate: string; endDate: string } => {
-    const { unit, year, month } = period;
-
-    if (unit === "YEAR") {
-      return {
-        startDate: `${year}-01-01`,
-        endDate: `${year}-12-31`,
-      };
-    }
-
-    if (unit === "MONTH" && month) {
-      const lastDay = new Date(year, month, 0).getDate();
-      return {
-        startDate: `${year}-${String(month).padStart(2, "0")}-01`,
-        endDate: `${year}-${String(month).padStart(2, "0")}-${String(
-          lastDay
-        ).padStart(2, "0")}`,
-      };
-    }
-
-    // Par défaut, retourner le mois en cours
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-    const lastDay = new Date(currentYear, currentMonth, 0).getDate();
-    return {
-      startDate: `${currentYear}-${String(currentMonth).padStart(2, "0")}-01`,
-      endDate: `${currentYear}-${String(currentMonth).padStart(
-        2,
-        "0"
-      )}-${String(lastDay).padStart(2, "0")}`,
-    };
-  };
-
-  // ✅ Fonction pour obtenir les dates du mois en cours
-  const getCurrentMonthDates = (): { startDate: string; endDate: string } => {
+  const getCurrentMonthDates = () => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -181,7 +111,7 @@ const HomePage: React.FC = () => {
     return { startDate, endDate };
   };
 
-  const getLast30DaysDates = (): { startDate: string; endDate: string } => {
+  const getLast30DaysDates = () => {
     const now = new Date();
     const endDate = now.toISOString().split("T")[0];
     const start = new Date(now);
@@ -190,109 +120,100 @@ const HomePage: React.FC = () => {
     return { startDate, endDate };
   };
 
+  const getPeriodDates = (period: PeriodSelection) => {
+    const { unit, year, month } = period;
+    if (unit === "YEAR")
+      return { startDate: `${year}-01-01`, endDate: `${year}-12-31` };
+    if (unit === "MONTH" && month) {
+      const lastDay = new Date(year, month, 0).getDate();
+      return {
+        startDate: `${year}-${String(month).padStart(2, "0")}-01`,
+        endDate: `${year}-${String(month).padStart(2, "0")}-${String(
+          lastDay
+        ).padStart(2, "0")}`,
+      };
+    }
+    return getCurrentMonthDates();
+  };
+
+  // ===================== CHARGEMENT =====================
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const businessesResponse = await BusinessesService.getBusinesses();
-      setBusinesses(businessesResponse);
-      const selected = await SelectedBusinessManager.getSelectedBusiness();
-      setSelectedBusiness(selected);
-      setTimeout(() => {
-        switch (selected?.type) {
-          case "COMMERCANT":
-            router.push("/(professionnel)");
-            break;
-          case "RESTAURATEUR":
-            router.push("/(restaurants)");
-            break;
-          case "FOURNISSEUR":
-            router.push("/(fournisseur)");
-            break;
-          case "LIVREUR":
-            router.push("/(delivery)");
-            break;
-          default:
-            console.warn("Type d'entreprise inconnu:", selected?.type);
-        }
-      }, 100); // 100ms suffit
-      if (selected && !businessesResponse.find((b) => b.id === selected.id)) {
-        await BusinessesService.clearSelectedBusiness();
-        setSelectedBusiness(null);
+      const all = await BusinessesService.getBusinesses();
+      setBusinesses(all);
+
+      if (!business && all.length > 0) {
+        const first = all.find((b) => b.type === "FOURNISSEUR") || all[0];
+        setBusiness(first);
+        await BusinessesService.selectBusiness(first);
       }
     } catch (error) {
-      console.error("Erreur lors du chargement:", error);
-      Alert.alert("Erreur", "Impossible de charger les données");
+      Alert.alert("Erreur", "Impossible de charger les entreprises");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Fonction pour charger les analytics (sans top produits)
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (business?.id) {
+        loadAnalytics();
+        loadTopProducts();
+      }
+    }, [business?.id, topProductsPeriod])
+  );
+
   const loadAnalytics = async () => {
-    if (!selectedBusiness) return;
-
+    if (!business?.id) return;
+    setAnalyticsLoading(true);
     try {
-      setAnalyticsLoading(true);
-
       const { startDate: monthStart, endDate: monthEnd } =
         getCurrentMonthDates();
       const { startDate: days30Start, endDate: days30End } =
         getLast30DaysDates();
 
-      // Charger toutes les données en parallèle (sauf top produits)
-      const [
-        monthlyData,
-        inventoryResponse,
-        sales30Days,
-        pendingCount,
-        ordersResponse,
-      ] = await Promise.all([
-        getAnalyticsOverview(selectedBusiness.id, monthStart, monthEnd),
-        getInventory(selectedBusiness.id),
-        getSales(selectedBusiness.id, {
+      const [monthly, inventory, sales30, pending, orders] = await Promise.all([
+        getAnalyticsOverview(business.id, monthStart, monthEnd),
+        getInventory(business.id),
+        getSales(business.id, {
           startDate: days30Start,
           endDate: days30End,
           unit: "DAY",
         }),
-        getPendingOrdersCount(selectedBusiness.id, "SALE"),
-        getOrders(selectedBusiness.id, {
-          limit: 4,
-          page: 1,
-        }),
+        getPendingOrdersCount(business.id, "SALE"),
+        getOrders(business.id, { limit: 4, page: 1 }),
       ]);
 
-      setMonthlyOverview(monthlyData);
-      setInventoryData(inventoryResponse);
-      setSalesData30Days(sales30Days);
-      setPendingOrdersCount(pendingCount);
-      setRecentOrders(ordersResponse);
-    } catch (error) {
-      console.error("Erreur lors du chargement des analytics:", error);
-      Alert.alert("Erreur", "Impossible de charger les statistiques");
+      setMonthlyOverview(monthly);
+      setInventoryData(inventory);
+      setSalesData30Days(sales30);
+      setPendingOrdersCount(pending);
+      setRecentOrders(orders);
+    } catch (e) {
+      console.error(e);
     } finally {
       setAnalyticsLoading(false);
     }
   };
 
-  // ✅ Fonction séparée pour charger les top produits
   const loadTopProducts = async () => {
-    if (!selectedBusiness) return;
-
+    if (!business?.id) return;
+    setTopProductsLoading(true);
     try {
-      setTopProductsLoading(true);
-
       const { startDate, endDate } = getPeriodDates(topProductsPeriod);
-
-      const topProducts = await getSales(selectedBusiness.id, {
+      const data = await getSales(business.id, {
         startDate,
         endDate,
         unit: topProductsPeriod.unit,
       });
-
-      setTopProductsData(topProducts);
-    } catch (error) {
-      console.error("Erreur lors du chargement des top produits:", error);
-      Alert.alert("Erreur", "Impossible de charger les top produits");
+      setTopProductsData(data);
+    } catch (e) {
+      console.error(e);
     } finally {
       setTopProductsLoading(false);
     }
@@ -301,51 +222,38 @@ const HomePage: React.FC = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (selectedBusiness) {
-      await loadAnalytics();
-      await loadTopProducts();
+    if (business?.id) {
+      await Promise.all([loadAnalytics(), loadTopProducts()]);
     }
     setRefreshing(false);
   };
 
-  const handleBusinessSelect = async (business: Business) => {
+  const handleBusinessSelect = async (selected: Business) => {
     try {
-      await BusinessesService.selectBusiness(business);
-      setSelectedBusiness(business);
-      Alert.alert("Succès", `Entreprise "${business.name}" sélectionnée`);
-      if (business.type !== "FOURNISSEUR") {
-        router.push("/(professionnel)");
+      await BusinessesService.selectBusiness(selected);
+      setBusiness(selected);
+      Alert.alert("Succès", `"${selected.name}" sélectionné`);
+
+      if (selected.type !== "FOURNISSEUR") {
+        router.replace("/(tabs)");
       }
-    } catch (error) {
-      console.error("Erreur lors de la sélection:", error);
-      Alert.alert("Erreur", "Impossible de sélectionner l'entreprise");
+    } catch (e) {
+      Alert.alert("Erreur", "Impossible de changer d'entreprise");
     }
   };
 
-  // ✅ Fonction utilitaire pour formater les nombres
-  const formatNumber = (num: number): string => {
-    return new Intl.NumberFormat("fr-FR", {
-      maximumFractionDigits: 0,
-    }).format(num);
-  };
+  const formatNumber = (num: number = 0) =>
+    new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(num);
 
-  const formatCurrency = (num: number): string => {
-    if (num >= 1000) {
-      return `${Math.round(num / 1000)}k`;
-    }
-    return formatNumber(num);
-  };
+  const formatCurrency = (num: number = 0) =>
+    num >= 1000 ? `${Math.round(num / 1000)}k` : formatNumber(num);
 
-  // ✅ Calculer le nombre total d'alertes
-  const getTotalAlertsCount = (): number => {
-    if (!inventoryData) return 0;
-    return (
-      inventoryData.productsLowStock.length +
-      inventoryData.expiringProducts.length
-    );
-  };
+  const getTotalAlertsCount = () =>
+    inventoryData
+      ? inventoryData.productsLowStock.length +
+        inventoryData.expiringProducts.length
+      : 0;
 
-  // ✅ Fonction pour changer de mois
   const handleMonthChange = (direction: "prev" | "next") => {
     const currentMonth = topProductsPeriod.month || new Date().getMonth() + 1;
     const currentYear = topProductsPeriod.year;
@@ -357,13 +265,13 @@ const HomePage: React.FC = () => {
       newMonth = currentMonth - 1;
       if (newMonth < 1) {
         newMonth = 12;
-        newYear = currentYear - 1;
+        newYear--;
       }
     } else {
       newMonth = currentMonth + 1;
       if (newMonth > 12) {
         newMonth = 1;
-        newYear = currentYear + 1;
+        newYear++;
       }
     }
 
@@ -375,43 +283,33 @@ const HomePage: React.FC = () => {
     });
   };
 
-  // ✅ Fonction pour changer d'unité de période
   const handleUnitChange = (unit: PeriodUnit) => {
     const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-
-    let label = "";
-    if (unit === "YEAR") {
-      label = `${currentYear}`;
-    } else if (unit === "MONTH") {
-      label = getMonthName(currentMonth - 1);
-    } else if (unit === "WEEK") {
-      label = "Semaine";
-    } else {
-      label = "Jour";
-    }
-
     setTopProductsPeriod({
       unit,
-      year: currentYear,
-      month: unit === "MONTH" ? currentMonth : undefined,
-      label,
+      year: now.getFullYear(),
+      month: unit === "MONTH" ? now.getMonth() + 1 : undefined,
+      label:
+        unit === "MONTH"
+          ? getMonthName(now.getMonth())
+          : unit === "YEAR"
+          ? `${now.getFullYear()}`
+          : unit,
     });
     setShowPeriodModal(false);
   };
 
+  // ===================== TOUS LES RENDERS =====================
   const renderHeader = () => (
     <View style={styles.header}>
       <BusinessSelector
         businesses={businesses}
-        selectedBusiness={selectedBusiness}
+        selectedBusiness={business}
         onBusinessSelect={handleBusinessSelect}
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
       />
-
       <View style={styles.headerRight}>
         <TouchableOpacity style={styles.iconButton}>
           {getTotalAlertsCount() > 0 && (
@@ -426,11 +324,7 @@ const HomePage: React.FC = () => {
           onPress={() => router.push("/fournisseurSetting")}
         >
           <Image
-            source={
-              user?.profileImageUrl
-                ? user.profileImageUrl
-                : require("@/assets/images/icon.png")
-            }
+            source={uri ? { uri } : require("@/assets/images/icon.png")}
             style={styles.avatar}
             resizeMode="cover"
           />
@@ -443,30 +337,24 @@ const HomePage: React.FC = () => {
     if (!inventoryData) return null;
 
     if (inventoryData.expiringProducts.length > 0) {
-      const firstExpiringProduct = inventoryData.expiringProducts[0];
-      const expirationDate = new Date(firstExpiringProduct.expirationDate);
-      const today = new Date();
-      const daysUntilExpiry = Math.ceil(
-        (expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      const p = inventoryData.expiringProducts[0];
+      const days = Math.ceil(
+        (new Date(p.expirationDate).getTime() - Date.now()) /
+          (1000 * 60 * 60 * 24)
       );
-
       return (
         <View style={styles.section}>
           <View
             style={[
               styles.alertCard,
-              {
-                backgroundColor: "#FEE2E2",
-                borderColor: "#EF4444",
-              },
+              { backgroundColor: "#FEE2E2", borderColor: "#EF4444" },
             ]}
           >
             <View style={styles.alertContent}>
               <Ionicons name="alert-circle" size={20} color="#EF4444" />
-              <Text style={[styles.alertText, { color: "#F50B0BFF" }]}>
-                `{firstExpiringProduct.productName}` expire dans{" "}
-                {daysUntilExpiry} jour{daysUntilExpiry > 1 ? "s" : ""} (
-                {firstExpiringProduct.quantity} unités)
+              <Text style={{ color: "#DC2626" }}>
+                {p.productName} expire dans {days} jour{days > 1 ? "s" : ""} (
+                {p.quantity} unités)
               </Text>
             </View>
             <TouchableOpacity>
@@ -478,24 +366,19 @@ const HomePage: React.FC = () => {
     }
 
     if (inventoryData.productsLowStock.length > 0) {
-      const firstLowStockProduct = inventoryData.productsLowStock[0];
-
+      const p = inventoryData.productsLowStock[0];
       return (
         <View style={styles.section}>
           <View
             style={[
               styles.alertCard,
-              {
-                backgroundColor: "#FEF3C7",
-                borderColor: "#FBBF24",
-              },
+              { backgroundColor: "#FEF3C7", borderColor: "#FBBF24" },
             ]}
           >
             <View style={styles.alertContent}>
               <Ionicons name="warning" size={20} color="#FBBF24" />
-              <Text style={[styles.alertText, { color: "#FFB700FF" }]}>
-                Stock faible sur `{firstLowStockProduct.productName}` (
-                {firstLowStockProduct.quantityInStock} unités)
+              <Text style={{ color: "#D97706" }}>
+                Stock faible : {p.productName} ({p.quantityInStock} unités)
               </Text>
             </View>
             <TouchableOpacity>
@@ -505,7 +388,6 @@ const HomePage: React.FC = () => {
         </View>
       );
     }
-
     return null;
   };
 
@@ -515,37 +397,28 @@ const HomePage: React.FC = () => {
     const alerts = [];
 
     if (inventoryData.expiringProducts.length > 0) {
-      const expiringCount = inventoryData.expiringProducts.length;
-      const totalExpiringQuantity = inventoryData.expiringProducts.reduce(
-        (sum, product) => sum + product.quantity,
-        0
-      );
-
       alerts.push({
         id: 1,
-        type: "error",
-        message: `${expiringCount} produit${
-          expiringCount > 1 ? "s" : ""
+        message: `${inventoryData.expiringProducts.length} produit${
+          inventoryData.expiringProducts.length > 1 ? "s" : ""
         } expire${
-          expiringCount > 1 ? "nt" : ""
-        } bientôt (${totalExpiringQuantity} unités)`,
+          inventoryData.expiringProducts.length > 1 ? "nt" : ""
+        } bientôt`,
         color: "#FEE2E2",
         borderColor: "#EF4444",
-        alertTextColor: "#F50B0BFF",
+        textColor: "#DC2626",
         icon: "alert-circle",
       });
     }
-
     if (inventoryData.productsLowStock.length > 0) {
       alerts.push({
         id: 2,
-        type: "warning",
         message: `${inventoryData.productsLowStock.length} produit${
           inventoryData.productsLowStock.length > 1 ? "s" : ""
         } en stock faible`,
         color: "#FEF3C7",
         borderColor: "#FBBF24",
-        alertTextColor: "#FFB700FF",
+        textColor: "#D97706",
         icon: "warning",
       });
     }
@@ -557,26 +430,17 @@ const HomePage: React.FC = () => {
         <View style={styles.sectionViewTitle}>
           <Text style={styles.sectionTitle}>Alertes Prioritaires</Text>
         </View>
-        {alerts.map((alert) => (
+        {alerts.map((a) => (
           <View
-            key={alert.id}
+            key={a.id}
             style={[
               styles.alertCard,
-              {
-                backgroundColor: alert.color,
-                borderColor: alert.borderColor,
-              },
+              { backgroundColor: a.color, borderColor: a.borderColor },
             ]}
           >
             <View style={styles.alertContent}>
-              <Ionicons
-                name={alert.icon as any}
-                size={20}
-                color={alert.borderColor}
-              />
-              <Text style={[styles.alertText, { color: alert.alertTextColor }]}>
-                {alert.message}
-              </Text>
+              <Ionicons name={a.icon as any} size={20} color={a.borderColor} />
+              <Text style={{ color: a.textColor }}>{a.message}</Text>
             </View>
             <TouchableOpacity>
               <Ionicons name="close" size={20} color="#666" />
@@ -627,8 +491,7 @@ const HomePage: React.FC = () => {
         <TouchableOpacity
           style={styles.analyticsButton}
           onPress={() =>
-            selectedBusiness &&
-            router.push(`(analytics)?id=${selectedBusiness.id}` as Route)
+            business && router.push(`(analytics)?id=${business.id}`)
           }
         >
           <Image
@@ -645,54 +508,43 @@ const HomePage: React.FC = () => {
   const renderStatistics = () => {
     const stats = [
       {
-        id: 1,
-        bussinesId: selectedBusiness?.id,
         label: "Ventes",
         icon: "cash",
-        route: "/(accueil)/analytics-vente/[id]" as const,
+        route: "/(accueil)/analytics-vente/[id]",
       },
       {
-        id: 2,
-        bussinesId: selectedBusiness?.id,
         label: "Achats",
         icon: "cart",
-        route: "/(accueil)/analytics-achats/[id]" as const,
+        route: "/(accueil)/analytics-achats/[id]",
       },
       {
-        id: 3,
-        bussinesId: selectedBusiness?.id,
         label: "Stock",
         icon: "cube",
-        route: "/(accueil)/analytics-stocks/[id]" as const,
+        route: "/(accueil)/analytics-stocks/[id]",
       },
-    ] as const;
-    console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", selectedBusiness?.id);
+    ];
+
     return (
       <View style={styles.section}>
         <View style={styles.sectionViewTitle}>
           <Text style={styles.sectionTitle}>Statistiques</Text>
         </View>
         <View style={styles.statisticsRow}>
-          {stats.map((stat) => (
+          {stats.map((s, i) => (
             <TouchableOpacity
-              key={stat.id}
+              key={i}
               style={styles.statisticsCard}
               onPress={() =>
-                router.push({
-                  pathname: stat.route satisfies AnalyticsRoutes,
-                  params: { id: String(stat.bussinesId) },
-                })
+                business &&
+                router.push({ pathname: s.route, params: { id: business.id } })
               }
             >
-              <View>
-                <View style={styles.statisticsIconContainer}>
-                  <Ionicons name={stat.icon as any} size={28} color="#1BB874" />
-                </View>
-
-                <View style={styles.statisticsContent}>
-                  <Text style={styles.statisticsLabel}>{stat.label}</Text>
-                  <Ionicons name="chevron-forward" size={12} color="#1BB874" />
-                </View>
+              <View style={styles.statisticsIconContainer}>
+                <Ionicons name={s.icon as any} size={28} color="#1BB874" />
+              </View>
+              <View style={styles.statisticsContent}>
+                <Text style={styles.statisticsLabel}>{s.label}</Text>
+                <Ionicons name="chevron-forward" size={12} color="#1BB874" />
               </View>
             </TouchableOpacity>
           ))}
@@ -702,55 +554,45 @@ const HomePage: React.FC = () => {
   };
 
   const renderSalesChart = () => {
-    if (!salesData30Days || salesData30Days.salesByPeriod.length === 0) {
+    if (!salesData30Days || salesData30Days.salesByPeriod.length === 0)
       return null;
-    }
 
-    const salesByPeriod = salesData30Days.salesByPeriod;
-    const maxValue = Math.max(...salesByPeriod.map((d) => d.totalAmount));
-    const last7Days = salesByPeriod.slice(-7);
+    const data = salesData30Days.salesByPeriod;
+    const max = Math.max(...data.map((d) => d.totalAmount));
+    const last7 = data.slice(-7);
 
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>CA des 30 derniers jours</Text>
         <View style={styles.chartContainer}>
           <View style={styles.yAxisLabels}>
-            <Text style={styles.yAxisLabel}>{formatCurrency(maxValue)}</Text>
-            <Text style={styles.yAxisLabel}>
-              {formatCurrency(maxValue * 0.8)}
-            </Text>
-            <Text style={styles.yAxisLabel}>
-              {formatCurrency(maxValue * 0.6)}
-            </Text>
-            <Text style={styles.yAxisLabel}>
-              {formatCurrency(maxValue * 0.4)}
-            </Text>
-            <Text style={styles.yAxisLabel}>
-              {formatCurrency(maxValue * 0.2)}
-            </Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(max)}</Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(max * 0.8)}</Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(max * 0.6)}</Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(max * 0.4)}</Text>
+            <Text style={styles.yAxisLabel}>{formatCurrency(max * 0.2)}</Text>
             <Text style={styles.yAxisLabel}>0</Text>
           </View>
           <View style={styles.chartBars}>
-            {last7Days.map((data, index) => {
-              const height = (data.totalAmount / maxValue) * 160;
-              const day = new Date(data.period).getDate();
-              const isToday = index === last7Days.length - 1;
-
+            {last7.map((d, i) => {
+              const h = (d.totalAmount / max) * 160;
+              const day = new Date(d.period).getDate();
+              const today = i === last7.length - 1;
               return (
-                <View key={index} style={styles.barContainer}>
+                <View key={i} style={styles.barContainer}>
                   <View style={styles.barWrapper}>
                     <View
                       style={[
                         styles.bar,
                         {
-                          height: height,
-                          backgroundColor: isToday ? "#10B981" : "#EC4899",
+                          height: h,
+                          backgroundColor: today ? "#10B981" : "#EC4899",
                         },
                       ]}
                     />
                   </View>
                   <Text
-                    style={[styles.barLabel, isToday && styles.barLabelActive]}
+                    style={[styles.barLabel, today && styles.barLabelActive]}
                   >
                     {day}
                   </Text>
@@ -763,62 +605,6 @@ const HomePage: React.FC = () => {
     );
   };
 
-  // ✅ Modal pour sélectionner le type de période
-  const renderPeriodModal = () => (
-    <Modal
-      visible={showPeriodModal}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setShowPeriodModal(false)}
-    >
-      <TouchableOpacity
-        style={styles.modalOverlay}
-        activeOpacity={1}
-        onPress={() => setShowPeriodModal(false)}
-      >
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Sélectionner une période</Text>
-
-          <TouchableOpacity
-            style={styles.modalOption}
-            onPress={() => handleUnitChange("DAY")}
-          >
-            <Text style={styles.modalOptionText}>Jour</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.modalOption}
-            onPress={() => handleUnitChange("WEEK")}
-          >
-            <Text style={styles.modalOptionText}>Semaine</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.modalOption}
-            onPress={() => handleUnitChange("MONTH")}
-          >
-            <Text style={styles.modalOptionText}>Mois</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.modalOption}
-            onPress={() => handleUnitChange("YEAR")}
-          >
-            <Text style={styles.modalOptionText}>Année</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.modalCancelButton}
-            onPress={() => setShowPeriodModal(false)}
-          >
-            <Text style={styles.modalCancelText}>Annuler</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
-
-  // ✅ Top produits avec sélecteur de période dynamique
   const renderTopProducts = () => {
     if (topProductsLoading) {
       return (
@@ -836,172 +622,128 @@ const HomePage: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Top 5 Produits par volume</Text>
           <View style={styles.donutChartContainer}>
-            <Text style={styles.noDataText}>
-              Aucune donnée disponible pour cette période
-            </Text>
+            <Text style={styles.noDataText}>Aucune donnée disponible</Text>
           </View>
         </View>
       );
     }
 
-    const topProducts = topProductsData.topSellingProducts.slice(0, 5);
-    const totalQuantity = topProducts.reduce(
-      (sum, p) => sum + p.totalQuantitySold,
-      0
-    );
+    const top = topProductsData.topSellingProducts.slice(0, 5);
+    const total = top.reduce((s, p) => s + p.totalQuantitySold, 0);
 
     const size = 240;
-    const strokeWidth = 45;
+    const stroke = 45;
     const center = size / 2;
-    const radius = (size - strokeWidth) / 2;
-    const outerRadius = radius + strokeWidth / 2;
-    const innerRadius = radius - strokeWidth / 2;
-    const gapAngle = 2;
+    const radius = (size - stroke) / 2;
+    const outer = radius + stroke / 2;
+    const inner = radius - stroke / 2;
+    const gap = 2;
 
     const colors = ["#F97316", "#10B981", "#7C3AED", "#C026D3", "#FBBF24"];
 
-    let cumulativeAngle = 0;
-    const segments = topProducts.map((product, index) => {
-      const percentage =
-        product.revenuePercentage ||
-        (product.totalRevenue /
-          topProducts.reduce((sum, p) => sum + p.totalRevenue, 0)) *
-          100;
-      const segmentAngle = (percentage / 100) * 360;
-      const startAngle = cumulativeAngle + gapAngle / 2;
-      const endAngle = cumulativeAngle + segmentAngle - gapAngle / 2;
-      const middleAngle = (startAngle + endAngle) / 2;
+    let angle = 0;
+    const segments = top.map((p, i) => {
+      const pct =
+        p.revenuePercentage ||
+        (p.totalRevenue / topProductsData.totalRevenue) * 100;
+      const segmentAngle = (pct / 100) * 360;
+      const start = angle + gap / 2;
+      const end = angle + segmentAngle - gap / 2;
+      const mid = (start + end) / 2;
+      angle += segmentAngle;
 
-      cumulativeAngle += segmentAngle;
-
-      return {
-        ...product,
-        percentage: Math.round(percentage),
-        color: colors[index],
-        startAngle,
-        endAngle,
-        middleAngle,
-        segmentAngle,
-      };
+      return { ...p, pct: Math.round(pct), color: colors[i], start, end, mid };
     });
 
     const polarToCartesian = (
-      centerX: number,
-      centerY: number,
-      radius: number,
-      angleInDegrees: number
+      cx: number,
+      cy: number,
+      r: number,
+      deg: number
     ) => {
-      const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
-      return {
-        x: centerX + radius * Math.cos(angleInRadians),
-        y: centerY + radius * Math.sin(angleInRadians),
-      };
+      const rad = ((deg - 90) * Math.PI) / 180;
+      return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
     };
 
-    const describeArc = (startAngle: number, endAngle: number) => {
-      const outerStart = polarToCartesian(
-        center,
-        center,
-        outerRadius,
-        endAngle
-      );
-      const outerEnd = polarToCartesian(
-        center,
-        center,
-        outerRadius,
-        startAngle
-      );
-      const innerStart = polarToCartesian(
-        center,
-        center,
-        innerRadius,
-        endAngle
-      );
-      const innerEnd = polarToCartesian(
-        center,
-        center,
-        innerRadius,
-        startAngle
-      );
+    const describeArc = (start: number, end: number) => {
+      const oStart = polarToCartesian(center, center, outer, end);
+      const oEnd = polarToCartesian(center, center, outer, start);
+      const iStart = polarToCartesian(center, center, inner, end);
+      const iEnd = polarToCartesian(center, center, inner, start);
+      const large = end - start <= 180 ? "0" : "1";
 
-      const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-
-      const pathData = [
+      return [
         "M",
-        outerStart.x,
-        outerStart.y,
+        oStart.x,
+        oStart.y,
         "A",
-        outerRadius,
-        outerRadius,
+        outer,
+        outer,
         0,
-        largeArcFlag,
+        large,
         0,
-        outerEnd.x,
-        outerEnd.y,
+        oEnd.x,
+        oEnd.y,
         "L",
-        innerEnd.x,
-        innerEnd.y,
+        iEnd.x,
+        iEnd.y,
         "A",
-        innerRadius,
-        innerRadius,
+        inner,
+        inner,
         0,
-        largeArcFlag,
+        large,
         1,
-        innerStart.x,
-        innerStart.y,
+        iStart.x,
+        iStart.y,
         "Z",
       ].join(" ");
-
-      return pathData;
     };
 
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Top 5 Produits par volume</Text>
 
-        {/* ✅ Sélecteur de période dynamique */}
         <View style={styles.periodSelector}>
-          {/* Bouton mois précédent (seulement pour MONTH) */}
           {topProductsPeriod.unit === "MONTH" && (
-            <TouchableOpacity
-              style={styles.periodNavigationButton}
-              onPress={() => handleMonthChange("prev")}
-            >
-              <Ionicons name="chevron-back" size={20} color="#6B7280" />
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={styles.periodNavigationButton}
+                onPress={() => handleMonthChange("prev")}
+              >
+                <Ionicons name="chevron-back" size={20} color="#6B7280" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.periodButton, styles.periodButtonActive]}
+              >
+                <Text
+                  style={[
+                    styles.periodButtonText,
+                    styles.periodButtonTextActive,
+                  ]}
+                >
+                  {topProductsPeriod.label}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.periodNavigationButton}
+                onPress={() => handleMonthChange("next")}
+              >
+                <Ionicons name="chevron-forward" size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </>
           )}
-
-          {/* Affichage de la période actuelle */}
-          <TouchableOpacity
-            style={[styles.periodButton, styles.periodButtonActive]}
-          >
-            <Text
-              style={[styles.periodButtonText, styles.periodButtonTextActive]}
-            >
-              {topProductsPeriod.label}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Bouton mois suivant (seulement pour MONTH) */}
-          {topProductsPeriod.unit === "MONTH" && (
-            <TouchableOpacity
-              style={styles.periodNavigationButton}
-              onPress={() => handleMonthChange("next")}
-            >
-              <Ionicons name="chevron-forward" size={20} color="#6B7280" />
-            </TouchableOpacity>
-          )}
-
-          {/* Sélecteur de type de période */}
           <TouchableOpacity
             style={[styles.periodButton, styles.periodButtonInactive]}
             onPress={() => setShowPeriodModal(true)}
           >
             <Text style={styles.periodButtonText}>
-              {topProductsPeriod.unit === "DAY" && "Jour"}
-              {topProductsPeriod.unit === "WEEK" && "Semaine"}
-              {topProductsPeriod.unit === "MONTH" && "Mensuel"}
-              {topProductsPeriod.unit === "YEAR" && "Annuel"}
+              {topProductsPeriod.unit === "DAY"
+                ? "Jour"
+                : topProductsPeriod.unit === "WEEK"
+                ? "Semaine"
+                : topProductsPeriod.unit === "MONTH"
+                ? "Mensuel"
+                : "Annuel"}
             </Text>
             <Ionicons name="chevron-down" size={16} color="#6B7280" />
           </TouchableOpacity>
@@ -1010,72 +752,55 @@ const HomePage: React.FC = () => {
         <View style={styles.donutChartContainer}>
           <View style={styles.donutChartWrapper}>
             <Svg width={size} height={size}>
-              {segments.map((segment, index) => {
-                const pathData = describeArc(
-                  segment.startAngle,
-                  segment.endAngle
-                );
-                const labelRadius = radius;
-                const labelPos = polarToCartesian(
-                  center,
-                  center,
-                  labelRadius,
-                  segment.middleAngle
-                );
-
+              {segments.map((s, i) => {
+                const d = describeArc(s.start, s.end);
+                const pos = polarToCartesian(center, center, radius, s.mid);
                 return (
-                  <G key={index}>
-                    <Path d={pathData} fill={segment.color} />
+                  <G key={i}>
+                    <Path d={d} fill={s.color} />
                     <SvgText
-                      x={labelPos.x}
-                      y={labelPos.y}
+                      x={pos.x}
+                      y={pos.y}
                       fontSize="16"
                       fontWeight="700"
                       fill="#FFFFFF"
                       textAnchor="middle"
                       alignmentBaseline="middle"
                     >
-                      {segment.percentage}%
+                      {s.pct}%
                     </SvgText>
                   </G>
                 );
               })}
             </Svg>
-
             <View style={styles.donutCenter}>
-              <Text style={styles.donutCenterValue}>{totalQuantity}</Text>
+              <Text style={styles.donutCenterValue}>{total}</Text>
               <Text style={styles.donutCenterLabel}>Unités</Text>
             </View>
           </View>
 
           <View style={styles.productLegend}>
             <View style={styles.legendRow}>
-              {segments.slice(0, 3).map((product, index) => (
-                <View key={index} style={styles.legendItem}>
+              {segments.slice(0, 3).map((p, i) => (
+                <View key={i} style={styles.legendItem}>
                   <View
-                    style={[
-                      styles.legendColor,
-                      { backgroundColor: product.color },
-                    ]}
+                    style={[styles.legendColor, { backgroundColor: p.color }]}
                   />
                   <Text style={styles.legendText} numberOfLines={1}>
-                    {product.productName}
+                    {p.productName}
                   </Text>
                 </View>
               ))}
             </View>
             {segments.length > 3 && (
               <View style={styles.legendRow}>
-                {segments.slice(3).map((product, index) => (
-                  <View key={index + 3} style={styles.legendItem}>
+                {segments.slice(3).map((p, i) => (
+                  <View key={i + 3} style={styles.legendItem}>
                     <View
-                      style={[
-                        styles.legendColor,
-                        { backgroundColor: product.color },
-                      ]}
+                      style={[styles.legendColor, { backgroundColor: p.color }]}
                     />
                     <Text style={styles.legendText} numberOfLines={1}>
-                      {product.productName}
+                      {p.productName}
                     </Text>
                   </View>
                 ))}
@@ -1088,9 +813,7 @@ const HomePage: React.FC = () => {
   };
 
   const renderRecentOrders = () => {
-    if (!recentOrders || recentOrders.data.length === 0) {
-      return null;
-    }
+    if (!recentOrders || recentOrders.data.length === 0) return null;
 
     return (
       <View style={styles.section}>
@@ -1107,27 +830,25 @@ const HomePage: React.FC = () => {
               Total
             </Text>
           </View>
-          {recentOrders.data.map((order, index) => (
-            <View key={index} style={styles.tableRow}>
+          {recentOrders.data.map((o, i) => (
+            <View key={i} style={styles.tableRow}>
               <Text style={[styles.tableCell, { flex: 1 }]}>
-                {order.orderNumber}
+                {o.orderNumber}
               </Text>
               <Text style={[styles.tableCell, { flex: 2 }]} numberOfLines={1}>
-                {order.customer
-                  ? `${order.customer.firstName} ${order.customer.lastName}`
+                {o.customer
+                  ? `${o.customer.firstName} ${o.customer.lastName}`
                   : "Client inconnu"}
               </Text>
               <Text style={[styles.tableCell, { flex: 1, textAlign: "right" }]}>
-                {formatCurrency(order.totalAmount)}
+                {formatCurrency(o.totalAmount)}
               </Text>
             </View>
           ))}
         </View>
         <TouchableOpacity
           style={styles.viewAllButton}
-          onPress={() => {
-            router.push("/commandes");
-          }}
+          onPress={() => router.push("/commandes")}
         >
           <Text style={styles.viewAllButtonText}>
             Voir toutes les commandes
@@ -1138,16 +859,56 @@ const HomePage: React.FC = () => {
     );
   };
 
-  const renderNoBusinessSelected = () => (
-    <View style={styles.noBusinessContainer}>
-      <Ionicons name="business-outline" size={80} color="#E0E0E0" />
-      <Text style={styles.noBusinessTitle}>Aucune entreprise sélectionnée</Text>
-      <Text style={styles.noBusinessText}>
-        Sélectionnez une entreprise pour voir vos statistiques
-      </Text>
-    </View>
+  const renderPeriodModal = () => (
+    <Modal
+      visible={showPeriodModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowPeriodModal(false)}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowPeriodModal(false)}
+      >
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Sélectionner une période</Text>
+          <TouchableOpacity
+            style={styles.modalOption}
+            onPress={() => handleUnitChange("DAY")}
+          >
+            <Text style={styles.modalOptionText}>Jour</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.modalOption}
+            onPress={() => handleUnitChange("WEEK")}
+          >
+            <Text style={styles.modalOptionText}>Semaine</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.modalOption}
+            onPress={() => handleUnitChange("MONTH")}
+          >
+            <Text style={styles.modalOptionText}>Mois</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.modalOption}
+            onPress={() => handleUnitChange("YEAR")}
+          >
+            <Text style={styles.modalOptionText}>Année</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.modalCancelButton}
+            onPress={() => setShowPeriodModal(false)}
+          >
+            <Text style={styles.modalCancelText}>Annuler</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 
+  // ===================== JSX =====================
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -1165,9 +926,7 @@ const HomePage: React.FC = () => {
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
       {renderHeader()}
       <ScrollView
-        style={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1176,7 +935,7 @@ const HomePage: React.FC = () => {
           />
         }
       >
-        {selectedBusiness ? (
+        {business ? (
           <>
             {renderNotif()}
             {renderQuickSummary()}
@@ -1187,13 +946,23 @@ const HomePage: React.FC = () => {
             {renderTopProducts()}
           </>
         ) : (
-          renderNoBusinessSelected()
+          <View style={styles.noBusinessContainer}>
+            <Ionicons name="business-outline" size={80} color="#E0E0E0" />
+            <Text style={styles.noBusinessTitle}>
+              Aucune entreprise sélectionnée
+            </Text>
+            <Text style={styles.noBusinessText}>
+              Sélectionnez une entreprise pour voir vos statistiques
+            </Text>
+          </View>
         )}
       </ScrollView>
       {renderPeriodModal()}
     </SafeAreaView>
   );
 };
+
+export default HomePage;
 
 const styles = StyleSheet.create({
   statisticsRow: {
@@ -1666,5 +1435,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-
-export default HomePage;

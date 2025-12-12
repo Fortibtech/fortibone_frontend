@@ -1,5 +1,5 @@
 // app/(restaurants)/menu/index.tsx
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,8 +21,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect } from "expo-router";
 
-import { useSelectedBusiness } from "@/api/hooks";
+import { useBusinessStore } from "@/store/businessStore";
+
 import {
   getMenus,
   Menu,
@@ -33,40 +35,50 @@ import {
 } from "@/api/menu/menuApi";
 
 export default function MenuScreen() {
-  const { selectedBusiness } = useSelectedBusiness();
-  const businessId = selectedBusiness?.id;
-  console.log("xxxxxxxXXXXXXXXXXXXXXXX", businessId);
+  const business = useBusinessStore((state) => state.business);
+  const version = useBusinessStore((state) => state.version);
+  const businessId = business?.id;
+
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Modal
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentMenuId, setCurrentMenuId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState(""); // en KMF (ex: "1490")
+  const [price, setPrice] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Chargement
   const loadMenus = async () => {
-    if (!businessId) return;
+    if (!businessId) {
+      setMenus([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await getMenus(businessId);
       setMenus(data || []);
-    } catch (error) {
-      Alert.alert("Erreur", "Impossible de charger les menus");
+    } catch (error: any) {
+      Alert.alert("Erreur", error.message || "Impossible de charger les menus");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadMenus();
+    }, [businessId, version])
+  );
 
   useEffect(() => {
     loadMenus();
@@ -122,11 +134,13 @@ export default function MenuScreen() {
       return;
     }
 
-    const priceNum = parseFloat(price);
+    const priceNum = parseFloat(price.replace(",", "."));
     if (isNaN(priceNum) || priceNum <= 0) {
       Alert.alert("Erreur", "Prix invalide");
       return;
     }
+
+    if (!businessId) return;
 
     setSaving(true);
 
@@ -134,8 +148,7 @@ export default function MenuScreen() {
       let finalMenu: Menu;
 
       if (isEditMode && currentMenuId) {
-        // MISE À JOUR
-        await updateMenu(businessId!, currentMenuId, {
+        await updateMenu(businessId, currentMenuId, {
           name: name.trim(),
           description: description.trim() || undefined,
           price: Math.round(priceNum * 100),
@@ -148,22 +161,23 @@ export default function MenuScreen() {
         ) {
           setUploadingImage(true);
           finalMenu = await uploadImageMenu(
-            businessId!,
+            businessId,
             currentMenuId,
             imageUri
           );
         } else {
-          finalMenu = menus.find((m) => m.id === currentMenuId)!;
-          finalMenu.name = name;
-          finalMenu.description = description || null;
+          finalMenu = {
+            ...(menus.find((m) => m.id === currentMenuId) || ({} as Menu)),
+          };
+          finalMenu.name = name.trim();
+          finalMenu.description = description.trim() || null;
           finalMenu.price = String(Math.round(priceNum * 100));
           finalMenu.isActive = isActive;
         }
 
         Alert.alert("Succès", "Menu modifié !");
       } else {
-        // CRÉATION
-        const created = await createMenu(businessId!, {
+        const created = await createMenu(businessId, {
           name: name.trim(),
           description: description.trim() || undefined,
           price: Math.round(priceNum * 100),
@@ -173,7 +187,7 @@ export default function MenuScreen() {
 
         if (imageUri) {
           setUploadingImage(true);
-          finalMenu = await uploadImageMenu(businessId!, created.id, imageUri);
+          finalMenu = await uploadImageMenu(businessId, created.id, imageUri);
         } else {
           finalMenu = created;
         }
@@ -181,11 +195,11 @@ export default function MenuScreen() {
         Alert.alert("Succès", "Menu créé !");
       }
 
-      // Mise à jour liste
       setMenus((prev) =>
         prev
           .map((m) => (m.id === finalMenu.id ? finalMenu : m))
           .concat(isEditMode ? [] : [finalMenu])
+          .sort((a, b) => a.name.localeCompare(b.name))
       );
 
       setModalVisible(false);
@@ -199,6 +213,8 @@ export default function MenuScreen() {
   };
 
   const handleDelete = (menu: Menu) => {
+    if (!businessId) return;
+
     Alert.alert("Supprimer", `Supprimer "${menu.name}" ?`, [
       { text: "Annuler", style: "cancel" },
       {
@@ -206,21 +222,19 @@ export default function MenuScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteMenu(businessId!, menu.id);
-            Alert.alert("Supprimé", `"${menu.name}" supprimé`);
-            loadMenus();
+            await deleteMenu(businessId, menu.id);
+            setMenus((prev) => prev.filter((m) => m.id !== menu.id));
+            Alert.alert("Supprimé", `"${menu.name}" a été supprimé`);
           } catch (err: any) {
-            Alert.alert("Erreur", err.message);
+            Alert.alert("Erreur", err.message || "Impossible de supprimer");
           }
         },
       },
     ]);
   };
 
-  // NOUVELLE CARTE – IMAGE EN HAUT
   const renderMenu = ({ item }: { item: Menu }) => (
     <View style={styles.menuCard}>
-      {/* Image en haut */}
       <View style={styles.imageWrapper}>
         {item.imageUrl ? (
           <Image
@@ -235,7 +249,6 @@ export default function MenuScreen() {
         )}
       </View>
 
-      {/* Contenu */}
       <View style={styles.cardContent}>
         <Text style={styles.cardTitle}>{item.name}</Text>
 
@@ -251,7 +264,6 @@ export default function MenuScreen() {
           {Number(item.price).toLocaleString("fr-FR")} KMF
         </Text>
 
-        {/* Footer : statut + actions */}
         <View style={styles.cardFooter}>
           <View
             style={[
@@ -270,6 +282,7 @@ export default function MenuScreen() {
             <Pressable onPress={() => openEditModal(item)} hitSlop={12}>
               <Ionicons name="create-outline" size={26} color="#7C3AED" />
             </Pressable>
+
             <Pressable
               onPress={() => handleDelete(item)}
               hitSlop={12}
@@ -289,7 +302,7 @@ export default function MenuScreen() {
         <Text style={styles.title}>Mes Menus</Text>
       </View>
 
-      {loading ? (
+      {loading && menus.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#7C3AED" />
         </View>
@@ -298,6 +311,7 @@ export default function MenuScreen() {
           <Ionicons name="restaurant-outline" size={100} color="#E0E0E0" />
           <Text style={styles.emptyTitle}>Aucun menu</Text>
           <Text style={styles.emptySubtitle}>Créez votre première formule</Text>
+
           <TouchableOpacity
             style={styles.emptyButton}
             onPress={openCreateModal}
@@ -323,7 +337,6 @@ export default function MenuScreen() {
         />
       )}
 
-      {/* FAB */}
       <TouchableOpacity style={styles.fab} onPress={openCreateModal}>
         <Ionicons name="add" size={32} color="#FFF" />
       </TouchableOpacity>
@@ -340,13 +353,13 @@ export default function MenuScreen() {
                 <Text style={styles.modalTitle}>
                   {isEditMode ? "Modifier le menu" : "Nouveau menu"}
                 </Text>
+
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <Ionicons name="close" size={28} color="#666" />
                 </TouchableOpacity>
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Image */}
                 <TouchableOpacity
                   style={styles.imagePicker}
                   onPress={pickImage}
@@ -363,6 +376,7 @@ export default function MenuScreen() {
                     </View>
                   )}
                 </TouchableOpacity>
+
                 {uploadingImage && (
                   <Text style={styles.uploadText}>Upload en cours...</Text>
                 )}
@@ -435,7 +449,6 @@ export default function MenuScreen() {
   );
 }
 
-// STYLES MODERNES – Image en haut, tout propre
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8F9FA" },
   header: {
@@ -449,7 +462,6 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
   },
   title: { fontSize: 22, fontWeight: "700", color: "#000" },
-
   list: { padding: 16 },
   menuCard: {
     backgroundColor: "#FFF",
@@ -490,7 +502,6 @@ const styles = StyleSheet.create({
     color: "#7C3AED",
     marginTop: 12,
   },
-
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -501,11 +512,8 @@ const styles = StyleSheet.create({
   activeBadge: { backgroundColor: "#ECFDF5" },
   inactiveBadge: { backgroundColor: "#F3F4F6" },
   statusText: { fontSize: 12, fontWeight: "600", color: "#10B981" },
-
   actions: { flexDirection: "row", alignItems: "center" },
-
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
   empty: {
     flex: 1,
     justifyContent: "center",
@@ -527,7 +535,6 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   emptyButtonText: { color: "#FFF", fontWeight: "700", fontSize: 17 },
-
   fab: {
     position: "absolute",
     right: 20,
@@ -540,8 +547,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 8,
   },
-
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -562,60 +567,72 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  modalTitle: { fontSize: 24, fontWeight: "700", color: "#000" },
-
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#000",
+  },
   imagePicker: {
-    alignSelf: "center",
-    width: 160,
-    height: 160,
-    borderRadius: 24,
+    width: "100%",
+    height: 150,
+    borderRadius: 16,
     backgroundColor: "#F3F4F6",
     justifyContent: "center",
     alignItems: "center",
-    marginVertical: 20,
+    marginBottom: 16,
     overflow: "hidden",
   },
   previewImage: { width: "100%", height: "100%" },
-  placeholderImagePicker: { justifyContent: "center", alignItems: "center" },
-  imageHint: { marginTop: 8, color: "#999", fontSize: 14 },
-  uploadText: {
-    textAlign: "center",
-    marginTop: 8,
-    color: "#7C3AED",
-    fontWeight: "600",
+  placeholderImagePicker: {
+    justifyContent: "center",
+    alignItems: "center",
   },
-
+  imageHint: { marginTop: 6, color: "#666" },
+  uploadText: { textAlign: "center", color: "#888", marginBottom: 10 },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
+    marginTop: 12,
+    marginBottom: 6,
     color: "#333",
-    marginTop: 16,
-    marginBottom: 8,
   },
   input: {
+    backgroundColor: "#FFF",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderColor: "#E5E7EB",
     fontSize: 16,
-    backgroundColor: "#FAFAFA",
   },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 12,
   },
   saveButton: {
-    marginTop: 32,
+    marginTop: 20,
     backgroundColor: "#7C3AED",
-    paddingVertical: 18,
-    borderRadius: 30,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: "center",
   },
-  saveButtonDisabled: { backgroundColor: "#A78BFA" },
-  saveButtonText: { color: "#FFF", fontSize: 18, fontWeight: "700" },
-  cancelButton: { marginTop: 12, paddingVertical: 16, alignItems: "center" },
-  cancelButtonText: { color: "#666", fontSize: 16 },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: "#FFF",
+    fontWeight: "700",
+    fontSize: 17,
+  },
+  cancelButton: {
+    marginTop: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    color: "#888",
+    fontSize: 16,
+  },
 });
