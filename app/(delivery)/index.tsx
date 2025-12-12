@@ -119,21 +119,21 @@ const DeliveryHome: React.FC = () => {
       setTimeout(() => {
         switch (business.type) {
           case "COMMERCANT":
-            router.replace("/(professionnel)");
+            router.push("/(professionnel)");
             break;
           case "RESTAURATEUR":
-            router.replace("/(restaurants)");
+            router.push("/(restaurants)");
             break;
           case "FOURNISSEUR":
-            router.replace("/(fournisseur)");
+            router.push("/(fournisseur)");
             break;
           case "LIVREUR":
-            router.replace("/(delivery)");
+            router.push("/(delivery)");
             break;
           default:
-            break;
+            console.warn("Type d'entreprise inconnu:", business.type);
         }
-      }, 100);
+      }, 100); // 100ms suffit
     } catch (error) {
       Alert.alert("Erreur", "Impossible de changer de profil");
     }

@@ -85,6 +85,9 @@ const RestaurantHome: React.FC = () => {
           case "FOURNISSEUR":
             router.push("/(fournisseur)");
             break;
+          case "LIVREUR":
+            router.push("/(delivery)");
+            break;
           default:
             console.warn("Type d'entreprise inconnu:", business.type);
         }

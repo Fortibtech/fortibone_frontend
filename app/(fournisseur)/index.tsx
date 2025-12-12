@@ -194,13 +194,27 @@ const HomePage: React.FC = () => {
     try {
       setLoading(true);
       const businessesResponse = await BusinessesService.getBusinesses();
-
       setBusinesses(businessesResponse);
       const selected = await SelectedBusinessManager.getSelectedBusiness();
       setSelectedBusiness(selected);
-      if (selected?.type !== "FOURNISSEUR") {
-        router.push("/(professionnel)");
-      }
+      setTimeout(() => {
+        switch (selected?.type) {
+          case "COMMERCANT":
+            router.push("/(professionnel)");
+            break;
+          case "RESTAURATEUR":
+            router.push("/(restaurants)");
+            break;
+          case "FOURNISSEUR":
+            router.push("/(fournisseur)");
+            break;
+          case "LIVREUR":
+            router.push("/(delivery)");
+            break;
+          default:
+            console.warn("Type d'entreprise inconnu:", selected?.type);
+        }
+      }, 100); // 100ms suffit
       if (selected && !businessesResponse.find((b) => b.id === selected.id)) {
         await BusinessesService.clearSelectedBusiness();
         setSelectedBusiness(null);
