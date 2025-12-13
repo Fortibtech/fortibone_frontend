@@ -1,4 +1,4 @@
-// components/BackButtonAdmin.tsx (ou où tu veux)
+// components/BackButtonAdmin.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import {
@@ -10,15 +10,22 @@ import React from "react";
 
 interface BackButtonAdminProps extends TouchableOpacityProps {
   /**
+   * Route personnalisée vers laquelle naviguer
+   * - Si fournie → remplace router.back()
+   * - Si non fournie → comportement par défaut : router.back()
+   */
+  fallbackRoute?: string;
+
+  /**
    * Couleur de fond du bouton
-   * - Par défaut : transparent (comme ta version actuelle)
-   * - Exemples : "#ffffff", "rgba(255,255,255,0.9)", "#00C851", etc.
    */
   backgroundColor?: string;
+
   /**
-   * Couleur de l'icône (par défaut noir)
+   * Couleur de l'icône
    */
   iconColor?: string;
+
   /**
    * Taille de l'icône
    */
@@ -26,22 +33,31 @@ interface BackButtonAdminProps extends TouchableOpacityProps {
 }
 
 const BackButtonAdmin: React.FC<BackButtonAdminProps> = ({
-  backgroundColor, // ← nouvelle prop dynamique
+  fallbackRoute,
+  backgroundColor,
   iconColor = "#000",
   iconSize = 24,
   style,
   ...restProps
 }) => {
+  const handlePress = () => {
+    if (fallbackRoute) {
+      router.push(fallbackRoute as any); // ou router.replace(fallbackRoute) si tu ne veux pas ajouter à l'historique
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <TouchableOpacity
       style={[
         styles.iconButton,
         backgroundColor
           ? { backgroundColor }
-          : { backgroundColor: "transparent" }, // fond dynamique
+          : { backgroundColor: "transparent" },
         style,
       ]}
-      onPress={() => router.back()}
+      onPress={handlePress}
       activeOpacity={0.7}
       {...restProps}
     >

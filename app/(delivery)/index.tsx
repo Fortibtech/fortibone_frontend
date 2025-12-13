@@ -148,14 +148,15 @@ const DeliveryHome: React.FC = () => {
       />
 
       <View style={styles.headerRight}>
+        {totalAlerts > 0 && (
+          <View style={styles.notificationBadge}>
+            <Text style={styles.badgeText}>
+              {totalAlerts > 99 ? "99+" : totalAlerts}
+            </Text>
+          </View>
+        )}
+
         <TouchableOpacity style={styles.iconButton}>
-          {totalAlerts > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>
-                {totalAlerts > 99 ? "99+" : totalAlerts}
-              </Text>
-            </View>
-          )}
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
 
@@ -470,7 +471,7 @@ const styles = StyleSheet.create({
   cardOrange: { borderColor: "#FB923C", backgroundColor: "#FFF7ED" },
 
   cardIcon: { marginRight: 12 },
-  cardLabel: { fontSize: 13, color: "#666" },
+  cardLabel: { fontSize: 10, color: "#666" },
   cardValue: { fontSize: 20, fontWeight: "700", color: "#000" },
   unit: { fontSize: 14, color: "#666", fontWeight: "500" },
 

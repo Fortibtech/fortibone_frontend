@@ -2,7 +2,7 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Platform } from "react-native";
-import { Home, Route, Wallet, Settings } from "lucide-react-native";
+import { Home, Route, Wallet, Settings, CreditCard } from "lucide-react-native";
 
 export default function DeliveryLayout() {
   const insets = useSafeAreaInsets();
@@ -73,6 +73,14 @@ export default function DeliveryLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="finances"
+        options={{
+          title: "Finances",
+          tabBarIcon: ({ color }) => <CreditCard size={24} color={color} />,
         }}
       />
     </Tabs>
