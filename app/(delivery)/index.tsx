@@ -148,18 +148,6 @@ const DeliveryHome: React.FC = () => {
       />
 
       <View style={styles.headerRight}>
-        <TouchableOpacity style={styles.statusPill} onPress={toggleOnline}>
-          <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: isOnline ? "#22c55e" : "#9ca3af" },
-            ]}
-          />
-          <Text style={styles.statusText}>
-            {isOnline ? "En ligne" : "Hors ligne"}
-          </Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.iconButton}>
           {totalAlerts > 0 && (
             <View style={styles.notificationBadge}>
@@ -173,13 +161,18 @@ const DeliveryHome: React.FC = () => {
 
         <TouchableOpacity
           style={styles.avatarContainer}
-          onPress={() => router.push("/(delivery)/settings")}
+          onPress={() => router.push("/fournisseurSetting")}
         >
           {uri ? (
-            <Image source={{ uri }} style={styles.avatar} resizeMode="cover" />
+            <Image
+              key={uri}
+              source={{ uri }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
           ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Ionicons name="person" size={20} color="#999" />
+            <View style={[styles.avatar, styles.placeholder]}>
+              <Ionicons name="person" size={40} color="#aaa" />
             </View>
           )}
         </TouchableOpacity>
@@ -404,6 +397,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: "#f3f4f6",
+  },
+  placeholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#E8E8E8",
   },
   statusDot: {
     width: 8,
