@@ -148,38 +148,32 @@ const DeliveryHome: React.FC = () => {
       />
 
       <View style={styles.headerRight}>
-        <TouchableOpacity style={styles.statusPill} onPress={toggleOnline}>
-          <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: isOnline ? "#22c55e" : "#9ca3af" },
-            ]}
-          />
-          <Text style={styles.statusText}>
-            {isOnline ? "En ligne" : "Hors ligne"}
-          </Text>
-        </TouchableOpacity>
+        {totalAlerts > 0 && (
+          <View style={styles.notificationBadge}>
+            <Text style={styles.badgeText}>
+              {totalAlerts > 99 ? "99+" : totalAlerts}
+            </Text>
+          </View>
+        )}
 
         <TouchableOpacity style={styles.iconButton}>
-          {totalAlerts > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>
-                {totalAlerts > 99 ? "99+" : totalAlerts}
-              </Text>
-            </View>
-          )}
           <Ionicons name="notifications-outline" size={24} color="#000" />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.avatarContainer}
-          onPress={() => router.push("/(delivery)/settings")}
+          onPress={() => router.push("/fournisseurSetting")}
         >
           {uri ? (
-            <Image source={{ uri }} style={styles.avatar} resizeMode="cover" />
+            <Image
+              key={uri}
+              source={{ uri }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
           ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Ionicons name="person" size={20} color="#999" />
+            <View style={[styles.avatar, styles.placeholder]}>
+              <Ionicons name="person" size={40} color="#aaa" />
             </View>
           )}
         </TouchableOpacity>
@@ -470,7 +464,7 @@ const styles = StyleSheet.create({
   cardOrange: { borderColor: "#FB923C", backgroundColor: "#FFF7ED" },
 
   cardIcon: { marginRight: 12 },
-  cardLabel: { fontSize: 13, color: "#666" },
+  cardLabel: { fontSize: 10, color: "#666" },
   cardValue: { fontSize: 20, fontWeight: "700", color: "#000" },
   unit: { fontSize: 14, color: "#666", fontWeight: "500" },
 
