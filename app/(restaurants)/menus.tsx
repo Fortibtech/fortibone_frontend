@@ -1,4 +1,3 @@
-// app/(restaurants)/menu/index.tsx
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -244,7 +243,7 @@ export default function MenuScreen() {
           />
         ) : (
           <View style={styles.placeholderCardImage}>
-            <Ionicons name="restaurant" size={60} color="#CCC" />
+            <Ionicons name="restaurant" size={64} color="#D1D5DB" />
           </View>
         )}
       </View>
@@ -272,7 +271,10 @@ export default function MenuScreen() {
             ]}
           >
             <Text
-              style={[styles.statusText, !item.isActive && { color: "#666" }]}
+              style={[
+                styles.statusText,
+                !item.isActive && { color: "#6B7280" },
+              ]}
             >
               {item.isActive ? "Visible" : "Masqué"}
             </Text>
@@ -280,15 +282,15 @@ export default function MenuScreen() {
 
           <View style={styles.actions}>
             <Pressable onPress={() => openEditModal(item)} hitSlop={12}>
-              <Ionicons name="create-outline" size={26} color="#7C3AED" />
+              <Ionicons name="create-outline" size={28} color="#6366F1" />
             </Pressable>
 
             <Pressable
               onPress={() => handleDelete(item)}
               hitSlop={12}
-              style={{ marginLeft: 20 }}
+              style={{ marginLeft: 24 }}
             >
-              <Ionicons name="trash-outline" size={24} color="#EF4444" />
+              <Ionicons name="trash-outline" size={26} color="#EF4444" />
             </Pressable>
           </View>
         </View>
@@ -304,11 +306,11 @@ export default function MenuScreen() {
 
       {loading && menus.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#7C3AED" />
+          <ActivityIndicator size="large" color="#6366F1" />
         </View>
       ) : menus.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="restaurant-outline" size={100} color="#E0E0E0" />
+          <Ionicons name="restaurant-outline" size={120} color="#E5E7EB" />
           <Text style={styles.emptyTitle}>Aucun menu</Text>
           <Text style={styles.emptySubtitle}>Créez votre première formule</Text>
 
@@ -329,11 +331,11 @@ export default function MenuScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={["#7C3AED"]}
+              colors={["#6366F1"]}
             />
           }
-          ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
-          ListFooterComponent={() => <View style={{ height: 100 }} />}
+          ItemSeparatorComponent={() => <View style={{ height: 20 }} />}
+          ListFooterComponent={() => <View style={{ height: 120 }} />}
         />
       )}
 
@@ -355,7 +357,7 @@ export default function MenuScreen() {
                 </Text>
 
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={28} color="#666" />
+                  <Ionicons name="close" size={28} color="#6B7280" />
                 </TouchableOpacity>
               </View>
 
@@ -371,7 +373,11 @@ export default function MenuScreen() {
                     />
                   ) : (
                     <View style={styles.placeholderImagePicker}>
-                      <Ionicons name="camera-outline" size={40} color="#999" />
+                      <Ionicons
+                        name="camera-outline"
+                        size={44}
+                        color="#9CA3AF"
+                      />
                       <Text style={styles.imageHint}>Ajouter une photo</Text>
                     </View>
                   )}
@@ -393,7 +399,7 @@ export default function MenuScreen() {
                 <TextInput
                   style={[
                     styles.input,
-                    { height: 80, textAlignVertical: "top" },
+                    { height: 90, textAlignVertical: "top" },
                   ]}
                   value={description}
                   onChangeText={setDescription}
@@ -415,7 +421,7 @@ export default function MenuScreen() {
                   <Switch
                     value={isActive}
                     onValueChange={setIsActive}
-                    trackColor={{ true: "#7C3AED" }}
+                    trackColor={{ true: "#6366F1" }}
                   />
                 </View>
 
@@ -450,103 +456,174 @@ export default function MenuScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  container: {
+    flex: 1,
+    backgroundColor: "#FAFAFB",
+  },
+
+  // Header modernisé
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     backgroundColor: "#FFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: "#F2F4F7",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  title: { fontSize: 22, fontWeight: "700", color: "#000" },
-  list: { padding: 16 },
+  title: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#111827",
+  },
+
+  list: { padding: 24 },
+
+  // Cards ultra-modernes
   menuCard: {
     backgroundColor: "#FFF",
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: "hidden",
-    elevation: 6,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  imageWrapper: { height: 180 },
+  imageWrapper: { height: 200 },
   cardImage: { width: "100%", height: "100%" },
   placeholderCardImage: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#F3E8FF",
+    backgroundColor: "#F8FAFC",
     justifyContent: "center",
     alignItems: "center",
   },
-  cardContent: { padding: 16 },
-  cardTitle: { fontSize: 20, fontWeight: "700", color: "#000" },
-  cardDescription: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  noDescription: {
-    fontSize: 14,
-    color: "#AAA",
-    fontStyle: "italic",
-    marginTop: 6,
-  },
-  cardPrice: {
+  cardContent: { padding: 24 },
+  cardTitle: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#7C3AED",
-    marginTop: 12,
+    color: "#111827",
+    marginBottom: 8,
+  },
+  cardDescription: {
+    fontSize: 15,
+    color: "#6B7280",
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  noDescription: {
+    fontSize: 15,
+    color: "#9CA3AF",
+    fontStyle: "italic",
+    marginBottom: 12,
+  },
+  cardPrice: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#6366F1",
+    marginBottom: 20,
   },
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 16,
   },
-  statusBadge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
-  activeBadge: { backgroundColor: "#ECFDF5" },
-  inactiveBadge: { backgroundColor: "#F3F4F6" },
-  statusText: { fontSize: 12, fontWeight: "600", color: "#10B981" },
-  actions: { flexDirection: "row", alignItems: "center" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  statusBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    minWidth: 90,
+    alignItems: "center",
+  },
+  activeBadge: {
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1,
+    borderColor: "#10B98120",
+  },
+  inactiveBadge: {
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   empty: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 40,
+    padding: 60,
   },
-  emptyTitle: { fontSize: 22, fontWeight: "600", marginTop: 24, color: "#333" },
+  emptyTitle: {
+    fontSize: 26,
+    fontWeight: "700",
+    marginTop: 32,
+    color: "#111827",
+  },
   emptySubtitle: {
-    fontSize: 15,
-    color: "#888",
-    marginTop: 8,
+    fontSize: 16,
+    color: "#6B7280",
+    marginTop: 12,
     textAlign: "center",
+    lineHeight: 24,
   },
   emptyButton: {
-    marginTop: 32,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    backgroundColor: "#7C3AED",
-    borderRadius: 30,
+    marginTop: 40,
+    paddingHorizontal: 40,
+    paddingVertical: 18,
+    backgroundColor: "#6366F1",
+    borderRadius: 999,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  emptyButtonText: { color: "#FFF", fontWeight: "700", fontSize: 17 },
+  emptyButtonText: {
+    color: "#FFF",
+    fontWeight: "800",
+    fontSize: 18,
+  },
+
+  // FAB amélioré
   fab: {
     position: "absolute",
-    right: 20,
-    bottom: 100,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#7C3AED",
+    right: 24,
+    bottom: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#6366F1",
     justifyContent: "center",
     alignItems: "center",
-    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 12,
   },
+
+  // Modal bottom sheet premium
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -554,85 +631,118 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: "#FFF",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 40,
-    maxHeight: "92%",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 28,
+    paddingTop: 24,
+    paddingBottom: 48,
+    maxHeight: "90%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 24,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#000",
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#111827",
   },
   imagePicker: {
     width: "100%",
-    height: 150,
-    borderRadius: 16,
-    backgroundColor: "#F3F4F6",
+    height: 160,
+    borderRadius: 20,
+    backgroundColor: "#F8FAFC",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 20,
     overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+    borderStyle: "dashed",
   },
   previewImage: { width: "100%", height: "100%" },
   placeholderImagePicker: {
     justifyContent: "center",
     alignItems: "center",
   },
-  imageHint: { marginTop: 6, color: "#666" },
-  uploadText: { textAlign: "center", color: "#888", marginBottom: 10 },
-  label: {
-    fontSize: 15,
-    fontWeight: "600",
+  imageHint: {
     marginTop: 12,
-    marginBottom: 6,
-    color: "#333",
+    color: "#6B7280",
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  uploadText: {
+    textAlign: "center",
+    color: "#6366F1",
+    marginBottom: 16,
+    fontWeight: "600",
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 16,
+    marginBottom: 8,
+    color: "#111827",
   },
   input: {
     backgroundColor: "#FFF",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#E5E7EB",
     fontSize: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 12,
+    marginTop: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
   },
   saveButton: {
-    marginTop: 20,
-    backgroundColor: "#7C3AED",
-    paddingVertical: 14,
-    borderRadius: 14,
+    marginTop: 28,
+    backgroundColor: "#6366F1",
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   saveButtonDisabled: {
     opacity: 0.6,
   },
   saveButtonText: {
     color: "#FFF",
-    fontWeight: "700",
-    fontSize: 17,
+    fontWeight: "800",
+    fontSize: 18,
   },
   cancelButton: {
-    marginTop: 12,
-    paddingVertical: 14,
+    marginTop: 16,
+    paddingVertical: 18,
     alignItems: "center",
   },
   cancelButtonText: {
-    color: "#888",
-    fontSize: 16,
+    color: "#6B7280",
+    fontSize: 17,
+    fontWeight: "600",
   },
 });

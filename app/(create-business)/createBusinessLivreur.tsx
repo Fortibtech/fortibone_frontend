@@ -198,7 +198,7 @@ const CreateBusinessLivreur: React.FC = () => {
     const cleanPayload = {
       name: business.name.trim(),
       description: business.description.trim(),
-      type: "RESTAURATEUR",
+      type: "LIVREUR",
       commerceType: "PHYSICAL",
       address: business.address.trim(),
       latitude: Number(business.latitude),
