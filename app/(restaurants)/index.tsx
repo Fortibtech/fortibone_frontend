@@ -23,6 +23,7 @@ import BusinessSelector from "@/components/Business/BusinessSelector";
 import { getStatRestaurant, RestaurantStats } from "@/api/menu/tableApi";
 import { getOrdersByRestaurant, Order } from "@/api/menu/ordersApi";
 import { useBusinessStore } from "@/store/businessStore";
+import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 
 const RestaurantHome: React.FC = () => {
   const business = useBusinessStore((state) => state.business);
@@ -37,6 +38,7 @@ const RestaurantHome: React.FC = () => {
   const [ordersModalVisible, setOrdersModalVisible] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [showStatsChart, setShowStatsChart] = useState(false);
 
   // --------------------------- INIT ---------------------------
 
@@ -203,7 +205,7 @@ const RestaurantHome: React.FC = () => {
 
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
+        <Text style={styles.sectionTitle}>Vue d'ensemble</Text>
 
         <View style={styles.cardsRow}>
           <View style={[styles.card, styles.cardYellow]}>
@@ -273,6 +275,16 @@ const RestaurantHome: React.FC = () => {
             cours
           </Text>
           <Ionicons name="arrow-forward" size={20} color="#7C3AED" />
+        </TouchableOpacity>
+
+        {/* Nouveau bouton Stats graphiques */}
+        <TouchableOpacity
+          style={styles.statsButton}
+          onPress={() => setShowStatsChart(true)}
+        >
+          <Ionicons name="bar-chart" size={20} color="#6366F1" />
+          <Text style={styles.statsButtonText}>Statistiques graphiques</Text>
+          <Ionicons name="chevron-forward" size={20} color="#6366F1" />
         </TouchableOpacity>
       </View>
     );
@@ -424,14 +436,6 @@ const RestaurantHome: React.FC = () => {
                           </Text>
                         </View>
                       </View>
-                      {/* 
-                      <Text style={styles.orderClient}>
-                        {item.customer?.firstName}
-                      </Text>
-
-                      <Text style={styles.orderTotal}>
-                        Total : {formatNumber(item.total)} KMF
-                      </Text> */}
                     </Pressable>
                   );
                 }}
@@ -440,22 +444,47 @@ const RestaurantHome: React.FC = () => {
           </SafeAreaView>
         </View>
       </Modal>
+
+      {/* ----------------------- MODAL STATS GRAPHIQUES ----------------------- */}
+      <Modal visible={showStatsChart} animationType="slide" transparent={false}>
+        <SafeAreaView style={{ flex: 1 }}>
+          <TouchableOpacity
+            style={styles.closeChart}
+            onPress={() => setShowStatsChart(false)}
+          >
+            <Ionicons name="close" size={28} color="#000" />
+          </TouchableOpacity>
+          {business && <RevenueDistributionChart businessId={business.id} />}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 export default RestaurantHome;
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA", paddingBottom: 60 },
+  container: {
+    flex: 1,
+    backgroundColor: "#FAFAFB",
+    paddingBottom: 60,
+  },
+
+  // Header modernisé
   header: {
     backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: "#F2F4F7",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
   iconButton: { padding: 8, position: "relative" },
@@ -494,43 +523,57 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  avatarPlaceholder: {
-    backgroundColor: "#F0F0F0",
-    justifyContent: "center",
-    alignItems: "center",
-  },
 
-  section: { padding: 16 },
+  section: { padding: 20 },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
-    color: "#000",
-    marginBottom: 16,
+    color: "#111827",
+    marginBottom: 20,
   },
 
-  cardsRow: { flexDirection: "row", gap: 12 },
-  rightColumn: { flex: 1, gap: 12 },
+  cardsRow: { flexDirection: "row", gap: 16 },
+  rightColumn: { flex: 1, gap: 16 },
   card: {
     flex: 1,
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    padding: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderWidth: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  smallCard: { minHeight: 90 },
-  cardYellow: { borderColor: "#FACC15", backgroundColor: "#FFFBEB" },
-  cardPurple: { borderColor: "#8B5CF6", backgroundColor: "#F3E8FF" },
-  cardOrange: { borderColor: "#FB923C", backgroundColor: "#FFF7ED" },
-  cardGreen: { borderColor: "#10B981", backgroundColor: "#F0FDF4" },
-  cardIcon: { marginRight: 12 },
-  emoji: { width: 44, height: 44 },
-  emojiSmall: { width: 28, height: 28 },
-  cardLabel: { fontSize: 13, color: "#666" },
-  cardValue: { fontSize: 20, fontWeight: "700", color: "#000" },
-  unit: { fontSize: 14, color: "#666", fontWeight: "500" },
+  smallCard: { minHeight: 100 },
+  cardYellow: {
+    borderWidth: 1,
+    borderColor: "#FCD34D20",
+    backgroundColor: "#FEF3C7",
+  },
+  cardPurple: {
+    borderWidth: 1,
+    borderColor: "#A78BFA20",
+    backgroundColor: "#F9FAFB",
+  },
+  cardOrange: {
+    borderWidth: 1,
+    borderColor: "#FDBA7420",
+    backgroundColor: "#FEF3C7",
+  },
+  cardGreen: {
+    borderWidth: 1,
+    borderColor: "#10B98120",
+    backgroundColor: "#F0FDF4",
+  },
+  cardIcon: { marginRight: 16 },
+  emoji: { width: 48, height: 48 },
+  emojiSmall: { width: 32, height: 32 },
+  cardLabel: { fontSize: 9, color: "#6B7280", fontWeight: "500" },
+  cardValue: { fontSize: 24, fontWeight: "800", color: "#111827" },
+  unit: { fontSize: 16, color: "#6B7280", fontWeight: "600" },
 
   ordersButton: {
     marginTop: 20,
@@ -538,41 +581,65 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F3E8FF",
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 18,
+    borderRadius: 20,
     gap: 12,
+    borderWidth: 1,
+    borderColor: "#EDE9FE",
   },
   ordersButtonText: { fontSize: 16, fontWeight: "600", color: "#7C3AED" },
 
-  quickRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
-  quickCard: {
-    flex: 1,
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 16,
+  // Nouveau bouton stats
+  statsButton: {
+    marginTop: 16,
+    flexDirection: "row",
     alignItems: "center",
-    minHeight: 130,
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    gap: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
+  },
+  statsButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6366F1",
+  },
+
+  quickRow: { flexDirection: "row", gap: 16, marginBottom: 16 },
+  quickCard: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    minHeight: 140,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 6,
   },
   quickIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   quickTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
   },
-  quickSubtitle: { fontSize: 12, color: "#888", textAlign: "center" },
 
   noBusiness: {
     flex: 1,
@@ -581,28 +648,27 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   noBusinessTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "600",
     marginTop: 20,
     marginBottom: 8,
+    color: "#111827",
   },
-  noBusinessText: { fontSize: 14, color: "#888", textAlign: "center" },
+  noBusinessText: { fontSize: 15, color: "#6B7280", textAlign: "center" },
 
-  loadingContainer: { alignItems: "center", paddingVertical: 40 },
-  loadingText: { marginTop: 12, color: "#888" },
   fullLoading: { flex: 1, justifyContent: "center", alignItems: "center" },
-  fullLoadingText: { marginTop: 16, fontSize: 16, color: "#666" },
+  fullLoadingText: { marginTop: 16, fontSize: 16, color: "#6B7280" },
 
-  // Styles de la modale et des cartes commandes
+  // Modal styles
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
   modalContainer: { flex: 1, backgroundColor: "#fff" },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: "#F0F0F0",
   },
   modalTitle: { fontSize: 20, fontWeight: "700", color: "#000" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -612,38 +678,47 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 40,
   },
-  emptyTitle: { marginTop: 16, fontSize: 18, color: "#888" },
+  emptyTitle: { marginTop: 16, fontSize: 18, color: "#6B7280" },
 
   orderCard: {
     backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 18,
+    borderRadius: 20,
+    padding: 20,
     flexDirection: "row",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 6,
   },
   orderCardHeader: { flex: 1 },
-  orderCardNumber: { fontSize: 17, fontWeight: "800", color: "#111" },
+  orderCardNumber: { fontSize: 18, fontWeight: "800", color: "#111827" },
   statusBadge: {
     alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 999,
+    marginTop: 4,
   },
-  statusText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.6 },
-  orderCardBody: { flex: 1, marginTop: 10 },
-  amountRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  statusText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.5 },
+
+  // Close button pour le chart modal
+  closeChart: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 1000,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 20,
+    width: 44,
+    height: 44,
+    justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  amountLabel: { fontSize: 14, color: "#666" },
-  amountValue: { fontSize: 19, fontWeight: "900", color: "#7C3AED" },
-  dateRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-  dateText: { fontSize: 14, color: "#888" },
-  notesText: { fontSize: 14, color: "#666", marginTop: 8, fontStyle: "italic" },
 });

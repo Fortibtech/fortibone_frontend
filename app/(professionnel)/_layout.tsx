@@ -88,7 +88,8 @@ export default function RootLayout() {
           tabPress: (e) => {
             e.preventDefault();
             if (business) {
-              router.replace(`/(achats)/${business.id}`);
+              const userType = "professionnel";
+              router.replace(`/(achats)/${business.id}/(${userType})`);
             } else {
               router.replace("/(professionnel)");
             }
@@ -109,7 +110,8 @@ export default function RootLayout() {
           tabPress: (e) => {
             e.preventDefault();
             if (business) {
-              router.replace(`/(orders)/details/${business.id}`);
+              const userType = "professionnel";
+              router.replace(`/(orders)/details/${business.id}/(${userType})`);
             } else {
               router.replace("/(professionnel)");
             }
@@ -117,7 +119,7 @@ export default function RootLayout() {
         }}
       />
 
-      {/* INVENTAIRE */}
+      {/* INVENTAIRE
       <Tabs.Screen
         name="inventaire"
         options={{
@@ -134,7 +136,7 @@ export default function RootLayout() {
             }
           },
         }}
-      />
+      /> */}
 
       <Tabs.Screen
         name="finance"

@@ -1,4 +1,5 @@
 import { getBusinessOrders } from "@/api/Orders";
+import BackButtonAdmin from "@/components/Admin/BackButton";
 import { OrderResponse } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,7 +18,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function VentesScreen() {
-  const { businessId } = useLocalSearchParams();
+  const { businessId, userType } = useLocalSearchParams<{
+    businessId: string;
+    userType: string;
+  }>();
+
+  console.log("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB:", businessId);
+  console.log("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT :", userType);
   const router = useRouter();
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [page, setPage] = useState(1);
@@ -197,13 +204,7 @@ export default function VentesScreen() {
     <SafeAreaView style={styles.container}>
       {/* === HEADER === */}
       <View style={styles.headerRow}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
+        <BackButtonAdmin fallbackRoute={userType} />
 
         <View style={styles.tabRow}>
           <TouchableOpacity

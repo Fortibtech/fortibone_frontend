@@ -1,5 +1,5 @@
 // app/(fournisseur)/_layout.tsx
-import { Tabs } from "expo-router";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   CircleDollarSign,
@@ -11,7 +11,7 @@ import { Platform } from "react-native";
 
 // Zustand → on lit le business actuel directement
 import { useBusinessStore } from "@/store/businessStore";
-import { router } from "expo-router";
+import { router, Tabs } from "expo-router";
 
 export default function RootLayout() {
   const insets = useSafeAreaInsets();
@@ -96,7 +96,8 @@ export default function RootLayout() {
             e.preventDefault();
 
             if (business) {
-              router.replace(`/(orders)/details/${business.id}`);
+              const userType = "fournisseur";
+              router.replace(`/(orders)/details/${business.id}/(${userType})`);
             } else {
               // Pas d'entreprise sélectionnée → on redirige vers l'accueil général
               router.replace("/(tabs)");
