@@ -52,7 +52,22 @@ interface PeriodSelection {
 const HomePage: React.FC = () => {
   const business = useBusinessStore((state) => state.business);
   const setBusiness = useBusinessStore((state) => state.setBusiness);
+  const redirectByBusinessType = (type: Business["type"]) => {
+    const routes: Record<Business["type"], string> = {
+      COMMERCANT: "/(professionnel)",
+      RESTAURATEUR: "/(restaurants)",
+      FOURNISSEUR: "/(fournisseur)",
+      LIVREUR: "/(delivery)",
+    };
 
+    const target = routes[type];
+
+    // Sécurité : on ne reste JAMAIS sur fournisseur si ce n'est pas FOURNISSEUR
+    if (target && type !== "FOURNISSEUR") {
+      router.replace(target);
+    }
+  };
+  const { version } = useBusinessStore();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -143,10 +158,24 @@ const HomePage: React.FC = () => {
       const all = await BusinessesService.getBusinesses();
       setBusinesses(all);
 
-      if (!business && all.length > 0) {
+      // Cas 1 : une entreprise est déjà sélectionnée en store
+      if (business) {
+        if (business.type !== "FOURNISSEUR") {
+          redirectByBusinessType(business.type);
+          return;
+        }
+        return;
+      }
+
+      // Cas 2 : aucune entreprise sélectionnée
+      if (all.length > 0) {
         const first = all.find((b) => b.type === "FOURNISSEUR") || all[0];
-        setBusiness(first);
         await BusinessesService.selectBusiness(first);
+        setBusiness(first);
+
+        if (first.type !== "FOURNISSEUR") {
+          redirectByBusinessType(first.type);
+        }
       }
     } catch (error) {
       Alert.alert("Erreur", "Impossible de charger les entreprises");
@@ -154,11 +183,16 @@ const HomePage: React.FC = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadInitialData();
   }, []);
+  useEffect(() => {
+    if (!business) return;
 
+    if (business.type !== "FOURNISSEUR") {
+      redirectByBusinessType(business.type);
+    }
+  }, [business?.id]);
   useFocusEffect(
     useCallback(() => {
       if (business?.id) {
@@ -234,24 +268,11 @@ const HomePage: React.FC = () => {
       setBusiness(selected);
       Alert.alert("Succès", `"${selected.name}" sélectionné`);
 
-      // Redirection immédiate selon le type
-      setTimeout(() => {
-        const routes: Record<string, string> = {
-          COMMERCANT: "/(professionnel)",
-          RESTAURATEUR: "/(restaurants)",
-          FOURNISSEUR: "/(fournisseur)",
-          LIVREUR: "/(delivery)",
-        };
-        const target = routes[selected.type];
-        if (target) {
-          router.replace(target);
-        }
-      }, 100);
+      redirectByBusinessType(selected.type);
     } catch (error) {
       Alert.alert("Erreur", "Impossible de changer d'entreprise");
     }
   };
-
   const formatNumber = (num: number = 0) =>
     new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(num);
 
@@ -319,6 +340,7 @@ const HomePage: React.FC = () => {
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
+        refreshKey={version}
       />
       <View style={styles.headerRight}>
         <TouchableOpacity style={styles.iconButton}>

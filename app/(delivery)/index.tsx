@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -31,7 +31,7 @@ export interface DeliveryStats {
 const DeliveryHome: React.FC = () => {
   const business = useBusinessStore((state) => state.business);
   const setBusiness = useBusinessStore((state) => state.setBusiness);
-
+  const { version } = useBusinessStore();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,6 +63,30 @@ const DeliveryHome: React.FC = () => {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  const hasRedirectedRef = useRef(false);
+
+  useEffect(() => {
+    if (!business?.type) return;
+    if (hasRedirectedRef.current) return;
+
+    const routes: Record<string, string> = {
+      COMMERCANT: "/(professionnel)",
+      RESTAURATEUR: "/(restaurants)",
+      FOURNISSEUR: "/(fournisseur)",
+      LIVREUR: "/(delivery)",
+    };
+
+    const targetRoute = routes[business.type];
+    if (!targetRoute) return;
+
+    hasRedirectedRef.current = true;
+
+    // micro-timeout pour laisser Expo Router stabiliser le layout
+    setTimeout(() => {
+      router.replace(targetRoute);
+    }, 0);
+  }, [business?.type]);
 
   // Load stats on focus
   useFocusEffect(
@@ -145,6 +169,7 @@ const DeliveryHome: React.FC = () => {
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
+        refreshKey={version} // ← ici on force le re-render quand version change
       />
 
       <View style={styles.headerRight}>
@@ -310,10 +335,7 @@ const DeliveryHome: React.FC = () => {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.quickCard}
-          onPress={() => router.push("/(delivery)/settings")}
-        >
+        <TouchableOpacity style={styles.quickCard}>
           <View style={[styles.quickIcon, { backgroundColor: "#FFF7ED" }]}>
             <Ionicons name="settings-outline" size={32} color="#f97316" />
           </View>

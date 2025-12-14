@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -26,15 +32,12 @@ import {
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
-
-// Zustand → seule source de vérité
 import { useBusinessStore } from "@/store/businessStore";
 
 const HomePage: React.FC = () => {
-  // Zustand
   const business = useBusinessStore((state) => state.business);
   const setBusiness = useBusinessStore((state) => state.setBusiness);
-
+  const { version } = useBusinessStore();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,8 +55,19 @@ const HomePage: React.FC = () => {
   }>({ count: 0, totalItems: 0 });
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
-  // Dates du mois en cours
-  const getCurrentMonthDates = (): { startDate: string; endDate: string } => {
+  // Ref pour éviter les race conditions
+  const analyticsLoadingRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Mémoisation des dates du mois
+  const currentMonthDates = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -61,12 +75,15 @@ const HomePage: React.FC = () => {
     const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
     const endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
     return { startDate, endDate };
-  };
+  }, []);
 
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
       const all = await BusinessesService.getBusinesses();
+
+      if (!mountedRef.current) return;
+
       setBusinesses(all);
 
       // Si aucun business dans le store, on en prend un par défaut
@@ -76,18 +93,25 @@ const HomePage: React.FC = () => {
         await BusinessesService.selectBusiness(first);
       }
     } catch (error) {
-      Alert.alert("Erreur", "Impossible de charger les entreprises");
+      if (mountedRef.current) {
+        console.error("Erreur chargement entreprises:", error);
+        Alert.alert("Erreur", "Impossible de charger les entreprises");
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-  };
+  }, [business, setBusiness]);
 
-  const loadAnalytics = async () => {
-    if (!business?.id || analyticsLoading) return;
+  const loadAnalytics = useCallback(async () => {
+    if (!business?.id || analyticsLoadingRef.current) return;
 
     try {
+      analyticsLoadingRef.current = true;
       setAnalyticsLoading(true);
-      const { startDate, endDate } = getCurrentMonthDates();
+
+      const { startDate, endDate } = currentMonthDates;
 
       const [monthly, overall, pendingCount, purchases] = await Promise.all([
         getAnalyticsOverview(business.id, startDate, endDate),
@@ -96,22 +120,53 @@ const HomePage: React.FC = () => {
         getProcessingPurchasesCount(business.id),
       ]);
 
+      if (!mountedRef.current) return;
+
       setMonthlyOverview(monthly);
       setOverallOverview(overall);
       setPendingOrdersCount(pendingCount);
       setProcessingPurchases(purchases);
     } catch (error) {
-      console.error("Erreur analytics:", error);
-      Alert.alert("Erreur", "Impossible de charger les statistiques");
+      if (mountedRef.current) {
+        console.error("Erreur analytics:", error);
+        Alert.alert("Erreur", "Impossible de charger les statistiques");
+      }
     } finally {
-      setAnalyticsLoading(false);
+      if (mountedRef.current) {
+        analyticsLoadingRef.current = false;
+        setAnalyticsLoading(false);
+      }
     }
-  };
+  }, [business?.id, currentMonthDates]);
 
   // Chargement initial
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [loadInitialData]);
+
+  const hasRedirectedRef = useRef(false);
+
+  useEffect(() => {
+    if (!business?.type) return;
+    if (hasRedirectedRef.current) return;
+
+    const routes: Record<string, string> = {
+      COMMERCANT: "/(professionnel)",
+      RESTAURATEUR: "/(restaurants)",
+      FOURNISSEUR: "/(fournisseur)",
+      LIVREUR: "/(delivery)",
+    };
+
+    const targetRoute = routes[business.type];
+    if (!targetRoute) return;
+
+    hasRedirectedRef.current = true;
+
+    // micro-timeout pour laisser Expo Router stabiliser le layout
+    setTimeout(() => {
+      router.replace(targetRoute);
+    }, 0);
+  }, [business?.type]);
 
   // Recharge analytics quand business change ou quand on revient dans l'onglet
   useFocusEffect(
@@ -119,87 +174,100 @@ const HomePage: React.FC = () => {
       if (business?.id) {
         loadAnalytics();
       }
-    }, [business?.id])
+    }, [business?.id, loadAnalytics])
   );
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (business?.id) await loadAnalytics();
-    setRefreshing(false);
-  };
-
-  const handleBusinessSelect = async (selected: Business) => {
-    try {
-      await BusinessesService.selectBusiness(selected);
-      setBusiness(selected);
-      Alert.alert("Succès", `"${selected.name}" sélectionné`);
-
-      // Redirection immédiate selon le type
-      setTimeout(() => {
-        const routes: Record<string, string> = {
-          COMMERCANT: "/(professionnel)",
-          RESTAURATEUR: "/(restaurants)",
-          FOURNISSEUR: "/(fournisseur)",
-          LIVREUR: "/(delivery)",
-        };
-        const target = routes[selected.type];
-        if (target) {
-          router.replace(target);
-        }
-      }, 100);
-    } catch (error) {
-      Alert.alert("Erreur", "Impossible de changer d'entreprise");
+    if (business?.id) {
+      await loadAnalytics();
     }
-  };
+    setRefreshing(false);
+  }, [loadInitialData, loadAnalytics, business?.id]);
 
-  const formatNumber = (num: number = 0): string =>
-    new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(num);
+  const handleBusinessSelect = useCallback(
+    async (selected: Business) => {
+      try {
+        await BusinessesService.selectBusiness(selected);
+        setBusiness(selected);
+        Alert.alert("Succès", `"${selected.name}" sélectionné`);
 
-  const totalAlerts = pendingOrdersCount;
+        // Redirection immédiate selon le type
+        setTimeout(() => {
+          const routes: Record<string, string> = {
+            COMMERCANT: "/(professionnel)",
+            RESTAURATEUR: "/(restaurants)",
+            FOURNISSEUR: "/(fournisseur)",
+            LIVREUR: "/(delivery)",
+          };
+          const target = routes[selected.type];
+          if (target) {
+            router.replace(target);
+          }
+        }, 100);
+      } catch (error) {
+        console.error("Erreur changement entreprise:", error);
+        Alert.alert("Erreur", "Impossible de changer d'entreprise");
+      }
+    },
+    [setBusiness]
+  );
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <BusinessSelector
-        businesses={businesses}
-        selectedBusiness={business} // ← toujours à jour grâce au store
-        onBusinessSelect={handleBusinessSelect}
-        loading={loading}
-        onAddBusiness={() => router.push("/(create-business)/")}
-        onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
-      />
+  const formatNumber = useCallback((num: number = 0): string => {
+    return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(
+      num
+    );
+  }, []);
 
-      <View style={styles.headerRight}>
-        <TouchableOpacity style={styles.iconButton}>
-          {totalAlerts > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>
-                {totalAlerts > 99 ? "99+" : totalAlerts}
-              </Text>
-            </View>
-          )}
-          <Ionicons name="notifications-outline" size={24} color="#000" />
-        </TouchableOpacity>
+  const totalAlerts = useMemo(() => pendingOrdersCount, [pendingOrdersCount]);
 
-        <TouchableOpacity
-          style={styles.avatarContainer}
-          onPress={() => router.push("/fournisseurSetting")}
-        >
-          {uri ? (
-            <Image
-              key={uri}
-              source={{ uri }}
-              style={styles.avatar}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.avatar, styles.placeholder]}>
-              <Ionicons name="person" size={40} color="#aaa" />
-            </View>
-          )}
-        </TouchableOpacity>
+  const renderHeader = useCallback(
+    () => (
+      <View style={styles.header}>
+        <BusinessSelector
+          businesses={businesses}
+          selectedBusiness={business}
+          onBusinessSelect={handleBusinessSelect}
+          loading={loading}
+          onAddBusiness={() => router.push("/(create-business)/")}
+          onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
+          refreshKey={version}
+        />
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.iconButton}>
+            {totalAlerts > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>
+                  {totalAlerts > 99 ? "99+" : totalAlerts}
+                </Text>
+              </View>
+            )}
+            <Ionicons name="notifications-outline" size={24} color="#000" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={() => router.push("/fournisseurSetting")}
+          >
+            {uri ? (
+              <Image
+                key={uri}
+                source={{ uri }}
+                style={styles.avatar}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.avatar, styles.placeholder]}>
+                <Ionicons name="person" size={40} color="#aaa" />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    ),
+    [businesses, business, handleBusinessSelect, loading, totalAlerts, uri]
   );
 
   if (loading) {
@@ -291,7 +359,9 @@ const HomePage: React.FC = () => {
                         <Text style={styles.cardLabel}>Articles vendus</Text>
                         <Text style={styles.cardValue}>
                           {overallOverview?.totalSalesOrders || 0} article
-                          {overallOverview?.totalSalesOrders > 1 ? "s" : ""}
+                          {(overallOverview?.totalSalesOrders || 0) > 1
+                            ? "s"
+                            : ""}
                         </Text>
                       </View>
                     </View>

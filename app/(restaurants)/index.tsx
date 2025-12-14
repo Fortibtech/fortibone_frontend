@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,8 +27,8 @@ import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChar
 
 const RestaurantHome: React.FC = () => {
   const business = useBusinessStore((state) => state.business);
+  const { version } = useBusinessStore();
   const setBusiness = useBusinessStore((state) => state.setBusiness);
-
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,6 +61,29 @@ const RestaurantHome: React.FC = () => {
   useEffect(() => {
     loadInitialData();
   }, []);
+  const hasRedirectedRef = useRef(false);
+
+  useEffect(() => {
+    if (!business?.type) return;
+    if (hasRedirectedRef.current) return;
+
+    const routes: Record<string, string> = {
+      COMMERCANT: "/(professionnel)",
+      RESTAURATEUR: "/(restaurants)",
+      FOURNISSEUR: "/(fournisseur)",
+      LIVREUR: "/(delivery)",
+    };
+
+    const targetRoute = routes[business.type];
+    if (!targetRoute) return;
+
+    hasRedirectedRef.current = true;
+
+    // micro-timeout pour laisser Expo Router stabiliser le layout
+    setTimeout(() => {
+      router.replace(targetRoute);
+    }, 0);
+  }, [business?.type]);
 
   useFocusEffect(
     useCallback(() => {
@@ -169,6 +192,7 @@ const RestaurantHome: React.FC = () => {
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
+        refreshKey={version} // ← ici on force le re-render quand version change
       />
 
       <View style={styles.headerRight}>
@@ -205,7 +229,7 @@ const RestaurantHome: React.FC = () => {
 
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Vue d'ensemble</Text>
+        <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
 
         <View style={styles.cardsRow}>
           <View style={[styles.card, styles.cardYellow]}>

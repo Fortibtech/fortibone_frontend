@@ -49,7 +49,12 @@ const EnterprisePage: React.FC = () => {
         const res = await getBusinesses();
 
         const mapped: Enterprise[] = res.data
-          .filter((b) => b.type !== "FOURNISSEUR" && b.type !== "LIVREUR") // On vire les deux
+          .filter(
+            (b) =>
+              b.type !== "FOURNISSEUR" &&
+              b.type !== "LIVREUR" &&
+              b.type !== "RESTAURATEUR"
+          ) // On vire les deux
           .map((b) => {
             // Détection intelligente de l'image (inchangé)
             let imageUrl =
