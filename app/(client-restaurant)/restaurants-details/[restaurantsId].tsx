@@ -1,72 +1,120 @@
-// app/(app)/restaurants/[restaurantsId]/index.tsx   (ou où tu l'as placé)
+// app/(app)/restaurants/[restaurantsId]/index.tsx
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   TouchableOpacity,
+  StyleSheet,
   View,
+  Platform,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-} from "react-native-reanimated";
-import { format } from "date-fns";
-import { getAvailableTables, Table } from "@/api/restaurant";
+import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { getMenus, Menu } from "@/api/menu/menuApi";
+import Toast from "react-native-toast-message";
+import { createOrder } from "@/api/Orders";
 
 const RestaurantsId: React.FC = () => {
   const { restaurantsId } = useLocalSearchParams<{ restaurantsId: string }>();
   const router = useRouter();
 
   const [menus, setMenus] = useState<Menu[]>([]);
-  const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
-  const [date, setDate] = useState<Date>(new Date());
-  const [duration, setDuration] = useState<number>(90);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [quantity, setQuantity] = useState(1); // Quantité dans la modale
+  const [isOrdering, setIsOrdering] = useState(false);
 
-  const durationOptions = [30, 60, 90, 120];
-
-  const fetchData = async () => {
+  const fetchMenus = async () => {
     if (!restaurantsId) return;
     setLoading(true);
     try {
-      const [menuData, tableData] = await Promise.all([
-        getMenus(restaurantsId),
-        getAvailableTables(restaurantsId, date.toISOString(), duration),
-      ]);
+      const menuData = await getMenus(restaurantsId);
       setMenus(menuData);
-      setTables(tableData);
     } catch (err) {
-      console.error("Erreur chargement restaurant :", err);
+      console.error("Erreur chargement des menus :", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
-  }, [restaurantsId, date, duration]);
+    fetchMenus();
+  }, [restaurantsId]);
 
-  const formatDate = (d: Date) => format(d, "EEE d MMM yyyy • HH:mm");
+  const openMenuDetails = (menu: Menu) => {
+    setSelectedMenu(menu);
+    setQuantity(1); // Réinitialiser à 1 à chaque ouverture
+    setModalVisible(true);
+  };
 
-  const handleDatePress = () => setShowDatePicker(true);
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedMenu(null);
+    setQuantity(1);
+  };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(Platform.OS === "ios");
-    if (event.type === "set" && selectedDate) {
-      setDate(selectedDate);
+  const incrementQuantity = () => setQuantity((prev) => prev + 1);
+  const decrementQuantity = () => setQuantity((prev) => Math.max(1, prev - 1));
+
+  // Prix total selon quantité
+  const totalPrice = selectedMenu ? Number(selectedMenu.price) * quantity : 0;
+
+  const handleDirectOrder = async () => {
+    if (!selectedMenu || isOrdering) return;
+
+    setIsOrdering(true);
+
+    const payload: any = {
+      type: "SALE" as const,
+      businessId: restaurantsId,
+      supplierBusinessId: null,
+      notes: `Commande directe depuis la carte - Menu: ${selectedMenu.name} × ${quantity}`,
+      tableId: null,
+      reservationDate: new Date().toISOString(),
+      lines: [
+        {
+          variantId: selectedMenu.menuItems[0].variantId, // On utilise l'ID du menu comme variantId
+          quantity: quantity,
+        },
+      ],
+      useWallet: false,
+      shippingFee: 0,
+      discountAmount: 0,
+    };
+
+    try {
+      const response = await createOrder(payload);
+
+      Toast.show({
+        type: "success",
+        text1: "Commande passée avec succès !",
+        text2: `${quantity} × ${selectedMenu.name} - N°${
+          response.orderNumber || response.id
+        }`,
+      });
+
+      closeModal();
+    } catch (err: any) {
+      console.error("Erreur commande directe :", err);
+      const message =
+        err.response?.data?.message ||
+        err.message ||
+        "Impossible de passer la commande";
+
+      Toast.show({
+        type: "error",
+        text1: "Échec de la commande",
+        text2: Array.isArray(message) ? message[0] : message,
+      });
+    } finally {
+      setIsOrdering(false);
     }
   };
 
@@ -74,7 +122,7 @@ const RestaurantsId: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#00af66" />
-        <Text style={styles.loadingText}>Chargement du restaurant...</Text>
+        <Text style={styles.loadingText}>Chargement des menus...</Text>
       </View>
     );
   }
@@ -92,107 +140,17 @@ const RestaurantsId: React.FC = () => {
           >
             <Ionicons name="arrow-back" size={28} color="#333" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Choisir une table</Text>
-          <TouchableOpacity onPress={fetchData}>
+          <Text style={styles.headerTitle}>La Carte</Text>
+          <TouchableOpacity onPress={fetchMenus}>
             <Ionicons name="refresh" size={26} color="#00af66" />
           </TouchableOpacity>
-        </Animated.View>
-
-        {/* Filtres */}
-        <Animated.View
-          entering={FadeInDown.springify()}
-          style={styles.filterBar}
-        >
-          <Pressable onPress={handleDatePress} style={styles.datePickerBtn}>
-            <Ionicons name="calendar-outline" size={22} color="#00af66" />
-            <Text style={styles.dateText}>{formatDate(date)}</Text>
-            <Ionicons name="chevron-down" size={18} color="#999" />
-          </Pressable>
-
-          <View style={styles.durationRow}>
-            {durationOptions.map((d) => (
-              <Pressable
-                key={d}
-                onPress={() => setDuration(d)}
-                style={[
-                  styles.durationChip,
-                  duration === d && styles.durationChipActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.durationText,
-                    duration === d && styles.durationTextActive,
-                  ]}
-                >
-                  {d} min
-                </Text>
-              </Pressable>
-            ))}
-          </View>
         </Animated.View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Tables disponibles */}
-          <Animated.View entering={FadeInUp.delay(100)}>
-            <Text style={styles.sectionTitle}>Tables disponibles</Text>
-
-            {tables.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Ionicons name="alert-circle-outline" size={50} color="#ccc" />
-                <Text style={styles.emptyText}>
-                  Aucune table disponible pour ces critères
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.list}>
-                {tables.map((table, i) => (
-                  <Animated.View
-                    key={table.id}
-                    entering={FadeInUp.delay(80 * i)}
-                    style={styles.tableCard}
-                  >
-                    <View style={styles.tableLeft}>
-                      <View
-                        style={[
-                          styles.statusDot,
-                          {
-                            backgroundColor: table.isAvailable
-                              ? "#00af66"
-                              : "#ef4444",
-                          },
-                        ]}
-                      />
-                      <View>
-                        <Text style={styles.tableName}>{table.name}</Text>
-                        <Text style={styles.tableInfo}>
-                          {table.capacity} pers. •{" "}
-                          {table.location || "Salle principale"}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {table.isAvailable ? (
-                      <TouchableOpacity style={styles.reserveBtn}>
-                        <Text style={styles.reserveBtnText}>Réserver</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={styles.unavailableText}>Indisponible</Text>
-                    )}
-                  </Animated.View>
-                ))}
-              </View>
-            )}
-          </Animated.View>
-
-          {/* NOUVEAU : Menus disponibles – 100% cohérent avec admin */}
-          <Animated.View
-            entering={FadeInUp.delay(300)}
-            style={styles.sectionMargin}
-          >
+          <Animated.View entering={FadeInUp}>
             <Text style={styles.sectionTitle}>Nos Menus & Formules</Text>
 
             {menus.length === 0 ? (
@@ -207,114 +165,279 @@ const RestaurantsId: React.FC = () => {
                 {menus.map((menu, i) => (
                   <Animated.View
                     key={menu.id}
-                    entering={FadeInUp.delay(80 * i + 100)}
-                    style={styles.menuCardClient}
+                    entering={FadeInUp.delay(80 * i)}
                   >
-                    {/* Image en haut */}
-                    <View style={styles.menuImageWrapper}>
-                      {menu.imageUrl ? (
-                        <Image
-                          source={{ uri: menu.imageUrl }}
-                          style={styles.menuImage}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View style={styles.menuImagePlaceholder}>
+                    <Pressable
+                      onPress={() => openMenuDetails(menu)}
+                      style={({ pressed }) => [
+                        styles.menuCardClient,
+                        pressed && { opacity: 0.7 },
+                      ]}
+                    >
+                      <View style={styles.menuImageWrapper}>
+                        {menu.imageUrl ? (
+                          <Image
+                            source={{ uri: menu.imageUrl }}
+                            style={styles.menuImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={styles.menuImagePlaceholder}>
+                            <Ionicons
+                              name="restaurant"
+                              size={60}
+                              color="#E0E0E0"
+                            />
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.menuCardContent}>
+                        <Text style={styles.menuCardTitle}>{menu.name}</Text>
+
+                        {menu.description ? (
+                          <Text
+                            style={styles.menuCardDescription}
+                            numberOfLines={2}
+                          >
+                            {menu.description}
+                          </Text>
+                        ) : (
+                          <Text style={styles.menuCardNoDesc}>
+                            Formule complète
+                          </Text>
+                        )}
+
+                        <View style={styles.priceRow}>
+                          <Text style={styles.menuCardPrice}>
+                            {Number(menu.price).toLocaleString("fr-FR")} KMF
+                          </Text>
                           <Ionicons
-                            name="restaurant"
-                            size={60}
-                            color="#E0E0E0"
+                            name="chevron-forward"
+                            size={20}
+                            color="#00af66"
                           />
                         </View>
-                      )}
-                    </View>
 
-                    {/* Contenu */}
-                    <View style={styles.menuCardContent}>
-                      <Text style={styles.menuCardTitle}>{menu.name}</Text>
-
-                      {menu.description ? (
-                        <Text
-                          style={styles.menuCardDescription}
-                          numberOfLines={3}
-                        >
-                          {menu.description}
-                        </Text>
-                      ) : (
-                        <Text style={styles.menuCardNoDesc}>
-                          Formule complète
-                        </Text>
-                      )}
-
-                      <Text style={styles.menuCardPrice}>
-                        {Number(menu.price).toLocaleString("fr-FR")} FCFA
-                      </Text>
-
-                      {/* Badge si désactivé */}
-                      {menu.isActive === false && (
-                        <View style={styles.inactiveBadge}>
-                          <Text style={styles.inactiveBadgeText}>
-                            Bientôt disponible
-                          </Text>
-                        </View>
-                      )}
-                    </View>
+                        {menu.isActive === false && (
+                          <View style={styles.inactiveBadge}>
+                            <Text style={styles.inactiveBadgeText}>
+                              Bientôt disponible
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </Pressable>
                   </Animated.View>
                 ))}
               </View>
             )}
           </Animated.View>
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: 100 }} />
         </ScrollView>
       </View>
 
-      {/* DateTimePicker */}
-      {Platform.OS === "android"
-        ? showDatePicker && (
-            <DateTimePicker
-              value={date}
-              mode="datetime"
-              display="default"
-              minimumDate={new Date()}
-              onChange={handleDateChange}
-            />
-          )
-        : showDatePicker && (
-            <Modal transparent animationType="slide">
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalContainer}>
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>Date et heure</Text>
-                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                      <Ionicons name="close" size={26} color="#999" />
-                    </TouchableOpacity>
+      {/* Modale Détails du Menu avec Quantité */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={closeModal}>
+                <Ionicons name="close" size={28} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedMenu && (
+              <>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {selectedMenu.imageUrl ? (
+                    <Image
+                      source={{ uri: selectedMenu.imageUrl }}
+                      style={styles.modalImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.modalImagePlaceholder}>
+                      <Ionicons name="restaurant" size={80} color="#E0E0E0" />
+                    </View>
+                  )}
+
+                  <View style={styles.modalBody}>
+                    <Text style={styles.modalTitle}>{selectedMenu.name}</Text>
+
+                    <Text style={styles.modalUnitPrice}>
+                      Prix unitaire :{" "}
+                      {Number(selectedMenu.price).toLocaleString("fr-FR")} KMF
+                    </Text>
+
+                    {selectedMenu.description ? (
+                      <Text style={styles.modalDescription}>
+                        {selectedMenu.description}
+                      </Text>
+                    ) : (
+                      <Text style={styles.modalNoDesc}>
+                        Formule complète sans description détaillée.
+                      </Text>
+                    )}
+
+                    {/* Contrôles de quantité */}
+                    <View style={styles.quantitySection}>
+                      <Text style={styles.quantityLabel}>Quantité</Text>
+                      <View style={styles.quantityControls}>
+                        <TouchableOpacity
+                          onPress={decrementQuantity}
+                          style={styles.quantityButton}
+                          disabled={quantity === 1}
+                        >
+                          <Ionicons name="remove" size={24} color="#333" />
+                        </TouchableOpacity>
+
+                        <Text style={styles.quantityNumber}>{quantity}</Text>
+
+                        <TouchableOpacity
+                          onPress={incrementQuantity}
+                          style={styles.quantityButton}
+                        >
+                          <Ionicons name="add" size={24} color="#333" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Total mis à jour */}
+                    <View style={styles.totalSection}>
+                      <Text style={styles.totalLabel}>Total à payer</Text>
+                      <Text style={styles.totalAmount}>
+                        {totalPrice.toLocaleString("fr-FR")} KMF
+                      </Text>
+                    </View>
                   </View>
+                </ScrollView>
 
-                  <DateTimePicker
-                    value={date}
-                    mode="datetime"
-                    display="spinner"
-                    minimumDate={new Date()}
-                    onChange={handleDateChange}
-                  />
-
+                {/* Bouton Commande Directe */}
+                <View style={styles.modalFooter}>
                   <TouchableOpacity
-                    style={styles.modalConfirmBtn}
-                    onPress={() => setShowDatePicker(false)}
+                    onPress={handleDirectOrder}
+                    disabled={isOrdering || selectedMenu.isActive === false}
+                    style={[
+                      styles.directOrderButton,
+                      (isOrdering || selectedMenu.isActive === false) &&
+                        styles.directOrderButtonDisabled,
+                    ]}
                   >
-                    <Text style={styles.modalConfirmText}>Confirmer</Text>
+                    {isOrdering ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <>
+                        <Ionicons name="send-outline" size={24} color="#fff" />
+                        <Text style={styles.directOrderButtonText}>
+                          Commander{" "}
+                          {quantity > 1 ? `${quantity} menus` : "ce menu"} •{" "}
+                          {totalPrice.toLocaleString("fr-FR")} KMF
+                        </Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 </View>
-              </View>
-            </Modal>
-          )}
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </>
   );
 };
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f9fa" },
+  modalUnitPrice: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 20,
+  },
+  quantitySection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginVertical: 24,
+  },
+  quantityLabel: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+  },
+  quantityControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0fdf4",
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  quantityButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 2,
+  },
+  quantityNumber: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#00af66",
+    minWidth: 40,
+    textAlign: "center",
+  },
+  totalSection: {
+    backgroundColor: "#ecfdf5",
+    padding: 20,
+    borderRadius: 16,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  totalLabel: {
+    fontSize: 16,
+    color: "#059669",
+    fontWeight: "600",
+  },
+  totalAmount: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#059669",
+    marginTop: 8,
+  },
+
+  modalFooter: {
+    padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  directOrderButton: {
+    backgroundColor: "#00af66",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 18,
+    borderRadius: 16,
+    gap: 12,
+  },
+  directOrderButtonDisabled: {
+    backgroundColor: "#9ca3af",
+    opacity: 0.7,
+  },
+  directOrderButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -337,78 +460,16 @@ const styles = StyleSheet.create({
   backBtn: { padding: 8 },
   headerTitle: { fontSize: 22, fontWeight: "700", color: "#333" },
 
-  filterBar: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  datePickerBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f1f5f9",
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 14,
-  },
-  dateText: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
-  },
-  durationRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  durationChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "#f1f5f9",
-    borderRadius: 30,
-  },
-  durationChipActive: { backgroundColor: "#00af66" },
-  durationText: { fontSize: 14, color: "#666", fontWeight: "600" },
-  durationTextActive: { color: "#fff" },
-
   scrollContent: { paddingHorizontal: 20, paddingTop: 20 },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 24,
+    fontWeight: "800",
     color: "#333",
-    marginBottom: 16,
+    marginBottom: 20,
+    textAlign: "center",
   },
-  sectionMargin: { marginTop: 40 },
-  list: { gap: 14 },
 
-  // Tables
-  tableCard: {
-    backgroundColor: "#fff",
-    padding: 18,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  tableLeft: { flexDirection: "row", alignItems: "center", gap: 14 },
-  statusDot: { width: 12, height: 12, borderRadius: 6 },
-  tableName: { fontSize: 17, fontWeight: "600", color: "#333" },
-  tableInfo: { fontSize: 14, color: "#888", marginTop: 4 },
-  reserveBtn: {
-    backgroundColor: "#00af66",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  reserveBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
-  unavailableText: { color: "#ef4444", fontWeight: "600", fontSize: 15 },
-
-  // Menus – NOUVEAU DESIGN (identique admin)
-  menuList: { gap: 18 },
+  menuList: { gap: 20 },
   menuCardClient: {
     backgroundColor: "#FFF",
     borderRadius: 20,
@@ -419,7 +480,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
   },
-  menuImageWrapper: { height: 180, backgroundColor: "#F8F9FA" },
+  menuImageWrapper: { height: 180 },
   menuImage: { width: "100%", height: "100%" },
   menuImagePlaceholder: {
     width: "100%",
@@ -442,11 +503,16 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginTop: 8,
   },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 12,
+  },
   menuCardPrice: {
     fontSize: 23,
     fontWeight: "800",
     color: "#00af66",
-    marginTop: 12,
   },
   inactiveBadge: {
     alignSelf: "flex-start",
@@ -454,17 +520,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    marginTop: 10,
+    marginTop: 12,
   },
   inactiveBadgeText: { fontSize: 12, color: "#6B7280", fontWeight: "600" },
 
-  // États vides
   emptyCard: {
     backgroundColor: "#fff",
     padding: 40,
     borderRadius: 16,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 20,
   },
   emptyText: {
     marginTop: 12,
@@ -473,35 +538,75 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // Modal DatePicker iOS
+  // Modale
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    maxHeight: "90%",
+    overflow: "hidden",
+  },
+  modalHeader: {
+    padding: 20,
+    alignItems: "flex-end",
+  },
+  modalImage: {
+    width: "100%",
+    height: 300,
+  },
+  modalImagePlaceholder: {
+    width: "100%",
+    height: 300,
+    backgroundColor: "#F0FDF4",
     justifyContent: "center",
     alignItems: "center",
   },
-  modalContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    width: "90%",
-    padding: 20,
-    maxHeight: "80%",
+  modalBody: { padding: 24 },
+  modalTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#1F2937",
+    marginBottom: 8,
   },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  modalPrice: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#00af66",
     marginBottom: 20,
   },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: "#333" },
-  modalConfirmBtn: {
-    backgroundColor: "#00af66",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 20,
+  modalDescription: {
+    fontSize: 16,
+    color: "#4B5563",
+    lineHeight: 24,
   },
-  modalConfirmText: { color: "#fff", fontSize: 17, fontWeight: "600" },
+  modalNoDesc: {
+    fontSize: 15,
+    color: "#9CA3AF",
+    fontStyle: "italic",
+  },
+
+  addToCartButton: {
+    backgroundColor: "#00af66",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 12,
+  },
+  addToCartButtonDisabled: {
+    backgroundColor: "#9ca3af",
+  },
+  addToCartButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
 });
 
 export default RestaurantsId;

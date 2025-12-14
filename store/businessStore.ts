@@ -2,15 +2,12 @@
 import { Business } from "@/api";
 import { create } from "zustand";
 
-
-
 type BusinessState = {
   business: Business | null;
-  // on stocke tout l'objet, pas juste l'ID
-  version: number; // pour forcer le refresh des écrans
+  version: number; // pour forcer le refresh des composants
 
   setBusiness: (business: Business | null) => void;
-  bumpVersion: () => void; // utile si tu veux forcer un refresh manuel
+  bumpVersion: () => void; // force un re-render des composants qui utilisent "version"
 };
 
 export const useBusinessStore = create<BusinessState>((set) => ({
@@ -20,8 +17,8 @@ export const useBusinessStore = create<BusinessState>((set) => ({
   setBusiness: (business) =>
     set({
       business,
-      version: 0, // reset version à chaque changement
+      version: 0, // reset version à chaque changement manuel
     }),
 
-  bumpVersion: () => set((state) => ({ version: state.version + 1 })),
+  bumpVersion: () => set((state) => ({ version: state.version + 1 })), // incrémente version pour forcer re-render
 }));

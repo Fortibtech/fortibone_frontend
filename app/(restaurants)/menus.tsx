@@ -54,38 +54,45 @@ export default function MenuScreen() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const loadMenus = async () => {
+  // Fonction pour recharger les menus depuis l'API (utilisée après chaque action)
+  const fetchMenus = async () => {
     if (!businessId) {
       setMenus([]);
-      setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
       const data = await getMenus(businessId);
+      // Tri inverse : le dernier créé en haut
+      setMenus((data || []).reverse());
       setMenus(data || []);
     } catch (error: any) {
       Alert.alert("Erreur", error.message || "Impossible de charger les menus");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
     }
   };
 
+  // Chargement initial et quand on revient sur l'écran
   useFocusEffect(
     useCallback(() => {
-      loadMenus();
+      fetchMenus();
     }, [businessId, version])
   );
 
   useEffect(() => {
-    loadMenus();
+    fetchMenus();
   }, [businessId]);
 
-  const onRefresh = () => {
+  // Rafraîchissement manuel (pull to refresh)
+  const onRefresh = async () => {
     setRefreshing(true);
-    loadMenus();
+    await fetchMenus();
+    setRefreshing(false);
+  };
+
+  const loadMenus = async () => {
+    setLoading(true);
+    await fetchMenus();
+    setLoading(false);
   };
 
   const resetForm = () => {
@@ -108,7 +115,7 @@ export default function MenuScreen() {
     setCurrentMenuId(menu.id);
     setName(menu.name);
     setDescription(menu.description || "");
-    setPrice((Number(menu.price) / 100).toString());
+    setPrice(menu.price.toString());
     setIsActive(menu.isActive);
     setImageUri(menu.imageUrl || null);
     setModalVisible(true);
@@ -133,7 +140,7 @@ export default function MenuScreen() {
       return;
     }
 
-    const priceNum = parseFloat(price.replace(",", "."));
+    const priceNum = parseInt(price.replace(/[^0-9]/g, ""), 10);
     if (isNaN(priceNum) || priceNum <= 0) {
       Alert.alert("Erreur", "Prix invalide");
       return;
@@ -144,62 +151,68 @@ export default function MenuScreen() {
     setSaving(true);
 
     try {
-      let finalMenu: Menu;
+      let createdOrUpdatedMenu: Menu;
 
       if (isEditMode && currentMenuId) {
+        // Mise à jour
         await updateMenu(businessId, currentMenuId, {
           name: name.trim(),
           description: description.trim() || undefined,
-          price: Math.round(priceNum * 100),
+          price: priceNum,
           isActive,
         });
 
+        // Upload image si changée
         if (
           imageUri &&
           imageUri !== menus.find((m) => m.id === currentMenuId)?.imageUrl
         ) {
           setUploadingImage(true);
-          finalMenu = await uploadImageMenu(
+          createdOrUpdatedMenu = await uploadImageMenu(
             businessId,
             currentMenuId,
             imageUri
           );
         } else {
-          finalMenu = {
-            ...(menus.find((m) => m.id === currentMenuId) || ({} as Menu)),
-          };
-          finalMenu.name = name.trim();
-          finalMenu.description = description.trim() || null;
-          finalMenu.price = String(Math.round(priceNum * 100));
-          finalMenu.isActive = isActive;
+          createdOrUpdatedMenu = {
+            id: currentMenuId,
+            name: name.trim(),
+            description: description.trim() || null,
+            price: priceNum.toString(),
+            isActive,
+            imageUrl:
+              menus.find((m) => m.id === currentMenuId)?.imageUrl || null,
+            items: [],
+          } as unknown as Menu;
         }
 
         Alert.alert("Succès", "Menu modifié !");
       } else {
+        // Création
         const created = await createMenu(businessId, {
           name: name.trim(),
           description: description.trim() || undefined,
-          price: Math.round(priceNum * 100),
+          price: priceNum,
           isActive,
           items: [],
         });
 
         if (imageUri) {
           setUploadingImage(true);
-          finalMenu = await uploadImageMenu(businessId, created.id, imageUri);
+          createdOrUpdatedMenu = await uploadImageMenu(
+            businessId,
+            created.id,
+            imageUri
+          );
         } else {
-          finalMenu = created;
+          createdOrUpdatedMenu = created;
         }
 
         Alert.alert("Succès", "Menu créé !");
       }
 
-      setMenus((prev) =>
-        prev
-          .map((m) => (m.id === finalMenu.id ? finalMenu : m))
-          .concat(isEditMode ? [] : [finalMenu])
-          .sort((a, b) => a.name.localeCompare(b.name))
-      );
+      // Recharger TOUTE la liste depuis le serveur → garantit affichage correct immédiat
+      await fetchMenus();
 
       setModalVisible(false);
       resetForm();
@@ -211,7 +224,7 @@ export default function MenuScreen() {
     }
   };
 
-  const handleDelete = (menu: Menu) => {
+  const handleDelete = async (menu: Menu) => {
     if (!businessId) return;
 
     Alert.alert("Supprimer", `Supprimer "${menu.name}" ?`, [
@@ -222,7 +235,8 @@ export default function MenuScreen() {
         onPress: async () => {
           try {
             await deleteMenu(businessId, menu.id);
-            setMenus((prev) => prev.filter((m) => m.id !== menu.id));
+            // Recharger la liste après suppression
+            await fetchMenus();
             Alert.alert("Supprimé", `"${menu.name}" a été supprimé`);
           } catch (err: any) {
             Alert.alert("Erreur", err.message || "Impossible de supprimer");
@@ -355,7 +369,6 @@ export default function MenuScreen() {
                 <Text style={styles.modalTitle}>
                   {isEditMode ? "Modifier le menu" : "Nouveau menu"}
                 </Text>
-
                 <TouchableOpacity onPress={() => setModalVisible(false)}>
                   <Ionicons name="close" size={28} color="#6B7280" />
                 </TouchableOpacity>
@@ -413,7 +426,7 @@ export default function MenuScreen() {
                   value={price}
                   onChangeText={setPrice}
                   placeholder="1490"
-                  keyboardType="numeric"
+                  keyboardType="number-pad"
                 />
 
                 <View style={styles.switchRow}>
@@ -455,13 +468,12 @@ export default function MenuScreen() {
   );
 }
 
+// Les styles restent exactement les mêmes que précédemment
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAFAFB",
   },
-
-  // Header modernisé
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -482,10 +494,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#111827",
   },
-
   list: { padding: 24 },
-
-  // Cards ultra-modernes
   menuCard: {
     backgroundColor: "#FFF",
     borderRadius: 24,
@@ -562,7 +571,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-
   center: {
     flex: 1,
     justifyContent: "center",
@@ -604,8 +612,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 18,
   },
-
-  // FAB amélioré
   fab: {
     position: "absolute",
     right: 24,
@@ -622,8 +628,6 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 12,
   },
-
-  // Modal bottom sheet premium
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
