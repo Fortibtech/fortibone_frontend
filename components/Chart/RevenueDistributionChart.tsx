@@ -11,10 +11,7 @@ import {
 } from "react-native";
 import { StackedBarChart } from "react-native-chart-kit";
 import { getSales } from "@/api/analytics";
-
 const { width } = Dimensions.get("window");
-
-// Mois en français
 const MONTHS = [
   "Janvier",
   "Février",
@@ -197,7 +194,7 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
         <>
           {/* Total Revenue Card */}
           <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Chiffre d'affaires total</Text>
+            <Text style={styles.totalLabel}>Chiffre d&apos;affaires total</Text>
             <Text style={styles.totalValue}>
               {totalRevenue.toLocaleString("fr-FR")} KMF
             </Text>

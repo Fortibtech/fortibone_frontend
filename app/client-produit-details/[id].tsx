@@ -1,6 +1,7 @@
 // app/(tabs)/product/[id].tsx
 import { addToFavorite, deleteFavoris, getProductById } from "@/api/Products";
 import BackButtonAdmin from "@/components/Admin/BackButton";
+import { BusinessesService } from "@/api/services/businessesService";
 import AddProductReviewModal from "@/components/produit/AddProductReviewModal";
 import CategoryInfo from "@/components/produit/CategoryInfo";
 import ProductOptionsSelector from "@/components/produit/ProductOptionsSelector";
@@ -33,7 +34,7 @@ const ProductDetails = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { toggleItem, isInCart } = useCartStore();
   const insets = useSafeAreaInsets();
-
+  const [businessName, setBusinessName] = useState<string>("");
   const [product, setProduct] = useState<Products | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -74,7 +75,23 @@ const ProductDetails = () => {
     })();
   }, [id]);
 
-  // ... tout le reste de ton code (handleAddToCart, etc.) reste IDENTIQUE
+  useEffect(() => {
+    const fetchBusiness = async () => {
+      if (!product?.businessId) return;
+      try {
+        const business = await BusinessesService.getBusinessById(
+          product.businessId
+        );
+        setBusinessName(business.name);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    if (product?.businessId) {
+      fetchBusiness();
+    }
+  }, [product?.businessId]);
 
   const handleToggleFavorite = async () => {
     if (favLoading || !id) return;
@@ -115,7 +132,7 @@ const ProductDetails = () => {
       supplierBusinessId: product.businessId,
       variantName: variant.id,
       stock: variant.quantityInStock,
-      currency: "FCFA",
+      currency: "KMf",
     };
 
     const alreadyInCart = isInCart(product.id, variant.id);
@@ -222,7 +239,16 @@ const ProductDetails = () => {
 
       {/* Le reste de ton UI (fixedInfo, ScrollView, bottomBar, modals) → inchangé */}
       <View style={styles.fixedInfo}>
-        <Text style={styles.title}>{product.name}</Text>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Text style={styles.title}>{product.name}</Text>
+          <Text style={styles.businessName}>{businessName}</Text>
+        </View>
         <View style={styles.ratingRow}>
           {renderStars(product.averageRating)}
           <Text style={styles.ratingText}>
@@ -366,6 +392,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 8,
+  },
+  businessName: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#059669", // vert confiance / brand
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999, // effet badge / pill
   },
   ratingText: { fontSize: 15, color: "#666", fontWeight: "500" },
   price: { fontSize: 28, fontWeight: "800", color: "#111", marginBottom: 6 },

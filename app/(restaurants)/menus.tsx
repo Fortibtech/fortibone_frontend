@@ -21,7 +21,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "expo-router";
-
 import { useBusinessStore } from "@/store/businessStore";
 
 import {
@@ -37,15 +36,12 @@ export default function MenuScreen() {
   const business = useBusinessStore((state) => state.business);
   const version = useBusinessStore((state) => state.version);
   const businessId = business?.id;
-
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentMenuId, setCurrentMenuId] = useState<string | null>(null);
-
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -315,9 +311,11 @@ export default function MenuScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Mes Menus</Text>
+        <Text style={styles.title}>Mes Tables</Text>
+        <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
+          <Ionicons name="add" size={28} color="#FFF" />
+        </TouchableOpacity>
       </View>
-
       {loading && menus.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#6366F1" />
@@ -352,10 +350,6 @@ export default function MenuScreen() {
           ListFooterComponent={() => <View style={{ height: 120 }} />}
         />
       )}
-
-      <TouchableOpacity style={styles.fab} onPress={openCreateModal}>
-        <Ionicons name="add" size={32} color="#FFF" />
-      </TouchableOpacity>
 
       {/* MODAL */}
       <Modal visible={modalVisible} transparent animationType="slide">
@@ -473,6 +467,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAFAFB",
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#7C3AED",
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     flexDirection: "row",
@@ -612,22 +614,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 18,
   },
-  fab: {
-    position: "absolute",
-    right: 24,
-    bottom: 32,
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#6366F1",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 12,
-  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",

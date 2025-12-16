@@ -1,5 +1,5 @@
 // app/(tabs)/index.tsx
-import { getAllProductsLike, ProductSearchResponse } from "@/api/Products";
+import { getAllProductsLike } from "@/api/Products";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,27 +19,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Polygon } from "react-native-svg";
-
-// 🔹 image fallback si produit n'a pas d'image
-const fallbackImage = require("@/assets/images/store-placeholder.png");
-
-// Type produit minimal (adapté à ton API)
-type Product = {
-  id: string;
-  productId: string;
-  name: string;
-  businessName?: string;
-  category?: string;
-  rating?: number;
-  image_url?: string | null;
-};
+import { Products } from "@/types/Product"; // ← Nouveau import avec la structure complète
 
 const HomePage: React.FC = () => {
   const itemsCount = useCartStore((state) => state.items.length);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Products[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [suggestions, setSuggestions] = useState<Products[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
@@ -64,7 +51,7 @@ const HomePage: React.FC = () => {
     try {
       setLoading(true);
       const params = search ? { search } : {};
-      const response: ProductSearchResponse = await getAllProductsLike(params);
+      const response: any = await getAllProductsLike(params);
       setProducts(response.data);
     } catch (error) {
       console.error("❌ Erreur lors du chargement des produits :", error);
@@ -75,7 +62,7 @@ const HomePage: React.FC = () => {
 
   const fetchSuggestions = async (query: string) => {
     try {
-      const response: ProductSearchResponse = await getAllProductsLike({
+      const response: any = await getAllProductsLike({
         search: query,
         limit: 5,
       });
@@ -97,7 +84,7 @@ const HomePage: React.FC = () => {
     Keyboard.dismiss();
   };
 
-  const handleSuggestionSelect = (product: Product) => {
+  const handleSuggestionSelect = (product: Products) => {
     setSearchQuery(product.name);
     setSuggestions([]);
     setShowSuggestions(false);
@@ -154,6 +141,13 @@ const HomePage: React.FC = () => {
           onSubmitEditing={handleSearchSubmit}
           returnKeyType="search"
         />
+        {/* Nouvel icône carte à droite */}
+        <TouchableOpacity
+          style={styles.mapIconButton}
+          onPress={() => router.push("/client-produit-details/map")} // ← Route à créer plus tard
+        >
+          <Ionicons name="map-outline" size={24} color="white" />
+        </TouchableOpacity>
       </View>
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.searchSuggestions}>
@@ -207,38 +201,73 @@ const HomePage: React.FC = () => {
     </View>
   );
 
-  const renderEnterpriseCard = (product: Product): JSX.Element => (
-    <TouchableOpacity
-      key={product.id}
-      style={styles.gridItem}
-      onPress={() =>
-        router.push({
-          pathname: "/client-produit-details/[id]",
-          params: { id: product.productId.toString() },
-        })
-      }
-      activeOpacity={0.8}
-    >
-      <Image
-        source={product.image_url ? { uri: product.image_url } : fallbackImage}
-        style={styles.gridImage}
-      />
-      <View style={styles.gridContent}>
-        <Text style={styles.gridTitle} numberOfLines={1}>
-          {product.name}
-        </Text>
-        <Text style={styles.gridCategory}>{product.category || "Divers"}</Text>
-        <View style={styles.gridFooter}>
-          <View style={styles.ratingContainer}>
-            <Text style={styles.rating}>{product.rating ?? 0} k</Text>
+  // Fonction utilitaire pour générer les étoiles
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    const stars = [];
+
+    for (let i = 0; i < fullStars; i++) {
+      stars.push("🌟");
+    }
+    if (hasHalfStar) {
+      stars.push("⭐"); // demi-étoile approximative
+    }
+    // Compléter avec étoiles vides si besoin (optionnel)
+    while (stars.length < 5) {
+      stars.push("☆");
+    }
+
+    return stars.join("");
+  };
+
+  const renderEnterpriseCard = (product: Products): JSX.Element => {
+    // === GESTION DE LA NOTE ===
+    const rating = product.averageRating ?? 0;
+    const reviewCount = product.reviewCount ?? 0;
+
+    return (
+      <TouchableOpacity
+        key={product.id}
+        style={styles.gridItem}
+        onPress={() =>
+          router.push({
+            pathname: "/client-produit-details/[id]",
+            params: { id: product.productId }, // ← CORRIGÉ : product.id, pas product.productId
+          })
+        }
+        activeOpacity={0.8}
+      >
+        <Image
+          source={{ uri: product.productImageUrl }}
+          style={styles.gridImage}
+          resizeMode="cover"
+        />
+
+        <View style={styles.gridContent}>
+          <Text style={styles.gridTitle} numberOfLines={2}>
+            {product.name}
+          </Text>
+
+          {/* Prix */}
+          <Text style={styles.gridPrice}>
+            {product.price.toLocaleString("fr-FR")} KMF
+          </Text>
+
+          {/* Étoiles + nombre d'avis */}
+          <View style={styles.ratingRow}>
+            <Text style={styles.starsText}>{renderStars(rating)}</Text>
+            {reviewCount > 0 && (
+              <Text style={styles.reviewCountText}>({reviewCount})</Text>
+            )}
           </View>
-          <View style={styles.discountBadge}>
-            <Ionicons name="add" style={styles.discountText} />
-          </View>
+
+          {/* Distance placeholder */}
+          <Text style={styles.distanceText}>à 10 km de vous</Text>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const renderSkeleton = (): JSX.Element => (
     <View style={styles.loadingContainer}>
@@ -271,8 +300,39 @@ const HomePage: React.FC = () => {
     </ProtectedRoute>
   );
 };
-
 const styles = StyleSheet.create({
+  // Ajout du bouton icône carte dans la barre de recherche
+  mapIconButton: {
+    paddingLeft: 12,
+    paddingRight: 8,
+  },
+
+  // Nouveaux styles pour la carte produit
+  gridPrice: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#059669",
+    marginVertical: 4,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  starsText: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  reviewCountText: {
+    fontSize: 13,
+    color: "#666",
+  },
+  distanceText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 6,
+    fontStyle: "italic",
+  },
   gradient: {
     flex: 1,
     justifyContent: "center",

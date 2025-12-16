@@ -1,4 +1,4 @@
-// app/(tabs)/cart.tsx  (ou là où tu l’as)
+// app/(tabs)/cart.tsx
 import { createOrder } from "@/api/orers/createOrder";
 import BackButton from "@/components/BackButton";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -35,7 +35,9 @@ const Cart = () => {
   const [showPaymentUI, setShowPaymentUI] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption>("CARD");
 
-  const totalPrice = getTotalPrice().toFixed(2);
+  // Calcul sécurisé du total
+  const rawTotal = getTotalPrice();
+  const totalPrice = rawTotal > 0 ? rawTotal.toFixed(2) : "0.00";
   const totalItemsCount = getTotalItems();
 
   // ──────────────────────────────────────────────────────────────
@@ -48,8 +50,6 @@ const Cart = () => {
     }
 
     const firstItem = items[0];
-
-    // Vérification que tous les articles viennent du même établissement
     const invalidItem = items.find(
       (i) =>
         i.businessId !== firstItem.businessId ||
@@ -65,32 +65,28 @@ const Cart = () => {
       return;
     }
 
+    const paymentLabel =
+      selectedPayment === "CARD"
+        ? "Carte bancaire"
+        : selectedPayment === "CASH"
+        ? "Espèces"
+        : "Portefeuille";
+
     const payload = {
       type: "SALE" as const,
       businessId: firstItem.businessId,
       supplierBusinessId: null,
-      notes: `Commande mobile - Paiement: ${
-        selectedPayment === "CARD"
-          ? "Carte bancaire"
-          : selectedPayment === "CASH"
-          ? "Espèces"
-          : "Portefeuille"
-      }`,
+      notes: `Commande mobile - Paiement: ${paymentLabel}`,
       tableId: null,
       reservationDate: new Date().toISOString(),
       lines: items.map((item) => ({
         variantId: item.variantId,
         quantity: item.quantity,
       })),
-      useWallet: false,
+      useWallet: selectedPayment === "WALLET",
       shippingFee: 0,
       discountAmount: 0,
     };
-
-    console.log(
-      "Payload envoyé à createOrder :",
-      JSON.stringify(payload, null, 2)
-    );
 
     try {
       setIsLoading(true);
@@ -98,12 +94,12 @@ const Cart = () => {
 
       Toast.show({
         type: "success",
-        text1: "Commande passée !",
+        text1: "Commande passée avec succès !",
         text2: `N°${response.orderNumber || response.id}`,
       });
 
-      clearCart(); // Panier vidé après succès
-      setTimeout(() => setShowPaymentUI(false), 1800);
+      clearCart();
+      setTimeout(() => setShowPaymentUI(false), 2000);
     } catch (err: any) {
       console.error("Erreur création commande :", err);
       const message =
@@ -121,54 +117,76 @@ const Cart = () => {
     }
   };
 
-  const handleCheckout = () => items.length > 0 && setShowPaymentUI(true);
+  const handleCheckout = () => {
+    if (items.length > 0) setShowPaymentUI(true);
+  };
+
   const handleGoBack = () => {
     setShowPaymentUI(false);
     setSelectedPayment("CARD");
   };
 
-  const renderCartItem = (item: (typeof items)[0]) => (
-    <View key={`${item.productId}-${item.variantId}`} style={styles.cartItem}>
-      <Image
-        source={item.imageUrl ? { uri: item.imageUrl } : fallbackImage}
-        style={styles.itemImage}
-      />
-      <View style={styles.itemDetails}>
-        <Text style={styles.itemName} numberOfLines={2}>
-          {item.name}
-          {item.variantName ? ` - ${item.variantName}` : ""}
-        </Text>
-        <Text style={styles.itemPrice}>
-          {item.price.toFixed(2)} KMF × {item.quantity}
-        </Text>
-        <View style={styles.quantityControls}>
-          <TouchableOpacity
-            onPress={() =>
-              updateQuantity(item.productId, item.variantId, item.quantity - 1)
-            }
-            style={styles.quantityButton}
-          >
-            <Ionicons name="remove" size={20} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.quantityText}>{item.quantity}</Text>
-          <TouchableOpacity
-            onPress={() =>
-              updateQuantity(item.productId, item.variantId, item.quantity + 1)
-            }
-            style={styles.quantityButton}
-          >
-            <Ionicons name="add" size={20} color="#333" />
-          </TouchableOpacity>
+  const renderCartItem = (item: (typeof items)[0]) => {
+    // Protection sur le prix de l'item
+    const itemPrice = item.price != null ? Number(item.price) : 0;
+    const formattedPrice = isNaN(itemPrice) ? "0.00" : itemPrice.toFixed(2);
+
+    return (
+      <View key={`${item.productId}-${item.variantId}`} style={styles.cartItem}>
+        <Image
+          source={item.imageUrl ? { uri: item.imageUrl } : fallbackImage}
+          style={styles.itemImage}
+        />
+        <View style={styles.itemDetails}>
+          <Text style={styles.itemName} numberOfLines={2}>
+            {item.name}
+            {item.variantName ? ` - ${item.variantName}` : ""}
+          </Text>
+          <Text style={styles.itemPrice}>
+            {formattedPrice} KMF × {item.quantity}
+          </Text>
+          <View style={styles.quantityControls}>
+            <TouchableOpacity
+              onPress={() =>
+                updateQuantity(
+                  item.productId,
+                  item.variantId,
+                  item.quantity - 1
+                )
+              }
+              style={styles.quantityButton}
+              disabled={item.quantity <= 1}
+            >
+              <Ionicons
+                name="remove"
+                size={20}
+                color={item.quantity <= 1 ? "#ccc" : "#333"}
+              />
+            </TouchableOpacity>
+            <Text style={styles.quantityText}>{item.quantity}</Text>
+            <TouchableOpacity
+              onPress={() =>
+                updateQuantity(
+                  item.productId,
+                  item.variantId,
+                  item.quantity + 1
+                )
+              }
+              style={styles.quantityButton}
+            >
+              <Ionicons name="add" size={20} color="#333" />
+            </TouchableOpacity>
+          </View>
         </View>
+        <TouchableOpacity
+          onPress={() => removeItem(item.productId, item.variantId)}
+          style={styles.removeButton}
+        >
+          <Ionicons name="trash-outline" size={24} color="#FF3B30" />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        onPress={() => removeItem(item.productId, item.variantId)}
-        style={styles.removeButton}
-      >
-        <Ionicons name="trash-outline" size={24} color="#FF3B30" />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
     <ProtectedRoute>
@@ -180,6 +198,7 @@ const Cart = () => {
           <Text style={styles.headerTitle}>
             {showPaymentUI ? "Paiement" : `Panier (${totalItemsCount})`}
           </Text>
+          <View style={{ width: 40 }} />
         </View>
 
         {showPaymentUI ? (
@@ -195,7 +214,7 @@ const Cart = () => {
               <Text style={styles.totalAmount}>{totalPrice} KMF</Text>
             </View>
 
-            {/* <Text style={styles.paymentMethodLabel}>Mode de paiement</Text>
+            <Text style={styles.paymentMethodLabel}>Mode de paiement</Text>
             <View style={styles.paymentOptions}>
               {(["CARD", "CASH", "WALLET"] as PaymentOption[]).map((method) => (
                 <TouchableOpacity
@@ -239,7 +258,7 @@ const Cart = () => {
                   )}
                 </TouchableOpacity>
               ))}
-            </View> */}
+            </View>
 
             <TouchableOpacity
               onPress={handleCreateOrder}
@@ -252,7 +271,7 @@ const Cart = () => {
                 <>
                   <Ionicons name="send" size={20} color="#fff" />
                   <Text style={styles.payButtonText}>
-                    Confirmer • {totalPrice} kMF
+                    Confirmer • {totalPrice} KMF
                   </Text>
                 </>
               )}
@@ -275,7 +294,7 @@ const Cart = () => {
                 <View style={styles.footer}>
                   <View style={styles.totalContainer}>
                     <Text style={styles.totalLabel}>Total</Text>
-                    <Text style={styles.totalPrice}>{totalPrice} kMF</Text>
+                    <Text style={styles.totalPrice}>{totalPrice} KMF</Text>
                   </View>
                   <TouchableOpacity
                     onPress={handleCheckout}
@@ -300,7 +319,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    justifyContent: "space-between",
     padding: 20,
     paddingBottom: 10,
   },
@@ -362,6 +381,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#fff",
     borderRadius: 12,
+    marginHorizontal: 16,
     marginBottom: 16,
     padding: 12,
     shadowColor: "#000",

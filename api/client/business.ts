@@ -16,6 +16,7 @@ export interface Business {
   updatedAt: string;
   currencyId: string;
   averageRating: number;
+  activitySector: string;
   reviewCount: number;
   ownerId: string;
   owner: {

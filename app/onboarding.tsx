@@ -2,7 +2,9 @@ import CustomButton from "@/components/CustomButton";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import * as Location from "expo-location";
+import { useEffect, useState } from "react";
+
 import {
   Dimensions,
   Image,
@@ -13,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { useUserLocationStore } from "@/stores/useUserLocationStore";
 
 // Interface pour les props de CustomButton
 
@@ -22,7 +25,55 @@ type ProfileType = "particulier" | "professionnel" | null;
 const Onboarding: React.FC = () => {
   const router = useRouter();
   const [selectedProfile, setSelectedProfile] = useState<ProfileType>(null);
+  const { setLocation, setLoading } = useUserLocationStore();
 
+  useEffect(() => {
+    const requestAndSaveLocation = async () => {
+      try {
+        setLoading(true);
+
+        const { status } = await Location.requestForegroundPermissionsAsync();
+
+        if (status !== "granted") {
+          console.log("Permission localisation refusée");
+          setLoading(false);
+          return;
+        }
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        const reverseGeocode = await Location.reverseGeocodeAsync({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+
+        if (reverseGeocode.length > 0) {
+          const place = reverseGeocode[0];
+
+          const city =
+            place.city || place.subregion || place.region || "Inconnu";
+
+          const address = `${place.street ?? ""} ${place.name ?? ""}`.trim();
+
+          setLocation(
+            city,
+            address,
+            position.coords.latitude,
+            position.coords.longitude
+          );
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Erreur localisation:", error);
+        setLoading(false);
+      }
+    };
+
+    requestAndSaveLocation();
+  }, []);
   // Fonction pour sauvegarder le choix dans AsyncStorage
   const saveProfileChoice = async (profile: ProfileType) => {
     try {

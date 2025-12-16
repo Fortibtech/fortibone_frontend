@@ -3,7 +3,6 @@ import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Platform } from "react-native";
 import { Home, Route, Wallet, Settings, CreditCard } from "lucide-react-native";
-
 export default function DeliveryLayout() {
   const insets = useSafeAreaInsets();
   const baseTabBarHeight = Platform.OS === "ios" ? 68 : 60;
@@ -12,7 +11,6 @@ export default function DeliveryLayout() {
       ? Math.max(insets.bottom, 16)
       : Math.max(insets.bottom, 8);
   const totalTabBarHeight = baseTabBarHeight + bottomPadding;
-
   return (
     <Tabs
       screenOptions={{

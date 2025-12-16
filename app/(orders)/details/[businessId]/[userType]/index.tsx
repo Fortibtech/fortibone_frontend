@@ -23,8 +23,6 @@ export default function VentesScreen() {
     userType: string;
   }>();
 
-  console.log("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB:", businessId);
-  console.log("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT :", userType);
   const router = useRouter();
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [page, setPage] = useState(1);
@@ -38,10 +36,10 @@ export default function VentesScreen() {
     "commandes"
   );
 
+
   // États de recherche
   const [searchQueryCommandes, setSearchQueryCommandes] = useState("");
   const [searchQueryClients, setSearchQueryClients] = useState("");
-
   // ---------------------------
   // Récupération des commandes
   // ---------------------------
@@ -158,7 +156,7 @@ export default function VentesScreen() {
               .filter((ord) => ord.customerId === o.customerId)
               .reduce((sum, ord) => sum + parseFloat(ord.totalAmount), 0)
               .toFixed(2)
-              .replace(".", ",") + " €",
+              .replace(".", ",") + " KMF",
           panierMoyen:
             (
               orders
@@ -167,7 +165,7 @@ export default function VentesScreen() {
               orders.filter((ord) => ord.customerId === o.customerId).length
             )
               .toFixed(2)
-              .replace(".", ",") + " €",
+              .replace(".", ",") + " KMF",
           originalOrder: o,
         },
       ])
@@ -188,10 +186,11 @@ export default function VentesScreen() {
   // Navigation
   const handleOrderPress = (order: OrderResponse) => {
     router.push({
-      pathname: "/order-details/[id]",
+      pathname: "/pro-order-details/[id]",
       params: { id: order.id.toString() },
     });
   };
+;
 
   const handleOrderCustumerPress = (order: OrderResponse) => {
     router.push({

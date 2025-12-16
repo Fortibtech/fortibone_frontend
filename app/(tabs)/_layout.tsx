@@ -41,7 +41,6 @@ export default function TabLayout() {
           backgroundColor: "#ffffff",
           borderTopWidth: 1,
           borderTopColor: "#f0f0f0",
-          // Ombre iOS + Android
           shadowColor: "#000",
           shadowOffset: { width: 0, height: -3 },
           shadowOpacity: 0.1,
@@ -79,7 +78,7 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="favorites"
         options={{
           title: "Restaurants",
@@ -87,7 +86,7 @@ export default function TabLayout() {
             <Ionicons name="restaurant-outline" size={size} color={color} />
           ),
         }}
-      />
+      /> */}
 
       <Tabs.Screen
         name="finance"
