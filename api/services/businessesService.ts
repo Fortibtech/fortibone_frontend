@@ -8,11 +8,9 @@ export interface AddMemberData {
   email: string;
   role: "MEMBER" | "ADMIN";
 }
-
 export interface UpdateMemberRoleData {
   role: "MEMBER" | "ADMIN" | "OWNER";
 }
-
 export interface BusinessMember {
   id: string;
   email: string;

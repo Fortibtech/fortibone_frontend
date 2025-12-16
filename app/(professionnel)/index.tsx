@@ -28,7 +28,7 @@ import {
   getPendingOrdersCount,
   getProcessingPurchasesCount,
 } from "@/api/analytics";
-
+import { useUserStore } from "@/store/userStore";
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
@@ -36,12 +36,13 @@ import { useBusinessStore } from "@/store/businessStore";
 
 const HomePage: React.FC = () => {
   const business = useBusinessStore((state) => state.business);
+    const { userProfile } = useUserStore();
   const setBusiness = useBusinessStore((state) => state.setBusiness);
   const { version } = useBusinessStore();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { uri } = useUserAvatar();
+
 
   // Analytics states
   const [monthlyOverview, setMonthlyOverview] =
@@ -221,7 +222,7 @@ const HomePage: React.FC = () => {
   }, []);
 
   const totalAlerts = useMemo(() => pendingOrdersCount, [pendingOrdersCount]);
-
+ console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",userProfile)
   const renderHeader = useCallback(
     () => (
       <View style={styles.header}>
@@ -247,27 +248,25 @@ const HomePage: React.FC = () => {
             <Ionicons name="notifications-outline" size={24} color="#000" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={() => router.push("/fournisseurSetting")}
-          >
-            {uri ? (
-              <Image
-                key={uri}
-                source={{ uri }}
-                style={styles.avatar}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={[styles.avatar, styles.placeholder]}>
-                <Ionicons name="person" size={40} color="#aaa" />
-              </View>
-            )}
-          </TouchableOpacity>
+<TouchableOpacity
+  style={styles.avatarContainer}
+  onPress={() => router.push("/fournisseurSetting")}
+>
+  {userProfile?.profileImageUrl ? (
+    <Image
+      source={{ uri: userProfile.profileImageUrl }}
+      style={styles.avatarImage}  // ← Ajoute ce style
+      resizeMode="cover"
+      onError={(e) => console.log("Erreur chargement avatar:", e.nativeEvent.error)}  // Optionnel : pour debugger
+    />
+  ) : (
+    <Ionicons name="person-circle-outline" size={40} color="#666" />  // Icône plus jolie par défaut
+  )}
+</TouchableOpacity>
         </View>
       </View>
     ),
-    [businesses, business, handleBusinessSelect, loading, totalAlerts, uri]
+    [businesses, business, handleBusinessSelect, loading, totalAlerts]
   );
 
   if (loading) {

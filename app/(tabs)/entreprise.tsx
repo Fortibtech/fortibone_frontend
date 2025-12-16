@@ -14,91 +14,68 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// 🔥 Get screen width for responsive design
+import type { Business, GetBusinessesResponse } from "@/api/client/business";
+
 const { width } = Dimensions.get("window");
+
 interface Category {
   id: string;
   name: string;
-}
-
-interface Enterprise {
-  id: string;
-  name: string;
-  rating: number;
-  category: string;
-  image: string;
-  categoryId: string;
 }
 
 const EnterprisePage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([
     { id: "all", name: "Tout" },
   ]);
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>("all"); // Basé sur type
+  const [enterprises, setEnterprises] = useState<Business[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchText, setSearchText] = useState<string>("");
+  const [selectedSector, setSelectedSector] = useState<string | null>(null); // Filtre dropdown par activitySector
+  const [dropdownVisible, setDropdownVisible] = useState<boolean>(false);
   const searchInputRef = useRef<TextInput>(null);
+
+  // Liste des secteurs uniques pour le dropdown
+  const availableSectors = useMemo(() => {
+    const sectors = enterprises
+      .map((b) => b.activitySector?.trim())
+      .filter(Boolean);
+    return Array.from(new Set(sectors)).sort();
+  }, [enterprises]);
 
   useEffect(() => {
     const loadEnterprises = async () => {
       try {
         setLoading(true);
-        const res = await getBusinesses();
+        const res: GetBusinessesResponse = await getBusinesses();
 
-        const mapped: Enterprise[] = res.data
-          .filter(
-            (b) =>
-              b.type !== "FOURNISSEUR" &&
-              b.type !== "LIVREUR" &&
-              b.type !== "RESTAURATEUR"
-          ) // On vire les deux
+        const filtered: Business[] = res.data
+          .filter((b) => b.type === "RESTAURATEUR" || b.type === "COMMERCANT")
           .map((b) => {
-            // Détection intelligente de l'image (inchangé)
             let imageUrl =
               "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image";
-
-            const possibleImages = [b.logoUrl, b.coverImageUrl].filter(Boolean);
-
-            if (possibleImages.length > 0) {
-              imageUrl = possibleImages[0];
-
-              if (
-                !imageUrl.startsWith("http://") &&
-                !imageUrl.startsWith("https://")
-              ) {
+            const possible = [b.logoUrl, b.coverImageUrl].filter(Boolean);
+            if (possible.length > 0) {
+              imageUrl = possible[0];
+              if (!imageUrl.startsWith("http"))
                 imageUrl = `https://${imageUrl}`;
-              }
             }
-
-            return {
-              id: b.id,
-              name: b.name,
-              rating: b.averageRating || 0,
-              category: b.type,
-              image: imageUrl,
-              categoryId: b.type.toLowerCase(),
-            };
+            return { ...b, imageUrl };
           });
 
-        setEnterprises(mapped);
+        setEnterprises(filtered);
 
-        // Catégories dynamiques (sans FOURNISSEUR ni LIVREUR)
-        const uniqueTypes = Array.from(
-          new Set(mapped.map((e) => e.categoryId))
-        );
+        // 🔥 Tabs basés sur le TYPE (comme au début)
+        const typeCategories: Category[] = [
+          { id: "restaurateur", name: "Restaurants" },
+          { id: "commercant", name: "Commerçants" },
+        ];
 
-        const dynamicCategories: Category[] = uniqueTypes.map((type) => ({
-          id: type,
-          name:
-            type === "restaurateur"
-              ? "Restaurants"
-              : type.charAt(0).toUpperCase() + type.slice(1),
-        }));
-
-        setCategories([{ id: "all", name: "Tout" }, ...dynamicCategories]);
+        setCategories([{ id: "all", name: "Tout" }, ...typeCategories]);
       } catch (err) {
         console.error("Erreur chargement entreprises:", err);
       } finally {
@@ -108,33 +85,44 @@ const EnterprisePage: React.FC = () => {
     loadEnterprises();
   }, []);
 
-  const navigateToEnterpriseDetails = (
-    enterpriseId: string,
-    enterpriseName: string
-  ): void => {
-    router.push({
-      pathname: "/enterprise-details/[id]",
-      params: { id: enterpriseId, name: enterpriseName },
-    });
+  const navigateToDetails = (business: Business) => {
+    if (business.type === "RESTAURATEUR") {
+      router.push({
+        pathname: "/(client-restaurant)/restaurants-details/[restaurantsId]",
+        params: { restaurantsId: business.id, name: business.name },
+      });
+    } else {
+      router.push({
+        pathname: "/enterprise-details/[id]",
+        params: { id: business.id, name: business.name },
+      });
+    }
   };
 
   const filteredEnterprises = useMemo(() => {
-    return enterprises.filter((enterprise) => {
-      const matchCategory =
-        activeCategory === "all" || enterprise.categoryId === activeCategory;
-      const matchSearch = enterprise.name
+    return enterprises.filter((business) => {
+      const typeLower = business.type.toLowerCase();
+
+      // Filtre par tab (type : restaurateur / commercant)
+      const matchTab = activeCategory === "all" || typeLower === activeCategory; // "restaurateur" ou "commercant"
+
+      // Filtre par dropdown (activitySector)
+      const sectorLower = business.activitySector?.toLowerCase().trim() || "";
+      const matchSector =
+        !selectedSector || sectorLower === selectedSector.toLowerCase();
+
+      // Recherche par nom
+      const matchSearch = business.name
         .toLowerCase()
         .includes(searchText.toLowerCase());
-      return matchCategory && matchSearch;
+
+      return matchTab && matchSector && matchSearch;
     });
-  }, [enterprises, activeCategory, searchText]);
+  }, [enterprises, activeCategory, selectedSector, searchText]);
 
   const renderHeader = (): JSX.Element => (
     <View style={styles.header}>
-      <Pressable
-        onPress={() => searchInputRef.current?.focus()}
-        accessibilityLabel="Rechercher une entreprise"
-      >
+      <Pressable onPress={() => searchInputRef.current?.focus()}>
         <Ionicons
           name="search"
           size={20}
@@ -142,28 +130,85 @@ const EnterprisePage: React.FC = () => {
           style={styles.searchIcon}
         />
       </Pressable>
+
       <TextInput
         ref={searchInputRef}
-        placeholder="Rechercher par nom ou categorie..."
+        placeholder="Rechercher par nom ou secteur..."
         placeholderTextColor="#999"
         style={styles.searchInput}
         value={searchText}
         onChangeText={setSearchText}
-        accessibilityLabel="Barre de recherche"
       />
+
+      {/* Icône dropdown pour filtrer par secteur d'activité */}
+      <Pressable
+        onPress={() => setDropdownVisible(true)}
+        style={styles.dropdownTrigger}
+      >
+        <Ionicons
+          name="chevron-down"
+          size={22}
+          color={selectedSector ? "#00C851" : "#999"}
+        />
+      </Pressable>
+
       {searchText.length > 0 && (
-        <Pressable
-          onPress={() => setSearchText("")}
-          accessibilityLabel="Effacer la recherche"
-        >
-          <Ionicons
-            name="close-circle"
-            size={20}
-            color="#999"
-            style={styles.clearIcon}
-          />
+        <Pressable onPress={() => setSearchText("")} style={{ marginLeft: 8 }}>
+          <Ionicons name="close-circle" size={20} color="#999" />
         </Pressable>
       )}
+
+      {/* Modal Dropdown pour activitySector */}
+      <Modal
+        visible={dropdownVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setDropdownVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.dropdownMenu}>
+              <TouchableOpacity
+                style={[
+                  styles.dropdownItem,
+                  !selectedSector && styles.dropdownItemActive,
+                ]}
+                onPress={() => {
+                  setSelectedSector(null);
+                  setDropdownVisible(false);
+                }}
+              >
+                <Text style={styles.dropdownText}>Tous les secteurs</Text>
+                {!selectedSector && (
+                  <Ionicons name="checkmark" size={20} color="#00C851" />
+                )}
+              </TouchableOpacity>
+
+              {availableSectors.map((sector) => (
+                <TouchableOpacity
+                  key={sector}
+                  style={[
+                    styles.dropdownItem,
+                    selectedSector?.toLowerCase() === sector.toLowerCase() &&
+                      styles.dropdownItemActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedSector(sector);
+                    setDropdownVisible(false);
+                  }}
+                >
+                  <Text style={styles.dropdownText}>
+                    {sector.charAt(0).toUpperCase() + sector.slice(1)}
+                  </Text>
+                  {selectedSector?.toLowerCase() === sector.toLowerCase() && (
+                    <Ionicons name="checkmark" size={20} color="#00C851" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 
@@ -174,7 +219,7 @@ const EnterprisePage: React.FC = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabScrollContent}
       >
-        {categories.map((category: Category) => (
+        {categories.map((category) => (
           <TouchableOpacity
             key={category.id}
             style={[
@@ -183,10 +228,9 @@ const EnterprisePage: React.FC = () => {
             ]}
             onPress={() => setActiveCategory(category.id)}
             activeOpacity={0.7}
-            accessibilityLabel={`Filtrer par ${category.name}`}
           >
             {activeCategory === category.id && (
-              <Ionicons name="flame-outline" size={20} color={"red"} />
+              <Ionicons name="flame-outline" size={20} color="red" />
             )}
             <Text
               style={[
@@ -202,41 +246,42 @@ const EnterprisePage: React.FC = () => {
     </View>
   );
 
-  const renderEnterpriseCard = ({
-    item,
-  }: {
-    item: Enterprise;
-  }): JSX.Element => (
+  const renderEnterpriseCard = ({ item }: { item: Business }) => (
     <TouchableOpacity
       style={styles.enterpriseCard}
-      onPress={() => navigateToEnterpriseDetails(item.id, item.name)}
+      onPress={() => navigateToDetails(item)}
       activeOpacity={0.8}
-      accessibilityLabel={`Voir détails de ${item.name}`}
     >
       <Image
-        source={{ uri: item.image }}
+        source={{
+          uri:
+            item.coverImageUrl ||
+            "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image",
+        }}
         style={styles.enterpriseImage}
         resizeMode="cover"
-        onError={() =>
-          console.log(`Erreur image: ${item.name} - ${item.image}`)
-        }
       />
       <View style={styles.enterpriseContent}>
         <View>
           <Text style={styles.enterpriseTitle} numberOfLines={1}>
             {item.name}
           </Text>
-          <Text style={styles.enterpriseCategory}>{item.category}</Text>
+          <Text style={styles.enterpriseCategory}>
+            {item.activitySector
+              ? item.activitySector.charAt(0).toUpperCase() +
+                item.activitySector.slice(1)
+              : "Non spécifié"}
+          </Text>
         </View>
         <View style={styles.ratingContainer}>
           <Ionicons name="star" size={14} color="#FFD700" />
-          <Text style={styles.rating}>{item.rating}</Text>
+          <Text style={styles.rating}>{item.averageRating || 0}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 
-  const renderEnterpriseGrid = (): JSX.Element => {
+  const renderEnterpriseGrid = () => {
     if (loading) {
       return (
         <View style={{ flex: 1, alignItems: "center", marginTop: 50 }}>
@@ -252,7 +297,7 @@ const EnterprisePage: React.FC = () => {
         </View>
       );
     }
-    console.log("XXXX", enterprises);
+
     return (
       <FlatList
         data={filteredEnterprises}
@@ -260,7 +305,7 @@ const EnterprisePage: React.FC = () => {
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={styles.grid}
-        columnWrapperStyle={styles.columnWrapper} // 🔥 Added for spacing between columns
+        columnWrapperStyle={styles.columnWrapper}
         showsVerticalScrollIndicator={false}
       />
     );
@@ -294,13 +339,36 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   searchIcon: { marginRight: 8 },
-  clearIcon: { marginLeft: 8 },
-  searchInput: {
+  searchInput: { flex: 1, height: 48, color: "#333", fontSize: 16 },
+  dropdownTrigger: { paddingHorizontal: 8, justifyContent: "center" },
+  modalOverlay: {
     flex: 1,
-    height: 48,
-    color: "#333",
-    fontSize: 16,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
+  dropdownMenu: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 8,
+    width: "85%",
+    maxHeight: "70%",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  dropdownItemActive: { backgroundColor: "#f0fff4" },
+  dropdownText: { fontSize: 16, color: "#333" },
   tabContainer: { paddingVertical: 12 },
   tabScrollContent: { paddingHorizontal: 16 },
   tab: {
@@ -321,17 +389,10 @@ const styles = StyleSheet.create({
   },
   tabText: { fontSize: 14, fontWeight: "500", color: "#666" },
   activeTabText: { color: "#fff", fontWeight: "600", marginLeft: 6 },
-  grid: {
-    paddingHorizontal: 20, // 🔥 Increased padding to prevent sticking to edges
-    paddingTop: 16,
-    paddingBottom: 120,
-  },
-  columnWrapper: {
-    justifyContent: "space-between", // 🔥 Ensures spacing between cards in a row
-    marginBottom: 16, // 🔥 Adds vertical spacing between rows
-  },
+  grid: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
+  columnWrapper: { justifyContent: "space-between", marginBottom: 16 },
   enterpriseCard: {
-    width: (width - 56) / 2, // 🔥 Adjusted width to account for increased padding and gap
+    width: (width - 56) / 2,
     backgroundColor: "#fff",
     borderRadius: 12,
     shadowColor: "#000",
@@ -341,11 +402,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     overflow: "hidden",
   },
-  enterpriseImage: {
-    width: "100%",
-    height: 120,
-    backgroundColor: "#F5F6FA",
-  },
+  enterpriseImage: { width: "100%", height: 120, backgroundColor: "#CCCCCC" },
   enterpriseContent: {
     padding: 12,
     flexDirection: "row",

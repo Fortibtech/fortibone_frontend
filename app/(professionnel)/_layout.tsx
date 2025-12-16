@@ -119,25 +119,6 @@ export default function RootLayout() {
         }}
       />
 
-      {/* INVENTAIRE
-      <Tabs.Screen
-        name="inventaire"
-        options={{
-          title: "Inventaire",
-          tabBarIcon: ({ color }) => <Send size={24} color={color} />,
-        }}
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            if (business) {
-              router.replace(`/(inventory)/details/${business.id}`);
-            } else {
-              router.replace("/(professionnel)");
-            }
-          },
-        }}
-      /> */}
-
       <Tabs.Screen
         name="finance"
         options={{

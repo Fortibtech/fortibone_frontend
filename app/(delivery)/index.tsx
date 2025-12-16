@@ -14,7 +14,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Business, BusinessesService } from "@/api";
 import BusinessSelector from "@/components/Business/BusinessSelector";
@@ -36,11 +35,9 @@ const DeliveryHome: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { uri } = useUserAvatar();
-
   const [stats, setStats] = useState<DeliveryStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(true);
-
   // Load initial data
   const loadInitialData = async () => {
     try {

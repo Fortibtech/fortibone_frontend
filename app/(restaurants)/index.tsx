@@ -440,7 +440,11 @@ const RestaurantHome: React.FC = () => {
                       style={styles.orderCard}
                       onPress={() => {
                         setOrdersModalVisible(false);
-                        router.push(`/order-details/${item.id}`);
+
+                        router.push({
+                          pathname: "/pro-order-details/[id]",
+                          params: { id: item.id },
+                        });
                       }}
                     >
                       <View style={styles.orderCardHeader}>

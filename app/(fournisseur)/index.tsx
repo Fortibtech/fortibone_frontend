@@ -5,7 +5,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -37,9 +36,6 @@ import {
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { useBusinessStore } from "@/store/businessStore";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
 type PeriodUnit = "DAY" | "WEEK" | "MONTH" | "YEAR";
 
 interface PeriodSelection {
