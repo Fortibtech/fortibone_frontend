@@ -6,7 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
@@ -134,7 +134,15 @@ export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
           }
         />
       </View>
-
+      {/* Nouveau bouton livreurs*/}
+      <TouchableOpacity
+        style={styles.statsButton}
+        onPress={() => router.push("/(carriers)/")}
+      >
+        <Ionicons name="pricetag" size={20} color="#6366F1" />
+        <Text style={styles.statsButtonText}>Tarifs des livreurs</Text>
+        <Ionicons name="chevron-forward" size={20} color="#6366F1" />
+      </TouchableOpacity>
       <Text style={styles.sectionTitle}>Statistiques</Text>
       <SalesByCategoryChart data={data.salesByPeriod} />
       <ExpenseDistributionChart businessId={id} />
@@ -144,6 +152,30 @@ export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
 }
 
 const styles = StyleSheet.create({
+  // Nouveau bouton stats
+  statsButton: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    marginBottom: 100,
+    paddingVertical: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statsButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6366F1",
+  },
   errorText: {
     fontSize: 16,
     color: "#dc2626",

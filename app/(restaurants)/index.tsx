@@ -298,7 +298,7 @@ const RestaurantHome: React.FC = () => {
             Voir les {totalAlerts > 0 ? `${totalAlerts} ` : ""}commandes en
             cours
           </Text>
-          <Ionicons name="arrow-forward" size={20} color="#7C3AED" />
+          <Ionicons name="chevron-forward" size={20} color="#7C3AED" />
         </TouchableOpacity>
 
         {/* Nouveau bouton Stats graphiques */}
@@ -308,6 +308,15 @@ const RestaurantHome: React.FC = () => {
         >
           <Ionicons name="bar-chart" size={20} color="#6366F1" />
           <Text style={styles.statsButtonText}>Statistiques graphiques</Text>
+          <Ionicons name="chevron-forward" size={20} color="#6366F1" />
+        </TouchableOpacity>
+        {/* Nouveau bouton livreurs*/}
+        <TouchableOpacity
+          style={styles.statsButton}
+          onPress={() => router.push("/(carriers)/")}
+        >
+          <Ionicons name="pricetag" size={20} color="#6366F1" />
+          <Text style={styles.statsButtonText}>Tarifs des livreurs</Text>
           <Ionicons name="chevron-forward" size={20} color="#6366F1" />
         </TouchableOpacity>
       </View>

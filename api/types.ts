@@ -90,7 +90,7 @@ export interface CreateBusinessData {
 }
 export interface BusinessFilters {
   search?: string;
-  type?: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+  type?: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR" | "LIVREUR";
   page?: number;
   limit?: number;
   latitude?: number;

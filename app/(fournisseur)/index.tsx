@@ -1,6 +1,5 @@
 // app/(fournisseur)/index.tsx
 "use client";
-
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,7 +18,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import Svg, { G, Path, Text as SvgText } from "react-native-svg";
-
 import { Business, BusinessesService } from "@/api";
 import {
   AnalyticsOverview,
@@ -527,6 +525,17 @@ const HomePage: React.FC = () => {
             style={styles.avatarAnalytic}
           />
           <Text style={styles.analyticsButtonText}>Analytics Avancées</Text>
+          <Ionicons name="chevron-forward" size={24} color="#8B5CF6" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.analyticsButton}
+          onPress={() => router.push("/(carriers)/")}
+        >
+          <Image
+            source={require("@/assets/images/livreur.png")}
+            style={styles.avatarAnalytic}
+          />
+          <Text style={styles.analyticsButtonText}>Voir les tarifs des livreurs</Text>
           <Ionicons name="chevron-forward" size={24} color="#8B5CF6" />
         </TouchableOpacity>
       </View>
@@ -1191,6 +1200,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   analyticsButton: {
+    marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
