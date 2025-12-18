@@ -18,27 +18,29 @@ import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Business, BusinessesService } from "@/api";
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import { useBusinessStore } from "@/store/businessStore";
+import {
+  DashboardData,
+  getFilteredDashboard,
+  updateDeliveryStatus,
+} from "@/api/delivery/deliveryApi";
 
-export interface DeliveryStats {
-  pendingRequests: number;
-  activeDeliveries: number;
-  completedToday: number;
-  distanceTodayKm: number;
-  earningsToday: number;
-}
+import Toast from "react-native-toast-message";
 
 const DeliveryHome: React.FC = () => {
   const business = useBusinessStore((state) => state.business);
   const setBusiness = useBusinessStore((state) => state.setBusiness);
   const { version } = useBusinessStore();
+
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false); // Pour le loading du switch
   const { uri } = useUserAvatar();
-  const [stats, setStats] = useState<DeliveryStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-  // Load initial data
+
+  const hasRedirectedRef = useRef(false);
+
+  // === CHARGEMENT INITIAL DES ENTREPRISES ===
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -61,11 +63,9 @@ const DeliveryHome: React.FC = () => {
     loadInitialData();
   }, []);
 
-  const hasRedirectedRef = useRef(false);
-
+  // === REDIRECTION SELON LE TYPE D'ENTREPRISE ===
   useEffect(() => {
-    if (!business?.type) return;
-    if (hasRedirectedRef.current) return;
+    if (!business?.type || hasRedirectedRef.current) return;
 
     const routes: Record<string, string> = {
       COMMERCANT: "/(professionnel)",
@@ -75,61 +75,46 @@ const DeliveryHome: React.FC = () => {
     };
 
     const targetRoute = routes[business.type];
-    if (!targetRoute) return;
-
-    hasRedirectedRef.current = true;
-
-    // micro-timeout pour laisser Expo Router stabiliser le layout
-    setTimeout(() => {
-      router.replace(targetRoute);
-    }, 0);
+    if (targetRoute) {
+      hasRedirectedRef.current = true;
+      setTimeout(() => router.replace(targetRoute), 0);
+    }
   }, [business?.type]);
 
-  // Load stats on focus
+  // === CHARGEMENT DU DASHBOARD ===
+  const loadDashboard = async (businessId: string) => {
+    try {
+      const data = await getFilteredDashboard(businessId);
+      setDashboard(data);
+    } catch (error) {
+      console.error("Erreur dashboard :", error);
+      Alert.alert("Erreur", "Impossible de charger les statistiques.");
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       if (business?.id) {
-        loadStats(business.id);
+        loadDashboard(business.id);
       }
     }, [business?.id])
   );
 
-  // Fake stats (replace with API)
-  const loadStats = async (businessId: string) => {
-    if (statsLoading) return;
-    setStatsLoading(true);
-
-    try {
-      setTimeout(() => {
-        setStats({
-          pendingRequests: 3,
-          activeDeliveries: 1,
-          completedToday: 5,
-          distanceTodayKm: 42.5,
-          earningsToday: 12500,
-        });
-        setStatsLoading(false);
-      }, 300);
-    } catch (e) {
-      console.error(e);
-      setStatsLoading(false);
-    }
-  };
-
+  // === PULL TO REFRESH ===
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (business?.id) await loadStats(business.id);
+    if (business?.id) await loadDashboard(business.id);
     setRefreshing(false);
   };
 
+  // === CHANGEMENT D'ENTREPRISE ===
   const handleBusinessSelect = async (selected: Business) => {
     try {
       await BusinessesService.selectBusiness(selected);
       setBusiness(selected);
       Alert.alert("Succès", `"${selected.name}" sélectionné`);
 
-      // Redirection immédiate selon le type
       setTimeout(() => {
         const routes: Record<string, string> = {
           COMMERCANT: "/(professionnel)",
@@ -138,22 +123,50 @@ const DeliveryHome: React.FC = () => {
           LIVREUR: "/(delivery)",
         };
         const target = routes[selected.type];
-        if (target) {
-          router.replace(target);
-        }
+        if (target) router.replace(target);
       }, 100);
     } catch (error) {
       Alert.alert("Erreur", "Impossible de changer d'entreprise");
     }
   };
+
+  // === FORMATAGE DES NOMBRES ===
   const formatNumber = (num: number) =>
     new Intl.NumberFormat("fr-FR").format(num);
 
+  // === CALCUL DES ALERTES ===
   const totalAlerts =
-    (stats?.pendingRequests || 0) + (stats?.activeDeliveries || 0);
+    (dashboard?.pendingRequests || 0) + (dashboard?.activeDeliveries || 0);
 
-  const toggleOnline = () => {
-    setIsOnline((prev) => !prev);
+  // === TOGGLE STATUT EN LIGNE (avec appel API réel) ===
+  const toggleOnlineStatus = async () => {
+    if (!business?.id || !dashboard || updatingStatus) return;
+
+    const newStatus = !dashboard.isOnline;
+    setUpdatingStatus(true);
+
+    try {
+      await updateDeliveryStatus(business.id, { isOnline: newStatus });
+
+      // Mise à jour locale optimiste
+      setDashboard((prev) => (prev ? { ...prev, isOnline: newStatus } : null));
+
+      Toast.show({
+        type: "success",
+        text1: "Statut mis à jour",
+        text2: newStatus
+          ? "Vous êtes maintenant en ligne"
+          : "Vous êtes hors ligne",
+      });
+    } catch (error) {
+      console.error("❌ Erreur lors du changement de statut :", error);
+      Alert.alert(
+        "Erreur",
+        "Impossible de changer votre statut. Réessayez plus tard."
+      );
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
 
   // ============ HEADER ============
@@ -166,7 +179,7 @@ const DeliveryHome: React.FC = () => {
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
-        refreshKey={version} // ← ici on force le re-render quand version change
+        refreshKey={version}
       />
 
       <View style={styles.headerRight}>
@@ -203,11 +216,49 @@ const DeliveryHome: React.FC = () => {
     </View>
   );
 
-  // ============ OVERVIEW ============
-  const renderOverview = () => {
-    if (!business) return null;
+  // ============ STATUT EN LIGNE ============
+  const renderOnlineStatus = () => {
+    if (!dashboard) return null;
 
-    if (statsLoading && !stats) {
+    return (
+      <View style={styles.onlineSection}>
+        <View style={styles.onlineCard}>
+          <View style={styles.onlineLeft}>
+            <View
+              style={[
+                styles.onlineDot,
+                { backgroundColor: dashboard.isOnline ? "#10B981" : "#EF4444" },
+              ]}
+            />
+            <Text style={styles.onlineText}>
+              {dashboard.isOnline ? "En ligne" : "Hors ligne"}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.toggleSwitch, dashboard.isOnline && styles.toggleOn]}
+            onPress={toggleOnlineStatus}
+            disabled={updatingStatus}
+          >
+            {updatingStatus ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <View
+                style={[
+                  styles.toggleKnob,
+                  dashboard.isOnline && styles.toggleKnobOn,
+                ]}
+              />
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // ============ VUE D'ENSEMBLE ============
+  const renderOverview = () => {
+    if (!dashboard) {
       return (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
@@ -221,12 +272,6 @@ const DeliveryHome: React.FC = () => {
       );
     }
 
-    const pending = stats?.pendingRequests || 0;
-    const active = stats?.activeDeliveries || 0;
-    const done = stats?.completedToday || 0;
-    const distance = stats?.distanceTodayKm || 0;
-    const earnings = stats?.earningsToday || 0;
-
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
@@ -234,11 +279,11 @@ const DeliveryHome: React.FC = () => {
         <View style={styles.cardsRow}>
           <View style={[styles.card, styles.cardYellow]}>
             <View style={styles.cardIcon}>
-              <Ionicons name="bicycle-outline" size={28} color="#854d0e" />
+              <Ionicons name="bicycle" size={32} color="#854d0e" />
             </View>
             <View>
-              <Text style={styles.cardLabel}>Demandes en attente</Text>
-              <Text style={styles.cardValue}>{pending}</Text>
+              <Text style={styles.cardLabel}>Livraisons actives</Text>
+              <Text style={styles.cardValue}>{dashboard.activeDeliveries}</Text>
             </View>
           </View>
 
@@ -248,51 +293,23 @@ const DeliveryHome: React.FC = () => {
                 <Ionicons name="time-outline" size={24} color="#4c1d95" />
               </View>
               <View>
-                <Text style={styles.cardLabel}>En cours</Text>
-                <Text style={styles.cardValue}>{active}</Text>
+                <Text style={styles.cardLabel}>Demandes en attente</Text>
+                <Text style={styles.cardValue}>
+                  {dashboard.pendingRequests}
+                </Text>
               </View>
             </View>
 
             <View style={[styles.card, styles.cardGreen, styles.smallCard]}>
               <View style={styles.cardIcon}>
-                <Ionicons
-                  name="checkmark-done-outline"
-                  size={24}
-                  color="#166534"
-                />
+                <Ionicons name="checkmark-done" size={24} color="#166534" />
               </View>
               <View>
-                <Text style={styles.cardLabel}>
-                  Terminées (aujourd&apos;hui)
+                <Text style={styles.cardLabel}>Total livraisons</Text>
+                <Text style={styles.cardValue}>
+                  {formatNumber(dashboard.totalDeliveries)}
                 </Text>
-                <Text style={styles.cardValue}>{done}</Text>
               </View>
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.cardsRow, { marginTop: 12 }]}>
-          <View style={[styles.card, styles.cardBlue]}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="navigate-outline" size={24} color="#1d4ed8" />
-            </View>
-            <View>
-              <Text style={styles.cardLabel}>Distance parcourue</Text>
-              <Text style={styles.cardValue}>
-                {distance.toFixed(1)} <Text style={styles.unit}>km</Text>
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.card, styles.cardOrange]}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="wallet-outline" size={24} color="#c2410c" />
-            </View>
-            <View>
-              <Text style={styles.cardLabel}>Revenus estimés</Text>
-              <Text style={styles.cardValue}>
-                {formatNumber(earnings)} <Text style={styles.unit}>KMF</Text>
-              </Text>
             </View>
           </View>
         </View>
@@ -300,7 +317,7 @@ const DeliveryHome: React.FC = () => {
     );
   };
 
-  // ============ QUICK ACTIONS ============
+  // ============ ACCÈS RAPIDE ============
   const renderQuickActions = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>Accès rapide</Text>
@@ -311,12 +328,10 @@ const DeliveryHome: React.FC = () => {
           onPress={() => router.push("/(delivery)/tasks")}
         >
           <View style={[styles.quickIcon, { backgroundColor: "#E5F3FF" }]}>
-            <Ionicons name="list-outline" size={32} color="#2563eb" />
+            <Ionicons name="list" size={32} color="#2563eb" />
           </View>
-          <Text style={styles.quickTitle}>Courses</Text>
-          <Text style={styles.quickSubtitle}>
-            Voir et gérer toutes les livraisons
-          </Text>
+          <Text style={styles.quickTitle}>Mes courses</Text>
+          <Text style={styles.quickSubtitle}>Voir toutes les livraisons</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -324,26 +339,27 @@ const DeliveryHome: React.FC = () => {
           onPress={() => router.push("/(delivery)/earnings")}
         >
           <View style={[styles.quickIcon, { backgroundColor: "#ECFDF3" }]}>
-            <Ionicons name="cash-outline" size={32} color="#16a34a" />
+            <Ionicons name="cash" size={32} color="#16a34a" />
           </View>
           <Text style={styles.quickTitle}>Revenus</Text>
-          <Text style={styles.quickSubtitle}>
-            Suivre tes gains et paiements
-          </Text>
+          <Text style={styles.quickSubtitle}>Suivi des gains</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickCard}>
+        <TouchableOpacity
+          style={styles.quickCard}
+          onPress={() => router.push("/(delivery)/settings")}
+        >
           <View style={[styles.quickIcon, { backgroundColor: "#FFF7ED" }]}>
-            <Ionicons name="settings-outline" size={32} color="#f97316" />
+            <Ionicons name="settings" size={32} color="#f97316" />
           </View>
           <Text style={styles.quickTitle}>Paramètres</Text>
-          <Text style={styles.quickSubtitle}>Tarifs, zones et préférences</Text>
+          <Text style={styles.quickSubtitle}>Zones, tarifs, véhicule</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
-  // ============ MAIN ============
+  // ============ ÉCRAN DE CHARGEMENT INITIAL ============
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -358,9 +374,11 @@ const DeliveryHome: React.FC = () => {
     );
   }
 
+  // ============ RENDER FINAL ============
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+
       {renderHeader()}
 
       <ScrollView
@@ -375,15 +393,14 @@ const DeliveryHome: React.FC = () => {
       >
         {business ? (
           <>
+            {renderOnlineStatus()}
             {renderOverview()}
             {renderQuickActions()}
           </>
         ) : (
           <View style={styles.noBusiness}>
             <Ionicons name="bicycle-outline" size={90} color="#E0E0E0" />
-            <Text style={styles.noBusinessTitle}>
-              Aucun profil livreur sélectionné
-            </Text>
+            <Text style={styles.noBusinessTitle}>Aucun profil livreur</Text>
             <Text style={styles.noBusinessText}>
               Sélectionnez ou créez un profil de livraison pour commencer
             </Text>
@@ -398,7 +415,10 @@ export default DeliveryHome;
 
 // ====== STYLES ======
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA", paddingBottom: 60 },
+  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  fullLoading: { flex: 1, justifyContent: "center", alignItems: "center" },
+  fullLoadingText: { marginTop: 16, fontSize: 16, color: "#666" },
+
   header: {
     backgroundColor: "#FFFFFF",
     flexDirection: "row",
@@ -410,28 +430,6 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
   },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#f3f4f6",
-  },
-  placeholder: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E8E8E8",
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusText: { fontSize: 12, fontWeight: "600", color: "#111827" },
   iconButton: { padding: 8, position: "relative" },
   notificationBadge: {
     position: "absolute",
@@ -444,6 +442,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 4,
+    zIndex: 1,
   },
   badgeText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
   avatarContainer: {
@@ -453,13 +452,46 @@ const styles = StyleSheet.create({
     height: 40,
   },
   avatar: { width: "100%", height: "100%" },
-  avatarPlaceholder: {
+  placeholder: {
     backgroundColor: "#F0F0F0",
     justifyContent: "center",
     alignItems: "center",
   },
 
-  // Sections
+  // Statut en ligne
+  onlineSection: { paddingHorizontal: 16, paddingVertical: 8 },
+  onlineCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  onlineLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  onlineDot: { width: 12, height: 12, borderRadius: 6 },
+  onlineText: { fontSize: 17, fontWeight: "600", color: "#111" },
+
+  toggleSwitch: {
+    width: 56,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#CCC",
+    padding: 4,
+    justifyContent: "center",
+  },
+  toggleOn: { backgroundColor: "#10B981" },
+  toggleKnob: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#FFF",
+  },
+  toggleKnobOn: { alignSelf: "flex-end" },
+
+  // Sections générales
   section: { padding: 16 },
   sectionTitle: {
     fontSize: 18,
@@ -468,7 +500,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // Cards
   cardsRow: { flexDirection: "row", gap: 12 },
   rightColumn: { flex: 1, gap: 12 },
   card: {
@@ -482,19 +513,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   smallCard: { minHeight: 90 },
-
   cardYellow: { borderColor: "#FACC15", backgroundColor: "#FFFBEB" },
   cardPurple: { borderColor: "#8B5CF6", backgroundColor: "#F3E8FF" },
   cardGreen: { borderColor: "#10B981", backgroundColor: "#F0FDF4" },
-  cardBlue: { borderColor: "#60A5FA", backgroundColor: "#EFF6FF" },
-  cardOrange: { borderColor: "#FB923C", backgroundColor: "#FFF7ED" },
-
   cardIcon: { marginRight: 12 },
-  cardLabel: { fontSize: 10, color: "#666" },
-  cardValue: { fontSize: 20, fontWeight: "700", color: "#000" },
-  unit: { fontSize: 14, color: "#666", fontWeight: "500" },
+  cardLabel: { fontSize: 12, color: "#666", marginBottom: 4 },
+  cardValue: { fontSize: 24, fontWeight: "700", color: "#000" },
 
-  // Quick actions
   quickRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
   quickCard: {
     flex: 1,
@@ -525,7 +550,6 @@ const styles = StyleSheet.create({
   },
   quickSubtitle: { fontSize: 12, color: "#888", textAlign: "center" },
 
-  // No business
   noBusiness: {
     flex: 1,
     justifyContent: "center",
@@ -542,7 +566,4 @@ const styles = StyleSheet.create({
 
   loadingContainer: { alignItems: "center", paddingVertical: 40 },
   loadingText: { marginTop: 12, color: "#888" },
-
-  fullLoading: { flex: 1, justifyContent: "center", alignItems: "center" },
-  fullLoadingText: { marginTop: 16, fontSize: 16, color: "#666" },
 });

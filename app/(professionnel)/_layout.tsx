@@ -4,7 +4,6 @@ import {
   CreditCard,
   Cuboid,
   Home,
-  Send,
   ShoppingCart,
 } from "lucide-react-native";
 import { Platform } from "react-native";

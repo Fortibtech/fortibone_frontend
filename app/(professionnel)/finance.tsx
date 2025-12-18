@@ -19,7 +19,6 @@ const WalletScreen = () => {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const fetchWallet = useCallback(async () => {
     try {
       setLoading(true);
@@ -94,6 +93,30 @@ const WalletScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f9fa" },
+  // Nouveau bouton stats
+  statsButton: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statsButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6366F1",
+  },
+
   header: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,17 +1,11 @@
+import { deleteMenu, getMenus, updateMenu } from "@/api/menu/menuApi";
+import { createRestaurantTable, deleteRestaurantTable, TablePayload, updateRestaurantTable } from "@/api/menu/tableApi";
 import {
   MenuItem,
   Table,
-  TablePayload,
-  UpdateTablePayload,
   createMenu,
-  createRestaurantTable,
-  deleteMenu,
-  deleteRestaurantTable,
-  getMenus,
   getTables,
   getVariants,
-  updateMenu, // Ajout de l'import pour updateMenu
-  updateRestaurantTable,
 } from "@/api/restaurant";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -175,7 +169,7 @@ const AdminRestaurantDashboard = () => {
     }
     try {
       if (editingTable) {
-        const payload: UpdateTablePayload = {
+        const payload: TablePayload = {
           name: tableName,
           capacity: Number(tableCapacity),
           isAvailable: tableAvailable,
@@ -193,6 +187,7 @@ const AdminRestaurantDashboard = () => {
         const payload: TablePayload = {
           name: tableName,
           capacity: Number(tableCapacity),
+          isAvailable: false
         };
         const created = await createRestaurantTable(businessId!, payload);
         setTables((prev) => [...prev, created]);

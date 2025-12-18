@@ -2,6 +2,11 @@ import axiosInstance from "../axiosInstance";
 import { cacheManager } from "../cache";
 import { SelectedBusinessManager } from "../selectedBusinessManager";
 import { Business, BusinessFilters, CreateBusinessData } from "../types";
+export interface CarrierOption {
+  id: string;
+  name: string;
+  type: string;
+}
 
 // Types pour les nouveaux endpoints
 export interface AddMemberData {
@@ -113,6 +118,34 @@ export class BusinessesService {
         "❌ Erreur lors de la récupération de l'entreprise:",
         error
       );
+      throw error;
+    }
+  }
+
+  static async getCarriers(): Promise<CarrierOption[]> {
+    const cacheKey = "user_carriers_livreur_min";
+
+    const cached = await cacheManager.get<CarrierOption[]>(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await axiosInstance.get<Business[]>(
+        "/users/me/businesses",
+        {
+          params: { type: "LIVREUR" },
+        }
+      );
+
+      const carriers: CarrierOption[] = response.data.map((b) => ({
+        id: b.id,
+        name: b.name,
+        type: b.type,
+      }));
+
+      await cacheManager.set(cacheKey, carriers, this.CACHE_TTL);
+      return carriers;
+    } catch (error) {
+      console.error("❌ Erreur chargement livreurs:", error);
       throw error;
     }
   }

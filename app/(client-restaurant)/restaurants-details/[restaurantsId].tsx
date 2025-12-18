@@ -3,7 +3,7 @@ import BackButtonAdmin from "@/components/Admin/BackButton";
 import Menus from "@/components/Menu-Table/Menus";
 import Table from "@/components/Menu-Table/Table";
 import { useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import  { useState } from "react";
 import {
   StatusBar,
   Text,

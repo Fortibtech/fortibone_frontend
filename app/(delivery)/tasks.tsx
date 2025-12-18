@@ -15,6 +15,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 import { SelectedBusinessManager } from "@/api";
+import {
+  getIncomingDeliveryRequests,
+  IncomingDeliveryRequest,
+} from "@/api/delivery/deliveryApi";
 
 type DeliveryStatus =
   | "PENDING"
@@ -39,7 +43,7 @@ const DeliveryTasksScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
-
+  const [requests, setRequests] = useState<IncomingDeliveryRequest[]>([]);
   const [incoming, setIncoming] = useState<DeliveryRequest[]>([]);
   const [active, setActive] = useState<DeliveryRequest[]>([]);
   const [tab, setTab] = useState<"INCOMING" | "ACTIVE">("INCOMING");
@@ -109,10 +113,22 @@ const DeliveryTasksScreen: React.FC = () => {
       Alert.alert("Erreur", "Impossible de rafraîchir les demandes.");
     }
   };
+  // === CHARGEMENT DES DEMANDES EN ATTENTE ===
+  const loadRequests = async () => {
+    if (!businessId) return;
+
+    try {
+      const data = await getIncomingDeliveryRequests(businessId);
+      setRequests(data);
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Erreur", "Impossible de charger les demandes entrantes.");
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await loadRequests();
     setRefreshing(false);
   };
 

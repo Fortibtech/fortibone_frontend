@@ -36,7 +36,6 @@ export default function VentesScreen() {
     "commandes"
   );
 
-
   // États de recherche
   const [searchQueryCommandes, setSearchQueryCommandes] = useState("");
   const [searchQueryClients, setSearchQueryClients] = useState("");
@@ -190,8 +189,6 @@ export default function VentesScreen() {
       params: { id: order.id.toString() },
     });
   };
-;
-
   const handleOrderCustumerPress = (order: OrderResponse) => {
     router.push({
       pathname: "/custumer-order-details/[id]",
