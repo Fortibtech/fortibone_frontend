@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
+  Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -10,20 +13,29 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Modal,
   FlatList,
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
+import DateTimePicker from "@react-native-community/datetimepicker";
+
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Business, BusinessesService } from "@/api";
 import BusinessSelector from "@/components/Business/BusinessSelector";
-import { getStatRestaurant, RestaurantStats } from "@/api/menu/tableApi";
+import { AnalyticsOverview, getAnalyticsOverview } from "@/api/analytics";
 import { getOrdersByRestaurant, Order } from "@/api/menu/ordersApi";
 import { useBusinessStore } from "@/store/businessStore";
 import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
+
+type PeriodType = "day" | "week" | "month" | "year" | "all" | "custom";
+
+interface RestaurantSpecificStats {
+  pendingOrders?: number;
+  inPreparationOrders?: number;
+  readyOrders?: number;
+}
 
 const RestaurantHome: React.FC = () => {
   const business = useBusinessStore((state) => state.business);
@@ -33,15 +45,33 @@ const RestaurantHome: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { uri } = useUserAvatar();
-  const [stats, setStats] = useState<RestaurantStats | null>(null);
+
+  // Stats générales (CA, etc.)
+  const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
+  // Stats spécifiques restaurant
+  const [restaurantStats, setRestaurantStats] =
+    useState<RestaurantSpecificStats | null>(null);
+
   const [statsLoading, setStatsLoading] = useState(false);
   const [ordersModalVisible, setOrdersModalVisible] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [showStatsChart, setShowStatsChart] = useState(false);
 
-  // --------------------------- INIT ---------------------------
+  // Filtre de période
+  const [period, setPeriod] = useState<PeriodType>("all");
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
 
+  // Modale filtre
+  const [modalVisible, setModalVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(400)).current;
+
+  // Date pickers
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  // --------------------------- INIT ---------------------------
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -61,8 +91,8 @@ const RestaurantHome: React.FC = () => {
   useEffect(() => {
     loadInitialData();
   }, []);
-  const hasRedirectedRef = useRef(false);
 
+  const hasRedirectedRef = useRef(false);
   useEffect(() => {
     if (!business?.type) return;
     if (hasRedirectedRef.current) return;
@@ -78,39 +108,176 @@ const RestaurantHome: React.FC = () => {
     if (!targetRoute) return;
 
     hasRedirectedRef.current = true;
-
-    // micro-timeout pour laisser Expo Router stabiliser le layout
     setTimeout(() => {
       router.replace(targetRoute);
     }, 0);
   }, [business?.type]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (business?.id) loadStats(business.id);
-    }, [business?.id])
-  );
+  // --------------------------- FILTRE PÉRIODE ---------------------------
+  const formatDateFR = (date: Date): string => {
+    return date.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
+  const getPeriodLabel = useCallback(() => {
+    if (period === "custom" && customStartDate && customEndDate) {
+      return `du ${formatDateFR(customStartDate)} au ${formatDateFR(
+        customEndDate
+      )}`;
+    }
+    switch (period) {
+      case "day":
+        return "du jour";
+      case "week":
+        return "de la semaine";
+      case "month":
+        return "du mois";
+      case "year":
+        return "de l'année";
+      case "all":
+        return "Global";
+      default:
+        return "Global";
+    }
+  }, [period, customStartDate, customEndDate]);
+
+  const getPeriodDates = useCallback(() => {
+    if (period === "custom" && customStartDate && customEndDate) {
+      return {
+        startDate: customStartDate.toISOString().split("T")[0],
+        endDate: customEndDate.toISOString().split("T")[0],
+      };
+    }
+
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    let startDate: string | undefined;
+    let endDate: string | undefined = today;
+
+    if (period === "day") {
+      startDate = today;
+    } else if (period === "week") {
+      const startOfWeek = new Date(now);
+      const dayOfWeek = now.getDay();
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startDate = startOfWeek.toISOString().split("T")[0];
+    } else if (period === "month") {
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      startDate = `${year}-${month}-01`;
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+    } else if (period === "year") {
+      const year = now.getFullYear();
+      startDate = `${year}-01-01`;
+      endDate = `${year}-12-31`;
+    }
+
+    return { startDate, endDate };
+  }, [period, customStartDate, customEndDate]);
+
+  const openModal = () => {
+    setModalVisible(true);
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeModal = () => {
+    Animated.timing(slideAnim, {
+      toValue: 400,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setModalVisible(false));
+  };
+
+  const selectPeriod = (newPeriod: PeriodType) => {
+    if (newPeriod === "custom") {
+      setShowStartPicker(true);
+      closeModal();
+      return;
+    }
+    setPeriod(newPeriod);
+    setCustomStartDate(null);
+    setCustomEndDate(null);
+    closeModal();
+  };
+
+  // --------------------------- CHARGEMENT STATS ---------------------------
   const loadStats = async (businessId: string) => {
-    if (statsLoading) return;
+    if (statsLoading || !businessId) return;
+
     try {
       setStatsLoading(true);
-      const data = await getStatRestaurant(businessId);
-      setStats(data);
+
+      const { startDate, endDate } = getPeriodDates();
+
+      // 1. Stats générales (CA, etc.)
+      const overviewData = await getAnalyticsOverview(
+        businessId,
+        period === "all" ? undefined : startDate,
+        period === "all" ? undefined : endDate
+      );
+
+      // 2. Stats spécifiques restaurant (en attente, préparation, prêtes)
+      let restaurantSpecific: RestaurantSpecificStats = {
+        pendingOrders: 0,
+        inPreparationOrders: 0,
+        readyOrders: 0,
+      };
+
+      try {
+        const response = await fetch(
+          `https://dash.fortibtech.com/businesses/${businessId}/analytics/restaurant`,
+          {
+            headers: {
+              Authorization: "Bearer " + /* ton token si besoin */ "",
+            },
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          restaurantSpecific = {
+            pendingOrders: data.pendingOrders || 0,
+            inPreparationOrders: data.inPreparationOrders || 0,
+            readyOrders: data.readyOrders || 0,
+          };
+        }
+      } catch (e) {
+        console.warn("Endpoint /analytics/restaurant non disponible :", e);
+      }
+
+      setOverview(overviewData);
+      setRestaurantStats(restaurantSpecific);
     } catch (e) {
-      console.error("Erreur stats:", e);
+      console.error("Erreur chargement stats :", e);
     } finally {
       setStatsLoading(false);
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      if (business?.id) {
+        loadStats(business.id);
+      }
+    }, [business?.id, period, customStartDate, customEndDate])
+  );
+
   const handleBusinessSelect = async (selected: Business) => {
     try {
       await BusinessesService.selectBusiness(selected);
       setBusiness(selected);
+      setPeriod("all");
+      setCustomStartDate(null);
+      setCustomEndDate(null);
       Alert.alert("Succès", `"${selected.name}" sélectionné`);
 
-      // Redirection immédiate selon le type
       setTimeout(() => {
         const routes: Record<string, string> = {
           COMMERCANT: "/(professionnel)",
@@ -119,9 +286,7 @@ const RestaurantHome: React.FC = () => {
           LIVREUR: "/(delivery)",
         };
         const target = routes[selected.type];
-        if (target) {
-          router.replace(target);
-        }
+        if (target) router.replace(target);
       }, 100);
     } catch (error) {
       Alert.alert("Erreur", "Impossible de changer d'entreprise");
@@ -177,10 +342,9 @@ const RestaurantHome: React.FC = () => {
   const formatNumber = (n: number) => new Intl.NumberFormat("fr-FR").format(n);
 
   // --------------------------- UI ---------------------------
-  console.log("RRRRRRRRRRRRRRRRRRRR", uri);
-  const pendingOrders = stats?.pendingOrders || 0;
-  const inPreparation = stats?.inPreparationOrders || 0;
-  const readyOrders = stats?.readyOrders || 0;
+  const pendingOrders = restaurantStats?.pendingOrders || 0;
+  const inPreparation = restaurantStats?.inPreparationOrders || 0;
+  const readyOrders = restaurantStats?.readyOrders || 0;
   const totalAlerts = pendingOrders + inPreparation;
 
   const renderHeader = () => (
@@ -192,7 +356,7 @@ const RestaurantHome: React.FC = () => {
         loading={loading}
         onAddBusiness={() => router.push("/(create-business)/")}
         onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
-        refreshKey={version} // ← ici on force le re-render quand version change
+        refreshKey={version}
       />
 
       <View style={styles.headerRight}>
@@ -229,7 +393,12 @@ const RestaurantHome: React.FC = () => {
 
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
+          <TouchableOpacity onPress={openModal} style={styles.filterIcon}>
+            <Ionicons name="calendar-outline" size={24} color="#666" />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.cardsRow}>
           <View style={[styles.card, styles.cardYellow]}>
@@ -240,9 +409,9 @@ const RestaurantHome: React.FC = () => {
               />
             </View>
             <View>
-              <Text style={styles.cardLabel}>CA du mois</Text>
+              <Text style={styles.cardLabel}>CA {getPeriodLabel()}</Text>
               <Text style={styles.cardValue}>
-                {formatNumber(stats?.monthlyRevenue || 0)}{" "}
+                {formatNumber(overview?.totalSalesAmount || 0)}{" "}
                 <Text style={styles.unit}>KMF</Text>
               </Text>
             </View>
@@ -301,7 +470,6 @@ const RestaurantHome: React.FC = () => {
           <Ionicons name="chevron-forward" size={20} color="#7C3AED" />
         </TouchableOpacity>
 
-        {/* Nouveau bouton Stats graphiques */}
         <TouchableOpacity
           style={styles.statsButton}
           onPress={() => setShowStatsChart(true)}
@@ -310,7 +478,7 @@ const RestaurantHome: React.FC = () => {
           <Text style={styles.statsButtonText}>Statistiques graphiques</Text>
           <Ionicons name="chevron-forward" size={20} color="#6366F1" />
         </TouchableOpacity>
-        {/* Nouveau bouton livreurs*/}
+
         <TouchableOpacity
           style={styles.statsButton}
           onPress={() => router.push("/(carriers)/")}
@@ -360,8 +528,6 @@ const RestaurantHome: React.FC = () => {
     </View>
   );
 
-  // --------------------------- LOADING ---------------------------
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -375,8 +541,6 @@ const RestaurantHome: React.FC = () => {
       </SafeAreaView>
     );
   }
-
-  // --------------------------- MAIN RETURN ---------------------------
 
   return (
     <SafeAreaView style={styles.container}>
@@ -411,8 +575,7 @@ const RestaurantHome: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* ----------------------- MODAL COMMANDES ----------------------- */}
-
+      {/* MODAL COMMANDES */}
       <Modal visible={ordersModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <SafeAreaView style={styles.modalContainer}>
@@ -420,9 +583,7 @@ const RestaurantHome: React.FC = () => {
               <TouchableOpacity onPress={() => setOrdersModalVisible(false)}>
                 <Ionicons name="close" size={28} color="#000" />
               </TouchableOpacity>
-
               <Text style={styles.modalTitle}>Commandes en cours</Text>
-
               <View style={{ width: 28 }} />
             </View>
 
@@ -443,13 +604,11 @@ const RestaurantHome: React.FC = () => {
                 ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
                 renderItem={({ item }) => {
                   const status = getStatusStyle(item.status);
-
                   return (
                     <Pressable
                       style={styles.orderCard}
                       onPress={() => {
                         setOrdersModalVisible(false);
-
                         router.push({
                           pathname: "/pro-order-details/[id]",
                           params: { id: item.id },
@@ -482,7 +641,7 @@ const RestaurantHome: React.FC = () => {
         </View>
       </Modal>
 
-      {/* ----------------------- MODAL STATS GRAPHIQUES ----------------------- */}
+      {/* MODAL STATS GRAPHIQUES */}
       <Modal visible={showStatsChart} animationType="slide" transparent={false}>
         <SafeAreaView style={{ flex: 1 }}>
           <TouchableOpacity
@@ -494,11 +653,101 @@ const RestaurantHome: React.FC = () => {
           {business && <RevenueDistributionChart businessId={business.id} />}
         </SafeAreaView>
       </Modal>
+
+      {/* MODALE FILTRE PÉRIODE - CORRIGÉE POUR ÊTRE COLLÉE AU BAS */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalOverlayFull}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            onPress={closeModal}
+            activeOpacity={1}
+          />
+          <Animated.View
+            style={[
+              styles.modalContentBottom,
+              { transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Période des statistiques</Text>
+            {[
+              { label: "Aujourd'hui", value: "day" },
+              { label: "Cette semaine", value: "week" },
+              { label: "Ce mois", value: "month" },
+              { label: "Cette année", value: "year" },
+              { label: "Tout le temps", value: "all" },
+              { label: "Période personnalisée", value: "custom" },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.value}
+                style={[
+                  styles.periodItem,
+                  period === item.value &&
+                    item.value !== "custom" &&
+                    styles.periodItemSelected,
+                ]}
+                onPress={() => selectPeriod(item.value as PeriodType)}
+              >
+                <Text
+                  style={[
+                    styles.periodText,
+                    period === item.value &&
+                      item.value !== "custom" &&
+                      styles.periodTextSelected,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+                {period === item.value && item.value !== "custom" && (
+                  <Ionicons name="checkmark" size={22} color="#7C3AED" />
+                )}
+                {item.value === "custom" && (
+                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* DATE PICKERS */}
+      {showStartPicker && (
+        <DateTimePicker
+          value={customStartDate || new Date()}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, date) => {
+            setShowStartPicker(false);
+            if (date) {
+              setCustomStartDate(date);
+              setShowEndPicker(true);
+            }
+          }}
+        />
+      )}
+      {showEndPicker && (
+        <DateTimePicker
+          value={customEndDate || new Date()}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          minimumDate={customStartDate || undefined}
+          onChange={(event, date) => {
+            setShowEndPicker(false);
+            if (date) {
+              setCustomEndDate(date);
+              setPeriod("custom");
+            }
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
-
-export default RestaurantHome;
 
 const styles = StyleSheet.create({
   container: {
@@ -506,8 +755,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFB",
     paddingBottom: 60,
   },
-
-  // Header modernisé
   header: {
     backgroundColor: "#FFFFFF",
     flexDirection: "row",
@@ -538,7 +785,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
-
   avatarContainer: {
     borderRadius: 30,
     overflow: "hidden",
@@ -560,15 +806,19 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-
   section: { padding: 20 },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#111827",
-    marginBottom: 20,
   },
-
+  filterIcon: { padding: 8 },
   cardsRow: { flexDirection: "row", gap: 16 },
   rightColumn: { flex: 1, gap: 16 },
   card: {
@@ -611,7 +861,6 @@ const styles = StyleSheet.create({
   cardLabel: { fontSize: 9, color: "#6B7280", fontWeight: "500" },
   cardValue: { fontSize: 24, fontWeight: "800", color: "#111827" },
   unit: { fontSize: 16, color: "#6B7280", fontWeight: "600" },
-
   ordersButton: {
     marginTop: 20,
     flexDirection: "row",
@@ -625,8 +874,6 @@ const styles = StyleSheet.create({
     borderColor: "#EDE9FE",
   },
   ordersButtonText: { fontSize: 16, fontWeight: "600", color: "#7C3AED" },
-
-  // Nouveau bouton stats
   statsButton: {
     marginTop: 16,
     flexDirection: "row",
@@ -649,7 +896,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#6366F1",
   },
-
   quickRow: { flexDirection: "row", gap: 16, marginBottom: 16 },
   quickCard: {
     flex: 1,
@@ -677,7 +923,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#111827",
   },
-
   noBusiness: {
     flex: 1,
     justifyContent: "center",
@@ -692,12 +937,14 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   noBusinessText: { fontSize: 15, color: "#6B7280", textAlign: "center" },
-
   fullLoading: { flex: 1, justifyContent: "center", alignItems: "center" },
   fullLoadingText: { marginTop: 16, fontSize: 16, color: "#6B7280" },
-
-  // Modal styles
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  modalOverlayFull: { flex: 1, justifyContent: "flex-end" },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
   modalContainer: { flex: 1, backgroundColor: "#fff" },
   modalHeader: {
     flexDirection: "row",
@@ -716,7 +963,6 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyTitle: { marginTop: 16, fontSize: 18, color: "#6B7280" },
-
   orderCard: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -739,8 +985,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   statusText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.5 },
-
-  // Close button pour le chart modal
   closeChart: {
     position: "absolute",
     top: 60,
@@ -758,4 +1002,47 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  // MODALE FILTRE CORRIGÉE
+  modalContentBottom: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 34, // Safe area bas d'écran
+    width: "100%",
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "#DDD",
+    borderRadius: 3,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  periodItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#F8F9FA",
+    marginBottom: 10,
+  },
+  periodItemSelected: {
+    backgroundColor: "#F3E8FF",
+    borderWidth: 1,
+    borderColor: "#7C3AED",
+  },
+  periodText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  periodTextSelected: {
+    fontWeight: "600",
+    color: "#7C3AED",
+  },
 });
+
+export default RestaurantHome;

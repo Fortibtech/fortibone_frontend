@@ -1,23 +1,26 @@
-// app/(fournisseur)/index.tsx
 "use client";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Image,
+  Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StatusBar,
   Text,
   TouchableOpacity,
   View,
-  Image,
   StyleSheet,
-  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import Svg, { G, Path, Text as SvgText } from "react-native-svg";
+import DateTimePicker from "@react-native-community/datetimepicker";
+
 import { Business, BusinessesService } from "@/api";
 import {
   AnalyticsOverview,
@@ -34,47 +37,19 @@ import {
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { useBusinessStore } from "@/store/businessStore";
-type PeriodUnit = "DAY" | "WEEK" | "MONTH" | "YEAR";
 
-interface PeriodSelection {
-  unit: PeriodUnit;
-  year: number;
-  month?: number;
-  label: string;
-}
+type PeriodType = "day" | "week" | "month" | "year" | "all" | "custom";
 
 const HomePage: React.FC = () => {
   const business = useBusinessStore((state) => state.business);
   const setBusiness = useBusinessStore((state) => state.setBusiness);
-  const redirectByBusinessType = (type: Business["type"]) => {
-    const routes: Record<Business["type"], string> = {
-      COMMERCANT: "/(professionnel)",
-      RESTAURATEUR: "/(restaurants)",
-      FOURNISSEUR: "/(fournisseur)",
-      LIVREUR: "/(delivery)",
-    };
-
-    const target = routes[type];
-
-    // Sécurité : on ne reste JAMAIS sur fournisseur si ce n'est pas FOURNISSEUR
-    if (target && type !== "FOURNISSEUR") {
-      router.replace(target);
-    }
-  };
   const { version } = useBusinessStore();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { uri } = useUserAvatar();
 
-  const [topProductsPeriod, setTopProductsPeriod] = useState<PeriodSelection>({
-    unit: "MONTH",
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
-    label: getMonthName(new Date().getMonth()),
-  });
-  const [showPeriodModal, setShowPeriodModal] = useState(false);
-
+  // États analytics
   const [monthlyOverview, setMonthlyOverview] =
     useState<AnalyticsOverview | null>(null);
   const [inventoryData, setInventoryData] = useState<InventoryResponse | null>(
@@ -90,6 +65,28 @@ const HomePage: React.FC = () => {
   const [recentOrders, setRecentOrders] = useState<OrdersResponse | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [topProductsLoading, setTopProductsLoading] = useState(false);
+
+  // Filtre de période (comme dans la page commerçant)
+  const [period, setPeriod] = useState<PeriodType>("all");
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
+
+  // Modale filtre
+  const [modalVisible, setModalVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(300)).current;
+
+  // Date pickers
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  // Système top products (conservé)
+  const [topProductsPeriod, setTopProductsPeriod] = useState({
+    unit: "MONTH" as const,
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    label: getMonthName(new Date().getMonth()),
+  });
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
 
   // ===================== UTILITAIRES =====================
   function getMonthName(monthIndex: number): string {
@@ -110,6 +107,36 @@ const HomePage: React.FC = () => {
     return months[monthIndex];
   }
 
+  const formatDateFR = (date: Date): string => {
+    return date.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const getPeriodLabel = useCallback(() => {
+    if (period === "custom" && customStartDate && customEndDate) {
+      return `du ${formatDateFR(customStartDate)} au ${formatDateFR(
+        customEndDate
+      )}`;
+    }
+    switch (period) {
+      case "day":
+        return "du jour";
+      case "week":
+        return "de la semaine";
+      case "month":
+        return "du mois";
+      case "year":
+        return "de l'année";
+      case "all":
+        return "Global";
+      default:
+        return "Global";
+    }
+  }, [period, customStartDate, customEndDate]);
+
   const getCurrentMonthDates = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -129,8 +156,45 @@ const HomePage: React.FC = () => {
     return { startDate, endDate };
   };
 
-  const getPeriodDates = (period: PeriodSelection) => {
-    const { unit, year, month } = period;
+  const getPeriodDatesForOverview = useCallback(() => {
+    if (period === "custom" && customStartDate && customEndDate) {
+      return {
+        startDate: customStartDate.toISOString().split("T")[0],
+        endDate: customEndDate.toISOString().split("T")[0],
+      };
+    }
+
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    let startDate: string | undefined;
+    let endDate: string | undefined = today;
+
+    if (period === "day") {
+      startDate = today;
+    } else if (period === "week") {
+      const startOfWeek = new Date(now);
+      const dayOfWeek = now.getDay();
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startDate = startOfWeek.toISOString().split("T")[0];
+    } else if (period === "month") {
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      startDate = `${year}-${month}-01`;
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+    } else if (period === "year") {
+      const year = now.getFullYear();
+      startDate = `${year}-01-01`;
+      endDate = `${year}-12-31`;
+    }
+
+    return { startDate, endDate };
+  }, [period, customStartDate, customEndDate]);
+
+  const getPeriodDatesForTopProducts = (
+    periodSelection: typeof topProductsPeriod
+  ) => {
+    const { unit, year, month } = periodSelection;
     if (unit === "YEAR")
       return { startDate: `${year}-01-01`, endDate: `${year}-12-31` };
     if (unit === "MONTH" && month) {
@@ -145,6 +209,36 @@ const HomePage: React.FC = () => {
     return getCurrentMonthDates();
   };
 
+  // ===================== ANIMATIONS MODALE =====================
+  const openModal = () => {
+    setModalVisible(true);
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeModal = () => {
+    Animated.timing(slideAnim, {
+      toValue: 300,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setModalVisible(false));
+  };
+
+  const selectPeriod = (newPeriod: PeriodType) => {
+    if (newPeriod === "custom") {
+      setShowStartPicker(true);
+      closeModal();
+      return;
+    }
+    setPeriod(newPeriod);
+    setCustomStartDate(null);
+    setCustomEndDate(null);
+    closeModal();
+  };
+
   // ===================== CHARGEMENT =====================
   const loadInitialData = async () => {
     try {
@@ -152,7 +246,6 @@ const HomePage: React.FC = () => {
       const all = await BusinessesService.getBusinesses();
       setBusinesses(all);
 
-      // Cas 1 : une entreprise est déjà sélectionnée en store
       if (business) {
         if (business.type !== "FOURNISSEUR") {
           redirectByBusinessType(business.type);
@@ -161,7 +254,6 @@ const HomePage: React.FC = () => {
         return;
       }
 
-      // Cas 2 : aucune entreprise sélectionnée
       if (all.length > 0) {
         const first = all.find((b) => b.type === "FOURNISSEUR") || all[0];
         await BusinessesService.selectBusiness(first);
@@ -177,47 +269,59 @@ const HomePage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const redirectByBusinessType = (type: Business["type"]) => {
+    const routes: Record<Business["type"], string> = {
+      COMMERCANT: "/(professionnel)",
+      RESTAURATEUR: "/(restaurants)",
+      FOURNISSEUR: "/(fournisseur)",
+      LIVREUR: "/(delivery)",
+    };
+    const target = routes[type];
+    if (target && type !== "FOURNISSEUR") {
+      router.replace(target);
+    }
+  };
+
   useEffect(() => {
     loadInitialData();
   }, []);
-  useEffect(() => {
-    if (!business) return;
 
-    if (business.type !== "FOURNISSEUR") {
-      redirectByBusinessType(business.type);
+  useEffect(() => {
+    if (business?.type !== "FOURNISSEUR") {
+      redirectByBusinessType(business?.type!);
     }
   }, [business?.id]);
-  useFocusEffect(
-    useCallback(() => {
-      if (business?.id) {
-        loadAnalytics();
-        loadTopProducts();
-      }
-    }, [business?.id, topProductsPeriod])
-  );
 
   const loadAnalytics = async () => {
     if (!business?.id) return;
     setAnalyticsLoading(true);
     try {
-      const { startDate: monthStart, endDate: monthEnd } =
-        getCurrentMonthDates();
+      const { startDate, endDate } = getPeriodDatesForOverview();
+
+      const overviewPromise =
+        period === "all"
+          ? getAnalyticsOverview(business.id)
+          : getAnalyticsOverview(business.id, startDate, endDate);
+
       const { startDate: days30Start, endDate: days30End } =
         getLast30DaysDates();
 
-      const [monthly, inventory, sales30, pending, orders] = await Promise.all([
-        getAnalyticsOverview(business.id, monthStart, monthEnd),
-        getInventory(business.id),
-        getSales(business.id, {
-          startDate: days30Start,
-          endDate: days30End,
-          unit: "DAY",
-        }),
-        getPendingOrdersCount(business.id, "SALE"),
-        getOrders(business.id, { limit: 4, page: 1 }),
-      ]);
+      const [overview, inventory, sales30, pending, orders] = await Promise.all(
+        [
+          overviewPromise,
+          getInventory(business.id),
+          getSales(business.id, {
+            startDate: days30Start,
+            endDate: days30End,
+            unit: "DAY",
+          }),
+          getPendingOrdersCount(business.id, "SALE"),
+          getOrders(business.id, { limit: 4, page: 1 }),
+        ]
+      );
 
-      setMonthlyOverview(monthly);
+      setMonthlyOverview(overview);
       setInventoryData(inventory);
       setSalesData30Days(sales30);
       setPendingOrdersCount(pending);
@@ -233,7 +337,8 @@ const HomePage: React.FC = () => {
     if (!business?.id) return;
     setTopProductsLoading(true);
     try {
-      const { startDate, endDate } = getPeriodDates(topProductsPeriod);
+      const { startDate, endDate } =
+        getPeriodDatesForTopProducts(topProductsPeriod);
       const data = await getSales(business.id, {
         startDate,
         endDate,
@@ -246,6 +351,21 @@ const HomePage: React.FC = () => {
       setTopProductsLoading(false);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (business?.id) {
+        loadAnalytics();
+        loadTopProducts();
+      }
+    }, [business?.id, period, topProductsPeriod])
+  );
+
+  useEffect(() => {
+    if (business?.id) {
+      loadAnalytics();
+    }
+  }, [period, customStartDate, customEndDate]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -260,13 +380,16 @@ const HomePage: React.FC = () => {
     try {
       await BusinessesService.selectBusiness(selected);
       setBusiness(selected);
+      setPeriod("all");
+      setCustomStartDate(null);
+      setCustomEndDate(null);
       Alert.alert("Succès", `"${selected.name}" sélectionné`);
-
       redirectByBusinessType(selected.type);
     } catch (error) {
       Alert.alert("Erreur", "Impossible de changer d'entreprise");
     }
   };
+
   const formatNumber = (num: number = 0) =>
     new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(num);
 
@@ -308,7 +431,7 @@ const HomePage: React.FC = () => {
     });
   };
 
-  const handleUnitChange = (unit: PeriodUnit) => {
+  const handleUnitChange = (unit: "DAY" | "WEEK" | "MONTH" | "YEAR") => {
     const now = new Date();
     setTopProductsPeriod({
       unit,
@@ -324,7 +447,7 @@ const HomePage: React.FC = () => {
     setShowPeriodModal(false);
   };
 
-  // ===================== TOUS LES RENDERS =====================
+  // ===================== RENDERS =====================
   const renderHeader = () => (
     <View style={styles.header}>
       <BusinessSelector
@@ -488,8 +611,11 @@ const HomePage: React.FC = () => {
 
     return (
       <View style={styles.section}>
-        <View style={styles.sectionViewTitle}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Résumé Rapide</Text>
+          <TouchableOpacity onPress={openModal} style={styles.filterIcon}>
+            <Ionicons name="calendar-outline" size={24} color="#666" />
+          </TouchableOpacity>
         </View>
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
@@ -498,7 +624,7 @@ const HomePage: React.FC = () => {
                 ? formatCurrency(monthlyOverview.totalSalesAmount)
                 : "--"}
             </Text>
-            <Text style={styles.summaryLabel}>CA du mois</Text>
+            <Text style={styles.summaryLabel}>CA {getPeriodLabel()}</Text>
           </View>
           <View style={styles.summaryCardCA}>
             <Text style={[styles.summaryValue, { color: "#8B5CF6" }]}>
@@ -535,7 +661,9 @@ const HomePage: React.FC = () => {
             source={require("@/assets/images/livreur.png")}
             style={styles.avatarAnalytic}
           />
-          <Text style={styles.analyticsButtonText}>Voir les tarifs des livreurs</Text>
+          <Text style={styles.analyticsButtonText}>
+            Voir les tarifs des livreurs
+          </Text>
           <Ionicons name="chevron-forward" size={24} color="#8B5CF6" />
         </TouchableOpacity>
       </View>
@@ -996,11 +1124,101 @@ const HomePage: React.FC = () => {
         )}
       </ScrollView>
       {renderPeriodModal()}
+
+      {/* Modale filtre période (nouvelle) */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            onPress={closeModal}
+            activeOpacity={1}
+          />
+          <Animated.View
+            style={[
+              styles.modalContent,
+              { transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Période des statistiques</Text>
+            {[
+              { label: "Aujourd'hui", value: "day" },
+              { label: "Cette semaine", value: "week" },
+              { label: "Ce mois", value: "month" },
+              { label: "Cette année", value: "year" },
+              { label: "Tout le temps", value: "all" },
+              { label: "Période personnalisée", value: "custom" },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.value}
+                style={[
+                  styles.periodItem,
+                  period === item.value &&
+                    item.value !== "custom" &&
+                    styles.periodItemSelected,
+                ]}
+                onPress={() => selectPeriod(item.value as PeriodType)}
+              >
+                <Text
+                  style={[
+                    styles.periodText,
+                    period === item.value &&
+                      item.value !== "custom" &&
+                      styles.periodTextSelected,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+                {period === item.value && item.value !== "custom" && (
+                  <Ionicons name="checkmark" size={22} color="#10B981" />
+                )}
+                {item.value === "custom" && (
+                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Date Pickers */}
+      {showStartPicker && (
+        <DateTimePicker
+          value={customStartDate || new Date()}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, date) => {
+            setShowStartPicker(false);
+            if (date) {
+              setCustomStartDate(date);
+              setShowEndPicker(true);
+            }
+          }}
+        />
+      )}
+      {showEndPicker && (
+        <DateTimePicker
+          value={customEndDate || new Date()}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          minimumDate={customStartDate || undefined}
+          onChange={(event, date) => {
+            setShowEndPicker(false);
+            if (date) {
+              setCustomEndDate(date);
+              setPeriod("custom");
+            }
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
-
-export default HomePage;
 
 const styles = StyleSheet.create({
   pd: {
@@ -1106,12 +1324,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginLeft: 4,
   },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-  },
   section: {
     marginBottom: 24,
   },
@@ -1131,6 +1343,15 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 16,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  filterIcon: {
+    padding: 8,
+  },
   alertCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -1144,10 +1365,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     gap: 8,
-  },
-  alertText: {
-    fontSize: 13,
-    flex: 1,
   },
   summaryRow: {
     flexDirection: "row",
@@ -1315,11 +1532,25 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
   modalContent: {
     backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "#DDD",
+    borderRadius: 3,
+    alignSelf: "center",
+    marginBottom: 20,
   },
   modalTitle: {
     fontSize: 18,
@@ -1476,4 +1707,29 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
+  periodItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#F8F9FA",
+    marginBottom: 10,
+  },
+  periodItemSelected: {
+    backgroundColor: "#E8F5E9",
+    borderWidth: 1,
+    borderColor: "#10B981",
+  },
+  periodText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  periodTextSelected: {
+    fontWeight: "600",
+    color: "#10B981",
+  },
 });
+
+export default HomePage;

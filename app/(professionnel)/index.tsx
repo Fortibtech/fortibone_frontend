@@ -8,7 +8,9 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -16,10 +18,12 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { Business, BusinessesService } from "@/api";
 import {
@@ -31,7 +35,6 @@ import {
 import { useUserStore } from "@/store/userStore";
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import AnalyticsCard from "@/components/accueil/AnalyticsCard";
-import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { useBusinessStore } from "@/store/businessStore";
 
 const HomePage: React.FC = () => {
@@ -44,10 +47,7 @@ const HomePage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Analytics states
-  const [monthlyOverview, setMonthlyOverview] =
-    useState<AnalyticsOverview | null>(null);
-  const [overallOverview, setOverallOverview] =
-    useState<AnalyticsOverview | null>(null);
+  const [overallOverview, setOverallOverview] = useState<AnalyticsOverview | null>(null);
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
   const [processingPurchases, setProcessingPurchases] = useState<{
     count: number;
@@ -55,7 +55,21 @@ const HomePage: React.FC = () => {
   }>({ count: 0, totalItems: 0 });
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
-  // Ref pour éviter les race conditions
+  // Gestion de la période
+  type PeriodType = 'day' | 'week' | 'month' | 'year' | 'all' | 'custom';
+  const [period, setPeriod] = useState<PeriodType>('all');
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
+
+  // Modale principale (filtre)
+  const [modalVisible, setModalVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(300)).current;
+
+  // Date picker
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  // Refs
   const analyticsLoadingRef = useRef(false);
   const mountedRef = useRef(true);
 
@@ -66,16 +80,90 @@ const HomePage: React.FC = () => {
     };
   }, []);
 
-  // Mémoisation des dates du mois
-  const currentMonthDates = useMemo(() => {
+  const openModal = () => {
+    setModalVisible(true);
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeModal = () => {
+    Animated.timing(slideAnim, {
+      toValue: 300,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setModalVisible(false);
+    });
+  };
+
+  const selectPeriod = (newPeriod: PeriodType) => {
+    if (newPeriod === 'custom') {
+      setShowStartPicker(true);
+      closeModal();
+      return;
+    }
+    setPeriod(newPeriod);
+    setCustomStartDate(null);
+    setCustomEndDate(null);
+    closeModal();
+  };
+
+  const formatDateFR = (date: Date): string => {
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const getPeriodLabel = useCallback(() => {
+    if (period === 'custom' && customStartDate && customEndDate) {
+      return `du ${formatDateFR(customStartDate)} au ${formatDateFR(customEndDate)}`;
+    }
+    switch (period) {
+      case 'day': return "du jour";
+      case 'week': return "de la semaine";
+      case 'month': return "du mois";
+      case 'year': return "de l'année";
+      case 'all': return "Global";
+      default: return "Global";
+    }
+  }, [period, customStartDate, customEndDate]);
+
+  // Calcul des dates selon la période
+  const getPeriodDates = useCallback(() => {
+    if (period === 'custom' && customStartDate && customEndDate) {
+      return {
+        startDate: customStartDate.toISOString().split('T')[0],
+        endDate: customEndDate.toISOString().split('T')[0],
+      };
+    }
+
     const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const startDate = `${year}-${month}-01`;
-    const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-    const endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+    const today = now.toISOString().split('T')[0];
+    let startDate: string | undefined;
+    let endDate: string | undefined = today;
+
+    if (period === 'day') {
+      startDate = today;
+    } else if (period === 'week') {
+      const startOfWeek = new Date(now);
+      const dayOfWeek = now.getDay();
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startDate = startOfWeek.toISOString().split('T')[0];
+    } else if (period === 'month') {
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      startDate = `${year}-${month}-01`;
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+    } else if (period === 'year') {
+      const year = now.getFullYear();
+      startDate = `${year}-01-01`;
+      endDate = `${year}-12-31`;
+    }
+
     return { startDate, endDate };
-  }, []);
+  }, [period, customStartDate, customEndDate]);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -86,7 +174,6 @@ const HomePage: React.FC = () => {
 
       setBusinesses(all);
 
-      // Si aucun business dans le store, on en prend un par défaut
       if (!business && all.length > 0) {
         const first = all[0];
         setBusiness(first);
@@ -111,19 +198,22 @@ const HomePage: React.FC = () => {
       analyticsLoadingRef.current = true;
       setAnalyticsLoading(true);
 
-      const { startDate, endDate } = currentMonthDates;
+      const { startDate, endDate } = getPeriodDates();
 
-      const [monthly, overall, pendingCount, purchases] = await Promise.all([
-        getAnalyticsOverview(business.id, startDate, endDate),
-        getAnalyticsOverview(business.id),
+      const overviewPromise =
+        period === 'all'
+          ? getAnalyticsOverview(business.id)
+          : getAnalyticsOverview(business.id, startDate, endDate);
+
+      const [overview, pendingCount, purchases] = await Promise.all([
+        overviewPromise,
         getPendingOrdersCount(business.id, "SALE"),
         getProcessingPurchasesCount(business.id),
       ]);
 
       if (!mountedRef.current) return;
 
-      setMonthlyOverview(monthly);
-      setOverallOverview(overall);
+      setOverallOverview(overview);
       setPendingOrdersCount(pendingCount);
       setProcessingPurchases(purchases);
     } catch (error) {
@@ -137,18 +227,15 @@ const HomePage: React.FC = () => {
         setAnalyticsLoading(false);
       }
     }
-  }, [business?.id, currentMonthDates]);
+  }, [business?.id, period, getPeriodDates]);
 
-  // Chargement initial
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
 
   const hasRedirectedRef = useRef(false);
-
   useEffect(() => {
-    if (!business?.type) return;
-    if (hasRedirectedRef.current) return;
+    if (!business?.type || hasRedirectedRef.current) return;
 
     const routes: Record<string, string> = {
       COMMERCANT: "/(professionnel)",
@@ -158,17 +245,14 @@ const HomePage: React.FC = () => {
     };
 
     const targetRoute = routes[business.type];
-    if (!targetRoute) return;
-
-    hasRedirectedRef.current = true;
-
-    // micro-timeout pour laisser Expo Router stabiliser le layout
-    setTimeout(() => {
-      router.replace(targetRoute);
-    }, 0);
+    if (targetRoute) {
+      hasRedirectedRef.current = true;
+      setTimeout(() => {
+        router.replace(targetRoute);
+      }, 0);
+    }
   }, [business?.type]);
 
-  // Recharge analytics quand business change ou quand on revient dans l'onglet
   useFocusEffect(
     useCallback(() => {
       if (business?.id) {
@@ -176,6 +260,12 @@ const HomePage: React.FC = () => {
       }
     }, [business?.id, loadAnalytics])
   );
+
+  useEffect(() => {
+    if (business?.id) {
+      loadAnalytics();
+    }
+  }, [period, customStartDate, customEndDate]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -191,9 +281,11 @@ const HomePage: React.FC = () => {
       try {
         await BusinessesService.selectBusiness(selected);
         setBusiness(selected);
+        setPeriod('all');
+        setCustomStartDate(null);
+        setCustomEndDate(null);
         Alert.alert("Succès", `"${selected.name}" sélectionné`);
 
-        // Redirection immédiate selon le type
         setTimeout(() => {
           const routes: Record<string, string> = {
             COMMERCANT: "/(professionnel)",
@@ -202,9 +294,7 @@ const HomePage: React.FC = () => {
             LIVREUR: "/(delivery)",
           };
           const target = routes[selected.type];
-          if (target) {
-            router.replace(target);
-          }
+          if (target) router.replace(target);
         }, 100);
       } catch (error) {
         console.error("Erreur changement entreprise:", error);
@@ -215,13 +305,11 @@ const HomePage: React.FC = () => {
   );
 
   const formatNumber = useCallback((num: number = 0): string => {
-    return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(
-      num
-    );
+    return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(num);
   }, []);
 
   const totalAlerts = useMemo(() => pendingOrdersCount, [pendingOrdersCount]);
-  console.log("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", userProfile);
+
   const renderHeader = useCallback(
     () => (
       <View style={styles.header}>
@@ -254,20 +342,17 @@ const HomePage: React.FC = () => {
             {userProfile?.profileImageUrl ? (
               <Image
                 source={{ uri: userProfile.profileImageUrl }}
-                style={styles.avatarImage} // ← Ajoute ce style
+                style={styles.avatarImage}
                 resizeMode="cover"
-                onError={(e) =>
-                  console.log("Erreur chargement avatar:", e.nativeEvent.error)
-                } // Optionnel : pour debugger
               />
             ) : (
-              <Ionicons name="person-circle-outline" size={40} color="#666" /> // Icône plus jolie par défaut
+              <Ionicons name="person-circle-outline" size={40} color="#666" />
             )}
           </TouchableOpacity>
         </View>
       </View>
     ),
-    [businesses, business, handleBusinessSelect, loading, totalAlerts]
+    [businesses, business, handleBusinessSelect, loading, totalAlerts, userProfile]
   );
 
   if (loading) {
@@ -299,9 +384,13 @@ const HomePage: React.FC = () => {
       >
         {business ? (
           <>
-            {/* Vue d'ensemble */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Vue d&apos;Ensemble</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Vue d&apos;Ensemble</Text>
+                <TouchableOpacity onPress={openModal} style={styles.filterIcon}>
+                  <Ionicons name="calendar-outline" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
 
               {analyticsLoading ? (
                 <View style={styles.analyticsLoadingContainer}>
@@ -312,7 +401,6 @@ const HomePage: React.FC = () => {
                 </View>
               ) : (
                 <View style={styles.cardsRow}>
-                  {/* CA Global */}
                   <View style={[styles.overviewCard, styles.cardYellow]}>
                     <View style={styles.cardIcon}>
                       <Image
@@ -321,7 +409,9 @@ const HomePage: React.FC = () => {
                       />
                     </View>
                     <View>
-                      <Text style={styles.cardLabel}>CA Global</Text>
+                      <Text style={styles.cardLabel}>
+                        CA {getPeriodLabel()}
+                      </Text>
                       <Text style={styles.cardValue}>
                         {formatNumber(overallOverview?.totalSalesAmount)}{" "}
                         <Text style={styles.cardUnit}>KMF</Text>
@@ -359,9 +449,7 @@ const HomePage: React.FC = () => {
                         <Text style={styles.cardLabel}>Articles vendus</Text>
                         <Text style={styles.cardValue}>
                           {overallOverview?.totalSalesOrders || 0} article
-                          {(overallOverview?.totalSalesOrders || 0) > 1
-                            ? "s"
-                            : ""}
+                          {(overallOverview?.totalSalesOrders || 0) > 1 ? "s" : ""}
                         </Text>
                       </View>
                     </View>
@@ -370,7 +458,6 @@ const HomePage: React.FC = () => {
               )}
             </View>
 
-            {/* Accès rapide */}
             <AnalyticsCard id={business.id} />
           </>
         ) : (
@@ -385,6 +472,80 @@ const HomePage: React.FC = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* Modale principale */}
+      <Modal visible={modalVisible} transparent animationType="none" onRequestClose={closeModal}>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={styles.modalBackdrop} onPress={closeModal} activeOpacity={1} />
+          <Animated.View style={[styles.modalContent, { transform: [{ translateY: slideAnim }] }]}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Période des statistiques</Text>
+            {[
+              { label: "Aujourd'hui", value: "day" },
+              { label: "Cette semaine", value: "week" },
+              { label: "Ce mois", value: "month" },
+              { label: "Cette année", value: "year" },
+              { label: "Tout le temps", value: "all" },
+              { label: "Période personnalisée", value: "custom" },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.value}
+                style={[
+                  styles.periodItem,
+                  period === item.value && item.value !== 'custom' && styles.periodItemSelected,
+                ]}
+                onPress={() => selectPeriod(item.value as PeriodType)}
+              >
+                <Text
+                  style={[
+                    styles.periodText,
+                    period === item.value && item.value !== 'custom' && styles.periodTextSelected,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+                {period === item.value && item.value !== 'custom' && (
+                  <Ionicons name="checkmark" size={22} color="#00C851" />
+                )}
+                {item.value === 'custom' && <Ionicons name="chevron-forward" size={20} color="#666" />}
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Date Picker pour date de début */}
+      {showStartPicker && (
+        <DateTimePicker
+          value={customStartDate || new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(event, selectedDate) => {
+            setShowStartPicker(false);
+            if (selectedDate) {
+              setCustomStartDate(selectedDate);
+              setShowEndPicker(true); // Ouvre automatiquement le picker de fin
+            }
+          }}
+        />
+      )}
+
+      {/* Date Picker pour date de fin */}
+      {showEndPicker && (
+        <DateTimePicker
+          value={customEndDate || new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          minimumDate={customStartDate || undefined}
+          onChange={(event, selectedDate) => {
+            setShowEndPicker(false);
+            if (selectedDate) {
+              setCustomEndDate(selectedDate);
+              setPeriod('custom');
+            }
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -405,13 +566,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginLeft: 4,
   },
-
-  placeholder: {
+  avatarImage: {
     width: "100%",
     height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E8E8E8",
   },
   loadingContainer: {
     flex: 1,
@@ -468,29 +625,24 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
   },
-  avatar: {
-    width: "100%",
-    height: "100%",
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-  },
   section: {
     marginBottom: 24,
-    alignContent: "center",
-    justifyContent: "center",
-    alignItems: "center",
-
     paddingHorizontal: 20,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    width: "100%",
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#000",
-    marginBottom: 16,
+  },
+  filterIcon: {
+    padding: 8,
   },
   cardsRow: {
     flexDirection: "row",
@@ -502,7 +654,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     minHeight: 100,
-    alignContent: "space-between",
     justifyContent: "space-between",
   },
   cardFull: {
@@ -512,7 +663,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1E9C7FF",
     borderWidth: 2,
     borderColor: "#FACC15",
-    alignContent: "space-between",
   },
   cardPurple: {
     backgroundColor: "#E5E9FFFF",
@@ -527,36 +677,14 @@ const styles = StyleSheet.create({
     borderColor: "#68F755",
     padding: 10,
   },
-  cardBlue: {
-    backgroundColor: "#EFF6FF",
-    borderWidth: 2,
-    borderColor: "#3B82F6",
-  },
-  cardOrange: {
-    backgroundColor: "#FFF7ED",
-    borderWidth: 2,
-    borderColor: "#F97316",
-  },
-  cardPink: {
-    backgroundColor: "#FCE7F3",
-    borderWidth: 2,
-    borderColor: "#EC4899",
-  },
-  cardTeal: {
-    backgroundColor: "#F0FDFA",
-    borderWidth: 2,
-    borderColor: "#14B8A6",
-  },
   cardIcon: {},
   cardEmoji: {
     width: 42,
     height: 42,
-    position: "relative",
   },
   cardEmojiDouble: {
     width: 24,
     height: 24,
-    position: "relative",
   },
   cardLabel: {
     fontSize: 14,
@@ -571,45 +699,6 @@ const styles = StyleSheet.create({
   cardUnit: {
     fontSize: 14,
     color: "#666",
-    marginTop: 2,
-  },
-  quickAccessRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 10,
-  },
-  quickAccessCard: {
-    flex: 1,
-    backgroundColor: "#F9F9F9",
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-    minHeight: 180,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  quickAccessIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#F3F0FF",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  quickAccessTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 6,
-  },
-  quickAccessSubtitle: {
-    fontSize: 12,
-    color: "#999",
-    textAlign: "center",
   },
   noBusinessContainer: {
     alignItems: "center",
@@ -630,6 +719,62 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     lineHeight: 20,
+  },
+  // Styles modale native
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxHeight: "60%",
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "#DDD",
+    borderRadius: 3,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 20,
+    color: "#000",
+  },
+  periodItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#F8F9FA",
+    marginBottom: 10,
+  },
+  periodItemSelected: {
+    backgroundColor: "#E3FCEF",
+    borderWidth: 1,
+    borderColor: "#00C851",
+  },
+  periodText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  periodTextSelected: {
+    fontWeight: "600",
+    color: "#00C851",
   },
 });
 
