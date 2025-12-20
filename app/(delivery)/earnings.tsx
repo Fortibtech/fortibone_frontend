@@ -3,27 +3,31 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  View,
   Text,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 import { SelectedBusinessManager } from "@/api";
 import Revenus from "@/components/Delivery/Revenus";
 import ZoneTarifs from "@/components/Delivery/ZoneTarifs";
-import BackButtonAdmin from "@/components/Admin/BackButton";
+
+type TabType = "REVENU" | "TARIFS";
+
 const DeliveryEarningsScreen: React.FC = () => {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"REVENU" | "TARIFS">("REVENU");
+  const [activeTab, setActiveTab] = useState<TabType>("REVENU");
+
   const init = async () => {
     try {
       setLoading(true);
       const selected = await SelectedBusinessManager.getSelectedBusiness();
-      if (!selected) {
+      if (!selected || selected.type !== "LIVREUR") {
         Alert.alert(
-          "Aucun profil livreur",
-          "Sélectionne un profil de livraison pour voir les revenus."
+          "Profil requis",
+          "Sélectionne un profil livreur pour accéder aux revenus."
         );
         setLoading(false);
         return;
@@ -44,49 +48,48 @@ const DeliveryEarningsScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#00C851" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00A36C" />
           <Text style={styles.loadingText}>Chargement des revenus...</Text>
         </View>
       </SafeAreaView>
     );
   }
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* === HEADER === */}
-      <View style={styles.headerRow}>
-        <View style={styles.tabRow}>
-          <TouchableOpacity
-            onPress={() => setActiveTab("REVENU")}
-            style={[styles.tab, activeTab === "REVENU" && styles.activeTab]}
+      {/* === ONGLETS (identiques à DeliveryRequestsScreen) === */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "REVENU" && styles.tabActive]}
+          onPress={() => setActiveTab("REVENU")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "REVENU" && styles.tabTextActive,
+            ]}
           >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "REVENU" && styles.activeTabText,
-              ]}
-            >
-              Revenus
-            </Text>
-          </TouchableOpacity>
+            Revenus
+          </Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => setActiveTab("TARIFS")}
-            style={[styles.tab, activeTab === "TARIFS" && styles.activeTab]}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "TARIFS" && styles.tabActive]}
+          onPress={() => setActiveTab("TARIFS")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "TARIFS" && styles.tabTextActive,
+            ]}
           >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "TARIFS" && styles.activeTabText,
-              ]}
-            >
-              Zone et tarifs
-            </Text>
-          </TouchableOpacity>
-        </View>
+            Zone et tarifs
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Content */}
+      {/* === CONTENU === */}
       {activeTab === "REVENU" ? (
         <Revenus businessId={businessId} />
       ) : (
@@ -97,37 +100,47 @@ const DeliveryEarningsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
-  tabText: { fontWeight: "600", color: "#555", fontSize: 14 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: { marginTop: 10, color: "#6b7280" },
-  backBtn: { padding: 8 },
-  tabRow: {
+  container: {
     flex: 1,
-    flexDirection: "row",
-    backgroundColor: "#F4F5F7",
-    borderRadius: 24,
-    padding: 4,
-    marginHorizontal: 12,
-    height: 40,
-    justifyContent: "center",
+    backgroundColor: "#F8F9FA",
   },
-  headerRow: {
-    flexDirection: "row",
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-between",
-    height: 48,
-    marginBottom: 16,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+  },
+
+  // === STYLE DES ONGLETS (copié/collevé et adapté depuis DeliveryRequestsScreen) ===
+  tabsContainer: {
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
   },
   tab: {
     flex: 1,
-    justifyContent: "center",
+    paddingVertical: 16,
     alignItems: "center",
-    borderRadius: 20,
-    paddingVertical: 0,
+    justifyContent: "center",
   },
-  activeTab: { backgroundColor: "#E8FFF1" },
-  activeTabText: { color: "#00A36C", fontWeight: "600" },
+  tabActive: {
+    borderBottomWidth: 3,
+    borderBottomColor: "#00A36C",
+  },
+  tabText: {
+    fontSize: 16,
+    color: "#666",
+  },
+  tabTextActive: {
+    fontWeight: "700",
+    color: "#00A36C",
+  },
 });
 
 export default DeliveryEarningsScreen;

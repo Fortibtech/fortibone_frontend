@@ -33,10 +33,6 @@ const WalletScreen = () => {
     try {
       // Solution 1 (recommandée) : on ne passe aucun filtre status
       await GetWalletTransactions({ page: 1, limit: 10 });
-
-      // Solution 2 (si tu veux vraiment filtrer) :
-      // const res = await GetWalletTransactions({ page: 1, limit: 10, status: "COMPLETED" });
-
       // Mettre à jour ton composant RecentTransactions avec res.data
     } catch (err) {
       console.log("Erreur lors du chargement des transactions", err);

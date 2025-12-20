@@ -168,6 +168,7 @@ const DeliveryHome: React.FC = () => {
       setUpdatingStatus(false);
     }
   };
+  console.log("XXXXXXXXXXXXXX", businesses);
 
   // ============ HEADER ============
   const renderHeader = () => (
@@ -293,7 +294,7 @@ const DeliveryHome: React.FC = () => {
                 <Ionicons name="time-outline" size={24} color="#4c1d95" />
               </View>
               <View>
-                <Text style={styles.cardLabel}>Demandes en attente</Text>
+                <Text style={styles.cardLabel}> Demandes en{"\n"} attente</Text>
                 <Text style={styles.cardValue}>
                   {dashboard.pendingRequests}
                 </Text>
@@ -347,7 +348,7 @@ const DeliveryHome: React.FC = () => {
 
         <TouchableOpacity
           style={styles.quickCard}
-          onPress={() => router.push("/(delivery)/settings")}
+          onPress={() => router.push("/(delivery)/vehicles")}
         >
           <View style={[styles.quickIcon, { backgroundColor: "#FFF7ED" }]}>
             <Ionicons name="settings" size={32} color="#f97316" />
