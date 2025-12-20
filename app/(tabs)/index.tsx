@@ -1,7 +1,9 @@
 // app/(tabs)/index.tsx
+
 import { getAllProductsLike } from "@/api/Products";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
+import { useUserLocationStore } from "@/stores/useUserLocationStore"; // ← Ajout important
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { JSX, useEffect, useState } from "react";
@@ -19,7 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Polygon } from "react-native-svg";
-import { Products } from "@/types/Product"; // ← Nouveau import avec la structure complète
+import { Products } from "@/types/Product";
 
 const HomePage: React.FC = () => {
   const itemsCount = useCartStore((state) => state.items.length);
@@ -28,6 +30,9 @@ const HomePage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [suggestions, setSuggestions] = useState<Products[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Récupération de la position de l'utilisateur
+  const { latitude: userLat, longitude: userLng } = useUserLocationStore();
 
   useEffect(() => {
     fetchProducts();
@@ -92,13 +97,62 @@ const HomePage: React.FC = () => {
     fetchProducts(product.name);
   };
 
+  // Fonction de calcul de distance (Haversine)
+  const calculateDistance = (
+    userLat: number | null,
+    userLng: number | null,
+    prodLat: number | null,
+    prodLng: number | null
+  ): string => {
+    if (!userLat || !userLng || !prodLat || !prodLng) {
+      return "Distance inconnue";
+    }
+
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const R = 6371; // Rayon de la Terre en km
+
+    const dLat = toRad(prodLat - userLat);
+    const dLon = toRad(prodLng - userLng);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(userLat)) *
+        Math.cos(toRad(prodLat)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+
+    if (distance < 1) {
+      return `${Math.round(distance * 1000)} m de vous`;
+    }
+    return `à ${distance.toFixed(1)} km de vous`;
+  };
+
+  // Fonction pour générer les étoiles
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    const stars = [];
+
+    for (let i = 0; i < fullStars; i++) {
+      stars.push("🌟");
+    }
+    if (hasHalfStar) {
+      stars.push("⭐");
+    }
+    while (stars.length < 5) {
+      stars.push("☆");
+    }
+
+    return stars.join("");
+  };
+
   const renderHeader = (): JSX.Element => (
     <View style={styles.header}>
       <View style={styles.header2}>
-        <TouchableOpacity
-          // onPress={() => router.push("/(profile-particulier)/category")}
-          style={{ padding: 8 }}
-        >
+        <TouchableOpacity style={{ padding: 8 }}>
           <Ionicons name="grid-outline" size={24} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerLeft}>
@@ -141,10 +195,9 @@ const HomePage: React.FC = () => {
           onSubmitEditing={handleSearchSubmit}
           returnKeyType="search"
         />
-        {/* Nouvel icône carte à droite */}
         <TouchableOpacity
           style={styles.mapIconButton}
-          onPress={() => router.push("/client-produit-details/map")} // ← Route à créer plus tard
+          onPress={() => router.push("/client-produit-details/map")}
         >
           <Ionicons name="map-outline" size={24} color="white" />
         </TouchableOpacity>
@@ -201,30 +254,16 @@ const HomePage: React.FC = () => {
     </View>
   );
 
-  // Fonction utilitaire pour générer les étoiles
-  const renderStars = (rating: number) => {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    const stars = [];
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push("🌟");
-    }
-    if (hasHalfStar) {
-      stars.push("⭐"); // demi-étoile approximative
-    }
-    // Compléter avec étoiles vides si besoin (optionnel)
-    while (stars.length < 5) {
-      stars.push("☆");
-    }
-
-    return stars.join("");
-  };
-
   const renderEnterpriseCard = (product: Products): JSX.Element => {
-    // === GESTION DE LA NOTE ===
     const rating = product.averageRating ?? 0;
     const reviewCount = product.reviewCount ?? 0;
+
+    const distanceText = calculateDistance(
+      userLat,
+      userLng,
+      product.latitude,
+      product.longitude
+    );
 
     return (
       <TouchableOpacity
@@ -233,13 +272,15 @@ const HomePage: React.FC = () => {
         onPress={() =>
           router.push({
             pathname: "/client-produit-details/[id]",
-            params: { id: product.productId }, // ← CORRIGÉ : product.id, pas product.productId
+            params: { id: product.productId },
           })
         }
         activeOpacity={0.8}
       >
         <Image
-          source={{ uri: product.productImageUrl }}
+          source={{
+            uri: product.productImageUrl || "https://via.placeholder.com/300",
+          }}
           style={styles.gridImage}
           resizeMode="cover"
         />
@@ -249,12 +290,10 @@ const HomePage: React.FC = () => {
             {product.name}
           </Text>
 
-          {/* Prix */}
           <Text style={styles.gridPrice}>
             {product.price.toLocaleString("fr-FR")} KMF
           </Text>
 
-          {/* Étoiles + nombre d'avis */}
           <View style={styles.ratingRow}>
             <Text style={styles.starsText}>{renderStars(rating)}</Text>
             {reviewCount > 0 && (
@@ -262,8 +301,8 @@ const HomePage: React.FC = () => {
             )}
           </View>
 
-          {/* Distance placeholder */}
-          <Text style={styles.distanceText}>à 10 km de vous</Text>
+          {/* Distance réelle */}
+          <Text style={styles.distanceText}>{distanceText}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -300,14 +339,12 @@ const HomePage: React.FC = () => {
     </ProtectedRoute>
   );
 };
+
 const styles = StyleSheet.create({
-  // Ajout du bouton icône carte dans la barre de recherche
   mapIconButton: {
     paddingLeft: 12,
     paddingRight: 8,
   },
-
-  // Nouveaux styles pour la carte produit
   gridPrice: {
     fontSize: 16,
     fontWeight: "700",
@@ -333,11 +370,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: "italic",
   },
-  gradient: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   container: {
     flex: 1,
     backgroundColor: "#fff",
@@ -362,13 +394,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     justifyContent: "center",
     alignItems: "center",
-  },
-  bgImage: {
-    width: 20,
-    height: 20,
-    marginRight: 10,
-    marginTop: 5,
-    resizeMode: "contain",
   },
   logoText: {
     color: "#fff",
@@ -492,23 +517,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontWeight: "400",
   },
-  bannerButton: {
-    backgroundColor: "#059669",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignSelf: "flex-start",
-    shadowColor: "#059669",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  bannerButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   bannerImageContainer: {
     width: 200,
     height: 150,
@@ -577,42 +585,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
     marginBottom: 1,
-  },
-  gridCategory: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 1,
-    fontWeight: "400",
-  },
-  gridFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  rating: {
-    fontSize: 13,
-    color: "#333",
-    marginLeft: 4,
-    fontWeight: "800",
-  },
-  discountBadge: {
-    backgroundColor: "#FFD700",
-    borderRadius: 80,
-    width: 40,
-    height: 40,
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    alignContent: "center",
-  },
-  discountText: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "white",
   },
   loadingContainer: {
     flex: 1,

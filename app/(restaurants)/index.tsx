@@ -177,7 +177,7 @@ const RestaurantHome: React.FC = () => {
   const formatNumber = (n: number) => new Intl.NumberFormat("fr-FR").format(n);
 
   // --------------------------- UI ---------------------------
-
+  console.log("RRRRRRRRRRRRRRRRRRRR", uri);
   const pendingOrders = stats?.pendingOrders || 0;
   const inPreparation = stats?.inPreparationOrders || 0;
   const readyOrders = stats?.readyOrders || 0;

@@ -1,9 +1,10 @@
-// app/(tabs)/cart.tsx
-import { createOrder } from "@/api/orers/createOrder";
+import { createOrder } from "@/api/Orders";
+import { passMultipleOrders } from "@/api/orers/createOrder";
 import BackButton from "@/components/BackButton";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -13,6 +14,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
@@ -32,16 +34,70 @@ const Cart = () => {
   } = useCartStore();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isBuyNowLoading, setIsBuyNowLoading] = useState(false); // ← Pour le nouveau bouton
   const [showPaymentUI, setShowPaymentUI] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption>("CARD");
 
-  // Calcul sécurisé du total
   const rawTotal = getTotalPrice();
   const totalPrice = rawTotal > 0 ? rawTotal.toFixed(2) : "0.00";
   const totalItemsCount = getTotalItems();
 
   // ──────────────────────────────────────────────────────────────
-  // Création de la commande
+  // Nouveau : Acheter maintenant → multi-vendeurs
+  // ──────────────────────────────────────────────────────────────
+  const handleBuyNow = async () => {
+    if (items.length === 0) {
+      Toast.show({ type: "info", text1: "Votre panier est vide" });
+      return;
+    }
+
+    Alert.alert(
+      "Acheter maintenant",
+      `Valider ${totalItemsCount} article(s) pour ${totalPrice} KMF ?\n\nCette action créera automatiquement une ou plusieurs commandes selon les vendeurs.`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Confirmer l'achat",
+          onPress: async () => {
+            setIsBuyNowLoading(true);
+
+            const payload = {
+              items: items.map((item) => ({
+                variantId: item.variantId,
+                quantity: item.quantity,
+              })),
+              notes: "Achat rapide – Acheter maintenant",
+              useWallet: false,
+            };
+
+            try {
+              const orders = await passMultipleOrders(payload);
+
+              Toast.show({
+                type: "success",
+                text1: "Achat réussi !",
+                text2: `${orders.length} commande(s) créée(s).`,
+              });
+
+              clearCart();
+              router.push("/orders"); // ou "/(tabs)/orders" selon ta structure
+            } catch (err: any) {
+              Toast.show({
+                type: "error",
+                text1: "Échec de l'achat",
+                text2: err.message || "Vérifiez le stock ou votre connexion.",
+              });
+            } finally {
+              setIsBuyNowLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // ──────────────────────────────────────────────────────────────
+  // Ancien système : Création de commande (un seul vendeur) – INCHANGÉ
   // ──────────────────────────────────────────────────────────────
   const handleCreateOrder = async () => {
     if (items.length === 0) {
@@ -72,7 +128,8 @@ const Cart = () => {
         ? "Espèces"
         : "Portefeuille";
 
-    const payload = {
+    // Ton ancien payload (inchangé)
+    const payload: any = {
       type: "SALE" as const,
       businessId: firstItem.businessId,
       supplierBusinessId: null,
@@ -127,7 +184,6 @@ const Cart = () => {
   };
 
   const renderCartItem = (item: (typeof items)[0]) => {
-    // Protection sur le prix de l'item
     const itemPrice = item.price != null ? Number(item.price) : 0;
     const formattedPrice = isNaN(itemPrice) ? "0.00" : itemPrice.toFixed(2);
 
@@ -202,7 +258,7 @@ const Cart = () => {
         </View>
 
         {showPaymentUI ? (
-          /* ────────────────────── ÉCRAN PAIEMENT ────────────────────── */
+          // ─────── Écran de paiement (ancien système) ───────
           <ScrollView contentContainerStyle={styles.paymentContent}>
             <View style={styles.paymentHeader}>
               <Ionicons name="checkmark-circle" size={60} color="#059669" />
@@ -278,7 +334,7 @@ const Cart = () => {
             </TouchableOpacity>
           </ScrollView>
         ) : (
-          /* ────────────────────── PANIER CLASSIQUE ────────────────────── */
+          // ─────── Panier principal ───────
           <>
             {items.length === 0 ? (
               <View style={styles.emptyContainer}>
@@ -296,6 +352,29 @@ const Cart = () => {
                     <Text style={styles.totalLabel}>Total</Text>
                     <Text style={styles.totalPrice}>{totalPrice} KMF</Text>
                   </View>
+
+                  {/* NOUVEAU BOUTON : Acheter maintenant */}
+                  <TouchableOpacity
+                    onPress={handleBuyNow}
+                    disabled={isBuyNowLoading}
+                    style={[
+                      styles.buyNowButton,
+                      isBuyNowLoading && styles.buyNowButtonDisabled,
+                    ]}
+                  >
+                    {isBuyNowLoading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="flash" size={20} color="#fff" />
+                        <Text style={styles.buyNowButtonText}>
+                          Acheter maintenant
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  {/* Bouton classique (inchangé) */}
                   <TouchableOpacity
                     onPress={handleCheckout}
                     style={styles.checkoutButton}
@@ -313,7 +392,6 @@ const Cart = () => {
     </ProtectedRoute>
   );
 };
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   header: {
@@ -431,6 +509,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   checkoutButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  // Nouveau style pour le bouton "Acheter maintenant"
+  buyNowButton: {
+    backgroundColor: "#e11d48", // Rouge attractif
+    paddingVertical: 14,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  buyNowButtonDisabled: {
+    opacity: 0.6,
+  },
+  buyNowButtonText: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "700",
+  },
 });
 
 export default Cart;

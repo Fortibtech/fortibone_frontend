@@ -17,7 +17,6 @@ interface Props {
 }
 const Revenus = ({ businessId }: Props) => {
   const [refreshing, setRefreshing] = useState(false);
-
   const onRefresh = async () => {
     if (!businessId) return;
     setRefreshing(true);

@@ -174,3 +174,20 @@ export const updateRestaurantTable = async (
     throw new Error(errorMessage);
   }
 };
+
+export type OrderType = "SALE" | "RESERVATION";
+
+export interface CreateReservationPayload {
+  tableId: string;
+  reservationDate: string; // ISO string
+  notes?: string;
+}
+export const createReservation = async (payload: CreateReservationPayload) => {
+  try {
+    const response = await axiosInstance.post("/orders", payload);
+    return response.data;
+  } catch (error: any) {
+    console.error("❌ Erreur création réservation", error?.response?.data);
+    throw error;
+  }
+};

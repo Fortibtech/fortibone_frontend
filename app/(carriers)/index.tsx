@@ -1,6 +1,6 @@
-// app/livreurs/index.tsx  (ou le nom de ton écran principal)
+// app/livreurs/index.tsx
 import { BusinessesService } from "@/api";
-import { DeliveryService } from "@/api/delivery/deliveryApi";
+import { getTariffs } from "@/api/delivery/deliveryApi"; // ← Import correct
 import { CarrierOption } from "@/api/services/businessesService";
 import BackButtonAdmin from "@/components/Admin/BackButton";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,12 +23,13 @@ interface Tariff {
   businessId: string;
   name: string;
   description?: string;
-  basePrice: number;
-  pricePerKm: number;
+  basePrice: string; // L'API renvoie des strings
+  pricePerKm: string; // L'API renvoie des strings
   minDistance: number;
   maxDistance: number;
   createdAt: string;
   updatedAt: string;
+  vehicleType?: string | null;
 }
 
 export default function LivreursScreen() {
@@ -65,7 +66,7 @@ export default function LivreursScreen() {
     loadLivreurs();
   }, []);
 
-  // Ouverture de la modal + chargement des tarifs
+  // Ouverture de la modal + chargement des tarifs via getTariffs
   const openModal = async (livreur: CarrierOption) => {
     setSelectedLivreur(livreur);
     setModalVisible(true);
@@ -73,13 +74,14 @@ export default function LivreursScreen() {
     setTarifs([]);
 
     try {
-      const tarifsList = await DeliveryService.getListTariffs(livreur.id);
+      const tarifsList = await getTariffs(livreur.id); // ← Utilisation de la vraie fonction
       setTarifs(tarifsList);
     } catch (error: any) {
+      console.error("Erreur chargement tarifs :", error);
       Toast.show({
         type: "error",
         text1: "Erreur",
-        text2: error.message || "Impossible de charger les tarifs",
+        text2: "Impossible de charger les tarifs de ce livreur",
       });
       setTarifs([]);
     } finally {
@@ -91,6 +93,12 @@ export default function LivreursScreen() {
     setModalVisible(false);
     setSelectedLivreur(null);
     setTarifs([]);
+  };
+
+  // Formatage des prix (car l'API renvoie des strings)
+  const formatPrice = (price: string) => {
+    const num = parseInt(price, 10);
+    return isNaN(num) ? "— KMF" : `${num.toLocaleString("fr")} KMF`;
   };
 
   // Rendu d'un livreur dans la liste
@@ -116,21 +124,35 @@ export default function LivreursScreen() {
       {tarif.description && (
         <Text style={styles.tarifDescription}>{tarif.description}</Text>
       )}
+
       <View style={styles.tarifDetails}>
         <Text style={styles.tarifLabel}>Prix de base :</Text>
-        <Text style={styles.tarifValue}>{tarif.basePrice} KMF</Text>
+        <Text style={styles.tarifValue}>{formatPrice(tarif.basePrice)}</Text>
       </View>
+
       <View style={styles.tarifDetails}>
         <Text style={styles.tarifLabel}>Prix par km :</Text>
-        <Text style={styles.tarifValue}>{tarif.pricePerKm} KMF/km</Text>
+        <Text style={styles.tarifValue}>
+          {formatPrice(tarif.pricePerKm)}/km
+        </Text>
       </View>
+
       <View style={styles.tarifDetails}>
         <Text style={styles.tarifLabel}>Distance :</Text>
         <Text style={styles.tarifValue}>
-          {tarif.minDistance} km -{" "}
-          {tarif.maxDistance === 999999 ? "∞" : `${tarif.maxDistance} km`}
+          {tarif.minDistance === 0 ? "Dès" : `À partir de`} {tarif.minDistance}{" "}
+          km
+          {tarif.maxDistance < 999999 && ` - jusqu'à ${tarif.maxDistance} km`}
+          {tarif.maxDistance >= 999999 && " (sans limite)"}
         </Text>
       </View>
+
+      {tarif.vehicleType && (
+        <View style={styles.tarifDetails}>
+          <Text style={styles.tarifLabel}>Véhicule :</Text>
+          <Text style={styles.tarifValue}>{tarif.vehicleType}</Text>
+        </View>
+      )}
     </View>
   );
 
@@ -183,7 +205,7 @@ export default function LivreursScreen() {
             {/* En-tête modal */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {selectedLivreur?.name || "Livreur"}
+                Tarifs de {selectedLivreur?.name || "Livreur"}
               </Text>
               <TouchableOpacity onPress={closeModal}>
                 <Ionicons name="close" size={28} color="#666" />
@@ -291,9 +313,9 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: "#fff",
     borderRadius: 16,
-    height: "60%",
+    height: "90%",
     width: "90%",
-    maxHeight: "85%",
+    maxHeight: "95%",
     overflow: "hidden",
   },
   modalHeader: {

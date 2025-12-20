@@ -2,7 +2,15 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Platform } from "react-native";
-import { Home, Route, Wallet, Settings, CreditCard } from "lucide-react-native";
+import {
+  Home,
+  Route,
+  Wallet,
+  Settings,
+  CreditCard,
+  Car, // ← Icône pour les véhicules (automobile)
+} from "lucide-react-native";
+
 export default function DeliveryLayout() {
   const insets = useSafeAreaInsets();
   const baseTabBarHeight = Platform.OS === "ios" ? 68 : 60;
@@ -11,6 +19,7 @@ export default function DeliveryLayout() {
       ? Math.max(insets.bottom, 16)
       : Math.max(insets.bottom, 8);
   const totalTabBarHeight = baseTabBarHeight + bottomPadding;
+
   return (
     <Tabs
       screenOptions={{
@@ -48,10 +57,11 @@ export default function DeliveryLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Accueil",
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
+
       <Tabs.Screen
         name="tasks"
         options={{
@@ -59,21 +69,31 @@ export default function DeliveryLayout() {
           tabBarIcon: ({ color }) => <Route size={24} color={color} />,
         }}
       />
+
       <Tabs.Screen
         name="earnings"
         options={{
-          title: "Earnings",
+          title: "Revenus",
           tabBarIcon: ({ color }) => <Wallet size={24} color={color} />,
         }}
       />
+
+      {/* === NOUVEL ONGLETS : VÉHICULES === */}
       <Tabs.Screen
-        name="settings"
+        name="vehicles"
         options={{
-          title: "Settings",
-          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
+          title: "Véhicules",
+          tabBarIcon: ({ color }) => <Car size={24} color={color} />,
         }}
       />
 
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Paramètres",
+          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="finances"
         options={{

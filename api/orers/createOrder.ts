@@ -53,3 +53,72 @@ export async function createOrder(
     throw error;
   }
 }
+// Type pour un item dans le panier
+export interface CheckoutItem {
+  variantId: string;
+  quantity: number;
+}
+
+// Payload complet pour le checkout multi-vendeurs
+export interface CheckoutPayload {
+  items: CheckoutItem[];
+  notes?: string;
+  useWallet?: boolean; // false par défaut → paiement manuel après
+}
+
+// Réponse : tableau de commandes créées (une par vendeur)
+export interface CheckoutOrder {
+  id: string;
+  orderNumber: string;
+  type: "SALE" | "PURCHASE" | "RESERVATION";
+  status: string;
+  totalAmount: number;
+  notes?: string;
+  paymentMethod?: string;
+  paymentIntentId?: string;
+  business: {
+    id: string;
+    name: string;
+  };
+  lines: Array<{
+    id: string;
+    quantity: number;
+    price: number;
+    variantId: string;
+    variant: any;
+  }>;
+  // ... autres champs possibles (deliveryRequest, invoice, etc.)
+}
+
+// Fonction pour passer le checkout multi-vendeurs
+export const passMultipleOrders = async (
+  payload: CheckoutPayload
+): Promise<CheckoutOrder[]> => {
+  try {
+    const response = await axiosInstance.post<CheckoutOrder[]>(
+      "/orders/checkout",
+      payload
+    );
+
+    console.log("✅ Checkout multi-vendeurs réussi :", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error(
+      "❌ Erreur lors du checkout multi-vendeurs :",
+      error.response?.data || error.message
+    );
+
+    // Gestion spécifique des erreurs courantes
+    const serverError = error.response?.data;
+    if (serverError?.message) {
+      // Ex: stock insuffisant, solde wallet trop bas, etc.
+      throw new Error(
+        Array.isArray(serverError.message)
+          ? serverError.message.join("\n")
+          : serverError.message
+      );
+    }
+
+    throw new Error("Impossible de valider le panier. Veuillez réessayer.");
+  }
+};
