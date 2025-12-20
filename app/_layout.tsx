@@ -2,7 +2,8 @@ import { useUserStore } from "@/store/userStore";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { GestureHandlerRootView } from "react-native-gesture-handler"; // Très important aussi !
 // import { StripeProvider } from "@stripe/stripe-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform } from "react-native";
