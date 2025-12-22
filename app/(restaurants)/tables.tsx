@@ -240,13 +240,13 @@ const TablesScreen = () => {
       </View>
 
       <View style={styles.actions}>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.qrButton}
           onPress={() => router.push(`/(restaurants)/tables/qr/${item.id}`)}
         >
           <Ionicons name="qr-code-outline" size={20} color="#7C3AED" />
           <Text style={styles.qrText}>QR Code</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <View style={styles.rightActions}>
           <TouchableOpacity onPress={() => openEditModal(item)}>

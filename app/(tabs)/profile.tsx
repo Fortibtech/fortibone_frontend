@@ -34,7 +34,8 @@ type ProfileRoutes =
   | "/(profile-particulier)/favorites"
   | "/(profile-particulier)/help"
   | "/(profile-particulier)/about"
-  | "/(profile-particulier)/my-transactions";
+  | "/(profile-particulier)/my-transactions"
+  | "/finance/Transactions";
 
 const ProfilePage = () => {
   const router = useRouter();
@@ -107,14 +108,14 @@ const ProfilePage = () => {
     },
     {
       title: "Mes Transactions",
-      route: "/(profile-particulier)/my-transactions",
+      route: "/finance/Transactions",
       icon: "swap-horizontal-outline",
     },
-    {
-      title: "Mes restaurants favoris",
-      route: "/(profile-particulier)/user-businesses",
-      icon: "business-outline",
-    },
+    // {
+    //   title: "Mes restaurants favoris",
+    //   route: "/(profile-particulier)/user-businesses",
+    //   icon: "business-outline",
+    // },
     // {
     //   title: "Notifications",
     //   route: "/(profile-particulier)/notifications",

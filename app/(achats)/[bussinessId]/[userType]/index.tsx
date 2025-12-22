@@ -1,4 +1,4 @@
-// app/(achats)/[businessId]/index.tsx
+// app/(achats)/suppliers-market.tsx (ou ton chemin exact)
 import { useState, useCallback, useEffect } from "react";
 import {
   View,
@@ -17,31 +17,36 @@ import { Ionicons, Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import BackButtonAdmin from "@/components/Admin/BackButton";
-import List from "@/components/Admin/List";
-import { ProductService, Product, ProductVariant } from "@/api";
+// import List from "@/components/Admin/List";
 import { useDebouncedCallback } from "use-debounce";
 import CompanyProfile from "@/components/Achat/CompanyProfile";
-
-export default function SupplierStore() {
+import {
+  getAllProductFournisseur,
+  ProductSearchResponse,
+} from "@/api/produit/productsApi";
+import CartButton from "@/components/CartButton";
+// Import de la nouvelle fonction
+export default function SuppliersMarket() {
   const { bussinessId, userType } = useLocalSearchParams<{
-    bussinessId: string;
-    userType: string;
+    bussinessId?: string;
+    userType?: string;
   }>();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<any[]>([]); // any temporaire, tu peux typer plus précisément si besoin
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // États pour le filtre/tri
+  // Filtres et tri
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [sortBy, setSortBy] = useState<
-    "price_asc" | "price_desc" | "name" | "newest"
-  >("newest");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+    "price_asc" | "price_desc" | "relevance" | "newest"
+  >("relevance");
+  const [minPrice, setMinPrice] = useState<number | undefined>(undefined);
+  const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
 
   const debouncedSearch = useDebouncedCallback((value: string) => {
     setSearchQuery(value.trim());
@@ -49,35 +54,57 @@ export default function SupplierStore() {
     setProducts([]);
   }, 600);
 
+  // Mapping du tri vers les valeurs de l'API
+  const getSortByParam = ():
+    | "PRICE_ASC"
+    | "PRICE_DESC"
+    | "RELEVANCE"
+    | "DISTANCE"
+    | undefined => {
+    switch (sortBy) {
+      case "price_asc":
+        return "PRICE_ASC";
+      case "price_desc":
+        return "PRICE_DESC";
+      case "relevance":
+      case "newest":
+      default:
+        return "RELEVANCE";
+    }
+  };
+
   const fetchProducts = useCallback(
     async (pageNum: number = 1, append: boolean = false) => {
-      if (!bussinessId) return;
-
-      setLoading(pageNum === 1);
+      if (pageNum === 1 && !append) setLoading(true);
       if (pageNum > 1) setLoadingMore(true);
 
       try {
-        const response = await ProductService.getBusinessProducts(bussinessId, {
+        const response: ProductSearchResponse = await getAllProductFournisseur({
           search: searchQuery || undefined,
+          minPrice,
+          maxPrice,
+          sortBy: getSortByParam(),
           page: pageNum,
           limit: 20,
-          categoryId: selectedCategory || undefined,
         });
 
         setProducts((prev) =>
           append ? [...prev, ...response.data] : response.data
         );
-        setTotalPages(response.totalPages || 1);
+        setTotalPages(response.totalPages);
         setPage(pageNum);
       } catch (err: any) {
-        console.error("Erreur API:", err.message);
+        console.error(
+          "Erreur lors du chargement des produits fournisseurs :",
+          err
+        );
       } finally {
         setLoading(false);
         setLoadingMore(false);
         setRefreshing(false);
       }
     },
-    [bussinessId, searchQuery, sortBy, selectedCategory]
+    [searchQuery, minPrice, maxPrice, sortBy]
   );
 
   useEffect(() => {
@@ -96,7 +123,7 @@ export default function SupplierStore() {
   };
 
   const loadMore = () => {
-    if (page < totalPages && !loadingMore) {
+    if (page < totalPages && !loadingMore && !loading) {
       fetchProducts(page + 1, true);
     }
   };
@@ -104,59 +131,48 @@ export default function SupplierStore() {
   const formatPrice = (price: number) =>
     price.toLocaleString("fr-CM", { maximumFractionDigits: 0 });
 
-  const bestVariant = (variants: ProductVariant[]) =>
-    variants.find((v) => v.quantityInStock > 0) || variants[0];
-
-  const renderItem = ({ item }: { item: Product }) => {
-    const variant = bestVariant(item.variants);
-    if (!variant) return null;
-
-    return (
-      <View style={styles.productWrapper}>
-        <TouchableOpacity
-          style={styles.productCard}
-          onPress={() =>
-            router.push({
-              pathname: "/(achats)/product-details/[productId]",
-              params: { productId: item.id, bussinessId: bussinessId },
-            })
-          }
-        >
-          <View style={styles.imageContainer}>
-            <Image
-              source={{
-                uri:
-                  item.imageUrl ||
-                  "https://via.placeholder.com/400x500.png?text=Produit",
-              }}
-              style={styles.productImage}
-              resizeMode="contain"
-            />
-          </View>
-          <View style={styles.productInfo}>
-            <Text style={styles.productName} numberOfLines={2}>
-              {item.name}
-            </Text>
-            <View style={styles.priceRow}>
-              <Text style={styles.price}>
-                {formatPrice(Number(variant.price))}
-              </Text>
-              <Text style={styles.currency}> XAF</Text>
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => {
+      // Pas de variants ici d'après la réponse API → prix direct
+      return (
+        <View style={styles.productWrapper}>
+          <TouchableOpacity
+            style={styles.productCard}
+            onPress={() =>
+              router.push({
+                pathname: "/(achats)/product-details/[productId]",
+                params: { productId: item.productId || item.id },
+              })
+            }
+          >
+            <View style={styles.imageContainer}>
+              <Image
+                source={{
+                  uri:
+                    item.variantImageUrl ||
+                    item.productImageUrl ||
+                    "https://via.placeholder.com/400x500.png?text=Produit",
+                }}
+                style={styles.productImage}
+                resizeMode="contain"
+              />
             </View>
-            {variant.lotPrice && variant.lotPrice > variant.price && (
-              <Text style={styles.oldPrice}>
-                {formatPrice(Number(variant.lotPrice))} XAF
+            <View style={styles.productInfo}>
+              <Text style={styles.productName} numberOfLines={2}>
+                {item.name}
               </Text>
-            )}
-            <Text style={styles.stock}>
-              {variant.quantityInStock}
-              {"  pièces "}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-    );
-  };
+              <Text style={styles.businessName}>{item.businessName}</Text>
+              <View style={styles.priceRow}>
+                <Text style={styles.price}>{formatPrice(item.price)}</Text>
+                <Text style={styles.currency}> {item.currencyCode}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+      );
+    },
+    [router]
+  );
 
   const renderFooter = () =>
     loadingMore ? (
@@ -168,14 +184,14 @@ export default function SupplierStore() {
   const renderEmpty = () => (
     <Text style={styles.emptyText}>
       {searchQuery
-        ? `Aucun produit pour "${searchQuery}"`
-        : "Aucun produit disponible"}
+        ? `Aucun produit trouvé pour "${searchQuery}"`
+        : "Aucun produit disponible chez les fournisseurs"}
     </Text>
   );
 
   const renderSkeleton = () => (
     <>
-      {[1, 2, 3, 4].map((i) => (
+      {[1, 2, 3, 4, 5, 6].map((i) => (
         <View key={i} style={styles.productWrapper}>
           <View style={[styles.productCard, { backgroundColor: "#fff" }]}>
             <View
@@ -188,12 +204,13 @@ export default function SupplierStore() {
                   backgroundColor: "#f0f0f0",
                   borderRadius: 4,
                   marginBottom: 8,
+                  width: "80%",
                 }}
               />
               <View
                 style={{
                   height: 16,
-                  width: "70%",
+                  width: "60%",
                   backgroundColor: "#f0f0f0",
                   borderRadius: 4,
                 }}
@@ -207,14 +224,12 @@ export default function SupplierStore() {
 
   const ListHeader = () => (
     <>
-      {/* COMPANY PROFILE + SEARCH */}
       <CompanyProfile
         onSearch={debouncedSearch}
         onFilterPress={() => setFilterModalVisible(true)}
-        businessId={bussinessId}
+        businessId={bussinessId as string}
       />
 
-      {/* RÉSULTATS */}
       <View style={styles.resultsHeader}>
         <Text style={styles.resultsText}>
           {products.length} produit{products.length > 1 ? "s" : ""}
@@ -225,10 +240,10 @@ export default function SupplierStore() {
         >
           <Text style={styles.filterText}>
             {sortBy === "price_asc"
-              ? "Prix ↑"
+              ? "Prix croissant"
               : sortBy === "price_desc"
-              ? "Prix ↓"
-              : "Trier"}
+              ? "Prix décroissant"
+              : "Pertinence"}
           </Text>
           <Ionicons name="chevron-down" size={16} color="#666" />
         </TouchableOpacity>
@@ -239,41 +254,39 @@ export default function SupplierStore() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      {/* HEADER */}
+
       <View style={styles.header}>
         <BackButtonAdmin fallbackRoute={userType} />
         <Text style={styles.title} numberOfLines={1}>
-          Boutique
+          Marché des Fournisseurs
         </Text>
-        <List />
+        <CartButton /> {/* ← Ici */}
       </View>
-      {/* LISTE PRODUITS */}
+
       <FlatList
         data={products}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={{ paddingHorizontal: 8 }}
-        contentContainerStyle={{
-          paddingBottom: 30,
-          flexGrow: 1, // important pour empty state
-        }}
+        contentContainerStyle={{ paddingBottom: 30, flexGrow: 1 }}
         ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
+        onEndReachedThreshold={0.7}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={loading ? renderSkeleton : renderEmpty}
-        ListHeaderComponent={ListHeader} // ← LA CLÉ !!!
+        ListHeaderComponent={ListHeader}
         showsVerticalScrollIndicator={false}
-        // Ajoute un peu de padding top pour éviter que le header soit collé au notch
-        contentInset={{ top: 8 }}
-        contentOffset={{ x: 0, y: -8 }}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        initialNumToRender={10}
       />
 
-      {/* MODAL FILTRE */}
+      {/* Modal Filtres & Tri */}
       <Modal
         visible={filterModalVisible}
         transparent
@@ -285,16 +298,20 @@ export default function SupplierStore() {
           onPress={() => setFilterModalVisible(false)}
         >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Trier & Filtrer</Text>
+            <Text style={styles.modalTitle}>Filtres et tri</Text>
 
             <View style={styles.filterSection}>
               <Text style={styles.sectionTitle}>Trier par</Text>
-              {["newest", "price_asc", "price_desc", "name"].map((option) => (
+              {[
+                { key: "relevance", label: "Pertinence" },
+                { key: "price_asc", label: "Prix croissant" },
+                { key: "price_desc", label: "Prix décroissant" },
+              ].map((option) => (
                 <TouchableOpacity
-                  key={option}
+                  key={option.key}
                   style={styles.filterOption}
                   onPress={() => {
-                    setSortBy(option as any);
+                    setSortBy(option.key as any);
                     setPage(1);
                     setProducts([]);
                     setFilterModalVisible(false);
@@ -303,20 +320,14 @@ export default function SupplierStore() {
                 >
                   <Text
                     style={
-                      sortBy === option
+                      sortBy === option.key
                         ? styles.activeText
                         : styles.inactiveText
                     }
                   >
-                    {option === "newest"
-                      ? "Plus récent"
-                      : option === "price_asc"
-                      ? "Prix croissant"
-                      : option === "price_desc"
-                      ? "Prix décroissant"
-                      : "Nom A-Z"}
+                    {option.label}
                   </Text>
-                  {sortBy === option && (
+                  {sortBy === option.key && (
                     <Feather name="check" size={20} color="#27AE60" />
                   )}
                 </TouchableOpacity>
@@ -336,7 +347,6 @@ export default function SupplierStore() {
   );
 }
 
-// === STYLES PARFAITS ===
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F5F5F5" },
   header: {
@@ -365,6 +375,7 @@ const styles = StyleSheet.create({
   resultsText: { fontSize: 14, color: "#666" },
   filterBtn: { flexDirection: "row", alignItems: "center" },
   filterText: { fontSize: 14, color: "#666", marginRight: 4 },
+
   productWrapper: { flex: 1, padding: 8, maxWidth: "50%" },
   productCard: {
     flex: 1,
@@ -387,11 +398,11 @@ const styles = StyleSheet.create({
   productImage: { width: "85%", height: "85%" },
   productInfo: { padding: 12 },
   productName: { fontSize: 13, color: "#333", marginBottom: 6, lineHeight: 18 },
-  priceRow: { flexDirection: "row", alignItems: "baseline", marginBottom: 4 },
+  businessName: { fontSize: 12, color: "#666", marginBottom: 4 },
+  priceRow: { flexDirection: "row", alignItems: "baseline" },
   price: { fontSize: 16, fontWeight: "700", color: "#000" },
   currency: { fontSize: 12, color: "#666", marginLeft: 4 },
-  oldPrice: { fontSize: 11, color: "#999", textDecorationLine: "line-through" },
-  stock: { fontSize: 11, color: "#27AE60", fontWeight: "500" },
+
   emptyText: {
     textAlign: "center",
     color: "#999",
@@ -400,7 +411,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 
-  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -419,13 +429,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
   },
-  filterSection: { marginBottom: 20 },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 12,
     color: "#333",
+    marginBottom: 10,
   },
+  filterSection: { marginBottom: 20 },
   filterOption: {
     flexDirection: "row",
     justifyContent: "space-between",

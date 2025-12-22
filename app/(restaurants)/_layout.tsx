@@ -1,7 +1,14 @@
-import { Tabs } from "expo-router";
+import { router, Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Platform } from "react-native";
-import { Home, UtensilsCrossed, Coffee, CreditCard } from "lucide-react-native";
+import {
+  Home,
+  UtensilsCrossed,
+  Coffee,
+  CreditCard,
+  ShoppingCart,
+} from "lucide-react-native";
+import { useBusinessStore } from "@/store/businessStore";
 
 export default function RestaurantsLayout() {
   const insets = useSafeAreaInsets();
@@ -11,7 +18,8 @@ export default function RestaurantsLayout() {
       ? Math.max(insets.bottom, 16)
       : Math.max(insets.bottom, 8);
   const totalTabBarHeight = baseTabBarHeight + bottomPadding;
-
+  // On récupère le business actuel depuis le store (toujours à jour)
+  const business = useBusinessStore((state) => state.business);
   return (
     <Tabs
       screenOptions={{
@@ -73,6 +81,26 @@ export default function RestaurantsLayout() {
           tabBarIcon: ({ color }) => (
             <UtensilsCrossed size={24} color={color} />
           ),
+        }}
+      />
+
+      {/* ACHATS */}
+      <Tabs.Screen
+        name="achats"
+        options={{
+          title: "Achats",
+          tabBarIcon: ({ color }) => <ShoppingCart size={24} color={color} />,
+        }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            if (business) {
+              const userType = "restaurants";
+              router.replace(`/(achats)/${business.id}/(${userType})`);
+            } else {
+              router.replace("/(restaurants)");
+            }
+          },
         }}
       />
       <Tabs.Screen

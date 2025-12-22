@@ -29,7 +29,7 @@ import {
 } from "@stripe/stripe-react-native";
 
 export default function CommandeDetails() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,10 +47,10 @@ export default function CommandeDetails() {
   const { confirmPayment } = useStripe();
 
   const fetchOrderDetails = async () => {
-    if (!id) return;
+    if (!orderId) return;
     try {
       setIsLoading(true);
-      const response: any = await getOrderById(id);
+      const response: any = await getOrderById(orderId);
       setOrder(response);
     } catch (err: any) {
       Toast.show({
@@ -65,7 +65,7 @@ export default function CommandeDetails() {
 
   useEffect(() => {
     fetchOrderDetails();
-  }, [id]);
+  }, [orderId]);
 
   const formatDate = (iso: string) => {
     return new Date(iso).toLocaleDateString("fr-FR", {
@@ -398,7 +398,6 @@ export default function CommandeDetails() {
                 </>
               )}
             </View>
-
             {order.status === "PENDING_PAYMENT" && (
               <TouchableOpacity
                 style={styles.payBtn}
@@ -562,65 +561,6 @@ export default function CommandeDetails() {
 // ====================== STYLES ======================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  separator: {
-    height: 1,
-    backgroundColor: "#eee",
-    marginVertical: 12,
-  },
-  deliverySection: {
-    marginTop: 8,
-  },
-  deliveryTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#00A36C",
-    marginBottom: 12,
-  },
-  deliveryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginVertical: 6,
-  },
-  deliveryLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
-  deliveryValue: {
-    fontSize: 14,
-    color: "#333",
-    fontWeight: "600",
-    textAlign: "right",
-    flexShrink: 1,
-  },
-  codeContainer: {
-    marginTop: 16,
-    alignItems: "center",
-  },
-  codeLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 8,
-  },
-  codeBox: {
-    backgroundColor: "#00A36C",
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginBottom: 8,
-  },
-  codeText: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#fff",
-    letterSpacing: 4,
-  },
-  codeHint: {
-    fontSize: 13,
-    color: "#666",
-    textAlign: "center",
-    fontStyle: "italic",
-  },
 
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 12, color: "#666", fontSize: 16 },
@@ -776,7 +716,65 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontStyle: "italic",
   },
-
+  separator: {
+    height: 1,
+    backgroundColor: "#eee",
+    marginVertical: 12,
+  },
+  deliverySection: {
+    marginTop: 8,
+  },
+  deliveryTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#00A36C",
+    marginBottom: 12,
+  },
+  deliveryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: 6,
+  },
+  deliveryLabel: {
+    fontSize: 14,
+    color: "#666",
+  },
+  deliveryValue: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "600",
+    textAlign: "right",
+    flexShrink: 1,
+  },
+  codeContainer: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  codeLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  codeBox: {
+    backgroundColor: "#00A36C",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  codeText: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: 4,
+  },
+  codeHint: {
+    fontSize: 13,
+    color: "#666",
+    textAlign: "center",
+    fontStyle: "italic",
+  },
   // MODAL
   modalOverlay: {
     flex: 1,

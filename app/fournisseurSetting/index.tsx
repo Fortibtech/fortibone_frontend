@@ -9,7 +9,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from "react-native";
 import { useUserStore } from "@/store/userStore";
 import { router } from "expo-router";
@@ -18,6 +17,7 @@ import LogoutModal from "./logoutModal";
 import ShareAppModal from "./shareAppModal";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
 
 interface MenuItem {
   id: string;
@@ -28,11 +28,12 @@ interface MenuItem {
 }
 
 const SettingsMenu: React.FC = () => {
-  const [loading, setLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const user = useUserStore.getState().userProfile;
+  const user = useUserStore((state) => state.userProfile);
+  const bumpAvatar = useUserStore((state) => state.bumpAvatarVersion);
   const { uri } = useUserAvatar();
+  console.log(bumpAvatar);
   const handleViewProfile = () => {
     router.push("/fournisseurSetting/userProfile");
   };
@@ -43,6 +44,16 @@ const SettingsMenu: React.FC = () => {
 
   const handleMyBusiness = () => {
     router.push("/fournisseurSetting/companyProfile");
+  };
+
+  // === NOUVEAU : Mes commandes ===
+  const handleMyOrders = () => {
+    router.push("/(achats)/my-orders/"); // ← Adapte selon ta route réelle des commandes
+  };
+
+  // === NOUVEAU : Mon panier ===
+  const handleMyCart = () => {
+    router.push("/(achats)/shopping-cart"); // ← Ta page panier
   };
 
   const handleAppSettings = () => {
@@ -70,35 +81,60 @@ const SettingsMenu: React.FC = () => {
   };
 
   const handleRateApp = () => {
-    Alert.alert("Noter", "Merci de votre soutien !");
+    alert("Merci pour votre soutien ! 🌟");
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Se Déconnecter",
-      "Êtes-vous sûr de vouloir vous déconnecter ?",
-      [
-        {
-          text: "Annuler",
-          style: "cancel",
-        },
-        {
-          text: "Déconnecter",
-          style: "destructive",
-          onPress: () => {
-            router.replace("/");
-          },
-        },
-      ]
-    );
-  };
+  const handleConfirmLogout = async () => {
+    setShowLogoutModal(false);
 
+    try {
+      // === VRAIE DÉCONNEXION : vide tout (token, profil, AsyncStorage) ===
+      await useUserStore.getState().logout();
+
+      console.log("✅ Déconnexion réussie – utilisateur déconnecté");
+
+      Toast.show({
+        type: "success",
+        text1: "Déconnexion réussie",
+        text2: "À bientôt ! 👋",
+        position: "bottom",
+        visibilityTime: 3000,
+      });
+    } catch (error) {
+      console.error("❌ Erreur lors de la déconnexion :", error);
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible de se déconnecter correctement.",
+        position: "bottom",
+      });
+    } finally {
+      // Redirection vers la page de connexion ou l'accueil
+      router.replace("/"); // ou "/login" si tu as une page dédiée
+    }
+  };
   const menuItems: MenuItem[] = [
     {
       id: "business",
       iconName: "store",
       title: "Mon Commerce",
       onPress: handleMyBusiness,
+      showArrow: true,
+    },
+    // === AJOUT : Mes commandes ===
+    {
+      id: "orders",
+      iconName: "receipt-long",
+      title: "Mes commandes",
+      onPress: handleMyOrders,
+      showArrow: true,
+    },
+    // === AJOUT : Mon panier ===
+    {
+      id: "cart",
+      iconName: "shopping-cart",
+      title: "Mon panier",
+      onPress: handleMyCart,
       showArrow: true,
     },
     {
@@ -170,13 +206,13 @@ const SettingsMenu: React.FC = () => {
         <View style={styles.profileCard}>
           {uri ? (
             <Image
-              key={uri} // Indispensable ici aussi !
+              key={uri}
               source={{ uri }}
               style={styles.avatar}
               resizeMode="cover"
             />
           ) : (
-            <View style={[styles.avatar, styles.placeholder]}>
+            <View style={[styles.avatar, styles.placeholderAvatar]}>
               <Ionicons name="person" size={40} color="#ccc" />
             </View>
           )}
@@ -237,18 +273,20 @@ const SettingsMenu: React.FC = () => {
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={() => setShowLogoutModal(true)}
-          disabled={loading}
         >
           <MaterialIcons name="logout" size={20} color="#FFFFFF" />
           <Text style={styles.logoutButtonText}>Se Déconnecter</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Modale personnalisée pour déconnexion */}
       <LogoutModal
         visible={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}
-        onLogout={handleLogout}
+        onLogout={handleConfirmLogout}
       />
+
+      {/* Modale partage */}
       <ShareAppModal
         visible={showShareModal}
         onClose={() => setShowShareModal(false)}
@@ -256,7 +294,6 @@ const SettingsMenu: React.FC = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -278,10 +315,6 @@ const styles = StyleSheet.create({
     borderColor: "#F8F1F1FF",
     padding: 5,
   },
-  backIcon: {
-    fontSize: 24,
-    color: "#000000",
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
@@ -292,8 +325,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    alignContent: "center",
-    // justifyContent:'center'
   },
   profileCard: {
     flexDirection: "row",
@@ -310,6 +341,10 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     backgroundColor: "#E8E8E8",
     marginRight: 20,
+  },
+  placeholderAvatar: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   profileInfo: {
     flex: 1,
@@ -390,19 +425,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 14,
   },
-  menuIcon: {
-    fontSize: 18,
-  },
   menuItemText: {
     fontSize: 14,
     color: "#000000",
     flex: 1,
     fontWeight: "500",
-  },
-  arrow: {
-    fontSize: 20,
-    color: "#CCCCCC",
-    marginLeft: 8,
   },
   footer: {
     paddingHorizontal: 20,
@@ -419,14 +446,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 24,
   },
-  logoutIcon: {
-    fontSize: 18,
-    marginRight: 10,
-  },
   logoutButtonText: {
     fontSize: 15,
     fontWeight: "600",
     color: "#FFFFFF",
+    marginLeft: 10,
   },
 });
 
