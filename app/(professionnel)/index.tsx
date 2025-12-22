@@ -47,7 +47,8 @@ const HomePage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Analytics states
-  const [overallOverview, setOverallOverview] = useState<AnalyticsOverview | null>(null);
+  const [overallOverview, setOverallOverview] =
+    useState<AnalyticsOverview | null>(null);
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
   const [processingPurchases, setProcessingPurchases] = useState<{
     count: number;
@@ -56,8 +57,8 @@ const HomePage: React.FC = () => {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   // Gestion de la période
-  type PeriodType = 'day' | 'week' | 'month' | 'year' | 'all' | 'custom';
-  const [period, setPeriod] = useState<PeriodType>('all');
+  type PeriodType = "day" | "week" | "month" | "year" | "all" | "custom";
+  const [period, setPeriod] = useState<PeriodType>("all");
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
 
@@ -100,7 +101,7 @@ const HomePage: React.FC = () => {
   };
 
   const selectPeriod = (newPeriod: PeriodType) => {
-    if (newPeriod === 'custom') {
+    if (newPeriod === "custom") {
       setShowStartPicker(true);
       closeModal();
       return;
@@ -112,51 +113,69 @@ const HomePage: React.FC = () => {
   };
 
   const formatDateFR = (date: Date): string => {
-    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long", // vendredi
+      day: "numeric", // 24
+      month: "long", // décembre
+      year: "numeric", // 2025
+    };
+
+    let formatted = new Intl.DateTimeFormat("fr-FR", options).format(date);
+
+    // Met la première lettre en majuscule → "Vendredi 24 décembre 2025"
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
   const getPeriodLabel = useCallback(() => {
-    if (period === 'custom' && customStartDate && customEndDate) {
-      return `du ${formatDateFR(customStartDate)} au ${formatDateFR(customEndDate)}`;
+    if (period === "custom" && customStartDate && customEndDate) {
+      return `du ${formatDateFR(customStartDate)} au ${formatDateFR(
+        customEndDate
+      )}`;
     }
     switch (period) {
-      case 'day': return "du jour";
-      case 'week': return "de la semaine";
-      case 'month': return "du mois";
-      case 'year': return "de l'année";
-      case 'all': return "Global";
-      default: return "Global";
+      case "day":
+        return "du jour";
+      case "week":
+        return "de la semaine";
+      case "month":
+        return "du mois";
+      case "year":
+        return "de l'année";
+      case "all":
+        return "Global";
+      default:
+        return "Global";
     }
   }, [period, customStartDate, customEndDate]);
 
   // Calcul des dates selon la période
   const getPeriodDates = useCallback(() => {
-    if (period === 'custom' && customStartDate && customEndDate) {
+    if (period === "custom" && customStartDate && customEndDate) {
       return {
-        startDate: customStartDate.toISOString().split('T')[0],
-        endDate: customEndDate.toISOString().split('T')[0],
+        startDate: customStartDate.toISOString().split("T")[0],
+        endDate: customEndDate.toISOString().split("T")[0],
       };
     }
 
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
+    const today = now.toISOString().split("T")[0];
     let startDate: string | undefined;
     let endDate: string | undefined = today;
 
-    if (period === 'day') {
+    if (period === "day") {
       startDate = today;
-    } else if (period === 'week') {
+    } else if (period === "week") {
       const startOfWeek = new Date(now);
       const dayOfWeek = now.getDay();
       startOfWeek.setDate(now.getDate() - dayOfWeek);
-      startDate = startOfWeek.toISOString().split('T')[0];
-    } else if (period === 'month') {
+      startDate = startOfWeek.toISOString().split("T")[0];
+    } else if (period === "month") {
       const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, "0");
       startDate = `${year}-${month}-01`;
       const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-      endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-    } else if (period === 'year') {
+      endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+    } else if (period === "year") {
       const year = now.getFullYear();
       startDate = `${year}-01-01`;
       endDate = `${year}-12-31`;
@@ -201,7 +220,7 @@ const HomePage: React.FC = () => {
       const { startDate, endDate } = getPeriodDates();
 
       const overviewPromise =
-        period === 'all'
+        period === "all"
           ? getAnalyticsOverview(business.id)
           : getAnalyticsOverview(business.id, startDate, endDate);
 
@@ -281,7 +300,7 @@ const HomePage: React.FC = () => {
       try {
         await BusinessesService.selectBusiness(selected);
         setBusiness(selected);
-        setPeriod('all');
+        setPeriod("all");
         setCustomStartDate(null);
         setCustomEndDate(null);
         Alert.alert("Succès", `"${selected.name}" sélectionné`);
@@ -305,7 +324,9 @@ const HomePage: React.FC = () => {
   );
 
   const formatNumber = useCallback((num: number = 0): string => {
-    return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(num);
+    return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(
+      num
+    );
   }, []);
 
   const totalAlerts = useMemo(() => pendingOrdersCount, [pendingOrdersCount]);
@@ -352,7 +373,14 @@ const HomePage: React.FC = () => {
         </View>
       </View>
     ),
-    [businesses, business, handleBusinessSelect, loading, totalAlerts, userProfile]
+    [
+      businesses,
+      business,
+      handleBusinessSelect,
+      loading,
+      totalAlerts,
+      userProfile,
+    ]
   );
 
   if (loading) {
@@ -449,7 +477,9 @@ const HomePage: React.FC = () => {
                         <Text style={styles.cardLabel}>Articles vendus</Text>
                         <Text style={styles.cardValue}>
                           {overallOverview?.totalSalesOrders || 0} article
-                          {(overallOverview?.totalSalesOrders || 0) > 1 ? "s" : ""}
+                          {(overallOverview?.totalSalesOrders || 0) > 1
+                            ? "s"
+                            : ""}
                         </Text>
                       </View>
                     </View>
@@ -474,10 +504,24 @@ const HomePage: React.FC = () => {
       </ScrollView>
 
       {/* Modale principale */}
-      <Modal visible={modalVisible} transparent animationType="none" onRequestClose={closeModal}>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeModal}
+      >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalBackdrop} onPress={closeModal} activeOpacity={1} />
-          <Animated.View style={[styles.modalContent, { transform: [{ translateY: slideAnim }] }]}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            onPress={closeModal}
+            activeOpacity={1}
+          />
+          <Animated.View
+            style={[
+              styles.modalContent,
+              { transform: [{ translateY: slideAnim }] },
+            ]}
+          >
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Période des statistiques</Text>
             {[
@@ -492,22 +536,28 @@ const HomePage: React.FC = () => {
                 key={item.value}
                 style={[
                   styles.periodItem,
-                  period === item.value && item.value !== 'custom' && styles.periodItemSelected,
+                  period === item.value &&
+                    item.value !== "custom" &&
+                    styles.periodItemSelected,
                 ]}
                 onPress={() => selectPeriod(item.value as PeriodType)}
               >
                 <Text
                   style={[
                     styles.periodText,
-                    period === item.value && item.value !== 'custom' && styles.periodTextSelected,
+                    period === item.value &&
+                      item.value !== "custom" &&
+                      styles.periodTextSelected,
                   ]}
                 >
                   {item.label}
                 </Text>
-                {period === item.value && item.value !== 'custom' && (
+                {period === item.value && item.value !== "custom" && (
                   <Ionicons name="checkmark" size={22} color="#00C851" />
                 )}
-                {item.value === 'custom' && <Ionicons name="chevron-forward" size={20} color="#666" />}
+                {item.value === "custom" && (
+                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                )}
               </TouchableOpacity>
             ))}
           </Animated.View>
@@ -519,7 +569,7 @@ const HomePage: React.FC = () => {
         <DateTimePicker
           value={customStartDate || new Date()}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display={Platform.OS === "ios" ? "spinner" : "default"}
           onChange={(event, selectedDate) => {
             setShowStartPicker(false);
             if (selectedDate) {
@@ -535,13 +585,13 @@ const HomePage: React.FC = () => {
         <DateTimePicker
           value={customEndDate || new Date()}
           mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display={Platform.OS === "ios" ? "spinner" : "default"}
           minimumDate={customStartDate || undefined}
           onChange={(event, selectedDate) => {
             setShowEndPicker(false);
             if (selectedDate) {
               setCustomEndDate(selectedDate);
-              setPeriod('custom');
+              setPeriod("custom");
             }
           }}
         />

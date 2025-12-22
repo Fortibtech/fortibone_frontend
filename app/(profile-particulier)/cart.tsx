@@ -80,7 +80,7 @@ const Cart = () => {
               });
 
               clearCart();
-              router.push("/orders"); // ou "/(tabs)/orders" selon ta structure
+              router.push("/"); // ou "/(tabs)/orders" selon ta structure
             } catch (err: any) {
               Toast.show({
                 type: "error",

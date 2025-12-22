@@ -20,7 +20,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
-
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Business, BusinessesService } from "@/api";
 import BusinessSelector from "@/components/Business/BusinessSelector";
@@ -115,11 +114,17 @@ const RestaurantHome: React.FC = () => {
 
   // --------------------------- FILTRE PÉRIODE ---------------------------
   const formatDateFR = (date: Date): string => {
-    return date.toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long", // vendredi
+      day: "numeric", // 24
+      month: "long", // décembre
+      year: "numeric", // 2025
+    };
+
+    let formatted = new Intl.DateTimeFormat("fr-FR", options).format(date);
+
+    // Met la première lettre en majuscule → "Vendredi 24 décembre 2025"
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
   const getPeriodLabel = useCallback(() => {

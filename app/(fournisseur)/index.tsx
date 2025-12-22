@@ -20,7 +20,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import Svg, { G, Path, Text as SvgText } from "react-native-svg";
 import DateTimePicker from "@react-native-community/datetimepicker";
-
 import { Business, BusinessesService } from "@/api";
 import {
   AnalyticsOverview,
@@ -108,11 +107,17 @@ const HomePage: React.FC = () => {
   }
 
   const formatDateFR = (date: Date): string => {
-    return date.toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long", // vendredi
+      day: "numeric", // 24
+      month: "long", // décembre
+      year: "numeric", // 2025
+    };
+
+    let formatted = new Intl.DateTimeFormat("fr-FR", options).format(date);
+
+    // Met la première lettre en majuscule → "Vendredi 24 décembre 2025"
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
   const getPeriodLabel = useCallback(() => {

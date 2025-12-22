@@ -55,29 +55,52 @@ const HomePage: React.FC = () => {
   const fetchProducts = async (search: string = "") => {
     try {
       setLoading(true);
-      const params = search ? { search } : {};
-      const response: any = await getAllProductsLike(params);
-      setProducts(response.data);
+
+      const baseParams = search ? { search } : {};
+
+      const [merchantsRes, restaurantsRes]: any = await Promise.all([
+        getAllProductsLike({
+          ...baseParams,
+          businessType: "COMMERCANT",
+        }),
+        getAllProductsLike({
+          ...baseParams,
+          businessType: "RESTAURATEUR",
+        }),
+      ]);
+
+      const merged = [...merchantsRes.data, ...restaurantsRes.data];
+
+      setProducts(merged);
     } catch (error) {
       console.error("❌ Erreur lors du chargement des produits :", error);
     } finally {
       setLoading(false);
     }
   };
-
   const fetchSuggestions = async (query: string) => {
     try {
-      const response: any = await getAllProductsLike({
-        search: query,
-        limit: 5,
-      });
-      setSuggestions(response.data);
+      const [merchantsRes, restaurantsRes]: any = await Promise.all([
+        getAllProductsLike({
+          search: query,
+          limit: 5,
+          businessType: "COMMERCANT",
+        }),
+        getAllProductsLike({
+          search: query,
+          limit: 5,
+          businessType: "RESTAURATEUR",
+        }),
+      ]);
+
+      const merged = [...merchantsRes.data, ...restaurantsRes.data].slice(0, 5); // on limite à 5 suggestions
+
+      setSuggestions(merged);
     } catch (error) {
       console.error("❌ Erreur lors du chargement des suggestions :", error);
       setSuggestions([]);
     }
   };
-
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
   };
@@ -291,7 +314,7 @@ const HomePage: React.FC = () => {
           </Text>
 
           <Text style={styles.gridPrice}>
-            {product.price.toLocaleString("fr-FR")} KMF
+            {product.price.toLocaleString("fr-FR")} {product.currencyCode}
           </Text>
 
           <View style={styles.ratingRow}>
