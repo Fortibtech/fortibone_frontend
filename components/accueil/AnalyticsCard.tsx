@@ -10,9 +10,12 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
-import { SalesByCategoryChart } from "@/components/Chart/SalesBarChart";
 import { getSales, SalesResponse } from "@/api/analytics";
 import { useEffect, useState } from "react";
+import SalesByPeriodChart from "../Chart/SalesByPeriodChart";
+import InventoryLossesChart from "../Chart/InventoryLossesChart";
+import PopularDishesChart from "../Chart/PopularDishesChart";
+import ReservationsByPeriodChart from "../Chart/ReservationsByPeriodChart";
 type FeatherIconName =
   | "filter"
   | "bold"
@@ -144,9 +147,10 @@ export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
         <Ionicons name="chevron-forward" size={20} color="#6366F1" />
       </TouchableOpacity>
       <Text style={styles.sectionTitle}>Statistiques</Text>
-      <SalesByCategoryChart data={data.salesByPeriod} />
+      <SalesByPeriodChart businessId={id} />
       <ExpenseDistributionChart businessId={id} />
       <RevenueDistributionChart businessId={id} />
+      <InventoryLossesChart businessId={id} />
     </ScrollView>
   );
 }

@@ -8,11 +8,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import { SelectedBusinessManager } from "@/api";
 import Revenus from "@/components/Delivery/Revenus";
 import ZoneTarifs from "@/components/Delivery/ZoneTarifs";
-
 type TabType = "REVENU" | "TARIFS";
 
 const DeliveryEarningsScreen: React.FC = () => {

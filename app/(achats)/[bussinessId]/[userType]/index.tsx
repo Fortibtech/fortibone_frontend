@@ -1,4 +1,4 @@
-// app/(achats)/suppliers-market.tsx (ou ton chemin exact)
+// app/(achats)/suppliers-market.tsx
 import { useState, useCallback, useEffect } from "react";
 import {
   View,
@@ -12,35 +12,38 @@ import {
   RefreshControl,
   Modal,
   Pressable,
+  ScrollView,
 } from "react-native";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import BackButtonAdmin from "@/components/Admin/BackButton";
-// import List from "@/components/Admin/List";
 import { useDebouncedCallback } from "use-debounce";
 import CompanyProfile from "@/components/Achat/CompanyProfile";
 import {
   getAllProductFournisseur,
   ProductSearchResponse,
-} from "@/api/produit/productsApi";
+  getCategoriesLite,
+  CategoryLite,
+} from "@/api/produit/productsApi"; // Assure-toi que getCategoriesLite est exporté
 import CartButton from "@/components/CartButton";
-// Import de la nouvelle fonction
+
 export default function SuppliersMarket() {
   const { bussinessId, userType } = useLocalSearchParams<{
     bussinessId?: string;
     userType?: string;
   }>();
   const router = useRouter();
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [products, setProducts] = useState<any[]>([]); // any temporaire, tu peux typer plus précisément si besoin
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Filtres et tri
+  // Filtres
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [sortBy, setSortBy] = useState<
     "price_asc" | "price_desc" | "relevance" | "newest"
@@ -48,13 +51,19 @@ export default function SuppliersMarket() {
   const [minPrice, setMinPrice] = useState<number | undefined>(undefined);
   const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
 
+  // Nouveau : état pour la catégorie sélectionnée
+  const [selectedCategoryId, setSelectedCategoryId] = useState<
+    string | undefined
+  >(undefined);
+  const [categories, setCategories] = useState<CategoryLite[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
   const debouncedSearch = useDebouncedCallback((value: string) => {
     setSearchQuery(value.trim());
     setPage(1);
     setProducts([]);
   }, 600);
 
-  // Mapping du tri vers les valeurs de l'API
   const getSortByParam = ():
     | "PRICE_ASC"
     | "PRICE_DESC"
@@ -73,6 +82,23 @@ export default function SuppliersMarket() {
     }
   };
 
+  // Chargement des catégories au montage
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const cats = await getCategoriesLite();
+        setCategories([{ id: "", name: "Toutes les catégories" }, ...cats]); // Option "Toutes"
+      } catch (err) {
+        console.error("Erreur chargement catégories :", err);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
   const fetchProducts = useCallback(
     async (pageNum: number = 1, append: boolean = false) => {
       if (pageNum === 1 && !append) setLoading(true);
@@ -83,6 +109,7 @@ export default function SuppliersMarket() {
           search: searchQuery || undefined,
           minPrice,
           maxPrice,
+          categoryId: selectedCategoryId || undefined, // ← Filtre catégorie
           sortBy: getSortByParam(),
           page: pageNum,
           limit: 20,
@@ -104,7 +131,7 @@ export default function SuppliersMarket() {
         setRefreshing(false);
       }
     },
-    [searchQuery, minPrice, maxPrice, sortBy]
+    [searchQuery, minPrice, maxPrice, sortBy, selectedCategoryId] // ← Ajout de selectedCategoryId dans les dépendances
   );
 
   useEffect(() => {
@@ -133,7 +160,6 @@ export default function SuppliersMarket() {
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => {
-      // Pas de variants ici d'après la réponse API → prix direct
       return (
         <View style={styles.productWrapper}>
           <TouchableOpacity
@@ -244,6 +270,7 @@ export default function SuppliersMarket() {
               : sortBy === "price_desc"
               ? "Prix décroissant"
               : "Pertinence"}
+            {selectedCategoryId && " • Catégorie"}
           </Text>
           <Ionicons name="chevron-down" size={16} color="#666" />
         </TouchableOpacity>
@@ -260,7 +287,7 @@ export default function SuppliersMarket() {
         <Text style={styles.title} numberOfLines={1}>
           Marché des Fournisseurs
         </Text>
-        <CartButton /> {/* ← Ici */}
+        <CartButton />
       </View>
 
       <FlatList
@@ -300,39 +327,78 @@ export default function SuppliersMarket() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Filtres et tri</Text>
 
-            <View style={styles.filterSection}>
-              <Text style={styles.sectionTitle}>Trier par</Text>
-              {[
-                { key: "relevance", label: "Pertinence" },
-                { key: "price_asc", label: "Prix croissant" },
-                { key: "price_desc", label: "Prix décroissant" },
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.key}
-                  style={styles.filterOption}
-                  onPress={() => {
-                    setSortBy(option.key as any);
-                    setPage(1);
-                    setProducts([]);
-                    setFilterModalVisible(false);
-                    fetchProducts(1);
-                  }}
-                >
-                  <Text
-                    style={
-                      sortBy === option.key
-                        ? styles.activeText
-                        : styles.inactiveText
-                    }
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Section Tri */}
+              <View style={styles.filterSection}>
+                <Text style={styles.sectionTitle}>Trier par</Text>
+                {[
+                  { key: "relevance", label: "Pertinence" },
+                  { key: "price_asc", label: "Prix croissant" },
+                  { key: "price_desc", label: "Prix décroissant" },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={styles.filterOption}
+                    onPress={() => {
+                      setSortBy(option.key as any);
+                      setPage(1);
+                      setProducts([]);
+                      setFilterModalVisible(false);
+                      fetchProducts(1);
+                    }}
                   >
-                    {option.label}
-                  </Text>
-                  {sortBy === option.key && (
-                    <Feather name="check" size={20} color="#27AE60" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+                    <Text
+                      style={
+                        sortBy === option.key
+                          ? styles.activeText
+                          : styles.inactiveText
+                      }
+                    >
+                      {option.label}
+                    </Text>
+                    {sortBy === option.key && (
+                      <Feather name="check" size={20} color="#27AE60" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Section Catégorie */}
+              <View style={styles.filterSection}>
+                <Text style={styles.sectionTitle}>Secteurs d’activité</Text>
+                {loadingCategories ? (
+                  <ActivityIndicator size="small" color="#666" />
+                ) : (
+                  categories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={styles.filterOption}
+                      onPress={() => {
+                        const newId = cat.id === "" ? undefined : cat.id;
+                        setSelectedCategoryId(newId);
+                        setPage(1);
+                        setProducts([]);
+                        setFilterModalVisible(false);
+                        fetchProducts(1);
+                      }}
+                    >
+                      <Text
+                        style={
+                          selectedCategoryId === (cat.id || undefined)
+                            ? styles.activeText
+                            : styles.inactiveText
+                        }
+                      >
+                        {cat.name}
+                      </Text>
+                      {selectedCategoryId === (cat.id || undefined) && (
+                        <Feather name="check" size={20} color="#27AE60" />
+                      )}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </View>
+            </ScrollView>
 
             <TouchableOpacity
               style={styles.closeBtn}
@@ -393,9 +459,8 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 16,
   },
-  productImage: { width: "85%", height: "85%" },
+  productImage: { width: "100%", height: "100%" },
   productInfo: { padding: 12 },
   productName: { fontSize: 13, color: "#333", marginBottom: 6, lineHeight: 18 },
   businessName: { fontSize: 12, color: "#666", marginBottom: 4 },

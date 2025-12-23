@@ -26,6 +26,7 @@ import { useOnboardingStore } from "@/store/onboardingStore";
 import { BusinessesService, Currency, CurrencyService } from "@/api";
 import { router } from "expo-router";
 import BackButtonWithClear from "@/components/Admin/BackButtonWithClear";
+import { getAllSectores, Sector } from "@/api/sector/sectorApi";
 
 type SearchResult = {
   latitude: number;
@@ -33,50 +34,37 @@ type SearchResult = {
   formattedAddress: string;
 };
 
-type VehicleType = "SCOOTER" | "MOTO" | "VOITURE" | "CAMIONNETTE" | "VELO";
-type ExperienceLevel = "DEBUTANT" | "CONFIRME" | "EXPERT";
-
-const VEHICLE_TYPES = ["SCOOTER", "MOTO", "VOITURE", "CAMIONNETTE", "VELO"];
-const EXPERIENCE_LEVELS = ["DÉBUTANT", "CONFIRMÉ", "EXPERT"];
+const VEHICLE_TYPES = [
+  "SCOOTER",
+  "MOTO",
+  "VOITURE",
+  "CAMIONNETTE",
+  "VELO",
+] as const;
+const EXPERIENCE_LEVELS = ["DÉBUTANT", "CONFIRMÉ", "EXPERT"] as const;
 const AVAILABILITY_ZONES = [
   "Centre-ville",
   "Banlieue",
   "Tout",
   "Zone spécifique",
-];
+] as const;
 
 const CreateBusinessLivreur: React.FC = () => {
   const { businessData, updateBusinessData, reset } = useOnboardingStore();
   const [loading, setLoading] = useState(false);
 
-  // 👈 SPECIFIQUE LIVREUR PRO
-  const business = {
-    ...businessData,
-    type: "LIVREUR" as const,
-    vehicleType: (businessData as any).vehicleType || "SCOOTER",
-    experienceLevel: (businessData as any).experienceLevel || "DEBUTANT",
-    maxRadiusKm: (businessData as any).maxRadiusKm || 15,
-    baseZone: (businessData as any).baseZone || "Centre-ville",
-    availabilityHours: (businessData as any).availabilityHours || "08h-22h",
-    availableWeekends: (businessData as any).availableWeekends ?? true,
-    hasInsurance: (businessData as any).hasInsurance ?? false,
-    licensePlate: (businessData as any).licensePlate || "",
-    latitude: businessData.latitude || 4.0511,
-    longitude: businessData.longitude || 9.7679,
-    currencyId: businessData.currencyId || "",
-    activitySector: "Livraison express",
-    name: businessData.name || "",
-    description: businessData.description || "",
-    address: businessData.address || "",
-    postalCode: businessData.postalCode || "",
-    phone: (businessData as any).phone || "",
-    websiteUrl: businessData.websiteUrl || "",
-    logoUrl: businessData.logoUrl || "",
-    coverImageUrl: businessData.coverImageUrl || "",
-  };
+  // Secteurs d'activité pour LIVREUR
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [loadingSectors, setLoadingSectors] = useState(true);
 
-  // Modals
+  // États modals
   const [mapModalVisible, setMapModalVisible] = useState(false);
+  const [sectorModalVisible, setSectorModalVisible] = useState(false);
+  const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+  const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
+  const [experienceModalVisible, setExperienceModalVisible] = useState(false);
+  const [zoneModalVisible, setZoneModalVisible] = useState(false);
+
   const [tempMarker, setTempMarker] = useState<{
     latitude: number;
     longitude: number;
@@ -87,33 +75,72 @@ const CreateBusinessLivreur: React.FC = () => {
   const [previewAddress, setPreviewAddress] = useState(
     "Sélectionnez votre base"
   );
-
-  const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
-  const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
-  const [experienceModalVisible, setExperienceModalVisible] = useState(false);
-  const [zoneModalVisible, setZoneModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
 
-  useEffect(() => {
-    loadCurrencies();
-  }, []);
-
-  const loadCurrencies = async () => {
-    try {
-      const data = await CurrencyService.getCurrencies();
-      setCurrencies(data);
-      if (!business.currencyId) {
-        const xaf = data.find((c) => c.code === "XAF");
-        if (xaf) updateBusinessData({ currencyId: xaf.id });
-      }
-    } catch (err) {
-      Alert.alert("Erreur", "Impossible de charger les devises");
-    }
+  const business = {
+    ...businessData,
+    type: "LIVREUR" as const,
+    vehicleType: businessData.vehicleType || "SCOOTER",
+    experienceLevel: businessData.experienceLevel || "DÉBUTANT",
+    maxRadiusKm: businessData.maxRadiusKm || 15,
+    baseZone: businessData.baseZone || "Centre-ville",
+    availabilityHours: businessData.availabilityHours || "08h-22h",
+    availableWeekends: businessData.availableWeekends ?? true,
+    hasInsurance: businessData.hasInsurance ?? false,
+    licensePlate: businessData.licensePlate || "",
+    phone: businessData.phone || "",
+    latitude: businessData.latitude || 4.0511,
+    longitude: businessData.longitude || 9.7679,
+    currencyId: businessData.currencyId || "",
+    activitySector: businessData.activitySector || "", // ← ID du secteur sélectionné
+    name: businessData.name || "",
+    description: businessData.description || "",
+    address: businessData.address || "",
+    postalCode: businessData.postalCode || "",
+    websiteUrl: businessData.websiteUrl || "",
+    logoUrl: businessData.logoUrl || "",
+    coverImageUrl: businessData.coverImageUrl || "",
   };
+
+  // Nom du secteur sélectionné pour affichage
+  const selectedSectorName = sectors.find(
+    (s) => s.id === business.activitySector
+  )?.name;
+
+  // Chargement secteurs + devises
+  useEffect(() => {
+    const loadData = async () => {
+      // Secteurs LIVREUR
+      try {
+        setLoadingSectors(true);
+        const sectorData = await getAllSectores("LIVREUR");
+        setSectors(sectorData);
+      } catch (err) {
+        console.error("Erreur chargement secteurs :", err);
+        Alert.alert("Erreur", "Impossible de charger les secteurs d'activité");
+      } finally {
+        setLoadingSectors(false);
+      }
+
+      // Devises
+      try {
+        const data = await CurrencyService.getCurrencies();
+        setCurrencies(data);
+        if (!business.currencyId) {
+          const xaf = data.find((c) => c.code === "XAF");
+          if (xaf) updateBusinessData({ currencyId: xaf.id });
+        }
+      } catch (err) {
+        Alert.alert("Erreur", "Impossible de charger les devises");
+      }
+    };
+
+    loadData();
+  }, []);
 
   const updateLocation = async (
     lat: number,
@@ -158,21 +185,28 @@ const CreateBusinessLivreur: React.FC = () => {
       c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredSectors = sectors.filter((s) =>
+    s.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const pickImage = async (type: "logo" | "cover") => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission refusée", "Activez l'accès à la galerie.");
+      Alert.alert(
+        "Permission refusée",
+        "Activez l'accès à la galerie dans les paramètres."
+      );
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // 👈 FIX
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: type === "logo" ? [1, 1] : [16, 9],
       quality: 0.8,
     });
 
-    if (result.canceled) return; // 👈 aussi FIX "cancelled" → "canceled"
+    if (result.canceled) return;
 
     const uri = result.assets[0].uri;
     if (type === "logo") {
@@ -185,12 +219,15 @@ const CreateBusinessLivreur: React.FC = () => {
   const validateAndSave = async () => {
     const errors: Record<string, string> = {};
     if (!business.name?.trim()) errors.name = "Nom requis";
+    if (!business.phone?.trim()) errors.phone = "Téléphone requis";
     if (!business.address?.trim()) errors.address = "Adresse de base requise";
     if (!business.description?.trim() || business.description.length < 20)
-      errors.description = "Description 20+ caractères requise";
+      errors.description = "Description de 20+ caractères requise";
     if (!business.currencyId) errors.currencyId = "Devise requise";
     if (!business.latitude || !business.longitude)
       errors.location = "Position GPS requise";
+    if (!business.activitySector)
+      errors.activitySector = "Secteur d’activité requis";
 
     setValidationErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -204,14 +241,16 @@ const CreateBusinessLivreur: React.FC = () => {
       latitude: Number(business.latitude),
       longitude: Number(business.longitude),
       currencyId: business.currencyId,
-      activitySector: "Restaurant",
+      sectorId: business.activitySector, // ← ID réel provenant de l'API
       postalCode: business.postalCode || null,
       siret: null,
       websiteUrl: business.websiteUrl || null,
-      // 👈 PAS DE PHONE !
     };
 
-    console.log("🚀 PAYLOAD ENVOYÉ:", JSON.stringify(cleanPayload, null, 2));
+    console.log(
+      "🚀 Payload envoyé (LIVREUR) :",
+      JSON.stringify(cleanPayload, null, 2)
+    );
 
     setLoading(true);
     try {
@@ -219,7 +258,7 @@ const CreateBusinessLivreur: React.FC = () => {
         cleanPayload as any
       );
 
-      // Upload images (optionnel)
+      // Upload logo
       if (business.logoUrl && business.logoUrl.startsWith("file://")) {
         try {
           await BusinessesService.uploadLogo(newBusiness.id, {
@@ -228,18 +267,34 @@ const CreateBusinessLivreur: React.FC = () => {
             name: "logo.jpg",
           } as any);
         } catch (err) {
-          console.warn("Échec logo", err);
+          console.warn("Échec upload logo", err);
+        }
+      }
+
+      // Upload couverture
+      if (
+        business.coverImageUrl &&
+        business.coverImageUrl.startsWith("file://")
+      ) {
+        try {
+          await BusinessesService.uploadCover(newBusiness.id, {
+            uri: business.coverImageUrl,
+            type: "image/jpeg",
+            name: "cover.jpg",
+          } as any);
+        } catch (err) {
+          console.warn("Échec upload couverture", err);
         }
       }
 
       await BusinessesService.selectBusiness(newBusiness);
 
       Alert.alert(
-        "✅ Profil créé !",
-        `"${newBusiness.name}" - Prêt pour les livraisons !`,
+        "Félicitations !",
+        `Ton profil livreur "${newBusiness.name}" a été créé avec succès !`,
         [
           {
-            text: "Dashboard Livreur",
+            text: "Aller au dashboard",
             onPress: () => {
               reset();
               router.replace("/(delivery)");
@@ -249,8 +304,16 @@ const CreateBusinessLivreur: React.FC = () => {
         { cancelable: false }
       );
     } catch (error: any) {
-      console.log("❌ ERREUR:", error.response?.data);
-      Alert.alert("Erreur", error.response?.data?.message || "Erreur création");
+      console.error(
+        "Erreur création profil livreur :",
+        error.response?.data || error
+      );
+      Alert.alert(
+        "Erreur",
+        error?.response?.data?.message?.join("\n") ||
+          error?.response?.data?.message ||
+          "Impossible de créer le profil."
+      );
     } finally {
       setLoading(false);
     }
@@ -276,7 +339,7 @@ const CreateBusinessLivreur: React.FC = () => {
           </View>
 
           <View style={styles.content}>
-            {/* Nom pro */}
+            {/* Nom / Pseudo */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nom / Pseudo professionnel *</Text>
               <TextInput
@@ -302,12 +365,31 @@ const CreateBusinessLivreur: React.FC = () => {
                   validationErrors.phone && styles.inputError,
                 ]}
                 value={business.phone}
-                onChangeText={(t) => updateBusinessData({ phone: t } as any)}
+                onChangeText={(t) => updateBusinessData({ phone: t })}
                 placeholder="+237 6XX XX XX XX"
                 keyboardType="phone-pad"
               />
               {validationErrors.phone && (
                 <Text style={styles.errorText}>{validationErrors.phone}</Text>
+              )}
+            </View>
+
+            {/* Secteur d’activité (ajouté comme dans le commerçant) */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Secteur d’activité *</Text>
+              <TouchableOpacity
+                style={styles.selectInput}
+                onPress={() => setSectorModalVisible(true)}
+              >
+                <Text style={{ color: selectedSectorName ? "#000" : "#999" }}>
+                  {selectedSectorName || "Sélectionnez votre secteur"}
+                </Text>
+                <Feather name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+              {validationErrors.activitySector && (
+                <Text style={styles.errorText}>
+                  {validationErrors.activitySector}
+                </Text>
               )}
             </View>
 
@@ -325,22 +407,20 @@ const CreateBusinessLivreur: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Plaque immatriculation */}
+            {/* Immatriculation */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Immatriculation (optionnel)</Text>
               <TextInput
                 style={styles.input}
                 value={business.licensePlate}
-                onChangeText={(t) =>
-                  updateBusinessData({ licensePlate: t } as any)
-                }
+                onChangeText={(t) => updateBusinessData({ licensePlate: t })}
                 placeholder="ex: CM 1234 AB"
               />
             </View>
 
             {/* Expérience */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Niveau d&apos;expérience *</Text>
+              <Text style={styles.label}>Niveau d'expérience *</Text>
               <TouchableOpacity
                 style={styles.selectInput}
                 onPress={() => setExperienceModalVisible(true)}
@@ -375,9 +455,9 @@ const CreateBusinessLivreur: React.FC = () => {
                 style={styles.input}
                 value={String(business.maxRadiusKm)}
                 onChangeText={(t) =>
-                  updateBusinessData({ maxRadiusKm: Number(t) || 0 } as any)
+                  updateBusinessData({ maxRadiusKm: Number(t) || 0 })
                 }
-                placeholder="ex: 15"
+                placeholder="15"
                 keyboardType="numeric"
               />
             </View>
@@ -389,43 +469,39 @@ const CreateBusinessLivreur: React.FC = () => {
                 style={styles.input}
                 value={business.availabilityHours}
                 onChangeText={(t) =>
-                  updateBusinessData({ availabilityHours: t } as any)
+                  updateBusinessData({ availabilityHours: t })
                 }
                 placeholder="ex: 08h-22h"
               />
             </View>
 
-            {/* Weekends */}
+            {/* Disponible week-ends */}
             <View style={styles.formGroup}>
               <View style={styles.switchRow}>
                 <Text style={styles.label}>Disponible week-ends</Text>
                 <Switch
                   value={business.availableWeekends}
-                  onValueChange={(value) =>
-                    updateBusinessData({ availableWeekends: value } as any)
+                  onValueChange={(v) =>
+                    updateBusinessData({ availableWeekends: v })
                   }
                   trackColor={{ true: "#00C851" }}
-                  thumbColor={business.availableWeekends ? "#fff" : "#f4f4f4"}
                 />
               </View>
             </View>
 
-            {/* Assurance */}
+            {/* Véhicule assuré */}
             <View style={styles.formGroup}>
               <View style={styles.switchRow}>
                 <Text style={styles.label}>Véhicule assuré</Text>
                 <Switch
                   value={business.hasInsurance}
-                  onValueChange={(value) =>
-                    updateBusinessData({ hasInsurance: value } as any)
-                  }
+                  onValueChange={(v) => updateBusinessData({ hasInsurance: v })}
                   trackColor={{ true: "#00C851" }}
-                  thumbColor={business.hasInsurance ? "#fff" : "#f4f4f4"}
                 />
               </View>
             </View>
 
-            {/* Adresse base */}
+            {/* Adresse de base + carte */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Adresse de base *</Text>
               <TextInput
@@ -456,7 +532,7 @@ const CreateBusinessLivreur: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Description pro */}
+            {/* Description */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Description professionnelle *</Text>
               <TextInput
@@ -469,14 +545,19 @@ const CreateBusinessLivreur: React.FC = () => {
                 onChangeText={(t) => updateBusinessData({ description: t })}
                 multiline
                 textAlignVertical="top"
-                placeholder="10+ ans expérience, 5⭐ notes clients, toujours à l'heure, scooter entretenu..."
+                placeholder="Expérience, rapidité, fiabilité, zones couvertes..."
               />
               <Text style={styles.counter}>
                 {business.description?.length || 0}/500
               </Text>
+              {validationErrors.description && (
+                <Text style={styles.errorText}>
+                  {validationErrors.description}
+                </Text>
+              )}
             </View>
 
-            {/* Photo profil + couverture */}
+            {/* Photo profil */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Photo profil livreur</Text>
               <TouchableOpacity
@@ -499,6 +580,7 @@ const CreateBusinessLivreur: React.FC = () => {
               </TouchableOpacity>
             </View>
 
+            {/* Photo couverture */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Photo couverture</Text>
               <TouchableOpacity
@@ -514,7 +596,7 @@ const CreateBusinessLivreur: React.FC = () => {
                   <View style={styles.coverPlaceholder}>
                     <Feather name="image" size={40} color="#999" />
                     <Text style={styles.coverPlaceholderText}>
-                      Véhicule + zone
+                      Véhicule + zone d&apos;activité
                     </Text>
                   </View>
                 )}
@@ -523,7 +605,7 @@ const CreateBusinessLivreur: React.FC = () => {
 
             {/* Devise */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Devise paiement *</Text>
+              <Text style={styles.label}>Devise principale *</Text>
               <TouchableOpacity
                 style={styles.selectInput}
                 onPress={() => setCurrencyModalVisible(true)}
@@ -537,6 +619,8 @@ const CreateBusinessLivreur: React.FC = () => {
             </View>
           </View>
         </ScrollView>
+
+        {/* Bouton créer */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.saveButton}
@@ -546,10 +630,87 @@ const CreateBusinessLivreur: React.FC = () => {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.saveButtonText}>Créer mon profil PRO</Text>
+              <Text style={styles.saveButtonText}>
+                Créer mon profil livreur
+              </Text>
             )}
           </TouchableOpacity>
         </View>
+
+        {/* MODAL SECTEUR D'ACTIVITÉ */}
+        <Modal visible={sectorModalVisible} transparent animationType="fade">
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setSectorModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Secteur d’activité</Text>
+                <TouchableOpacity onPress={() => setSectorModalVisible(false)}>
+                  <Feather name="x" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.searchContainer}>
+                <Feather
+                  name="search"
+                  size={20}
+                  color="#999"
+                  style={{ marginRight: 10 }}
+                />
+                <TextInput
+                  placeholder="Rechercher un secteur..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  style={{ flex: 1 }}
+                />
+              </View>
+              <FlatList
+                data={filteredSectors}
+                keyExtractor={(item) => item.id}
+                ListEmptyComponent={
+                  loadingSectors ? (
+                    <View style={{ padding: 20, alignItems: "center" }}>
+                      <ActivityIndicator size="small" color="#00C851" />
+                      <Text style={{ marginTop: 10, color: "#666" }}>
+                        Chargement...
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text
+                      style={{
+                        padding: 20,
+                        textAlign: "center",
+                        color: "#999",
+                      }}
+                    >
+                      Aucun secteur trouvé
+                    </Text>
+                  )
+                }
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.currencyItem,
+                      business.activitySector === item.id &&
+                        styles.currencyItemSelected,
+                    ]}
+                    onPress={() => {
+                      updateBusinessData({ activitySector: item.id });
+                      setSectorModalVisible(false);
+                      setSearchQuery("");
+                    }}
+                  >
+                    <Text style={styles.currencyCode}>{item.name}</Text>
+                    {business.activitySector === item.id && (
+                      <Feather name="check" size={24} color="#00C851" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
         {/* Modal Véhicule */}
         <Modal visible={vehicleModalVisible} transparent animationType="fade">
           <TouchableOpacity

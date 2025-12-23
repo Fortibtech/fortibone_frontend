@@ -18,13 +18,7 @@ import {
     View
 } from 'react-native';
 
-interface BusinessFormData {
-  name: string;
-  description: string;
-  type: string;
-  address: string;
-  phoneNumber: string;
-}
+
 
 const BusinessDetailsScreen: React.FC = () => {
   const { id } = useLocalSearchParams<{ id: string }>();

@@ -27,6 +27,8 @@ import { AnalyticsOverview, getAnalyticsOverview } from "@/api/analytics";
 import { getOrdersByRestaurant, Order } from "@/api/menu/ordersApi";
 import { useBusinessStore } from "@/store/businessStore";
 import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
+import PopularDishesChart from "@/components/Chart/PopularDishesChart";
+import ReservationsByPeriodChart from "@/components/Chart/ReservationsByPeriodChart";
 
 type PeriodType = "day" | "week" | "month" | "year" | "all" | "custom";
 
@@ -565,6 +567,10 @@ const RestaurantHome: React.FC = () => {
         {business ? (
           <>
             {renderOverview()}
+            <View style={styles.section}>
+              <PopularDishesChart businessId={business.id} />
+              <ReservationsByPeriodChart businessId={business.id} />
+            </View>
             {renderQuickActions()}
           </>
         ) : (

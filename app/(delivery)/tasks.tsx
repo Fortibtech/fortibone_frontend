@@ -25,6 +25,7 @@ import {
   acceptDelivery,
   rejectDeliveryRequest,
   completeDelivery,
+  pickupDeliveryRequest, // ← Ajouté
   getBusinessVehicles,
   IncomingDeliveryRequest,
   Vehicle,
@@ -61,6 +62,11 @@ export default function DeliveryRequestsScreen() {
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
   const [deliveryCode, setDeliveryCode] = useState("");
 
+  // Modal Détails de la demande
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [currentRequestDetails, setCurrentRequestDetails] =
+    useState<IncomingDeliveryRequest | null>(null);
+
   /* ===================== CHARGEMENT ===================== */
   const loadIncoming = async (id: string) => {
     try {
@@ -74,7 +80,7 @@ export default function DeliveryRequestsScreen() {
   const loadActive = async (id: string) => {
     try {
       const data = await getActiveDeliveryRequests(id);
-      setActiveRequests(data as any);
+      setActiveRequests(data);
     } catch (error) {
       console.error("Erreur active :", error);
     }
@@ -83,7 +89,7 @@ export default function DeliveryRequestsScreen() {
   const loadVehicles = async (id: string) => {
     try {
       const data = await getBusinessVehicles(id);
-      setVehicles(data.filter((v) => v.isActive)); // Seulement les actifs
+      setVehicles(data.filter((v) => v.isActive));
     } catch (error) {
       console.error("Erreur chargement véhicules :", error);
       setVehicles([]);
@@ -131,7 +137,7 @@ export default function DeliveryRequestsScreen() {
     setRefreshing(false);
   }, [businessId]);
 
-  /* ===================== ACCEPTATION AVEC CHOIX VÉHICULE ===================== */
+  /* ===================== ACCEPTATION ===================== */
   const openAcceptModal = (request: IncomingDeliveryRequest) => {
     if (vehicles.length === 0) {
       Alert.alert(
@@ -149,8 +155,6 @@ export default function DeliveryRequestsScreen() {
     if (!currentRequestToAccept || !selectedVehicleId) return;
 
     setActionLoadingId(currentRequestToAccept.id);
-
-    // Mise à jour optimiste
     setIncomingRequests((prev) =>
       prev.filter((r) => r.id !== currentRequestToAccept.id)
     );
@@ -163,11 +167,8 @@ export default function DeliveryRequestsScreen() {
       );
       setAcceptModalVisible(false);
       setCurrentRequestToAccept(null);
-      if (businessId) {
-        await loadActive(businessId);
-      }
+      if (businessId) await loadActive(businessId);
     } catch (error: any) {
-      // Rollback
       setIncomingRequests((prev) => [currentRequestToAccept, ...prev]);
       const msg =
         error?.response?.data?.message || "Impossible d'accepter la livraison.";
@@ -198,6 +199,54 @@ export default function DeliveryRequestsScreen() {
             } catch (error) {
               setIncomingRequests((prev) => [request, ...prev]);
               Alert.alert("Erreur", "Impossible de refuser la demande.");
+            } finally {
+              setActionLoadingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  /* ===================== CONFIRMER RETRAIT ===================== */
+  const handlePickup = async (requestId: string) => {
+    Alert.alert(
+      "Confirmer le retrait",
+      "As-tu bien récupéré le colis chez le commerçant ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Oui, j'ai le colis",
+          onPress: async () => {
+            setActionLoadingId(requestId);
+
+            // Mise à jour optimiste
+            setActiveRequests((prev) =>
+              prev.map((r) =>
+                r.id === requestId
+                  ? ({ ...r, status: "PICKED_UP" } as IncomingDeliveryRequest)
+                  : r
+              )
+            );
+
+            try {
+              await pickupDeliveryRequest(requestId);
+              Alert.alert(
+                "Succès",
+                "Retrait confirmé ! En route vers le client 🚀"
+              );
+              if (businessId) await loadActive(businessId);
+            } catch (error: any) {
+              // Rollback
+              setActiveRequests((prev) =>
+                prev.map((r) =>
+                  r.id === requestId ? { ...r, status: "ACTIVE" } : r
+                )
+              );
+              const msg =
+                error?.response?.data?.message ||
+                "Impossible de confirmer le retrait.";
+              Alert.alert("Erreur", msg);
             } finally {
               setActionLoadingId(null);
             }
@@ -247,6 +296,12 @@ export default function DeliveryRequestsScreen() {
     }
   };
 
+  /* ===================== DÉTAILS ===================== */
+  const openDetailsModal = (request: IncomingDeliveryRequest) => {
+    setCurrentRequestDetails(request);
+    setDetailsModalVisible(true);
+  };
+
   /* ===================== FORMATAGE ===================== */
   const formatDistance = (meters: number) => (meters / 1000).toFixed(1);
   const formatCost = (cost: string) => parseInt(cost).toLocaleString();
@@ -259,8 +314,9 @@ export default function DeliveryRequestsScreen() {
       case "PENDING":
         return { label: "En attente", color: "#92400E", bg: "#FEF3C7" };
       case "ACTIVE":
+        return { label: "Acceptée", color: "#1E40AF", bg: "#DBEAFE" };
       case "PICKED_UP":
-        return { label: "En cours", color: "#166534", bg: "#DCFCE7" };
+        return { label: "Colis récupéré", color: "#166534", bg: "#DCFCE7" };
       default:
         return { label: status, color: "#666", bg: "#F3F4F6" };
     }
@@ -276,110 +332,149 @@ export default function DeliveryRequestsScreen() {
     const distanceKm = formatDistance(item.distanceMeters);
     const statusConfig = getStatusConfig(item.status);
     const isPending = item.status === "PENDING";
-    const isActive = tab === "ACTIVE";
+    const isActive = item.status === "ACCEPTED";
+    const isPickedUp = item.status === "PICKED_UP";
     const isActionLoading = actionLoadingId === item.id;
 
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.senderRow}>
-            {item.sender.logoUrl ? (
-              <Image
-                source={{ uri: item.sender.logoUrl }}
-                style={styles.senderLogo}
-              />
-            ) : (
-              <View style={styles.logoPlaceholder}>
-                <Ionicons name="storefront" size={24} color="#999" />
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => isPending && openDetailsModal(item)}
+        disabled={!isPending}
+      >
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.senderRow}>
+              {item.sender.logoUrl ? (
+                <Image
+                  source={{ uri: item.sender.logoUrl }}
+                  style={styles.senderLogo}
+                />
+              ) : (
+                <View style={styles.logoPlaceholder}>
+                  <Ionicons name="storefront" size={24} color="#999" />
+                </View>
+              )}
+              <View>
+                <Text style={styles.senderName}>{item.sender.name}</Text>
+                <Text style={styles.orderNumber}>
+                  Commande #{item.order.orderNumber}
+                </Text>
               </View>
-            )}
-            <View>
-              <Text style={styles.senderName}>{item.sender.name}</Text>
-              <Text style={styles.orderNumber}>
-                Commande #{item.order.orderNumber}
+            </View>
+
+            <View
+              style={[styles.statusChip, { backgroundColor: statusConfig.bg }]}
+            >
+              <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                {statusConfig.label}
               </Text>
             </View>
           </View>
 
-          <View
-            style={[styles.statusChip, { backgroundColor: statusConfig.bg }]}
-          >
-            <Text style={[styles.statusText, { color: statusConfig.color }]}>
-              {statusConfig.label}
+          <View style={styles.addressRow}>
+            <Ionicons name="storefront-outline" size={18} color="#666" />
+            <Text style={styles.addressText} numberOfLines={2}>
+              {item.pickupAddress}
             </Text>
           </View>
-        </View>
 
-        <View style={styles.addressRow}>
-          <Ionicons name="storefront-outline" size={18} color="#666" />
-          <Text style={styles.addressText} numberOfLines={2}>
-            {item.pickupAddress}
-          </Text>
-        </View>
-
-        <View style={styles.addressRow}>
-          <Ionicons name="location-outline" size={18} color="#666" />
-          <Text style={styles.addressText} numberOfLines={2}>
-            {item.deliveryAddress}
-          </Text>
-        </View>
-
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <Ionicons name="navigate-outline" size={16} color="#444" />
-            <Text style={styles.metaText}>{distanceKm} km</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="cash-outline" size={16} color="#444" />
-            <Text style={styles.metaText}>
-              {formatCost(item.estimatedCost)} KMF
+          <View style={styles.addressRow}>
+            <Ionicons name="location-outline" size={18} color="#666" />
+            <Text style={styles.addressText} numberOfLines={2}>
+              {item.deliveryAddress}
             </Text>
           </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="card-outline" size={16} color="#444" />
-            <Text style={styles.metaText}>
-              Payé par {getFeePayerLabel(item.feePayer)}
-            </Text>
-          </View>
-        </View>
 
-        {isPending && (
-          <View style={styles.actionsRow}>
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <Ionicons name="navigate-outline" size={16} color="#444" />
+              <Text style={styles.metaText}>{distanceKm} km</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Ionicons name="cash-outline" size={16} color="#444" />
+              <Text style={styles.metaText}>
+                {formatCost(item.estimatedCost)} KMF
+              </Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Ionicons name="card-outline" size={16} color="#444" />
+              <Text style={styles.metaText}>
+                Payé par {getFeePayerLabel(item.feePayer)}
+              </Text>
+            </View>
+          </View>
+
+          {isPending && (
+            <>
+              <View style={styles.detailsHint}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={16}
+                  color="#00A36C"
+                />
+                <Text style={styles.detailsHintText}>
+                  Touche pour voir les détails
+                </Text>
+              </View>
+
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.rejectBtn]}
+                  onPress={() => handleReject(item)}
+                  disabled={isActionLoading}
+                >
+                  {isActionLoading ? (
+                    <ActivityIndicator size="small" color="#DC2626" />
+                  ) : (
+                    <Text style={styles.rejectText}>Refuser</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.acceptBtn]}
+                  onPress={() => openAcceptModal(item)}
+                  disabled={isActionLoading}
+                >
+                  {isActionLoading ? (
+                    <ActivityIndicator size="small" color="#16A34A" />
+                  ) : (
+                    <Text style={styles.acceptText}>Accepter</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {/* Bouton Confirmer retrait - seulement si ACTIVE */}
+          {isActive && (
             <TouchableOpacity
-              style={[styles.actionBtn, styles.rejectBtn]}
-              onPress={() => handleReject(item)}
+              style={[styles.actionBtn, styles.pickupBtn]}
+              onPress={() => handlePickup(item.id)}
               disabled={isActionLoading}
             >
-              {isActionLoading ? (
-                <ActivityIndicator size="small" color="#DC2626" />
-              ) : (
-                <Text style={styles.rejectText}>Refuser</Text>
-              )}
+              <Ionicons name="bag-check-outline" size={20} color="#FFF" />
+              <Text style={styles.pickupText}>
+                Confirmer le retrait du colis
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.acceptBtn]}
-              onPress={() => openAcceptModal(item)}
-              disabled={isActionLoading}
-            >
-              {isActionLoading ? (
-                <ActivityIndicator size="small" color="#16A34A" />
-              ) : (
-                <Text style={styles.acceptText}>Accepter</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
+          )}
 
-        {isActive && (
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.completeBtn]}
-            onPress={() => openCompleteModal(item.id)}
-          >
-            <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.completeText}>Valider la livraison</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          {/* Bouton Valider livraison - seulement si PICKED_UP */}
+          {isPickedUp && (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.completeBtn]}
+              onPress={() => openCompleteModal(item.id)}
+            >
+              <Ionicons
+                name="checkmark-circle-outline"
+                size={20}
+                color="#FFF"
+              />
+              <Text style={styles.completeText}>Valider la livraison</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -456,7 +551,7 @@ export default function DeliveryRequestsScreen() {
         }
       />
 
-      {/* Modal Choix Véhicule pour Acceptation */}
+      {/* Modal Choix Véhicule */}
       <Modal visible={acceptModalVisible} transparent animationType="slide">
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
@@ -519,7 +614,7 @@ export default function DeliveryRequestsScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Modal Validation livraison (inchangée) */}
+      {/* Modal Validation livraison */}
       <Modal visible={completeModalVisible} transparent animationType="slide">
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
@@ -572,6 +667,129 @@ export default function DeliveryRequestsScreen() {
                   ) : (
                     <Text style={styles.confirmButtonText}>Valider</Text>
                   )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Modal Détails */}
+      <Modal visible={detailsModalVisible} transparent animationType="slide">
+        <TouchableWithoutFeedback onPress={() => setDetailsModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.detailsModalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Détails de la demande</Text>
+                <TouchableOpacity onPress={() => setDetailsModalVisible(false)}>
+                  <Ionicons name="close" size={28} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              >
+                {currentRequestDetails && (
+                  <>
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Commerçant</Text>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Nom :</Text>
+                        <Text style={styles.detailValue}>
+                          {currentRequestDetails.sender.name}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Commande</Text>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Numéro :</Text>
+                        <Text style={styles.detailValue}>
+                          #{currentRequestDetails.order.orderNumber}
+                        </Text>
+                      </View>
+                      {currentRequestDetails.order.notes && (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Notes :</Text>
+                          <Text style={styles.detailValue}>
+                            {currentRequestDetails.order.notes}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Retrait</Text>
+                      <Text style={styles.detailValue}>
+                        {currentRequestDetails.pickupAddress}
+                      </Text>
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Livraison</Text>
+                      <Text style={styles.detailValue}>
+                        {currentRequestDetails.deliveryAddress}
+                      </Text>
+                      {currentRequestDetails.deliveryNotes && (
+                        <>
+                          <Text style={styles.detailLabel}>Instructions :</Text>
+                          <Text style={styles.detailValue}>
+                            {currentRequestDetails.deliveryNotes}
+                          </Text>
+                        </>
+                      )}
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>
+                        Informations
+                      </Text>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Distance :</Text>
+                        <Text style={styles.detailValue}>
+                          {formatDistance(currentRequestDetails.distanceMeters)}{" "}
+                          km
+                        </Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Coût estimé :</Text>
+                        <Text style={styles.detailValue}>
+                          {formatCost(currentRequestDetails.estimatedCost)} KMF
+                        </Text>
+                      </View>
+                      <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>
+                          Frais payés par :
+                        </Text>
+                        <Text style={styles.detailValue}>
+                          {getFeePayerLabel(currentRequestDetails.feePayer)}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                )}
+              </ScrollView>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.rejectBtn]}
+                  onPress={() => {
+                    setDetailsModalVisible(false);
+                    handleReject(currentRequestDetails!);
+                  }}
+                >
+                  <Text style={styles.rejectText}>Refuser</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.acceptBtn]}
+                  onPress={() => {
+                    setDetailsModalVisible(false);
+                    openAcceptModal(currentRequestDetails!);
+                  }}
+                >
+                  <Text style={styles.acceptText}>Accepter</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -658,19 +876,35 @@ const styles = StyleSheet.create({
 
   actionsRow: { flexDirection: "row", gap: 12, marginTop: 16 },
   actionBtn: {
-    flex: 1,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 12,
     borderRadius: 12,
+    marginTop: 16,
   },
-  rejectBtn: { backgroundColor: "#FEE2E2" },
-  acceptBtn: { backgroundColor: "#DCFCE7" },
-  completeBtn: { backgroundColor: "#00A36C", marginTop: 16 },
+  rejectBtn: { backgroundColor: "#FEE2E2", flex: 1 },
+  acceptBtn: { backgroundColor: "#DCFCE7", flex: 1 },
+  pickupBtn: { backgroundColor: "#2563EB" },
+  completeBtn: { backgroundColor: "#00A36C" },
   rejectText: { color: "#DC2626", fontWeight: "600" },
   acceptText: { color: "#16A34A", fontWeight: "600" },
+  pickupText: { color: "#FFF", fontWeight: "600", marginLeft: 8 },
   completeText: { color: "#FFF", fontWeight: "600", marginLeft: 8 },
+
+  detailsHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  detailsHintText: {
+    marginLeft: 6,
+    fontSize: 13,
+    color: "#00A36C",
+    fontWeight: "500",
+  },
 
   emptyState: {
     flex: 1,
@@ -688,7 +922,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Modal Acceptation
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -702,6 +935,16 @@ const styles = StyleSheet.create({
     width: "90%",
     maxWidth: 400,
     maxHeight: "80%",
+  },
+  detailsModalContent: {
+    backgroundColor: "#FFF",
+    borderRadius: 20,
+    padding: 20,
+    width: "90%",
+    maxWidth: 400,
+    flex: 1,
+    maxHeight: "85%",
+    justifyContent: "space-between",
   },
   modalHeader: {
     flexDirection: "row",
@@ -722,7 +965,6 @@ const styles = StyleSheet.create({
   vehicleOptionSelected: { backgroundColor: "#ECFDF5" },
   vehicleOptionText: { marginLeft: 12, fontSize: 16, color: "#111" },
 
-  // Modal Validation
   modalBody: { alignItems: "center" },
   modalSubtitle: {
     fontSize: 15,
@@ -745,7 +987,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  modalActions: { flexDirection: "row", gap: 12 },
+  modalActions: { flexDirection: "row", gap: 12, marginTop: 20 },
   modalButton: {
     flex: 1,
     paddingVertical: 14,
@@ -757,4 +999,15 @@ const styles = StyleSheet.create({
   confirmButton: { backgroundColor: "#00A36C" },
   confirmButtonText: { fontSize: 16, fontWeight: "600", color: "#FFF" },
   disabledButton: { opacity: 0.7 },
+
+  detailSection: { marginBottom: 20 },
+  detailSectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111",
+    marginBottom: 12,
+  },
+  detailRow: { marginBottom: 8 },
+  detailLabel: { fontSize: 14, color: "#666", marginBottom: 4 },
+  detailValue: { fontSize: 16, color: "#111", lineHeight: 22 },
 });

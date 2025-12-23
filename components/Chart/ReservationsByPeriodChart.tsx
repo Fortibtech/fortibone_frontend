@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import { getRestaurantAnalytics } from "@/api/analytics";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,8 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { LineChart } from "react-native-chart-kit";
-import { getSales } from "@/api/analytics";
+import { BarChart } from "react-native-chart-kit";
 
 const { width } = Dimensions.get("window");
 
@@ -22,30 +22,33 @@ const UNITS: { key: UnitType; label: string }[] = [
   { key: "YEAR", label: "Année" },
 ];
 
-interface SalePeriod {
+interface ReservationByPeriod {
   period: string;
-  totalAmount: number;
-  totalItems: number;
+  totalReservations: number;
 }
 
-const SalesByPeriodChart: React.FC<{ businessId: string }> = ({
+const ReservationsByPeriodChart: React.FC<{ businessId: string }> = ({
   businessId,
 }) => {
   const [unit, setUnit] = useState<UnitType>("MONTH");
   const [loading, setLoading] = useState(true);
-  const [periods, setPeriods] = useState<SalePeriod[]>([]);
+  const [reservations, setReservations] = useState<ReservationByPeriod[]>([]);
+  const [totalReservations, setTotalReservations] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSales(businessId, { unit });
-      setPeriods(data.salesByPeriod || []);
+      const data = await getRestaurantAnalytics(businessId, { unit });
+      const periods = data.reservationsByPeriod || [];
+
+      const total = periods.reduce((sum, p) => sum + p.totalReservations, 0);
+      setTotalReservations(total);
+      setReservations(periods);
     } catch (err: any) {
-      console.log("API error:", err?.response?.data);
-      setError("Impossible de charger les ventes");
-      Alert.alert("Erreur", "Impossible de charger les ventes");
+      setError("Impossible de charger les réservations");
+      Alert.alert("Erreur", err.message || "Une erreur est survenue");
     } finally {
       setLoading(false);
     }
@@ -55,55 +58,44 @@ const SalesByPeriodChart: React.FC<{ businessId: string }> = ({
     fetchData();
   }, [businessId, unit]);
 
-  const totalRevenue = periods.reduce((s, p) => s + p.totalAmount, 0);
-
-  const formatLabel = (p: string) => {
-    if (unit === "MONTH") return p.slice(5); // 2025-09 -> 09
-    if (unit === "YEAR") return p; // 2025
-    return p.slice(5); // fallback DAY/WEEK
-  };
-
-  const chartData = {
-    labels: periods.map((p) => formatLabel(p.period)),
-    datasets: [
-      {
-        data: periods.map((p) => p.totalAmount),
-      },
-    ],
-  };
-
   const chartConfig = {
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
-    color: () => "#8B5CF6",
-    strokeWidth: 3,
     decimalPlaces: 0,
-    propsForDots: {
-      r: "4",
-      strokeWidth: "2",
-      stroke: "#8B5CF6",
-    },
+    color: (opacity = 1) =>
+      `#8B5CF6${Math.round(opacity * 255)
+        .toString(16)
+        .padStart(2, "0")}`,
+    labelColor: () => `#333`,
+    style: { borderRadius: 16 },
+    propsForBackgroundLines: { strokeWidth: 1, stroke: "#efefef" },
+  };
+
+  const chartData = {
+    labels: reservations.map((r) => r.period.slice(-5)), // ex: "01" ou "2025-12"
+    datasets: [{ data: reservations.map((r) => r.totalReservations) || [0] }],
   };
 
   return (
-    <View style={styles.chartCard}>
-      <View style={styles.chartHeader}>
-        <Text style={styles.chartTitle}>Évolution des ventes</Text>
+    <View style={reservationStyles.chartCard}>
+      <View style={reservationStyles.header}>
+        <Text style={reservationStyles.title}>Réservations par période</Text>
+        <Text style={reservationStyles.subtitle}>Évolution dans le temps</Text>
 
-        <View style={styles.filterButtons}>
+        <View style={reservationStyles.filterButtons}>
           {UNITS.map((u) => (
             <TouchableOpacity
               key={u.key}
               style={[
-                styles.filterBtn,
-                unit === u.key && styles.filterBtnActive,
+                reservationStyles.filterBtn,
+                unit === u.key && reservationStyles.filterBtnActive,
               ]}
               onPress={() => setUnit(u.key)}
             >
               <Text
                 style={[
-                  styles.filterBtnText,
-                  unit === u.key && styles.filterBtnTextActive,
+                  reservationStyles.filterBtnText,
+                  unit === u.key && reservationStyles.filterBtnTextActive,
                 ]}
               >
                 {u.label}
@@ -114,35 +106,39 @@ const SalesByPeriodChart: React.FC<{ businessId: string }> = ({
       </View>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
+        <View style={reservationStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#8B5CF6" />
         </View>
       ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={reservationStyles.errorContainer}>
+          <Text style={reservationStyles.errorText}>{error}</Text>
         </View>
-      ) : periods.length === 0 ? (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>Aucune donnée disponible</Text>
+      ) : reservations.length === 0 ? (
+        <View style={reservationStyles.noDataContainer}>
+          <Text style={reservationStyles.noDataText}>Aucune réservation</Text>
         </View>
       ) : (
         <>
-          {/* Total */}
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Revenu total</Text>
-            <Text style={styles.totalValue}>
-              {totalRevenue.toLocaleString("fr-FR")} KMF
+          <View style={reservationStyles.totalCard}>
+            <Text style={reservationStyles.totalLabel}>
+              Total des réservations
+            </Text>
+            <Text style={reservationStyles.totalValue}>
+              {totalReservations}
             </Text>
           </View>
 
-          {/* Line chart */}
-          <LineChart
+          <BarChart
             data={chartData}
             width={width - 64}
-            height={240}
+            height={260}
+            yAxisLabel=""
+            yAxisSuffix=""
             chartConfig={chartConfig}
-            bezier
-            style={styles.chart}
+            verticalLabelRotation={30}
+            fromZero
+            showValuesOnTopOfBars
+            style={{ borderRadius: 16 }}
           />
         </>
       )}
@@ -150,7 +146,7 @@ const SalesByPeriodChart: React.FC<{ businessId: string }> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const reservationStyles = StyleSheet.create({
   chartCard: {
     backgroundColor: "#fff",
     marginBottom: 16,
@@ -164,19 +160,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 6,
   },
-  chartHeader: {
+  header: {
     alignItems: "center",
     marginBottom: 16,
-    gap: 10,
+    gap: 6,
   },
-  chartTitle: {
+  title: {
     fontSize: 17,
     fontWeight: "700",
     color: "#1a1a1a",
   },
+  subtitle: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
   filterButtons: {
     flexDirection: "row",
     gap: 8,
+    marginTop: 10,
     flexWrap: "wrap",
     justifyContent: "center",
   },
@@ -217,29 +219,27 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   totalValue: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: "800",
     color: "#8B5CF6",
   },
-  chart: {
-    borderRadius: 16,
-  },
   loadingContainer: {
-    height: 240,
+    height: 300,
     justifyContent: "center",
     alignItems: "center",
   },
   errorContainer: {
-    height: 240,
+    height: 300,
     justifyContent: "center",
     alignItems: "center",
   },
   errorText: {
-    color: "#8B5CF6",
+    color: "#FF6B6B",
     fontSize: 15,
+    textAlign: "center",
   },
   noDataContainer: {
-    height: 240,
+    height: 300,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -250,4 +250,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SalesByPeriodChart;
+export default ReservationsByPeriodChart;

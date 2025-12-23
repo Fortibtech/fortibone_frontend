@@ -18,9 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-
 const fallbackImage = require("@/assets/images/store-placeholder.png");
-
 type PaymentOption = "CARD" | "CASH" | "WALLET";
 
 const Cart = () => {
@@ -37,11 +35,9 @@ const Cart = () => {
   const [isBuyNowLoading, setIsBuyNowLoading] = useState(false); // ← Pour le nouveau bouton
   const [showPaymentUI, setShowPaymentUI] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption>("CARD");
-
   const rawTotal = getTotalPrice();
   const totalPrice = rawTotal > 0 ? rawTotal.toFixed(2) : "0.00";
   const totalItemsCount = getTotalItems();
-
   // ──────────────────────────────────────────────────────────────
   // Nouveau : Acheter maintenant → multi-vendeurs
   // ──────────────────────────────────────────────────────────────
@@ -80,7 +76,7 @@ const Cart = () => {
               });
 
               clearCart();
-              router.push("/"); // ou "/(tabs)/orders" selon ta structure
+              router.push("/(profile-particulier)/your-orders"); // ou "/(tabs)/orders" selon ta structure
             } catch (err: any) {
               Toast.show({
                 type: "error",
@@ -95,7 +91,6 @@ const Cart = () => {
       ]
     );
   };
-
   // ──────────────────────────────────────────────────────────────
   // Ancien système : Création de commande (un seul vendeur) – INCHANGÉ
   // ──────────────────────────────────────────────────────────────
@@ -172,10 +167,6 @@ const Cart = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleCheckout = () => {
-    if (items.length > 0) setShowPaymentUI(true);
   };
 
   const handleGoBack = () => {
@@ -368,20 +359,10 @@ const Cart = () => {
                       <>
                         <Ionicons name="flash" size={20} color="#fff" />
                         <Text style={styles.buyNowButtonText}>
-                          Acheter maintenant
+                          Passer la commande maintenant • {totalPrice} KMF
                         </Text>
                       </>
                     )}
-                  </TouchableOpacity>
-
-                  {/* Bouton classique (inchangé) */}
-                  <TouchableOpacity
-                    onPress={handleCheckout}
-                    style={styles.checkoutButton}
-                  >
-                    <Text style={styles.checkoutButtonText}>
-                      Passer la commande
-                    </Text>
                   </TouchableOpacity>
                 </View>
               </>

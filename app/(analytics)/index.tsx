@@ -1,4 +1,3 @@
-import CashFlowChart from "@/components/Chart/CashFlowChart";
 import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
 import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 import { Ionicons } from "@expo/vector-icons";
@@ -36,17 +35,12 @@ export default function StatistiquesScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.container}>
-        {/* Flux de trésorerie */}
-        <CashFlowChart businessId={id} />
-
         <View style={styles.shartContainer}>
           {/* Répartition des Revenus */}
           <RevenueDistributionChart businessId={id} />
-
           {/* Répartition des dépenses */}
           <ExpenseDistributionChart businessId={id} />
         </View>
-
         <View style={{ height: 30 }} />
       </ScrollView>
     </SafeAreaView>

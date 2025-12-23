@@ -7,14 +7,11 @@ import {
   ShoppingCart,
 } from "lucide-react-native";
 import { Platform } from "react-native";
-
 // Zustand → on prend le business directement depuis le store
 import { useBusinessStore } from "@/store/businessStore";
 import { router, Tabs } from "expo-router";
-
 export default function RootLayout() {
   const insets = useSafeAreaInsets();
-
   // Hauteur de la tab bar proprement calculée
   const baseTabBarHeight = Platform.OS === "ios" ? 68 : 60;
   const bottomPadding =
@@ -22,7 +19,6 @@ export default function RootLayout() {
       ? Math.max(insets.bottom, 16)
       : Math.max(insets.bottom, 8);
   const totalTabBarHeight = baseTabBarHeight + bottomPadding;
-
   // On récupère le business actuel depuis le store (toujours à jour)
   const business = useBusinessStore((state) => state.business);
 
