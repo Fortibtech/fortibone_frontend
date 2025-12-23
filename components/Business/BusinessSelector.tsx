@@ -29,7 +29,7 @@ const BusinessSelector: React.FC<BusinessSelectorProps> = ({
   loading = false,
   onAddBusiness,
   onManageBusiness,
-  refreshKey, // On l'utilise pour la key du composant parent
+
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 

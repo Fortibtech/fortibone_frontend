@@ -326,7 +326,7 @@ export default function StockAdjustment() {
             <View style={styles.productDetails}>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Prix Unitaire</Text>
-                <Text style={styles.detailValue}>{currentProduct.price} €</Text>
+                <Text style={styles.detailValue}>{currentProduct.price} KMF</Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Stock Actuel</Text>

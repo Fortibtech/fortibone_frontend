@@ -149,7 +149,7 @@ export default function StockReceptionModal({
                 <View style={styles.productDetails}>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Prix Unitaire</Text>
-                    <Text style={styles.detailValue}>{product.price} €</Text>
+                    <Text style={styles.detailValue}>{product.price} KMF</Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Stock Actuel</Text>

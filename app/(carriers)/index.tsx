@@ -3,6 +3,7 @@ import { BusinessesService } from "@/api";
 import { getTariffs } from "@/api/delivery/deliveryApi"; // ← Import correct
 import { CarrierOption } from "@/api/services/businessesService";
 import BackButtonAdmin from "@/components/Admin/BackButton";
+import formatDistance from "@/utils/formatDistance";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
@@ -140,10 +141,7 @@ export default function LivreursScreen() {
       <View style={styles.tarifDetails}>
         <Text style={styles.tarifLabel}>Distance :</Text>
         <Text style={styles.tarifValue}>
-          {tarif.minDistance === 0 ? "Dès" : `À partir de`} {tarif.minDistance}{" "}
-          km
-          {tarif.maxDistance < 999999 && ` - jusqu'à ${tarif.maxDistance} km`}
-          {tarif.maxDistance >= 999999 && " (sans limite)"}
+          {formatDistance(tarif.minDistance, tarif.maxDistance)}
         </Text>
       </View>
 

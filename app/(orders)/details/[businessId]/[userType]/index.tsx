@@ -24,6 +24,7 @@ export default function VentesScreen() {
   }>();
 
   const router = useRouter();
+
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -195,7 +196,7 @@ export default function VentesScreen() {
       params: { id: order.businessId.toString() },
     });
   };
-
+  console.log("🧱 ordersData:\n", JSON.stringify(orders, null, 2));
   return (
     <SafeAreaView style={styles.container}>
       {/* === HEADER === */}
@@ -396,6 +397,8 @@ function ClientsList({
 }) {
   const { businessId } = useLocalSearchParams(); // ← Récupère businessId
   const router = useRouter();
+
+
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.searchRow}>
@@ -468,7 +471,7 @@ function ClientsList({
                   </Text>
                   <Text style={styles.stat}>
                     Panier moyen :{" "}
-                    <Text style={styles.bold}>{item.panierMoyen}</Text>
+                    <Text style={styles.bold}>{item.panierMoyen}</Text>{" "}
                   </Text>
                 </View>
 

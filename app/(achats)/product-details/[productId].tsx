@@ -241,7 +241,7 @@ export default function ProductDetailsScreen() {
       </SafeAreaView>
     );
   }
-
+  console.log("🧱 ProductData:\n", JSON.stringify(productData, null, 2));
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -312,7 +312,7 @@ export default function ProductDetailsScreen() {
               <Text style={styles.price}>
                 {productData.price.toLocaleString("fr-FR")}
               </Text>
-              <Text style={styles.unit}> FCFA {productData.priceUnit}</Text>
+              <Text style={styles.unit}> KMF {productData.priceUnit}</Text>
             </View>
             <Text style={styles.minimum}>
               Minimum : {productData.minimumOrder} pièces

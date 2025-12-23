@@ -47,17 +47,14 @@ export default function ClientProfile() {
 
     fetchCustomer();
   }, [customerId, businessId]);
-
   // Formatage sécurisé
   const formatPrice = (value: any): string => {
     const num = Number(value) || 0;
-    return num.toFixed(2).replace(".", ",") + " €";
+    return num.toFixed(2).replace(".", ",") + " KMF";
   };
-
   const formatDate = (iso: string | null): string => {
     return iso ? new Date(iso).toLocaleDateString("fr-FR") : "—";
   };
-
   // Couleurs par statut
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -82,7 +79,7 @@ export default function ClientProfile() {
       </View>
     );
   };
-
+  console.log("🧱 clients:\n", JSON.stringify(data, null, 2));
   // Bouton Contacter
   const handleContact = () => {
     if (!data?.customerInfo) return;

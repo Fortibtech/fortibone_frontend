@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
-  Alert,
   Image,
 } from "react-native";
 import { ProgressChart } from "react-native-chart-kit";
@@ -82,7 +81,7 @@ const PopularDishesChart: React.FC<{ businessId: string }> = ({
       setDishes(top8);
     } catch (err: any) {
       setError("Impossible de charger les plats populaires");
-      Alert.alert("Erreur", err.message || "Une erreur est survenue");
+      // Alert.alert("Erreur", err.message || "Une erreur est survenue");
     } finally {
       setLoading(false);
     }

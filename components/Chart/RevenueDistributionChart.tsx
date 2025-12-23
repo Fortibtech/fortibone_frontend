@@ -6,11 +6,11 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   ScrollView,
 } from "react-native";
-import { StackedBarChart } from "react-native-chart-kit";
+import { ProgressChart } from "react-native-chart-kit";
 import { getSales } from "@/api/analytics";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 const { width } = Dimensions.get("window");
 
@@ -33,48 +33,55 @@ interface TopSellingProduct {
 }
 
 const COLORS = [
-  "#00D09C",
-  "#4ECDC4",
-  "#45B7D1",
-  "#96CEB4",
-  "#FECA57",
-  "#FF6B6B",
-  "#DDA0DD",
-  "#B0BEC5",
+  "#00D09C", // #1
+  "#4ECDC4", // #2
+  "#45B7D1", // #3
+  "#96CEB4", // #4
+  "#FECA57", // #5
+  "#FF6B6B", // #6
+  "#DDA0DD", // #7
+  "#B0BEC5", // #8
 ];
 
-const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
-  businessId,
-}) => {
-  const [unit, setUnit] = useState<UnitType>("MONTH");
+const RevenueDistributionChart: React.FC<{
+  businessId: string;
+  currencyId: string;
+}> = ({ businessId, currencyId }) => {
   const [loading, setLoading] = useState(true);
   const [topProducts, setTopProducts] = useState<TopSellingProduct[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [symbol, setSymbol] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSales(businessId, { unit });
+      const data = await getSales(businessId); // Tu avais retiré { unit }, donc je garde comme ça
+      const symbol = await getCurrencySymbolById(currencyId);
+
       const products: TopSellingProduct[] = data.topSellingProducts || [];
 
       if (products.length === 0) {
         setTopProducts([]);
         setTotalRevenue(0);
+        setSymbol(symbol);
         return;
       }
 
-      const sorted = [...products].sort((a, b) => b.totalRevenue - a.totalRevenue);
-      const top = sorted.slice(0, 8); // On prend les 8 meilleurs pour cohérence visuelle
+      const sorted = [...products].sort(
+        (a, b) => b.totalRevenue - a.totalRevenue
+      );
+      const top = sorted.slice(0, 8);
 
       const total = top.reduce((sum, p) => sum + p.totalRevenue, 0);
       setTotalRevenue(total);
       setTopProducts(top);
+
+      setSymbol(symbol);
     } catch (err: any) {
       console.log("API error:", err?.response?.data);
       setError("Impossible de charger les données");
-      Alert.alert("Erreur", "Impossible de charger les données");
     } finally {
       setLoading(false);
     }
@@ -82,58 +89,39 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
 
   useEffect(() => {
     fetchData();
-  }, [businessId, unit]);
+  }, [businessId, currencyId]);
 
   const chartConfig = {
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
-    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    color: (opacity = 1, index = 0) =>
+      COLORS[index % COLORS.length] +
+      Math.round(opacity * 255)
+        .toString(16)
+        .padStart(2, "0"),
     strokeWidth: 2,
-    barPercentage: 0.8,
     decimalPlaces: 0,
   };
 
-  // Données réelles pour le graphique (on garde un stacked bar simple avec une seule barre = total par produit)
-  // Cela donne un effet de répartition claire sans données fictives
-  const stackedData = {
-    labels: [""], // Une seule barre
-    legend: topProducts.map((p) =>
-      p.productName.length > 15 ? p.productName.slice(0, 13) + "..." : p.productName
+  // === COULEURS PARFAITEMENT SYNCHRONISÉES ===
+  const progressChartData = {
+    labels: topProducts.map((p) =>
+      p.productName.length > 12
+        ? p.productName.slice(0, 10) + "..."
+        : p.productName
     ),
-    data: [topProducts.map((p) => p.totalRevenue)],
-    barColors: COLORS.slice(0, topProducts.length),
+    data: topProducts.map((p) =>
+      totalRevenue > 0 ? p.totalRevenue / totalRevenue : 0
+    ),
+    colors: topProducts.map((_, index) => COLORS[index % COLORS.length]), // Même ordre exact
   };
 
   return (
     <View style={styles.chartCard}>
       <View style={styles.chartHeader}>
-        <Text style={styles.chartTitle}>Répartition des revenus par produit</Text>
-        <Text style={styles.subtitle}>
-          Période : {UNITS.find((u) => u.key === unit)?.label}
+        <Text style={styles.chartTitle}>
+          Répartition des revenus par produit
         </Text>
-
-        {/* Filtres identiques à l'autre composant */}
-        <View style={styles.filterButtons}>
-          {UNITS.map((u) => (
-            <TouchableOpacity
-              key={u.key}
-              style={[
-                styles.filterBtn,
-                unit === u.key && styles.filterBtnActive,
-              ]}
-              onPress={() => setUnit(u.key)}
-            >
-              <Text
-                style={[
-                  styles.filterBtnText,
-                  unit === u.key && styles.filterBtnTextActive,
-                ]}
-              >
-                {u.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </View>
 
       {loading ? (
@@ -151,33 +139,35 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
         </View>
       ) : (
         <>
-          {/* Total Revenue */}
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Chiffre d'affaires total</Text>
-            <Text style={styles.totalValue}>
-              {totalRevenue.toLocaleString("fr-FR")} KMF
-            </Text>
-          </View>
-
-          {/* Stacked Bar Chart (une seule barre horizontale pour la répartition) */}
+          {/* Donut Chart avec couleurs identiques à la liste en bas */}
           <View style={styles.chartContainer}>
-            <Text style={styles.chartSubtitle}>Répartition par produit</Text>
-            <StackedBarChart
-              data={stackedData}
+            <ProgressChart
+              data={progressChartData}
               width={width - 64}
               height={260}
+              strokeWidth={18}
+              radius={40}
               chartConfig={chartConfig}
-              style={styles.chart}
               hideLegend={false}
-              horizontal={true} // Plus lisible pour les répartitions
+              style={styles.chart}
             />
+
+            {/* Total au centre */}
+            <View style={styles.donutCenter}>
+              <Text style={styles.donutCenterLabel}>Total</Text>
+              <Text style={styles.donutCenterValue}>
+                {totalRevenue.toLocaleString("fr-FR")} {symbol}
+              </Text>
+            </View>
           </View>
 
           {/* Liste des top produits */}
           <ScrollView style={styles.productList} nestedScrollEnabled>
             <Text style={styles.gridTitle}>Top produits vendus</Text>
             {topProducts.map((item, index) => {
-              const percentage = totalRevenue > 0 ? (item.totalRevenue / totalRevenue) * 100 : 0;
+              const percentage =
+                totalRevenue > 0 ? (item.totalRevenue / totalRevenue) * 100 : 0;
+              const productColor = COLORS[index % COLORS.length];
 
               return (
                 <View key={index} style={styles.productItem}>
@@ -185,7 +175,7 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
                     <View
                       style={[
                         styles.rankBadge,
-                        { backgroundColor: COLORS[index % COLORS.length] },
+                        { backgroundColor: productColor },
                       ]}
                     >
                       <Text style={styles.rankText}>#{index + 1}</Text>
@@ -200,7 +190,7 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
                             styles.progressBarFill,
                             {
                               width: `${percentage}%`,
-                              backgroundColor: COLORS[index % COLORS.length],
+                              backgroundColor: productColor,
                             },
                           ]}
                         />
@@ -210,18 +200,19 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
 
                   <View style={styles.productRight}>
                     <Text style={styles.productRevenue}>
-                      {item.totalRevenue.toLocaleString("fr-FR")} KMF
+                      {item.totalRevenue.toLocaleString("fr-FR")} {symbol}
                     </Text>
                     <Text
                       style={[
                         styles.productPercentage,
-                        { color: COLORS[index % COLORS.length] },
+                        { color: productColor },
                       ]}
                     >
                       {percentage.toFixed(1)}%
                     </Text>
                     <Text style={styles.productQuantity}>
-                      {item.totalQuantitySold} unité{item.totalQuantitySold > 1 ? "s" : ""}
+                      {item.totalQuantitySold} unité
+                      {item.totalQuantitySold > 1 ? "s" : ""}
                     </Text>
                   </View>
                 </View>
@@ -258,71 +249,31 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1a1a1a",
   },
-  subtitle: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "500",
-  },
-  filterButtons: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 10,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  filterBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: "#F0FFFB",
-    borderWidth: 1,
-    borderColor: "#E8FFF6",
-  },
-  filterBtnActive: {
-    backgroundColor: "#E8FFF6",
-    borderColor: "#00D09C",
-  },
-  filterBtnText: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "600",
-  },
-  filterBtnTextActive: {
-    color: "#00D09C",
-    fontWeight: "700",
-  },
-  totalCard: {
-    backgroundColor: "#E8FFF6",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#00D09C",
-  },
-  totalLabel: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
-    marginBottom: 6,
-  },
-  totalValue: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#00D09C",
-  },
   chartContainer: {
     alignItems: "center",
-    marginVertical: 10,
-  },
-  chartSubtitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 10,
+    marginVertical: 20,
+    position: "relative",
   },
   chart: {
     borderRadius: 12,
+  },
+  donutCenter: {
+    position: "absolute",
+    width: width - 64,
+    height: 260,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  donutCenterLabel: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+  },
+  donutCenterValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#2629e0ff",
+    marginTop: 4,
   },
   productList: {
     marginTop: 10,
@@ -400,7 +351,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   loadingContainer: {
-    height: 300,
+    height: 260,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -410,7 +361,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   errorContainer: {
-    height: 300,
+    height: 260,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -419,7 +370,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   noDataContainer: {
-    height: 300,
+    height: 260,
     justifyContent: "center",
     alignItems: "center",
   },

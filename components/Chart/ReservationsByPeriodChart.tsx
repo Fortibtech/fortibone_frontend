@@ -7,7 +7,6 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { BarChart } from "react-native-chart-kit";
 
@@ -48,7 +47,7 @@ const ReservationsByPeriodChart: React.FC<{ businessId: string }> = ({
       setReservations(periods);
     } catch (err: any) {
       setError("Impossible de charger les réservations");
-      Alert.alert("Erreur", err.message || "Une erreur est survenue");
+      // Alert.alert("Erreur", err.message || "Une erreur est survenue");
     } finally {
       setLoading(false);
     }

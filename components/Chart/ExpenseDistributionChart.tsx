@@ -6,11 +6,11 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   ScrollView,
 } from "react-native";
 import { ProgressChart } from "react-native-chart-kit";
 import { getSales } from "@/api/analytics";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 const { width } = Dimensions.get("window");
 
@@ -49,25 +49,28 @@ const COLORS = [
   "#F472B6",
 ];
 
-const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
-  businessId,
-}) => {
+const ExpenseDistributionChart: React.FC<{
+  businessId: string;
+  currencyId: string;
+}> = ({ businessId, currencyId }) => {
   const [unit, setUnit] = useState<UnitType>("MONTH");
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CategoryData[]>([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [error, setError] = useState<string | null>(null);
 
+  const [error, setError] = useState<string | null>(null);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await getSales(businessId, { unit });
+      const symbol = await getCurrencySymbolById(currencyId);
+
       const cats: SalesByCategory[] = data.salesByProductCategory || [];
 
       if (cats.length === 0) {
         setCategories([]);
-        setTotalRevenue(0);
+
         return;
       }
 
@@ -75,8 +78,8 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
       const top = sorted.slice(0, 8);
 
       const total = top.reduce((sum, cat) => sum + cat.totalRevenue, 0);
-      setTotalRevenue(total);
 
+      setSymbol(symbol);
       const processed: CategoryData[] = top.map((cat, i) => ({
         name: cat.categoryName,
         revenue: cat.totalRevenue,
@@ -89,7 +92,7 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
     } catch (err: any) {
       console.log("API error:", err?.response?.data);
       setError("Impossible de charger les données");
-      Alert.alert("Erreur", "Impossible de charger les données");
+      // Alert.alert("Erreur", "Impossible de charger les données");
     } finally {
       setLoading(false);
     }
@@ -121,34 +124,7 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
     <View style={styles.chartCard}>
       <View style={styles.chartHeader}>
         <Text style={styles.chartTitle}>Répartition par catégorie</Text>
-        <Text style={styles.subtitle}>
-          Période : {UNITS.find((u) => u.key === unit)?.label}
-        </Text>
-
-        {/* Filtres */}
-        <View style={styles.filterButtons}>
-          {UNITS.map((u) => (
-            <TouchableOpacity
-              key={u.key}
-              style={[
-                styles.filterBtn,
-                unit === u.key && styles.filterBtnActive,
-              ]}
-              onPress={() => setUnit(u.key)}
-            >
-              <Text
-                style={[
-                  styles.filterBtnText,
-                  unit === u.key && styles.filterBtnTextActive,
-                ]}
-              >
-                {u.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </View>
-
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#8B5CF6" />
@@ -164,22 +140,14 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
         </View>
       ) : (
         <>
-          {/* Total */}
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Revenu total</Text>
-            <Text style={styles.totalValue}>
-              {totalRevenue.toLocaleString("fr-FR")} KMF
-            </Text>
-          </View>
-
           {/* Progress Chart */}
           <View style={styles.chartContainer}>
             <ProgressChart
               data={chartData}
               width={width - 64}
-              height={220}
-              strokeWidth={16}
-              radius={32}
+              height={280} // ← Augmenté un peu la hauteur pour plus d'espace
+              strokeWidth={20} // ← Épaisseur des arcs (plus épais = plus visible)
+              radius={44} // ← Taille des cercles : beaucoup plus gros qu'avant (32 → 44)
               chartConfig={chartConfig}
               hideLegend={false}
               style={styles.chart}
@@ -216,7 +184,7 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
                 </View>
                 <View style={styles.categoryRight}>
                   <Text style={styles.categoryValue}>
-                    {category.revenue.toLocaleString("fr-FR")} KMF
+                    {category.revenue.toLocaleString("fr-FR")} {symbol}
                   </Text>
                   <Text
                     style={[

@@ -12,6 +12,7 @@ import BackButtonAdmin from "@/components/Admin/BackButton";
 import { StockCard } from "@/components/accueil/StockCard";
 import { useLocalSearchParams } from "expo-router";
 import { getInventory, InventoryResponse } from "@/api/analytics";
+import { formatMoney } from "@/utils/formatMoney";
 // Composant Header
 const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   return (
@@ -70,7 +71,7 @@ const StockTrackingScreen: React.FC = () => {
   const stockData = [
     {
       title: "Valeur du stock",
-      value: data.currentInventoryValue,
+      value: formatMoney(data.currentInventoryValue),
       icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#10B981",
       iconBgColor: "#D1FAE5",

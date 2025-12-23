@@ -6,10 +6,11 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  Animated,
 } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { getSales } from "@/api/analytics";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 const { width } = Dimensions.get("window");
 
@@ -22,30 +23,47 @@ const UNITS: { key: UnitType; label: string }[] = [
   { key: "YEAR", label: "Année" },
 ];
 
+const unitLabelMap: Record<UnitType, string> = {
+  DAY: "par jour",
+  WEEK: "par semaine",
+  MONTH: "par mois",
+  YEAR: "par année",
+};
+
 interface SalePeriod {
   period: string;
   totalAmount: number;
   totalItems: number;
 }
 
-const SalesByPeriodChart: React.FC<{ businessId: string }> = ({
-  businessId,
-}) => {
+const SalesByPeriodChart: React.FC<{
+  businessId: string;
+  currencyId: string;
+}> = ({ businessId, currencyId }) => {
   const [unit, setUnit] = useState<UnitType>("MONTH");
   const [loading, setLoading] = useState(true);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [periods, setPeriods] = useState<SalePeriod[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Pour forcer une nouvelle animation de tracé à chaque changement
+  const [chartKey, setChartKey] = useState(0);
+
+  // Animations d'entrée
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = React.useRef(new Animated.Value(20)).current;
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await getSales(businessId, { unit });
+      const symbol = await getCurrencySymbolById(currencyId);
+      setSymbol(symbol);
       setPeriods(data.salesByPeriod || []);
     } catch (err: any) {
       console.log("API error:", err?.response?.data);
       setError("Impossible de charger les ventes");
-      Alert.alert("Erreur", "Impossible de charger les ventes");
     } finally {
       setLoading(false);
     }
@@ -55,12 +73,35 @@ const SalesByPeriodChart: React.FC<{ businessId: string }> = ({
     fetchData();
   }, [businessId, unit]);
 
-  const totalRevenue = periods.reduce((s, p) => s + p.totalAmount, 0);
+  // Animation d'entrée + relance du tracé de la courbe quand les données sont prêtes
+  useEffect(() => {
+    if (!loading && periods.length > 0) {
+      // Reset animations
+      fadeAnim.setValue(0);
+      slideAnim.setValue(20);
+
+      // Relance l'animation de dessin de la courbe
+      setChartKey((prev) => prev + 1);
+
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [periods, loading, unit]);
 
   const formatLabel = (p: string) => {
-    if (unit === "MONTH") return p.slice(5); // 2025-09 -> 09
-    if (unit === "YEAR") return p; // 2025
-    return p.slice(5); // fallback DAY/WEEK
+    if (unit === "MONTH") return p.slice(5); // 2025-09 → 09
+    if (unit === "YEAR") return p;
+    return p.slice(5);
   };
 
   const chartData = {
@@ -76,12 +117,16 @@ const SalesByPeriodChart: React.FC<{ businessId: string }> = ({
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
     color: () => "#8B5CF6",
-    strokeWidth: 3,
+    strokeWidth: 4, // un peu plus épais pour que le tracé soit plus visible
     decimalPlaces: 0,
     propsForDots: {
-      r: "4",
-      strokeWidth: "2",
+      r: "5",
+      strokeWidth: "3",
       stroke: "#8B5CF6",
+    },
+    propsForLabels: {
+      fontSize: 10,
+      translateX: 8,
     },
   };
 
@@ -89,6 +134,11 @@ const SalesByPeriodChart: React.FC<{ businessId: string }> = ({
     <View style={styles.chartCard}>
       <View style={styles.chartHeader}>
         <Text style={styles.chartTitle}>Évolution des ventes</Text>
+        {symbol && (
+          <Text style={styles.subTitle}>
+            Montant {unitLabelMap[unit]} ({symbol})
+          </Text>
+        )}
 
         <View style={styles.filterButtons}>
           {UNITS.map((u) => (
@@ -126,31 +176,37 @@ const SalesByPeriodChart: React.FC<{ businessId: string }> = ({
           <Text style={styles.noDataText}>Aucune donnée disponible</Text>
         </View>
       ) : (
-        <>
-          {/* Total */}
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Revenu total</Text>
-            <Text style={styles.totalValue}>
-              {totalRevenue.toLocaleString("fr-FR")} KMF
-            </Text>
-          </View>
-
-          {/* Line chart */}
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          }}
+        >
           <LineChart
+            key={`chart-${unit}-${chartKey}`} // ← Clé unique → force le redraw complet avec animation
             data={chartData}
             width={width - 64}
             height={240}
             chartConfig={chartConfig}
             bezier
+            fromZero // ← Très important : la courbe part de zéro et se dessine progressivement
             style={styles.chart}
+            formatYLabel={(value) =>
+              symbol
+                ? `${Number(value).toLocaleString("fr-FR")} ${symbol}`
+                : value
+            }
           />
-        </>
+        </Animated.View>
       )}
     </View>
   );
 };
 
+// ... (les styles restent identiques à ta version précédente)
+
 const styles = StyleSheet.create({
+  // (inchangés – tu peux copier-coller ceux de ta version précédente)
   chartCard: {
     backgroundColor: "#fff",
     marginBottom: 16,
@@ -167,18 +223,24 @@ const styles = StyleSheet.create({
   chartHeader: {
     alignItems: "center",
     marginBottom: 16,
-    gap: 10,
+    gap: 6,
   },
   chartTitle: {
     fontSize: 17,
     fontWeight: "700",
     color: "#1a1a1a",
   },
+  subTitle: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "600",
+  },
   filterButtons: {
     flexDirection: "row",
     gap: 8,
     flexWrap: "wrap",
     justifyContent: "center",
+    marginTop: 6,
   },
   filterBtn: {
     paddingHorizontal: 14,
@@ -200,26 +262,6 @@ const styles = StyleSheet.create({
   filterBtnTextActive: {
     color: "#8B5CF6",
     fontWeight: "700",
-  },
-  totalCard: {
-    backgroundColor: "#EDE9FE",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#8B5CF6",
-  },
-  totalLabel: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
-    marginBottom: 6,
-  },
-  totalValue: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#8B5CF6",
   },
   chart: {
     borderRadius: 16,

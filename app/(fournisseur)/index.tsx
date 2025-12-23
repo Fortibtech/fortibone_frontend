@@ -36,6 +36,10 @@ import {
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { useBusinessStore } from "@/store/businessStore";
+import InventoryLossesChart from "@/components/Chart/InventoryLossesChart";
+import SalesByPeriodChart from "@/components/Chart/SalesByPeriodChart";
+import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
+import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 
 type PeriodType = "day" | "week" | "month" | "year" | "all" | "custom";
 
@@ -787,13 +791,25 @@ const HomePage: React.FC = () => {
       );
     }
 
-    if (!topProductsData || topProductsData.topSellingProducts.length === 0) {
+    if (business) {
       return (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Top 5 Produits par volume</Text>
-          <View style={styles.donutChartContainer}>
-            <Text style={styles.noDataText}>Aucune donnée disponible</Text>
-          </View>
+          <InventoryLossesChart
+            businessId={business.id}
+            currencyId={business.currencyId}
+          />
+          <SalesByPeriodChart
+            businessId={business.id}
+            currencyId={business.currencyId}
+          />
+          <ExpenseDistributionChart
+            businessId={business.id}
+            currencyId={business.currencyId}
+          />
+          <RevenueDistributionChart
+            businessId={business.id}
+            currencyId={business.currencyId}
+          />
         </View>
       );
     }

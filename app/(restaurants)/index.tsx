@@ -29,6 +29,10 @@ import { useBusinessStore } from "@/store/businessStore";
 import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 import PopularDishesChart from "@/components/Chart/PopularDishesChart";
 import ReservationsByPeriodChart from "@/components/Chart/ReservationsByPeriodChart";
+import AnalyticsCard from "@/components/accueil/AnalyticsCard";
+import SalesByPeriodChart from "@/components/Chart/SalesByPeriodChart";
+import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
+import InventoryLossesChart from "@/components/Chart/InventoryLossesChart";
 
 type PeriodType = "day" | "week" | "month" | "year" | "all" | "custom";
 
@@ -476,7 +480,7 @@ const RestaurantHome: React.FC = () => {
           </Text>
           <Ionicons name="chevron-forward" size={20} color="#7C3AED" />
         </TouchableOpacity>
-
+        {/* 
         <TouchableOpacity
           style={styles.statsButton}
           onPress={() => setShowStatsChart(true)}
@@ -484,7 +488,7 @@ const RestaurantHome: React.FC = () => {
           <Ionicons name="bar-chart" size={20} color="#6366F1" />
           <Text style={styles.statsButtonText}>Statistiques graphiques</Text>
           <Ionicons name="chevron-forward" size={20} color="#6366F1" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           style={styles.statsButton}
@@ -568,10 +572,26 @@ const RestaurantHome: React.FC = () => {
           <>
             {renderOverview()}
             <View style={styles.section}>
-              <PopularDishesChart businessId={business.id} />
-              <ReservationsByPeriodChart businessId={business.id} />
+              <InventoryLossesChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+              />
+              <SalesByPeriodChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+              />
+              <ExpenseDistributionChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+              />
+              <RevenueDistributionChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+              />
+              {/* <PopularDishesChart businessId={business.id} />
+              <ReservationsByPeriodChart businessId={business.id} /> */}
             </View>
-            {renderQuickActions()}
+            {/* {renderQuickActions()} */}
           </>
         ) : (
           <View style={styles.noBusiness}>
@@ -661,7 +681,12 @@ const RestaurantHome: React.FC = () => {
           >
             <Ionicons name="close" size={28} color="#000" />
           </TouchableOpacity>
-          {business && <RevenueDistributionChart businessId={business.id} />}
+          {business && (
+            <RevenueDistributionChart
+              businessId={business.id}
+              currencyId={business.currencyId}
+            />
+          )}
         </SafeAreaView>
       </Modal>
 

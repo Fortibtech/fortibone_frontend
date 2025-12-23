@@ -12,6 +12,7 @@ import BackButtonAdmin from "@/components/Admin/BackButton";
 import { StockCard } from "@/components/accueil/StockCard";
 import { useLocalSearchParams } from "expo-router";
 import { getSales, SalesResponse } from "@/api/analytics";
+import { formatMoney } from "@/utils/formatMoney";
 // Composant Header
 const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   return (
@@ -70,7 +71,7 @@ const StockTrackingScreen: React.FC = () => {
   const stockData = [
     {
       title: "Montant total des ventes",
-      value: data.salesByPeriod?.[0]?.totalAmount ?? 0,
+      value: formatMoney(data.salesByPeriod?.[0]?.totalAmount ?? 0),
       icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#10B981",
       iconBgColor: "#D1FAE5",
@@ -84,9 +85,11 @@ const StockTrackingScreen: React.FC = () => {
     },
     {
       title: "Revenu par catégorie",
-      value: data.salesByProductCategory?.reduce(
-        (sum, c) => sum + (c.totalRevenue || 0),
-        0
+      value: formatMoney(
+        data.salesByProductCategory?.reduce(
+          (sum, c) => sum + (c.totalRevenue || 0),
+          0
+        )
       ),
       icon: "layers" as keyof typeof Feather.glyphMap,
       iconColor: "#F59E0B",
@@ -111,7 +114,7 @@ const StockTrackingScreen: React.FC = () => {
     },
     {
       title: "Top produit revenu",
-      value: data.topSellingProducts?.[0]?.totalRevenue ?? 0,
+      value: formatMoney(data.topSellingProducts?.[0]?.totalRevenue ?? 0),
       icon: "trending-up" as keyof typeof Feather.glyphMap,
       iconColor: "#06B6D4",
       iconBgColor: "#CFFAFE",

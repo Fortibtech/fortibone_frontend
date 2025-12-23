@@ -1,4 +1,3 @@
-import { getInventory } from "@/api/analytics";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -7,9 +6,10 @@ import {
   Dimensions,
   ActivityIndicator,
   ScrollView,
-  Alert,
 } from "react-native";
 import { ProgressChart } from "react-native-chart-kit";
+import { getInventory } from "@/api/analytics";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 const { width } = Dimensions.get("window");
 
@@ -21,55 +21,66 @@ interface LossByMovementType {
 
 interface InventoryLossesChartProps {
   businessId: string;
+  currencyId: string;
 }
 
-// Couleurs harmonieuses et professionnelles
-const COLORS = [
-  "#EF4444", // Rouge - Expiration / Perte critique
-  "#F59E0B", // Orange - Dommage
-  "#10B981", // Vert - Ajustement positif ? (rare)
-  "#3B82F6", // Bleu
-  "#8B5CF6", // Violet
-  "#EC4899", // Rose
-  "#6B7280", // Gris
-  "#6366F1",
-];
+export const formatMoney = (value: number, symbol: string = ""): string => {
+  if (isNaN(value) || value === null || value === undefined)
+    return `0,00 ${symbol}`;
+
+  return `${value.toLocaleString("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} ${symbol}`;
+};
 
 const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
   businessId,
+  currencyId,
 }) => {
   const [loading, setLoading] = useState(true);
   const [losses, setLosses] = useState<LossByMovementType[]>([]);
   const [totalLossValue, setTotalLossValue] = useState(0);
+  const [symbol, setSymbol] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getInventory(businessId); // Ton appel API
-      const lossesData: LossByMovementType[] = data.lossesByMovementType || [];
+      const data = await getInventory(businessId);
+      const currencySymbol = await getCurrencySymbolById(currencyId);
 
-      if (lossesData.length === 0) {
+      const rawLosses: any[] = data.lossesByMovementType || [];
+
+      if (rawLosses.length === 0) {
         setLosses([]);
         setTotalLossValue(0);
-        setLoading(false);
+        setSymbol(currencySymbol as any);
         return;
       }
 
-      // Calcul du total des pertes en valeur
-      const total = lossesData.reduce((sum, item) => sum + item.totalValue, 0);
-      setTotalLossValue(total);
+      const processedLosses: LossByMovementType[] = rawLosses.map((item) => ({
+        movementType: item.movementType,
+        totalQuantity: Number(item.totalQuantity) || 0,
+        totalValue: parseFloat(String(item.totalValue).replace(",", "")) || 0,
+      }));
 
-      // Trier par valeur descendante
-      const sorted = [...lossesData].sort(
+      const total = processedLosses.reduce(
+        (sum, item) => sum + item.totalValue,
+        0
+      );
+
+      const sorted = processedLosses.sort(
         (a, b) => b.totalValue - a.totalValue
       );
+
       setLosses(sorted);
-    } catch (err: any) {
-      console.log("API error:", err);
+      setTotalLossValue(total);
+      setSymbol(currencySymbol as any);
+    } catch (err) {
+      console.error("Erreur lors du chargement des pertes :", err);
       setError("Impossible de charger les pertes d'inventaire");
-      Alert.alert("Erreur", "Impossible de charger les données");
     } finally {
       setLoading(false);
     }
@@ -77,58 +88,86 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
 
   useEffect(() => {
     fetchData();
-  }, [businessId]);
+  }, [businessId, currencyId]);
 
-  // Traduction simple des types de mouvement (à enrichir selon tes valeurs réelles)
   const formatMovementType = (type: string): string => {
     const map: Record<string, string> = {
       EXPIRATION: "Péremption",
-      DAMAGE: "Dommage",
-      THEFT: "Vol",
       LOSS: "Perte inconnue",
+      DAMAGE: "Dommage / Casse",
+      THEFT: "Vol",
+      SHRINKAGE: "Retrait",
       ADJUSTMENT: "Ajustement",
       RETURN: "Retour fournisseur",
     };
     return map[type] || type;
   };
 
+  // === COULEURS VIVES TIRANT SUR LE ROUGE ===
   const chartConfig = {
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
     color: (opacity = 1, index = 0) => {
-      return (
-        COLORS[index % COLORS.length] +
-        Math.round(opacity * 255)
-          .toString(16)
-          .padStart(2, "0")
-      );
+      const vividRedPalette = [
+        "#FF1E1E", // Rouge ultra vif
+        "#FF453A",
+        "#FF6B6B",
+        "#FF3333",
+        "#FF1744",
+        "#F50057",
+        "#D50000",
+        "#C62828",
+      ];
+      const baseColor = vividRedPalette[index % vividRedPalette.length];
+      return opacity === 1
+        ? baseColor
+        : baseColor +
+            Math.round(opacity * 255)
+              .toString(16)
+              .padStart(2, "0");
     },
-    strokeWidth: 2,
+    strokeWidth: 3,
+    decimalPlaces: 0,
+    propsForLabels: {
+      fontSize: 12,
+      fontWeight: "700",
+    },
   };
 
   const chartData = {
     labels: losses.map((l) =>
-      formatMovementType(l.movementType).length > 10
-        ? formatMovementType(l.movementType).substring(0, 8) + "..."
+      formatMovementType(l.movementType).length > 12
+        ? formatMovementType(l.movementType).substring(0, 10) + "..."
         : formatMovementType(l.movementType)
     ),
     data: losses.map((l) =>
       totalLossValue > 0 ? l.totalValue / totalLossValue : 0
     ),
-    colors: losses.map((_, i) => COLORS[i % COLORS.length]),
+    colors: losses.map(
+      (_, i) =>
+        [
+          "#FF1E1E",
+          "#FF453A",
+          "#FF6B6B",
+          "#FF3333",
+          "#FF1744",
+          "#F50057",
+          "#D50000",
+          "#C62828",
+        ][i % 8]
+    ),
   };
 
   return (
     <View style={styles.chartCard}>
       <View style={styles.header}>
         <Text style={styles.title}>Pertes d&apos;inventaire par type</Text>
-        <Text style={styles.subtitle}>Valeur totale perdue</Text>
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#EF4444" />
-          <Text style={styles.loadingText}>Chargement...</Text>
+          <ActivityIndicator size="large" color="#FF1E1E" />
+          <Text style={styles.loadingText}>Chargement des données...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
@@ -140,35 +179,42 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
         </View>
       ) : (
         <>
-          {/* Total des pertes */}
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Valeur totale des pertes</Text>
-            <Text style={styles.totalValue}>
-              {totalLossValue.toLocaleString("fr-FR")} KMF
-            </Text>
-          </View>
-
-          {/* Graphique en anneau */}
           <View style={styles.chartContainer}>
             <ProgressChart
               data={chartData}
               width={width - 64}
-              height={240}
-              strokeWidth={18}
-              radius={36}
+              height={280}
+              strokeWidth={20}
+              radius={44}
               chartConfig={chartConfig}
               hideLegend={false}
               style={styles.chart}
             />
+
+            <View style={styles.donutCenter}>
+              <Text style={styles.donutCenterLabel}>Valeur totale perdue</Text>
+              <Text style={styles.donutCenterValue}>
+                {formatMoney(totalLossValue, symbol)}
+              </Text>
+            </View>
           </View>
 
-          {/* Liste détaillée */}
           <ScrollView style={styles.listContainer}>
             {losses.map((loss, index) => {
               const percentage =
                 totalLossValue > 0
                   ? (loss.totalValue / totalLossValue) * 100
                   : 0;
+              const itemColor = [
+                "#FF1E1E",
+                "#FF453A",
+                "#FF6B6B",
+                "#FF3333",
+                "#FF1744",
+                "#F50057",
+                "#D50000",
+                "#C62828",
+              ][index % 8];
 
               return (
                 <View key={index} style={styles.lossItem}>
@@ -176,7 +222,7 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
                     <View
                       style={[
                         styles.colorIndicator,
-                        { backgroundColor: COLORS[index % COLORS.length] },
+                        { backgroundColor: itemColor },
                       ]}
                     />
                     <View style={styles.lossInfo}>
@@ -189,7 +235,7 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
                             styles.progressFill,
                             {
                               width: `${percentage}%`,
-                              backgroundColor: COLORS[index % COLORS.length],
+                              backgroundColor: itemColor,
                             },
                           ]}
                         />
@@ -199,14 +245,9 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
 
                   <View style={styles.lossRight}>
                     <Text style={styles.lossValue}>
-                      {loss.totalValue.toLocaleString("fr-FR")} KMF
+                      {formatMoney(loss.totalValue, symbol)}
                     </Text>
-                    <Text
-                      style={[
-                        styles.lossPercentage,
-                        { color: COLORS[index % COLORS.length] },
-                      ]}
-                    >
+                    <Text style={[styles.lossPercentage, { color: itemColor }]}>
                       {percentage.toFixed(1)}%
                     </Text>
                     <Text style={styles.lossQuantity}>
@@ -223,85 +264,77 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
     </View>
   );
 };
-
 const styles = StyleSheet.create({
+  header: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
   chartCard: {
     backgroundColor: "#fff",
     marginBottom: 16,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#EF4444",
+    borderColor: "#FF1E1E",
     elevation: 3,
-    shadowColor: "#EF4444",
+    shadowColor: "#FF1E1E",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 16,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   title: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: "700",
     color: "#1a1a1a",
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "500",
-    marginTop: 4,
-  },
-  totalCard: {
-    backgroundColor: "#FEE2E2",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#EF4444",
-  },
-  totalLabel: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "600",
-  },
-  totalValue: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#EF4444",
-    marginTop: 6,
   },
   chartContainer: {
     alignItems: "center",
     marginVertical: 10,
+    position: "relative",
   },
   chart: {
     borderRadius: 16,
   },
+  donutCenter: {
+    position: "absolute",
+    width: width - 64,
+    height: 280,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  donutCenterLabel: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+  },
+  donutCenterValue: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#2c2b2bff",
+    marginTop: 6,
+  },
   listContainer: {
-    maxHeight: 300,
-    marginTop: 10,
+    maxHeight: 400,
+    marginTop: 20,
   },
   lossItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
   lossLeft: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
     gap: 12,
+    flex: 1,
   },
   colorIndicator: {
     width: 10,
-    height: 40,
+    height: 44,
     borderRadius: 5,
   },
   lossInfo: {
@@ -314,14 +347,14 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   progressBackground: {
-    height: 6,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 3,
+    height: 7,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 4,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    borderRadius: 3,
+    borderRadius: 4,
   },
   lossRight: {
     alignItems: "flex-end",
@@ -329,7 +362,7 @@ const styles = StyleSheet.create({
   lossValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#333",
+    color: "#312b2bff",
   },
   lossPercentage: {
     fontSize: 14,
@@ -342,16 +375,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   loadingContainer: {
-    height: 260,
+    height: 280,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
     marginTop: 12,
     color: "#666",
+    fontSize: 14,
   },
   errorContainer: {
-    height: 260,
+    height: 280,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -361,7 +395,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   noDataContainer: {
-    height: 260,
+    height: 280,
     justifyContent: "center",
     alignItems: "center",
   },
