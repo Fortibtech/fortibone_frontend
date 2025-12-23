@@ -22,9 +22,9 @@ import * as Location from "expo-location";
 
 import { useOnboardingStore } from "@/store/onboardingStore";
 import { BusinessesService, Currency, CurrencyService } from "@/api";
-
 import { router } from "expo-router";
 import BackButtonWithClear from "@/components/Admin/BackButtonWithClear";
+import { getAllSectores, Sector } from "@/api/sector/sectorApi";
 
 type SearchResult = {
   latitude: number;
@@ -33,36 +33,12 @@ type SearchResult = {
 };
 type CommerceType = "PHYSICAL" | "ONLINE" | "HYBRID";
 
-const ACTIVITY_SECTORS = [
-  "Vente au détail de vêtements",
-  "Alimentation / Épicerie",
-  "Restaurant / Restauration rapide",
-  "Coiffure / Salon de beauté",
-  "Boulangerie / Pâtisserie",
-  "Pharmacie / Parapharmacie",
-  "Électronique / Téléphonie",
-  "Supermarché / Hypermarché",
-  "Quincaillerie / Bricolage",
-  "Librairie / Papeterie",
-  "Bijouterie / Horlogerie",
-  "Fleuriste",
-  "Opticien",
-  "Pressing / Blanchisserie",
-  "Agence de voyage",
-  "Garage / Réparation auto",
-  "Boutique de cosmétiques",
-  "Magasin de sport",
-  "Animalerie",
-  "Meubles / Décoration",
-  "Autre",
-];
-
 const CreateBusinessCommercant: React.FC = () => {
   const { businessData, updateBusinessData, reset } = useOnboardingStore();
 
   const [loading, setLoading] = useState(false);
 
-  // On force le type COMMERCANT + valeurs par défaut manquantes
+  // Force COMMERCANT + valeurs par défaut
   const business = {
     ...businessData,
     type: "COMMERCANT" as const,
@@ -70,7 +46,7 @@ const CreateBusinessCommercant: React.FC = () => {
     latitude: businessData.latitude || 4.0511,
     longitude: businessData.longitude || 9.7679,
     currencyId: businessData.currencyId || "",
-    activitySector: businessData.activitySector || "",
+    activitySector: businessData.activitySector || "", // ← ID du secteur (string)
     name: businessData.name || "",
     description: businessData.description || "",
     address: businessData.address || "",
@@ -81,8 +57,18 @@ const CreateBusinessCommercant: React.FC = () => {
     coverImageUrl: businessData.coverImageUrl || "",
   };
 
-  // Modal carte
+  // États pour secteurs et devises
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [loadingSectors, setLoadingSectors] = useState(true);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+
+  // Modals
   const [mapModalVisible, setMapModalVisible] = useState(false);
+  const [sectorModalVisible, setSectorModalVisible] = useState(false);
+  const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Carte
   const [tempMarker, setTempMarker] = useState<{
     latitude: number;
     longitude: number;
@@ -94,32 +80,40 @@ const CreateBusinessCommercant: React.FC = () => {
     "Sélectionnez un emplacement"
   );
 
-  // Modal devise & secteur
-  const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
-  const [sectorModalVisible, setSectorModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currencies, setCurrencies] = useState<Currency[]>([]);
-
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
 
+  // Chargement des données
   useEffect(() => {
-    loadCurrencies();
-  }, []);
-
-  const loadCurrencies = async () => {
-    try {
-      const data = await CurrencyService.getCurrencies();
-      setCurrencies(data);
-      if (!business.currencyId) {
-        const xaf = data.find((c) => c.code === "XAF");
-        if (xaf) updateBusinessData({ currencyId: xaf.id });
+    const loadData = async () => {
+      // Secteurs COMMERCANT
+      try {
+        setLoadingSectors(true);
+        const sectorData = await getAllSectores("COMMERCANT");
+        setSectors(sectorData);
+      } catch (err) {
+        console.error("Erreur chargement secteurs :", err);
+        Alert.alert("Erreur", "Impossible de charger les secteurs d'activité");
+      } finally {
+        setLoadingSectors(false);
       }
-    } catch (err) {
-      Alert.alert("Erreur", "Impossible de charger les devises");
-    }
-  };
+
+      // Devises
+      try {
+        const currencyData = await CurrencyService.getCurrencies();
+        setCurrencies(currencyData);
+        if (!business.currencyId) {
+          const xaf = currencyData.find((c) => c.code === "XAF");
+          if (xaf) updateBusinessData({ currencyId: xaf.id });
+        }
+      } catch (err) {
+        Alert.alert("Erreur", "Impossible de charger les devises");
+      }
+    };
+
+    loadData();
+  }, []);
 
   const updateLocation = async (
     lat: number,
@@ -158,15 +152,21 @@ const CreateBusinessCommercant: React.FC = () => {
     }
   };
 
+  // Filtrage
   const filteredCurrencies = currencies.filter(
     (c) =>
       c.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredSectors = ACTIVITY_SECTORS.filter((s) =>
-    s.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSectors = sectors.filter((s) =>
+    s.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Nom du secteur sélectionné pour affichage
+  const selectedSectorName = sectors.find(
+    (s) => s.id === business.activitySector
+  )?.name;
 
   const pickImage = async (type: "logo" | "cover") => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -213,7 +213,6 @@ const CreateBusinessCommercant: React.FC = () => {
 
     setLoading(true);
     try {
-      // 1. Création du commerce (sans images)
       const cleanPayload = {
         name: business.name.trim(),
         description: business.description.trim(),
@@ -222,19 +221,20 @@ const CreateBusinessCommercant: React.FC = () => {
         latitude: Number(business.latitude),
         longitude: Number(business.longitude),
         currencyId: business.currencyId,
-        activitySector: business.activitySector,
+        sectorId: business.activitySector, // ← ENVOI CORRECT : sectorId avec l'ID
         commerceType: business.commerceType,
         postalCode: business.postalCode || null,
         siret: business.siret || null,
         websiteUrl: business.websiteUrl || null,
       };
 
-      console.log("Payload nettoyée envoyée :", cleanPayload);
+      console.log("Payload envoyée :", cleanPayload);
 
       const newBusiness = await BusinessesService.createBusiness(
         cleanPayload as any
       );
-      // 2. Upload du logo si l'utilisateur en a ajouté un
+
+      // Upload logo
       if (business.logoUrl && business.logoUrl.startsWith("file://")) {
         try {
           await BusinessesService.uploadLogo(newBusiness.id, {
@@ -242,17 +242,12 @@ const CreateBusinessCommercant: React.FC = () => {
             type: "image/jpeg",
             name: "logo.jpg",
           } as any);
-          console.log("Logo uploadé avec succès");
         } catch (err) {
-          console.warn(
-            "Échec de l'upload du logo (le commerce reste créé)",
-            err
-          );
-          // On ne bloque pas la création si l’image plante
+          console.warn("Échec upload logo", err);
         }
       }
 
-      // 3. Upload de la couverture si présente
+      // Upload couverture
       if (
         business.coverImageUrl &&
         business.coverImageUrl.startsWith("file://")
@@ -263,24 +258,18 @@ const CreateBusinessCommercant: React.FC = () => {
             type: "image/jpeg",
             name: "cover.jpg",
           } as any);
-          console.log("Photo de couverture uploadée avec succès");
         } catch (err) {
-          console.warn("Échec de l'upload de la couverture", err);
+          console.warn("Échec upload couverture", err);
         }
       }
 
-      // 4. Sélection automatique du nouveau commerce
+      // Sélection automatique
       try {
         await BusinessesService.selectBusiness(newBusiness);
-        console.log("Commerce sélectionné automatiquement");
       } catch (err) {
-        console.warn(
-          "Impossible de sélectionner automatiquement le commerce",
-          err
-        );
+        console.warn("Impossible de sélectionner automatiquement", err);
       }
 
-      // 5. Succès final pour l'utilisateur
       Alert.alert(
         "Félicitations !",
         `Ton commerce "${newBusiness.name}" a été créé avec succès !`,
@@ -288,7 +277,7 @@ const CreateBusinessCommercant: React.FC = () => {
           {
             text: "Continuer",
             onPress: () => {
-              reset(); // ← Vide TOUT : mot de passe, OTP, données perso + business
+              reset();
               router.replace("/(professionnel)");
             },
           },
@@ -296,15 +285,22 @@ const CreateBusinessCommercant: React.FC = () => {
         { cancelable: false }
       );
     } catch (error: any) {
-      console.error("Erreur lors de la création du commerce :", error);
+      console.error(
+        "Erreur création commerce :",
+        error.response?.data || error
+      );
       Alert.alert(
         "Erreur",
-        error.message || "Impossible de créer le commerce. Réessaie plus tard."
+        error?.response?.data?.message?.join("\n") ||
+          error?.response?.data?.message ||
+          error.message ||
+          "Impossible de créer le commerce."
       );
     } finally {
       setLoading(false);
     }
   };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -315,18 +311,15 @@ const CreateBusinessCommercant: React.FC = () => {
           contentContainerStyle={{ paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ==================== HEADER AVEC BOUTON RETOUR ==================== */}
+          {/* HEADER */}
           <View style={styles.header}>
-            {/* Bouton Retour à gauche */}
             <BackButtonWithClear />
-            {/* Titre centré */}
             <View style={styles.titleContainer}>
               <Text style={styles.title}>Créer mon commerce</Text>
             </View>
-
-            {/* Espace vide à droite pour équilibrer le layout */}
             <View style={{ width: 50 }} />
           </View>
+
           <View style={styles.content}>
             {/* Nom */}
             <View style={styles.formGroup}>
@@ -381,6 +374,7 @@ const CreateBusinessCommercant: React.FC = () => {
                 )}
               </View>
             </View>
+
             {/* Secteur d’activité */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Secteur d’activité *</Text>
@@ -388,13 +382,16 @@ const CreateBusinessCommercant: React.FC = () => {
                 style={styles.selectInput}
                 onPress={() => setSectorModalVisible(true)}
               >
-                <Text
-                  style={{ color: business.activitySector ? "#000" : "#999" }}
-                >
-                  {business.activitySector || "Sélectionnez votre secteur"}
+                <Text style={{ color: selectedSectorName ? "#000" : "#999" }}>
+                  {selectedSectorName || "Sélectionnez votre secteur"}
                 </Text>
                 <Feather name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
+              {validationErrors.activitySector && (
+                <Text style={styles.errorText}>
+                  {validationErrors.activitySector}
+                </Text>
+              )}
             </View>
 
             {/* Adresse + Carte */}
@@ -428,7 +425,7 @@ const CreateBusinessCommercant: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Code postal, SIRET, Site web */}
+            {/* Autres champs */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Code postal</Text>
               <TextInput
@@ -460,7 +457,6 @@ const CreateBusinessCommercant: React.FC = () => {
               />
             </View>
 
-            {/* Description */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Description *</Text>
               <TextInput
@@ -478,9 +474,14 @@ const CreateBusinessCommercant: React.FC = () => {
               <Text style={styles.counter}>
                 {business.description?.length || 0}/20 min
               </Text>
+              {validationErrors.description && (
+                <Text style={styles.errorText}>
+                  {validationErrors.description}
+                </Text>
+              )}
             </View>
-            {/* === PRÉVISUALISATION LOGO & COUVERTURE === */}
-            {/* ==================== UPLOAD LOGO ==================== */}
+
+            {/* Logo */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Logo du commerce *</Text>
               <TouchableOpacity
@@ -501,22 +502,9 @@ const CreateBusinessCommercant: React.FC = () => {
                   </View>
                 )}
               </TouchableOpacity>
-              {business.logoUrl ? (
-                <View style={{ alignItems: "center", marginTop: 8 }}>
-                  <Text style={{ fontSize: 12, color: "#059669" }}>
-                    Logo ajouté
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => updateBusinessData({ logoUrl: "" })}
-                  >
-                    <Text style={{ color: "#ef4444", fontSize: 13 }}>
-                      Supprimer
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
             </View>
-            {/* ==================== UPLOAD COUVERTURE ==================== */}
+
+            {/* Couverture */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Photo de couverture</Text>
               <TouchableOpacity
@@ -537,17 +525,8 @@ const CreateBusinessCommercant: React.FC = () => {
                   </View>
                 )}
               </TouchableOpacity>
-              {business.coverImageUrl && (
-                <TouchableOpacity
-                  onPress={() => updateBusinessData({ coverImageUrl: "" })}
-                  style={{ alignSelf: "center", marginTop: 8 }}
-                >
-                  <Text style={{ color: "#ef4444", fontSize: 13 }}>
-                    Supprimer la couverture
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
+
             {/* Devise */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Devise principale *</Text>
@@ -565,12 +544,93 @@ const CreateBusinessCommercant: React.FC = () => {
           </View>
         </ScrollView>
 
+        {/* Bouton créer */}
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.saveButton} onPress={validateAndSave}>
-            <Text style={styles.saveButtonText}>Créer mon commerce</Text>
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={validateAndSave}
+            disabled={loading}
+          >
+            <Text style={styles.saveButtonText}>
+              {loading ? "Création en cours..." : "Créer mon commerce"}
+            </Text>
           </TouchableOpacity>
         </View>
 
+        {/* MODAL SECTEUR */}
+        <Modal visible={sectorModalVisible} transparent animationType="fade">
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setSectorModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Secteur d’activité</Text>
+                <TouchableOpacity onPress={() => setSectorModalVisible(false)}>
+                  <Feather name="x" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.searchContainer}>
+                <Feather
+                  name="search"
+                  size={20}
+                  color="#999"
+                  style={{ marginRight: 10 }}
+                />
+                <TextInput
+                  placeholder="Rechercher un secteur..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  style={{ flex: 1 }}
+                />
+              </View>
+              <FlatList
+                data={filteredSectors}
+                keyExtractor={(item) => item.id}
+                ListEmptyComponent={
+                  loadingSectors ? (
+                    <View style={{ padding: 20, alignItems: "center" }}>
+                      <ActivityIndicator size="small" color="#059669" />
+                      <Text style={{ marginTop: 10, color: "#666" }}>
+                        Chargement...
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text
+                      style={{
+                        padding: 20,
+                        textAlign: "center",
+                        color: "#999",
+                      }}
+                    >
+                      Aucun secteur trouvé
+                    </Text>
+                  )
+                }
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.currencyItem,
+                      business.activitySector === item.id &&
+                        styles.currencyItemSelected,
+                    ]}
+                    onPress={() => {
+                      updateBusinessData({ activitySector: item.id });
+                      setSectorModalVisible(false);
+                      setSearchQuery("");
+                    }}
+                  >
+                    <Text style={styles.currencyCode}>{item.name}</Text>
+                    {business.activitySector === item.id && (
+                      <Feather name="check" size={24} color="#059669" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
         {/* ==================== MODAL CARTE PLEIN ÉCRAN ==================== */}
         <Modal visible={mapModalVisible} animationType="slide">
           <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -773,22 +833,43 @@ const CreateBusinessCommercant: React.FC = () => {
               </View>
               <FlatList
                 data={filteredSectors}
-                keyExtractor={(item) => item}
+                keyExtractor={(item) => item.id} // ← Doit retourner une STRING (l'id unique)
+                ListEmptyComponent={
+                  loadingSectors ? (
+                    <View style={{ padding: 20, alignItems: "center" }}>
+                      <ActivityIndicator size="small" color="#059669" />
+                      <Text style={{ marginTop: 10, color: "#666" }}>
+                        Chargement...
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text
+                      style={{
+                        padding: 20,
+                        textAlign: "center",
+                        color: "#999",
+                      }}
+                    >
+                      Aucun secteur trouvé
+                    </Text>
+                  )
+                }
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={[
                       styles.currencyItem,
-                      business.activitySector === item &&
-                        styles.currencyItemSelected,
+                      business.activitySector === item.id &&
+                        styles.currencyItemSelected, // ← Comparaison avec l'ID (string)
                     ]}
                     onPress={() => {
-                      updateBusinessData({ activitySector: item });
+                      updateBusinessData({ activitySector: item.id }); // ← On stocke l'ID (string)
                       setSectorModalVisible(false);
                       setSearchQuery("");
                     }}
                   >
-                    <Text style={styles.currencyCode}>{item}</Text>
-                    {business.activitySector === item && (
+                    <Text style={styles.currencyCode}>{item.name}</Text>{" "}
+                    {/* ← Affichage du nom */}
+                    {business.activitySector === item.id && (
                       <Feather name="check" size={24} color="#059669" />
                     )}
                   </TouchableOpacity>

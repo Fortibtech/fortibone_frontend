@@ -461,7 +461,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               <View style={styles.businessInfo}>
                 <Text style={styles.businessName}>{business.name}</Text>
                 <Text style={styles.businessType}>{business.type}</Text>
-
                 {business.address && (
                   <View style={styles.addressRow}>
                     <MapPin size={13} color="#9ca3af" />
@@ -471,7 +470,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                   </View>
                 )}
               </View>
-
               {business.logoUrl && (
                 <Image
                   source={{ uri: business.logoUrl }}

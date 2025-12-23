@@ -1,3 +1,5 @@
+// 1. PopularDishesChart.tsx
+import { getRestaurantAnalytics } from "@/api/analytics";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -6,11 +8,11 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   ScrollView,
+  Alert,
+  Image,
 } from "react-native";
-import { StackedBarChart } from "react-native-chart-kit";
-import { getSales } from "@/api/analytics";
+import { ProgressChart } from "react-native-chart-kit";
 
 const { width } = Dimensions.get("window");
 
@@ -23,32 +25,31 @@ const UNITS: { key: UnitType; label: string }[] = [
   { key: "YEAR", label: "Année" },
 ];
 
-interface TopSellingProduct {
+interface PopularDish {
   variantId: string;
-  sku: string;
-  productName: string;
-  variantImageUrl?: string;
-  totalQuantitySold: number;
-  totalRevenue: number;
+  dishName: string;
+  dishImageUrl?: string;
+  totalQuantityOrdered: number;
+  totalRevenue: string | number;
 }
 
 const COLORS = [
-  "#00D09C",
+  "#FF6B6B",
   "#4ECDC4",
   "#45B7D1",
-  "#96CEB4",
-  "#FECA57",
-  "#FF6B6B",
-  "#DDA0DD",
-  "#B0BEC5",
+  "#FFA07A",
+  "#98D8C8",
+  "#F7DC6F",
+  "#BB8FCE",
+  "#85C1E2",
 ];
 
-const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
+const PopularDishesChart: React.FC<{ businessId: string }> = ({
   businessId,
 }) => {
   const [unit, setUnit] = useState<UnitType>("MONTH");
   const [loading, setLoading] = useState(true);
-  const [topProducts, setTopProducts] = useState<TopSellingProduct[]>([]);
+  const [dishes, setDishes] = useState<PopularDish[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,25 +57,32 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
     setLoading(true);
     setError(null);
     try {
-      const data = await getSales(businessId, { unit });
-      const products: TopSellingProduct[] = data.topSellingProducts || [];
+      const data = await getRestaurantAnalytics(businessId, { unit });
+      const popular = data.popularDishes || [];
 
-      if (products.length === 0) {
-        setTopProducts([]);
+      if (popular.length === 0) {
+        setDishes([]);
         setTotalRevenue(0);
         return;
       }
 
-      const sorted = [...products].sort((a, b) => b.totalRevenue - a.totalRevenue);
-      const top = sorted.slice(0, 8); // On prend les 8 meilleurs pour cohérence visuelle
+      // Convertir totalRevenue en nombre
+      const processed = popular.map((d) => ({
+        ...d,
+        totalRevenue: Number(d.totalRevenue),
+      }));
 
-      const total = top.reduce((sum, p) => sum + p.totalRevenue, 0);
+      const sorted = [...processed].sort(
+        (a, b) => b.totalRevenue - a.totalRevenue
+      );
+      const top8 = sorted.slice(0, 8);
+
+      const total = top8.reduce((sum, d) => sum + d.totalRevenue, 0);
       setTotalRevenue(total);
-      setTopProducts(top);
+      setDishes(top8);
     } catch (err: any) {
-      console.log("API error:", err?.response?.data);
-      setError("Impossible de charger les données");
-      Alert.alert("Erreur", "Impossible de charger les données");
+      setError("Impossible de charger les plats populaires");
+      Alert.alert("Erreur", err.message || "Une erreur est survenue");
     } finally {
       setLoading(false);
     }
@@ -88,31 +96,24 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
     color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    strokeWidth: 2,
-    barPercentage: 0.8,
-    decimalPlaces: 0,
   };
 
-  // Données réelles pour le graphique (on garde un stacked bar simple avec une seule barre = total par produit)
-  // Cela donne un effet de répartition claire sans données fictives
-  const stackedData = {
-    labels: [""], // Une seule barre
-    legend: topProducts.map((p) =>
-      p.productName.length > 15 ? p.productName.slice(0, 13) + "..." : p.productName
+  const chartData = {
+    labels: dishes.map((d) =>
+      d.dishName.length > 10 ? d.dishName.substring(0, 8) + "..." : d.dishName
     ),
-    data: [topProducts.map((p) => p.totalRevenue)],
-    barColors: COLORS.slice(0, topProducts.length),
+    data: dishes.map((d) =>
+      totalRevenue > 0 ? d.totalRevenue / totalRevenue : 0
+    ),
+    colors: dishes.map((_, i) => COLORS[i % COLORS.length]),
   };
 
   return (
     <View style={styles.chartCard}>
-      <View style={styles.chartHeader}>
-        <Text style={styles.chartTitle}>Répartition des revenus par produit</Text>
-        <Text style={styles.subtitle}>
-          Période : {UNITS.find((u) => u.key === unit)?.label}
-        </Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Plats les plus vendus</Text>
+        <Text style={styles.subtitle}>Répartition des revenus par plat</Text>
 
-        {/* Filtres identiques à l'autre composant */}
         <View style={styles.filterButtons}>
           {UNITS.map((u) => (
             <TouchableOpacity
@@ -138,66 +139,61 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00D09C" />
-          <Text style={styles.loadingText}>Chargement des données...</Text>
+          <ActivityIndicator size="large" color="#FF6B6B" />
+          <Text style={styles.loadingText}>Chargement...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
-      ) : topProducts.length === 0 ? (
+      ) : dishes.length === 0 ? (
         <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>Aucune vente enregistrée</Text>
+          <Text style={styles.noDataText}>Aucune commande enregistrée</Text>
         </View>
       ) : (
         <>
-          {/* Total Revenue */}
           <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Chiffre d'affaires total</Text>
+            <Text style={styles.totalLabel}>Revenu total des plats</Text>
             <Text style={styles.totalValue}>
               {totalRevenue.toLocaleString("fr-FR")} KMF
             </Text>
           </View>
 
-          {/* Stacked Bar Chart (une seule barre horizontale pour la répartition) */}
           <View style={styles.chartContainer}>
-            <Text style={styles.chartSubtitle}>Répartition par produit</Text>
-            <StackedBarChart
-              data={stackedData}
+            <ProgressChart
+              data={chartData}
               width={width - 64}
-              height={260}
+              height={240}
+              strokeWidth={18}
+              radius={36}
               chartConfig={chartConfig}
-              style={styles.chart}
               hideLegend={false}
-              horizontal={true} // Plus lisible pour les répartitions
             />
           </View>
 
-          {/* Liste des top produits */}
-          <ScrollView style={styles.productList} nestedScrollEnabled>
-            <Text style={styles.gridTitle}>Top produits vendus</Text>
-            {topProducts.map((item, index) => {
-              const percentage = totalRevenue > 0 ? (item.totalRevenue / totalRevenue) * 100 : 0;
-
+          <ScrollView style={styles.list}>
+            {dishes.map((dish, index) => {
+              const percentage =
+                totalRevenue > 0 ? (dish.totalRevenue / totalRevenue) * 100 : 0;
               return (
-                <View key={index} style={styles.productItem}>
-                  <View style={styles.productLeft}>
-                    <View
-                      style={[
-                        styles.rankBadge,
-                        { backgroundColor: COLORS[index % COLORS.length] },
-                      ]}
-                    >
-                      <Text style={styles.rankText}>#{index + 1}</Text>
-                    </View>
-                    <View style={styles.productInfo}>
-                      <Text style={styles.productName} numberOfLines={2}>
-                        {item.productName}
+                <View key={dish.variantId} style={styles.dishItem}>
+                  <View style={styles.dishLeft}>
+                    {dish.dishImageUrl ? (
+                      <Image
+                        source={{ uri: dish.dishImageUrl }}
+                        style={styles.dishImage}
+                      />
+                    ) : (
+                      <View style={styles.dishImagePlaceholder} />
+                    )}
+                    <View style={styles.dishInfo}>
+                      <Text style={styles.dishName} numberOfLines={1}>
+                        {dish.dishName}
                       </Text>
-                      <View style={styles.progressBarBackground}>
+                      <View style={styles.progressBg}>
                         <View
                           style={[
-                            styles.progressBarFill,
+                            styles.progressFill,
                             {
                               width: `${percentage}%`,
                               backgroundColor: COLORS[index % COLORS.length],
@@ -207,21 +203,21 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
                       </View>
                     </View>
                   </View>
-
-                  <View style={styles.productRight}>
-                    <Text style={styles.productRevenue}>
-                      {item.totalRevenue.toLocaleString("fr-FR")} KMF
+                  <View style={styles.dishRight}>
+                    <Text style={styles.dishRevenue}>
+                      {dish.totalRevenue.toLocaleString("fr-FR")} KMF
                     </Text>
                     <Text
                       style={[
-                        styles.productPercentage,
+                        styles.dishPercentage,
                         { color: COLORS[index % COLORS.length] },
                       ]}
                     >
                       {percentage.toFixed(1)}%
                     </Text>
-                    <Text style={styles.productQuantity}>
-                      {item.totalQuantitySold} unité{item.totalQuantitySold > 1 ? "s" : ""}
+                    <Text style={styles.dishQty}>
+                      {dish.totalQuantityOrdered} commande
+                      {dish.totalQuantityOrdered > 1 ? "s" : ""}
                     </Text>
                   </View>
                 </View>
@@ -241,19 +237,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#00D09C",
+    borderColor: "#FF6B6B",
     elevation: 3,
-    shadowColor: "#00D09C",
+    shadowColor: "#FF6B6B",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
   },
-  chartHeader: {
+  header: {
     alignItems: "center",
     marginBottom: 16,
     gap: 6,
   },
-  chartTitle: {
+  title: {
     fontSize: 17,
     fontWeight: "700",
     color: "#1a1a1a",
@@ -274,13 +270,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: "#F0FFFB",
+    backgroundColor: "#FFF0F0",
     borderWidth: 1,
-    borderColor: "#E8FFF6",
+    borderColor: "#FFE0E0",
   },
   filterBtnActive: {
-    backgroundColor: "#E8FFF6",
-    borderColor: "#00D09C",
+    backgroundColor: "#FFE0E0",
+    borderColor: "#FF6B6B",
   },
   filterBtnText: {
     fontSize: 12,
@@ -288,17 +284,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   filterBtnTextActive: {
-    color: "#00D09C",
+    color: "#FF6B6B",
     fontWeight: "700",
   },
   totalCard: {
-    backgroundColor: "#E8FFF6",
+    backgroundColor: "#FFE0E0",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#00D09C",
+    borderColor: "#FF6B6B",
   },
   totalLabel: {
     fontSize: 13,
@@ -309,33 +305,17 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#00D09C",
+    color: "#FF6B6B",
   },
   chartContainer: {
     alignItems: "center",
     marginVertical: 10,
   },
-  chartSubtitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 10,
-  },
-  chart: {
-    borderRadius: 12,
-  },
-  productList: {
+  list: {
+    maxHeight: 400,
     marginTop: 10,
-    maxHeight: 500,
   },
-  gridTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: 12,
-    marginLeft: 8,
-  },
-  productItem: {
+  dishItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -344,57 +324,57 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
-  productLeft: {
+  dishLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     flex: 1,
   },
-  rankBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
+  dishImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: "#f0f0f0",
   },
-  rankText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "800",
+  dishImagePlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: "#eee",
   },
-  productInfo: {
+  dishInfo: {
     flex: 1,
     gap: 8,
   },
-  productName: {
+  dishName: {
     fontSize: 15,
     fontWeight: "600",
     color: "#333",
   },
-  progressBarBackground: {
+  progressBg: {
     height: 6,
     backgroundColor: "#E0E0E0",
     borderRadius: 3,
     overflow: "hidden",
   },
-  progressBarFill: {
+  progressFill: {
     height: "100%",
     borderRadius: 3,
   },
-  productRight: {
+  dishRight: {
     alignItems: "flex-end",
   },
-  productRevenue: {
+  dishRevenue: {
     fontSize: 15,
     fontWeight: "700",
     color: "#333",
   },
-  productPercentage: {
+  dishPercentage: {
     fontSize: 14,
     fontWeight: "700",
     marginTop: 4,
   },
-  productQuantity: {
+  dishQty: {
     fontSize: 12,
     color: "#888",
     marginTop: 4,
@@ -417,6 +397,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#FF6B6B",
     fontSize: 15,
+    textAlign: "center",
   },
   noDataContainer: {
     height: 300,
@@ -429,5 +410,4 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 });
-
-export default RevenueDistributionChart;
+export default PopularDishesChart;

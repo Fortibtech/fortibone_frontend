@@ -14,23 +14,14 @@ import { getSales } from "@/api/analytics";
 
 const { width } = Dimensions.get("window");
 
-// Mois en français
-const MONTHS = [
-  "Janvier",
-  "Février",
-  "Mars",
-  "Avril",
-  "Mai",
-  "Juin",
-  "Juillet",
-  "Août",
-  "Septembre",
-  "Octobre",
-  "Novembre",
-  "Décembre",
-];
+type UnitType = "DAY" | "WEEK" | "MONTH" | "YEAR";
 
-type FilterType = "currentMonth" | "annual";
+const UNITS: { key: UnitType; label: string }[] = [
+  { key: "DAY", label: "Jour" },
+  { key: "WEEK", label: "Semaine" },
+  { key: "MONTH", label: "Mois" },
+  { key: "YEAR", label: "Année" },
+];
 
 interface SalesByCategory {
   categoryId: string;
@@ -61,38 +52,32 @@ const COLORS = [
 const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
   businessId,
 }) => {
-  const [filter, setFilter] = useState<FilterType>("currentMonth");
+  const [unit, setUnit] = useState<UnitType>("MONTH");
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const currentMonthName = MONTHS[new Date().getMonth()];
-  const currentYear = new Date().getFullYear();
-
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSales(businessId);
+      const data = await getSales(businessId, { unit });
       const cats: SalesByCategory[] = data.salesByProductCategory || [];
 
       if (cats.length === 0) {
         setCategories([]);
         setTotalRevenue(0);
-        setLoading(false);
         return;
       }
 
       const sorted = [...cats].sort((a, b) => b.totalRevenue - a.totalRevenue);
-      const isCurrentMonth = filter === "currentMonth";
-      const limit = isCurrentMonth ? 6 : 8;
-      const top = sorted.slice(0, limit);
+      const top = sorted.slice(0, 8);
 
       const total = top.reduce((sum, cat) => sum + cat.totalRevenue, 0);
       setTotalRevenue(total);
 
-      const processedCategories: CategoryData[] = top.map((cat, i) => ({
+      const processed: CategoryData[] = top.map((cat, i) => ({
         name: cat.categoryName,
         revenue: cat.totalRevenue,
         percentage: total > 0 ? (cat.totalRevenue / total) * 100 : 0,
@@ -100,10 +85,11 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
         items: cat.totalItemsSold,
       }));
 
-      setCategories(processedCategories);
+      setCategories(processed);
     } catch (err: any) {
+      console.log("API error:", err?.response?.data);
       setError("Impossible de charger les données");
-      Alert.alert("Erreur", err.message || "Une erreur est survenue");
+      Alert.alert("Erreur", "Impossible de charger les données");
     } finally {
       setLoading(false);
     }
@@ -111,7 +97,7 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
 
   useEffect(() => {
     fetchData();
-  }, [businessId, filter]);
+  }, [businessId, unit]);
 
   const chartConfig = {
     backgroundGradientFrom: "#fff",
@@ -136,45 +122,30 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
       <View style={styles.chartHeader}>
         <Text style={styles.chartTitle}>Répartition par catégorie</Text>
         <Text style={styles.subtitle}>
-          {filter === "currentMonth"
-            ? `${currentMonthName} ${currentYear}`
-            : `Année ${currentYear}`}
+          Période : {UNITS.find((u) => u.key === unit)?.label}
         </Text>
 
+        {/* Filtres */}
         <View style={styles.filterButtons}>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              filter === "currentMonth" && styles.filterBtnActive,
-            ]}
-            onPress={() => setFilter("currentMonth")}
-          >
-            <Text
+          {UNITS.map((u) => (
+            <TouchableOpacity
+              key={u.key}
               style={[
-                styles.filterBtnText,
-                filter === "currentMonth" && styles.filterBtnTextActive,
+                styles.filterBtn,
+                unit === u.key && styles.filterBtnActive,
               ]}
+              onPress={() => setUnit(u.key)}
             >
-              {currentMonthName}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              filter === "annual" && styles.filterBtnActive,
-            ]}
-            onPress={() => setFilter("annual")}
-          >
-            <Text
-              style={[
-                styles.filterBtnText,
-                filter === "annual" && styles.filterBtnTextActive,
-              ]}
-            >
-              Annuel
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.filterBtnText,
+                  unit === u.key && styles.filterBtnTextActive,
+                ]}
+              >
+                {u.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
@@ -193,17 +164,11 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
         </View>
       ) : (
         <>
-          {/* Total Card */}
+          {/* Total */}
           <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>
-              {filter === "currentMonth" ? "Articles vendus" : "Revenu total"}
-            </Text>
+            <Text style={styles.totalLabel}>Revenu total</Text>
             <Text style={styles.totalValue}>
-              {filter === "currentMonth"
-                ? `${categories
-                    .reduce((sum, cat) => sum + cat.items, 0)
-                    .toLocaleString("fr-FR")} articles`
-                : `${totalRevenue.toLocaleString("fr-FR")} KMF`}
+              {totalRevenue.toLocaleString("fr-FR")} KMF
             </Text>
           </View>
 
@@ -221,8 +186,8 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
             />
           </View>
 
-          {/* Detailed Category List */}
-          <ScrollView style={styles.categoryList} nestedScrollEnabled={true}>
+          {/* Liste détaillée */}
+          <ScrollView style={styles.categoryList} nestedScrollEnabled>
             {categories.map((category, index) => (
               <View key={index} style={styles.categoryItem}>
                 <View style={styles.categoryLeft}>
@@ -251,9 +216,7 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
                 </View>
                 <View style={styles.categoryRight}>
                   <Text style={styles.categoryValue}>
-                    {filter === "currentMonth"
-                      ? `${category.items.toLocaleString("fr-FR")}`
-                      : `${category.revenue.toLocaleString("fr-FR")} KMF`}
+                    {category.revenue.toLocaleString("fr-FR")} KMF
                   </Text>
                   <Text
                     style={[
@@ -296,7 +259,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     color: "#1a1a1a",
-    textAlign: "center",
   },
   subtitle: {
     fontSize: 13,
@@ -305,12 +267,14 @@ const styles = StyleSheet.create({
   },
   filterButtons: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
     marginTop: 10,
+    flexWrap: "wrap",
+    justifyContent: "center",
   },
   filterBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 12,
     backgroundColor: "#F5F3FF",
     borderWidth: 1,
@@ -321,7 +285,7 @@ const styles = StyleSheet.create({
     borderColor: "#8B5CF6",
   },
   filterBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#666",
     fontWeight: "600",
   },
@@ -432,7 +396,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#8B5CF6",
     fontSize: 15,
-    textAlign: "center",
   },
   noDataContainer: {
     height: 240,

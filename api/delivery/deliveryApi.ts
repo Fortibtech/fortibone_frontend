@@ -14,11 +14,12 @@ export type VehicleType =
 
 export type DeliveryRequestStatus =
   | "PENDING"
-  | "ACCEPTED"
-  | "REJECTED"
   | "ACTIVE"
-  | "COMPLETED";
-
+  | "PICKED_UP"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "ACCEPTED"
+  | "REJECTED";
 export interface BusinessMini {
   id: string;
   name: string;
@@ -94,26 +95,6 @@ export type DeliveryStatus =
   | "ACCEPTED"
   | "PICKED_UP"
   | "REJECTED";
-
-export interface DeliveryRequest {
-  id: string;
-  status: DeliveryStatus;
-  pickupAddress: string;
-  deliveryAddress: string;
-  distanceMeters: number;
-  estimatedCost: string;
-  feePayer: FeePayer;
-  deliveryCode: string;
-  orderId: string;
-  carrierId: string;
-  senderId: string;
-  createdAt: string;
-  updatedAt: string;
-  assignedVehicleId: string | null;
-  carrier: DeliveryParty;
-  sender: DeliveryParty;
-  order: DeliveryOrderInfo;
-}
 
 export type UpdateDeliveryStatusPayload = {
   isOnline: boolean;
@@ -384,18 +365,6 @@ export const rejectDeliveryRequest = async (
   return res.data;
 };
 
-/**
- * Confirmer la récupération du colis (rôle: Livreur)
- */
-export const pickupDeliveryRequest = async (
-  requestId: string
-): Promise<DeliveryRequest> => {
-  const res = await axiosInstance.patch(
-    `/delivery/requests/${requestId}/pickup`
-  );
-
-  return res.data;
-};
 export interface CreateEstimationPayload {
   pickupLat: number;
   pickupLng: number;
@@ -541,6 +510,36 @@ export const acceptDelivery = async (
       "Erreur lors de l'acceptation de la livraison :",
       error.response?.data || error.message
     );
+    throw error;
+  }
+};
+
+export interface DeliveryRequest {
+  id: string;
+  status: string;
+  pickupAddress: string;
+  deliveryAddress: string;
+  distanceMeters: number;
+  estimatedCost: number;
+  feePayer: FeePayer;
+  createdAt: string;
+  orderId: string;
+  carrier: any;
+  sender: any;
+}
+
+// ✅ Confirmer la récupération du colis
+export const pickupDeliveryRequest = async (
+  id: string
+): Promise<DeliveryRequest> => {
+  try {
+    const response = await axiosInstance.patch<DeliveryRequest>(
+      `/delivery/requests/${id}/pickup`
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("❌ Erreur pickupDeliveryRequest:", error?.response || error);
     throw error;
   }
 };

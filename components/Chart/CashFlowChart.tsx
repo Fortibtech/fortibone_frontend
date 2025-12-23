@@ -34,7 +34,6 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
   const fetchAllTransactionsInPeriod = async (start: string, end: string) => {
     const allTxs: any[] = [];
     let page = 1;
-
     while (true) {
       const res = await GetWalletTransactions({
         startDate: start,

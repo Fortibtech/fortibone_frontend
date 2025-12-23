@@ -34,6 +34,7 @@ export interface GetAllProductFournisseurParams {
   search?: string;
   minPrice?: number;
   maxPrice?: number;
+  categoryId?: string;
   sortBy?: "PRICE_ASC" | "PRICE_DESC" | "RELEVANCE" | "DISTANCE";
   page?: number;
   limit?: number;
@@ -52,6 +53,7 @@ export const getAllProductFournisseur = async (
         params: {
           businessType: "FOURNISSEUR", // Toujours filtré sur les fournisseurs
           search: params.search || undefined,
+          categoryId: params.categoryId || undefined,
           minPrice: params.minPrice || undefined,
           maxPrice: params.maxPrice || undefined,
           sortBy: params.sortBy || undefined,
@@ -67,6 +69,38 @@ export const getAllProductFournisseur = async (
       "Erreur lors de la récupération des produits fournisseurs :",
       error.response?.data || error.message
     );
+    throw error;
+  }
+};
+
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  sectorId: string | null;
+  attributes: {
+    id: string;
+    name: string;
+    categoryId: string;
+  }[];
+}
+
+export interface CategoryLite {
+  id: string;
+  name: string;
+}
+export const getCategoriesLite = async (): Promise<CategoryLite[]> => {
+  try {
+    const { data } = await axiosInstance.get<Category[]>("/categories");
+
+    // 🔄 On ne garde que id et name
+    return data.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+    }));
+  } catch (error) {
+    console.error("❌ Erreur chargement catégories :", error);
     throw error;
   }
 };

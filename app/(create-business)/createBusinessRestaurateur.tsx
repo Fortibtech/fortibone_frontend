@@ -24,6 +24,7 @@ import * as Location from "expo-location";
 
 import { useOnboardingStore } from "@/store/onboardingStore";
 import { BusinessesService, Currency, CurrencyService } from "@/api";
+import { getAllSectores, Sector } from "@/api/sector/sectorApi";
 import { router } from "expo-router";
 import BackButtonWithClear from "@/components/Admin/BackButtonWithClear";
 
@@ -33,40 +34,20 @@ type SearchResult = {
   formattedAddress: string;
 };
 
-type CuisineType = "TRADITIONNELLE" | "RAPIDE" | "FINE_DINE" | "LIVRAISON";
-
-const CUISINE_TYPES = [
-  "Africaine",
-  "Française",
-  "Italiennne",
-  "Chinoise",
-  "Japonaise",
-  "Libanaise",
-  "Marocaine",
-  "Grill / Barbecue",
-  "Végétarienne",
-  "Végane",
-  "Autre",
-];
-
-const CAPACITY_OPTIONS = ["20-50", "50-100", "100-200", "+200"];
-
 const CreateBusinessRestaurateur: React.FC = () => {
   const { businessData, updateBusinessData, reset } = useOnboardingStore();
   const [loading, setLoading] = useState(false);
 
-  // 👈 SPECIFIQUE RESTAURATEUR
+  // Valeurs spécifiques RESTAURATEUR
   const business = {
-    ...businessData,
     type: "RESTAURATEUR" as const,
-    cuisineType: businessData.cuisineType || "RAPIDE",
+    sectorId: businessData.sectorId || "", // ← Nouveau : secteur dynamique
     capacity: businessData.capacity || "",
     deliveryEnabled: businessData.deliveryEnabled ?? false,
     openingHours: businessData.openingHours || "Lun-Dim 11h-23h",
     latitude: businessData.latitude || 4.0511,
     longitude: businessData.longitude || 9.7679,
     currencyId: businessData.currencyId || "",
-    activitySector: businessData.activitySector || "Restaurant",
     name: businessData.name || "",
     description: businessData.description || "",
     address: businessData.address || "",
@@ -77,7 +58,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
     coverImageUrl: businessData.coverImageUrl || "",
   };
 
-  // Modals (identique commerçant)
+  // Modals
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [tempMarker, setTempMarker] = useState<{
     latitude: number;
@@ -89,17 +70,25 @@ const CreateBusinessRestaurateur: React.FC = () => {
   const [previewAddress, setPreviewAddress] = useState(
     "Sélectionnez un emplacement"
   );
+
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
-  const [cuisineModalVisible, setCuisineModalVisible] = useState(false);
+  const [sectorModalVisible, setSectorModalVisible] = useState(false); // ← Modal secteur (remplace cuisine)
   const [capacityModalVisible, setCapacityModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currencies, setCurrencies] = useState<Currency[]>([]);
+
+  // États pour secteurs dynamiques
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [filteredSectors, setFilteredSectors] = useState<Sector[]>([]);
+  const [sectorsLoading, setSectorsLoading] = useState(true);
+
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
 
   useEffect(() => {
     loadCurrencies();
+    loadSectors(); // ← Chargement des secteurs restaurateur
   }, []);
 
   const loadCurrencies = async () => {
@@ -114,6 +103,31 @@ const CreateBusinessRestaurateur: React.FC = () => {
       Alert.alert("Erreur", "Impossible de charger les devises");
     }
   };
+
+  const loadSectors = async () => {
+    try {
+      setSectorsLoading(true);
+      const data = await getAllSectores("RESTAURATEUR"); // ← Filtre RESTAURATEUR
+      setSectors(data);
+      setFilteredSectors(data);
+    } catch (err) {
+      Alert.alert("Erreur", "Impossible de charger les secteurs d'activité");
+    } finally {
+      setSectorsLoading(false);
+    }
+  };
+
+  // Filtre recherche secteurs
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredSectors(sectors);
+    } else {
+      const lowerQuery = searchQuery.toLowerCase();
+      setFilteredSectors(
+        sectors.filter((s) => s.name.toLowerCase().includes(lowerQuery))
+      );
+    }
+  }, [searchQuery, sectors]);
 
   const updateLocation = async (
     lat: number,
@@ -158,10 +172,6 @@ const CreateBusinessRestaurateur: React.FC = () => {
       c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredCuisines = CUISINE_TYPES.filter((c) =>
-    c.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const pickImage = async (type: "logo" | "cover") => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -198,7 +208,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
     if (!business.currencyId) errors.currencyId = "Devise requise";
     if (!business.latitude || !business.longitude)
       errors.latitude = "Position GPS requise";
-    if (!business.cuisineType) errors.cuisineType = "Type de cuisine requis";
+    if (!business.sectorId) errors.sectorId = "Secteur d’activité requis"; // ← Changé
     if (!business.capacity) errors.capacity = "Capacité requise";
 
     setValidationErrors(errors);
@@ -206,27 +216,25 @@ const CreateBusinessRestaurateur: React.FC = () => {
 
     setLoading(true);
     try {
-      const cleanPayload = {
+      const cleanPayload: any = {
         name: business.name.trim(),
         description: business.description.trim(),
-        type: "RESTAURATEUR", // 👈 Backend accepte ÇA
-        commerceType: "PHYSICAL", // 👈 OBLIGATOIRE
+        type: "RESTAURATEUR",
+        commerceType: "PHYSICAL",
         address: business.address.trim(),
         latitude: Number(business.latitude),
         longitude: Number(business.longitude),
         currencyId: business.currencyId,
-        activitySector: "Restaurant", // 👈 OK
-        postalCode: business.postalCode || null,
-        siret: null,
-        websiteUrl: business.websiteUrl || null,
-        // 👈 SUPPRIME cuisineType/capacity (temporaire)
+        sectorId: business.sectorId, // ← Envoi de l'ID du secteur
+        postalCode: business.postalCode?.trim() || null,
+        websiteUrl: business.websiteUrl?.trim() || null,
       };
 
       const newBusiness = await BusinessesService.createBusiness(
         cleanPayload as any
       );
 
-      // Upload images (identique)
+      // Upload images
       if (business.logoUrl && business.logoUrl.startsWith("file://")) {
         try {
           await BusinessesService.uploadLogo(newBusiness.id, {
@@ -235,7 +243,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
             name: "logo.jpg",
           } as any);
         } catch (err) {
-          console.warn("Échec logo", err);
+          console.warn("Échec upload logo", err);
         }
       }
 
@@ -250,7 +258,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
             name: "cover.jpg",
           } as any);
         } catch (err) {
-          console.warn("Échec cover", err);
+          console.warn("Échec upload cover", err);
         }
       }
 
@@ -264,10 +272,9 @@ const CreateBusinessRestaurateur: React.FC = () => {
             text: "Dashboard",
             onPress: () => {
               reset();
-              // 👈 FIX : Passe l'ID du nouveau restaurant
               router.replace({
                 pathname: "/(restaurants)",
-                params: { businessId: newBusiness.id }, // 👈 ✅ PARFAIT
+                params: { businessId: newBusiness.id },
               });
             },
           },
@@ -321,18 +328,30 @@ const CreateBusinessRestaurateur: React.FC = () => {
               )}
             </View>
 
-            {/* Type de cuisine */}
+            {/* Secteur d’activité (dynamique) */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Type de cuisine *</Text>
+              <Text style={styles.label}>Secteur d’activité *</Text>
               <TouchableOpacity
                 style={styles.selectInput}
-                onPress={() => setCuisineModalVisible(true)}
+                onPress={() => setSectorModalVisible(true)}
               >
-                <Text style={{ color: business.cuisineType ? "#000" : "#999" }}>
-                  {business.cuisineType || "Choisir type de cuisine"}
-                </Text>
+                {sectorsLoading ? (
+                  <Text style={{ color: "#999" }}>Chargement...</Text>
+                ) : (
+                  <Text style={{ color: business.sectorId ? "#000" : "#999" }}>
+                    {business.sectorId
+                      ? sectors.find((s) => s.id === business.sectorId)?.name ||
+                        "Sélectionnez"
+                      : "Sélectionnez votre secteur"}
+                  </Text>
+                )}
                 <Feather name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
+              {validationErrors.sectorId && (
+                <Text style={styles.errorText}>
+                  {validationErrors.sectorId}
+                </Text>
+              )}
             </View>
 
             {/* Capacité */}
@@ -366,7 +385,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
 
             {/* Horaires */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Horaires d'ouverture</Text>
+              <Text style={styles.label}>Horaires d&apos;ouverture</Text>
               <TextInput
                 style={styles.input}
                 value={business.openingHours}
@@ -387,7 +406,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
               />
             </View>
 
-            {/* Adresse + Carte (identique) */}
+            {/* Adresse + Carte */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Adresse complète *</Text>
               <TextInput
@@ -438,7 +457,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
               </Text>
             </View>
 
-            {/* Logo + Cover (identique) */}
+            {/* Logo */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Logo restaurant</Text>
               <TouchableOpacity
@@ -461,6 +480,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
               </TouchableOpacity>
             </View>
 
+            {/* Couverture */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Photo de couverture</Text>
               <TouchableOpacity
@@ -514,21 +534,17 @@ const CreateBusinessRestaurateur: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* 👈 TOUTES LES MODALS (identiques commerçant) */}
-        {/* Map Modal, Currency Modal, + NOUVELLES : Cuisine + Capacité */}
-        {/* ... (code identique à commerçant pour map + currency) ... */}
-
-        {/* Modal Type Cuisine */}
-        <Modal visible={cuisineModalVisible} transparent animationType="fade">
+        {/* Modal Secteur (remplace Cuisine) */}
+        <Modal visible={sectorModalVisible} transparent animationType="fade">
           <TouchableOpacity
             style={styles.modalOverlay}
             activeOpacity={1}
-            onPress={() => setCuisineModalVisible(false)}
+            onPress={() => setSectorModalVisible(false)}
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Type de cuisine</Text>
-                <TouchableOpacity onPress={() => setCuisineModalVisible(false)}>
+                <Text style={styles.modalTitle}>Secteur d’activité</Text>
+                <TouchableOpacity onPress={() => setSectorModalVisible(false)}>
                   <Feather name="x" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
@@ -540,35 +556,41 @@ const CreateBusinessRestaurateur: React.FC = () => {
                   style={{ marginRight: 10 }}
                 />
                 <TextInput
-                  placeholder="Rechercher..."
+                  placeholder="Rechercher un secteur..."
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   style={{ flex: 1 }}
                 />
               </View>
-              <FlatList
-                data={filteredCuisines}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.currencyItem,
-                      business.cuisineType === item &&
-                        styles.currencyItemSelected,
-                    ]}
-                    onPress={() => {
-                      updateBusinessData({ cuisineType: item as CuisineType });
-                      setCuisineModalVisible(false);
-                      setSearchQuery("");
-                    }}
-                  >
-                    <Text style={styles.currencyCode}>{item}</Text>
-                    {business.cuisineType === item && (
-                      <Feather name="check" size={24} color="#059669" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
+              {sectorsLoading ? (
+                <View style={{ padding: 20, alignItems: "center" }}>
+                  <ActivityIndicator size="large" color="#059669" />
+                </View>
+              ) : (
+                <FlatList
+                  data={filteredSectors}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[
+                        styles.currencyItem,
+                        business.sectorId === item.id &&
+                          styles.currencyItemSelected,
+                      ]}
+                      onPress={() => {
+                        updateBusinessData({ sectorId: item.id });
+                        setSectorModalVisible(false);
+                        setSearchQuery("");
+                      }}
+                    >
+                      <Text style={styles.currencyCode}>{item.name}</Text>
+                      {business.sectorId === item.id && (
+                        <Feather name="check" size={24} color="#059669" />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
             </View>
           </TouchableOpacity>
         </Modal>
@@ -590,7 +612,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
                 </TouchableOpacity>
               </View>
               <FlatList
-                data={CAPACITY_OPTIONS}
+                data={["20-50", "50-100", "100-200", "+200"]}
                 keyExtractor={(item) => item}
                 renderItem={({ item }) => (
                   <TouchableOpacity
@@ -603,7 +625,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
                       setCapacityModalVisible(false);
                     }}
                   >
-                    <Text style={styles.currencyCode}>{item}</Text>
+                    <Text style={styles.currencyCode}>{item} couverts</Text>
                     {business.capacity === item && (
                       <Feather name="check" size={24} color="#059669" />
                     )}
@@ -613,7 +635,8 @@ const CreateBusinessRestaurateur: React.FC = () => {
             </View>
           </TouchableOpacity>
         </Modal>
-        {/* ===== MODAL DEVISE MANQUANTE ===== */}
+
+        {/* Modal Devise */}
         <Modal visible={currencyModalVisible} transparent animationType="fade">
           <TouchableOpacity
             style={StyleSheet.absoluteFillObject}
@@ -631,7 +654,6 @@ const CreateBusinessRestaurateur: React.FC = () => {
                       <Feather name="x" size={24} color="#666" />
                     </TouchableOpacity>
                   </View>
-
                   <View style={styles.searchContainer}>
                     <Feather
                       name="search"
@@ -647,7 +669,6 @@ const CreateBusinessRestaurateur: React.FC = () => {
                       autoFocus
                     />
                   </View>
-
                   <FlatList
                     data={filteredCurrencies}
                     keyExtractor={(item) => item.id}
@@ -682,7 +703,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
           </TouchableOpacity>
         </Modal>
 
-        {/* ===== MODAL MAP MANQUANTE ===== */}
+        {/* Modal Carte */}
         <Modal visible={mapModalVisible} animationType="slide">
           <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
             <View style={styles.mapSearchHeader}>
@@ -742,7 +763,7 @@ const CreateBusinessRestaurateur: React.FC = () => {
               <View style={styles.searchResultsFull}>
                 <FlatList
                   data={searchResults}
-                  keyExtractor={(_, index) => index.toString()}
+                  keyExtractor={(_, i) => i.toString()}
                   style={{ maxHeight: 320 }}
                   renderItem={({ item }) => (
                     <TouchableOpacity
@@ -778,10 +799,9 @@ const CreateBusinessRestaurateur: React.FC = () => {
                 longitudeDelta: 0.01,
               }}
               onPress={(e) => {
-                updateLocation(
-                  e.nativeEvent.coordinate.latitude,
-                  e.nativeEvent.coordinate.longitude
-                );
+                const c = e.nativeEvent.coordinate;
+                setTempMarker(c);
+                updateLocation(c.latitude, c.longitude);
                 setSearchResults([]);
               }}
             >
@@ -789,12 +809,11 @@ const CreateBusinessRestaurateur: React.FC = () => {
                 <Marker
                   coordinate={tempMarker}
                   draggable
-                  onDragEnd={(e) =>
-                    updateLocation(
-                      e.nativeEvent.coordinate.latitude,
-                      e.nativeEvent.coordinate.longitude
-                    )
-                  }
+                  onDragEnd={(e) => {
+                    const c = e.nativeEvent.coordinate;
+                    setTempMarker(c);
+                    updateLocation(c.latitude, c.longitude);
+                  }}
                 />
               )}
             </MapView>
@@ -820,71 +839,22 @@ const CreateBusinessRestaurateur: React.FC = () => {
                 ]}
                 onPress={() => {
                   if (tempMarker) {
-                    setMapModalVisible(false);
+                    updateBusinessData({
+                      latitude: tempMarker.latitude,
+                      longitude: tempMarker.longitude,
+                    });
+                    Alert.alert(
+                      "Position enregistrée !",
+                      "L'adresse est mise à jour."
+                    );
                   }
+                  setMapModalVisible(false);
                 }}
               >
                 <Text style={styles.confirmMapText}>Confirmer</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>
-        </Modal>
-        {/* ===== MODAL DEVISE (CRITIQUE) ===== */}
-        <Modal visible={currencyModalVisible} transparent animationType="fade">
-          <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
-            activeOpacity={1}
-            onPress={() => setCurrencyModalVisible(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Choisir devise</Text>
-                  <TouchableOpacity
-                    onPress={() => setCurrencyModalVisible(false)}
-                  >
-                    <Feather name="x" size={24} color="#666" />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.searchContainer}>
-                  <Feather
-                    name="search"
-                    size={20}
-                    color="#999"
-                    style={{ marginRight: 10 }}
-                  />
-                  <TextInput
-                    placeholder="Rechercher..."
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    style={{ flex: 1 }}
-                  />
-                </View>
-                <FlatList
-                  data={filteredCurrencies}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.currencyItem,
-                        item.id === business.currencyId &&
-                          styles.currencyItemSelected,
-                      ]}
-                      onPress={() => {
-                        updateBusinessData({ currencyId: item.id });
-                        setCurrencyModalVisible(false);
-                      }}
-                    >
-                      <Text style={styles.currencyCode}>{item.code}</Text>
-                      {item.id === business.currencyId && (
-                        <Feather name="check" size={24} color="#059669" />
-                      )}
-                    </TouchableOpacity>
-                  )}
-                />
-              </View>
-            </View>
-          </TouchableOpacity>
         </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -893,40 +863,13 @@ const CreateBusinessRestaurateur: React.FC = () => {
 
 export default CreateBusinessRestaurateur;
 
-// 👈 STYLES IDENTIQUES commerçant (copie-colle)
+// Styles (identiques aux précédents)
 const styles = StyleSheet.create({
-  // ... tous les styles du commerçant ...
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 12,
-  },
-
-  // 👈 AJOUTE CES STYLES manquants (copie-colle avant });
-  radioGroup: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-  radioItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f4f4f4",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    flex: 1,
-    marginHorizontal: 6,
-  },
-  radioItemSelected: {
-    backgroundColor: "#e6f7f0",
-    borderColor: "#059669",
   },
   modalOverlay: {
     flex: 1,
@@ -1016,46 +959,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#f0f0f0",
   },
-  resultText: {
-    marginLeft: 12,
-    flex: 1,
-    fontSize: 15,
-    color: "#111",
-  },
+  resultText: { marginLeft: 12, flex: 1, fontSize: 15, color: "#111" },
   mapBottomBar: {
     backgroundColor: "#fff",
     padding: 16,
     borderTopWidth: 1,
     borderColor: "#eee",
   },
-  previewContainer: {
-    marginBottom: 12,
-  },
-  previewCoords: {
-    fontSize: 13,
-    color: "#059669",
-    fontWeight: "600",
-  },
-  previewAddressText: {
-    fontSize: 15,
-    color: "#333",
-    marginTop: 4,
-  },
+  previewContainer: { marginBottom: 12 },
+  previewCoords: { fontSize: 13, color: "#059669", fontWeight: "600" },
+  previewAddressText: { fontSize: 15, color: "#333", marginTop: 4 },
   confirmMapButton: {
     backgroundColor: "#059669",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
   },
-  confirmMapText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  imagePickerButton: {
-    alignSelf: "center",
-    marginTop: 12,
-  },
+  confirmMapText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  imagePickerButton: { alignSelf: "center", marginTop: 12 },
   logoPreview: {
     width: 140,
     height: 140,
@@ -1075,21 +996,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  imagePlaceholderText: {
-    marginTop: 8,
-    color: "#999",
-    fontSize: 14,
-  },
-  coverPickerButton: {
-    marginTop: 12,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  coverPreview: {
-    width: "100%",
-    height: 200,
-    borderRadius: 16,
-  },
+  imagePlaceholderText: { marginTop: 8, color: "#999", fontSize: 14 },
+  coverPickerButton: { marginTop: 12, borderRadius: 16, overflow: "hidden" },
+  coverPreview: { width: "100%", height: 200, borderRadius: 16 },
   coverPlaceholder: {
     width: "100%",
     height: 200,
@@ -1180,11 +1089,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-
-  // switchRow: {
-  //   flexDirection: "row",
-  //   justifyContent: "space-between",
-  //   alignItems: "center",
-  //   paddingVertical: 12,
-  // },
 });

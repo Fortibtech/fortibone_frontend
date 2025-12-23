@@ -57,6 +57,7 @@ export class BusinessesService {
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la création de l'entreprise:", error);
+      console.log("❌ Erreur création entreprise :", error.response?.data);
       throw error;
     }
   }

@@ -24,7 +24,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
-
 import { Business, BusinessesService } from "@/api";
 import {
   AnalyticsOverview,
@@ -36,7 +35,6 @@ import { useUserStore } from "@/store/userStore";
 import BusinessSelector from "@/components/Business/BusinessSelector";
 import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import { useBusinessStore } from "@/store/businessStore";
-
 const HomePage: React.FC = () => {
   const business = useBusinessStore((state) => state.business);
   const { userProfile } = useUserStore();
@@ -55,17 +53,14 @@ const HomePage: React.FC = () => {
     totalItems: number;
   }>({ count: 0, totalItems: 0 });
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
-
   // Gestion de la période
   type PeriodType = "day" | "week" | "month" | "year" | "all" | "custom";
   const [period, setPeriod] = useState<PeriodType>("all");
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
-
   // Modale principale (filtre)
   const [modalVisible, setModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(300)).current;
-
   // Date picker
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);

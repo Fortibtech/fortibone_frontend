@@ -201,11 +201,39 @@ export default function CommandeDetails() {
       setPhoneNumber("");
       setCardComplete(false);
     } catch (err: any) {
+      let errorMessage = "Une erreur est survenue lors du paiement";
+
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
       Toast.show({
         type: "error",
         text1: "Paiement échoué",
-        text2: err.message || "Une erreur est survenue",
+        text2: errorMessage,
+        visibilityTime: 6000,
       });
+
+      // Proposition recharge si solde insuffisant
+      if (errorMessage.toLowerCase().includes("solde insuffisant")) {
+        setTimeout(() => {
+          Alert.alert(
+            "Solde insuffisant",
+            `${errorMessage}\n\nVoulez-vous recharger votre portefeuille ?`,
+            [
+              { text: "Annuler", style: "cancel" },
+              {
+                text: "Recharger",
+                onPress: () => router.push("/finance/DepositScreen"),
+              },
+            ]
+          );
+        }, 800);
+      }
     } finally {
       setPaying(false);
     }
