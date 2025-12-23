@@ -12,6 +12,7 @@ import BackButtonAdmin from "@/components/Admin/BackButton";
 import { StockCard } from "@/components/accueil/StockCard";
 import { AnalyticsOverview, getAnalyticsOverview } from "@/api/analytics";
 import { useLocalSearchParams } from "expo-router";
+import { formatMoney } from "@/utils/formatMoney";
 // Composant Header
 const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   return (
@@ -28,7 +29,6 @@ const StockTrackingScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  console.log("ANALITICS id du bussines en VENTE", id);
   const fetchData = async () => {
     if (!id) return;
     setLoading(true);
@@ -74,7 +74,7 @@ const StockTrackingScreen: React.FC = () => {
       iconColor: "#10B981",
       iconBgColor: "#D1FAE5",
       title: "Total des ventes",
-      value: `${data.totalSalesAmount} KMF`,
+      value: formatMoney(data.totalSalesAmount),
     },
     {
       title: "Commandes totales",
@@ -86,8 +86,8 @@ const StockTrackingScreen: React.FC = () => {
 
     {
       title: "Valeur moyenne commande",
-      value: data.averageOrderValue,
-      icon: "percent" as keyof typeof Feather.glyphMap, // équiv. "calculator-outline"
+      value: formatMoney(data.averageOrderValue),
+      icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#3B82F6",
       iconBgColor: "#DBEAFE",
     },
@@ -114,8 +114,8 @@ const StockTrackingScreen: React.FC = () => {
     },
     {
       title: "Valeur de l'inventaire",
-      value: data.currentInventoryValue,
-      icon: "archive" as keyof typeof Feather.glyphMap, // équiv. "archive-outline"
+      value: formatMoney(data.currentInventoryValue),
+      icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#F97316",
       iconBgColor: "#FFEDD5",
     },

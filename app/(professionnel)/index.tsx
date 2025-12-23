@@ -389,12 +389,11 @@ const HomePage: React.FC = () => {
       </SafeAreaView>
     );
   }
-
+  console.log("Rendu HomePage pour l'entreprise:", business);
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
       {renderHeader()}
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -483,7 +482,11 @@ const HomePage: React.FC = () => {
               )}
             </View>
 
-            <AnalyticsCard id={business.id} />
+            <AnalyticsCard
+              id={business.id}
+              currencyId={business.currencyId}
+              show={true}
+            />
           </>
         ) : (
           <View style={styles.noBusinessContainer}>

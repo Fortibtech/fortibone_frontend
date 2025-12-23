@@ -279,7 +279,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         <View style={styles.variantMainInfo}>
           <Text style={styles.variantSku}>{variant.sku}</Text>
           <Text style={styles.variantPrice}>
-            {variant.price.toLocaleString()} FCFA
+            {variant.price.toLocaleString()} KMF
           </Text>
         </View>
 
@@ -330,7 +330,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         <View style={styles.variantDetailRow}>
           <Text style={styles.variantDetailLabel}>Prix d&apos;achat</Text>
           <Text style={styles.variantDetailValue}>
-            {variant.purchasePrice.toLocaleString()} FCFA
+            {variant.purchasePrice.toLocaleString()} KMF
           </Text>
         </View>
 

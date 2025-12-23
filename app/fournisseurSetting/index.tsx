@@ -1,4 +1,5 @@
 "use client";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import type React from "react";
 import { useState } from "react";
@@ -18,6 +19,11 @@ import ShareAppModal from "./shareAppModal";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
+import {
+  BusinessesService,
+  cacheManager,
+  SelectedBusinessManager,
+} from "@/api";
 
 interface MenuItem {
   id: string;
@@ -88,10 +94,24 @@ const SettingsMenu: React.FC = () => {
     setShowLogoutModal(false);
 
     try {
-      // === VRAIE DÉCONNEXION : vide tout (token, profil, AsyncStorage) ===
+      console.log("🧹 Début vidage complet...");
+
+      // 🔥 2. Clear ton cache custom (mémoire + AsyncStorage)
+      await cacheManager.clearAll();
+      console.log("✅ CacheManager vidé");
+
+      // 🔥 3. Clear selected business
+      await SelectedBusinessManager.clearSelectedBusiness?.();
+      await BusinessesService.clearSelectedBusiness?.();
+
+      // 🔥 4. Clear AsyncStorage (auth, stores persistés, etc.)
+      await AsyncStorage.clear();
+      console.log("✅ AsyncStorage vidé");
+
+      // 🔥 5. Logout user (Zustand)
       await useUserStore.getState().logout();
 
-      console.log("✅ Déconnexion réussie – utilisateur déconnecté");
+      console.log("✅ Déconnexion totale réussie");
 
       Toast.show({
         type: "success",
@@ -102,15 +122,24 @@ const SettingsMenu: React.FC = () => {
       });
     } catch (error) {
       console.error("❌ Erreur lors de la déconnexion :", error);
+
+      // Fallback dur
+      try {
+        await cacheManager.clearAll();
+        await AsyncStorage.clear();
+        await useUserStore.getState().logout();
+      } catch (e) {
+        console.error("Force clear failed:", e);
+      }
+
       Toast.show({
         type: "error",
         text1: "Erreur",
-        text2: "Impossible de se déconnecter correctement.",
+        text2: "Déconnexion forcée appliquée.",
         position: "bottom",
       });
     } finally {
-      // Redirection vers la page de connexion ou l'accueil
-      router.replace("/"); // ou "/login" si tu as une page dédiée
+      router.replace("/");
     }
   };
   const menuItems: MenuItem[] = [

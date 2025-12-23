@@ -132,7 +132,7 @@ const ProductDetails = () => {
       supplierBusinessId: product.businessId,
       variantName: variant.id,
       stock: variant.quantityInStock,
-      currency: "KMf",
+      currency: variant.priceCurrency || "KMF",
     };
 
     const alreadyInCart = isInCart(product.id, variant.id);

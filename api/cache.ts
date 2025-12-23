@@ -1,24 +1,30 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 class CacheManager {
-  private memoryCache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+  private memoryCache = new Map<
+    string,
+    { data: any; timestamp: number; ttl: number }
+  >();
   private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 
-  async set(key: string, data: any, ttl: number = this.DEFAULT_TTL): Promise<void> {
+  async set(
+    key: string,
+    data: any,
+    ttl: number = this.DEFAULT_TTL
+  ): Promise<void> {
     const cacheData = {
       data,
       timestamp: Date.now(),
-      ttl
+      ttl,
     };
-    
+
     // Cache en mémoire pour accès rapide
     this.memoryCache.set(key, cacheData);
-    
+
     // Cache persistant pour les données importantes
     try {
       await AsyncStorage.setItem(`cache_${key}`, JSON.stringify(cacheData));
     } catch (error) {
-      console.warn('Erreur lors du stockage en cache persistant:', error);
+      console.warn("Erreur lors du stockage en cache persistant:", error);
     }
   }
 
@@ -41,7 +47,7 @@ class CacheManager {
         }
       }
     } catch (error) {
-      console.warn('Erreur lors de la lecture du cache persistant:', error);
+      console.warn("Erreur lors de la lecture du cache persistant:", error);
     }
 
     return null;
@@ -52,7 +58,7 @@ class CacheManager {
     try {
       await AsyncStorage.removeItem(`cache_${key}`);
     } catch (error) {
-      console.warn('Erreur lors de la suppression du cache:', error);
+      console.warn("Erreur lors de la suppression du cache:", error);
     }
   }
 
@@ -67,15 +73,33 @@ class CacheManager {
     // Invalider le cache persistant
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const cacheKeys = keys.filter(key => key.startsWith('cache_') && key.includes(pattern));
+      const cacheKeys = keys.filter(
+        (key) => key.startsWith("cache_") && key.includes(pattern)
+      );
       await AsyncStorage.multiRemove(cacheKeys);
     } catch (error) {
-      console.warn('Erreur lors de la suppression du cache par pattern:', error);
+      console.warn(
+        "Erreur lors de la suppression du cache par pattern:",
+        error
+      );
     }
   }
 
   private isValid(cacheData: { timestamp: number; ttl: number }): boolean {
     return Date.now() - cacheData.timestamp < cacheData.ttl;
+  }
+  async clearAll(): Promise<void> {
+    // Vider le cache mémoire
+    this.memoryCache.clear();
+
+    // Vider tout le cache persistant
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const cacheKeys = keys.filter((key) => key.startsWith("cache_"));
+      await AsyncStorage.multiRemove(cacheKeys);
+    } catch (error) {
+      console.warn("Erreur lors du clear complet du cache:", error);
+    }
   }
 }
 

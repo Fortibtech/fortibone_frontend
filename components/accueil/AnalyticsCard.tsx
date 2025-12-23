@@ -14,8 +14,6 @@ import { getSales, SalesResponse } from "@/api/analytics";
 import { useEffect, useState } from "react";
 import SalesByPeriodChart from "../Chart/SalesByPeriodChart";
 import InventoryLossesChart from "../Chart/InventoryLossesChart";
-import PopularDishesChart from "../Chart/PopularDishesChart";
-import ReservationsByPeriodChart from "../Chart/ReservationsByPeriodChart";
 type FeatherIconName =
   | "filter"
   | "bold"
@@ -55,9 +53,17 @@ const AnalyticsCard = ({ icon, title, onPress }: props) => (
   </TouchableOpacity>
 );
 
-type AnalyticsComponentProps = { id: string };
+type AnalyticsComponentProps = {
+  id: string;
+  currencyId: string;
+  show: boolean;
+};
 
-export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
+export default function AnalyticsComponent({
+  id,
+  currencyId,
+  show,
+}: AnalyticsComponentProps) {
   const [data, setData] = useState<SalesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -147,10 +153,10 @@ export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
         <Ionicons name="chevron-forward" size={20} color="#6366F1" />
       </TouchableOpacity>
       <Text style={styles.sectionTitle}>Statistiques</Text>
-      <SalesByPeriodChart businessId={id} />
-      <ExpenseDistributionChart businessId={id} />
-      <RevenueDistributionChart businessId={id} />
-      <InventoryLossesChart businessId={id} />
+      <SalesByPeriodChart businessId={id} currencyId={currencyId} />
+      <ExpenseDistributionChart businessId={id} currencyId={currencyId} />
+      <RevenueDistributionChart businessId={id} currencyId={currencyId} />
+      <InventoryLossesChart businessId={id} currencyId={currencyId} />
     </ScrollView>
   );
 }
