@@ -1,5 +1,6 @@
 import { RegisterPayload, ResetPasswordPayload } from "@/types/auth";
 import axiosInstance from "./axiosInstance";
+import { cacheManager } from "./cache";
 
 export const registerUser = async (data: RegisterPayload) => {
   try {
@@ -35,6 +36,7 @@ export const registerUser = async (data: RegisterPayload) => {
 
 export const loginUser = async (email: string, password: string) => {
   try {
+
     const response = await axiosInstance.post("/auth/login", {
       email,
       password,
@@ -43,6 +45,10 @@ export const loginUser = async (email: string, password: string) => {
     console.log("🚀 ~ loginUser response status:", response);
 
     if (response.status === 201) {
+      // ✅ NETTOYER LE CACHE APRÈS UNE CONNEXION RÉUSSIE
+      await cacheManager.clearAll();
+      console.log("✅ Cache vidé après connexion");
+      
       return {
         success: true,
         token: response.data?.access_token,
