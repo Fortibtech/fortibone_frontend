@@ -11,13 +11,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { SelectedBusinessManager } from "@/api";
 import Revenus from "@/components/Delivery/Revenus";
 import ZoneTarifs from "@/components/Delivery/ZoneTarifs";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
+import { useBusinessStore } from "@/store/businessStore";
 type TabType = "REVENU" | "TARIFS";
 
 const DeliveryEarningsScreen: React.FC = () => {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("REVENU");
-
+  const [symbol, setSymbol] = useState<string | null>(null);
+  const business = useBusinessStore((state) => state.business);
   const init = async () => {
     try {
       setLoading(true);
@@ -31,6 +34,9 @@ const DeliveryEarningsScreen: React.FC = () => {
         return;
       }
       setBusinessId(selected.id);
+      if (!business) return;
+      const symbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(symbol);
     } catch (e) {
       console.error(e);
       Alert.alert("Erreur", "Impossible de charger les revenus.");
@@ -91,7 +97,7 @@ const DeliveryEarningsScreen: React.FC = () => {
       {activeTab === "REVENU" ? (
         <Revenus businessId={businessId} />
       ) : (
-        <ZoneTarifs businessId={businessId} />
+        <ZoneTarifs businessId={businessId} currency={symbol} />
       )}
     </SafeAreaView>
   );

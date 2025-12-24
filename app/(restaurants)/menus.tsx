@@ -33,6 +33,7 @@ import {
   uploadImageMenu,
 } from "@/api/menu/menuApi";
 import ProductListScreen from "@/components/produits/ProductListScreens";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 // Import du composant pour les plats individuels
 
@@ -42,14 +43,12 @@ export default function MenuScreen() {
   const business = useBusinessStore((state) => state.business);
   const version = useBusinessStore((state) => state.version);
   const businessId = business?.id;
-
   const [activeTab, setActiveTab] = useState<TabType>("MENUS");
-
   // États pour l'onglet Menus
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [symbol, setSymbol] = useState<string | null>(null);
   // États du modal (création/édition menu)
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -61,7 +60,6 @@ export default function MenuScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const fetchMenus = async () => {
     if (!businessId) {
       setMenus([]);
@@ -70,6 +68,9 @@ export default function MenuScreen() {
     try {
       const data = await getMenus(businessId);
       setMenus(data || []);
+      if (!business) return;
+      const symbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(symbol);
     } catch (error: any) {
       Alert.alert("Erreur", error.message || "Impossible de charger les menus");
     }
@@ -109,7 +110,6 @@ export default function MenuScreen() {
     resetForm();
     setModalVisible(true);
   };
-
   const openEditModal = (menu: Menu) => {
     setIsEditMode(true);
     setCurrentMenuId(menu.id);
@@ -120,7 +120,6 @@ export default function MenuScreen() {
     setImageUri(menu.imageUrl || null);
     setModalVisible(true);
   };
-
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -243,7 +242,7 @@ export default function MenuScreen() {
           <Text style={styles.noDescription}>Aucune description</Text>
         )}
         <Text style={styles.cardPrice}>
-          {Number(item.price).toLocaleString("fr-FR")} KMF
+          {Number(item.price).toLocaleString("fr-FR")} {symbol}
         </Text>
 
         <View style={styles.cardFooter}>
@@ -429,7 +428,7 @@ export default function MenuScreen() {
                     multiline
                   />
 
-                  <Text style={styles.label}>Prix (KMF) *</Text>
+                  <Text style={styles.label}>Prix ({symbol}) *</Text>
                   <TextInput
                     style={styles.input}
                     value={price}

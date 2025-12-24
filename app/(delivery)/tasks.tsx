@@ -31,6 +31,8 @@ import {
   Vehicle,
 } from "@/api/delivery/deliveryApi";
 import { SelectedBusinessManager } from "@/api";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 type TabType = "INCOMING" | "ACTIVE";
 
@@ -61,7 +63,8 @@ export default function DeliveryRequestsScreen() {
   const [validating, setValidating] = useState(false);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
   const [deliveryCode, setDeliveryCode] = useState("");
-
+  const business = useBusinessStore((state) => state.business);
+    const [symbol, setSymbol] = useState<string | null>(null);
   // Modal Détails de la demande
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
   const [currentRequestDetails, setCurrentRequestDetails] =
@@ -86,6 +89,15 @@ export default function DeliveryRequestsScreen() {
     }
   };
 
+  useEffect(() => {
+    const fetchSymbol = async () => {
+      if (business) {
+        const symbol = await getCurrencySymbolById(business.currencyId);
+        setSymbol(symbol);
+      }
+    };
+    fetchSymbol();
+  }, [business]);
   const loadVehicles = async (id: string) => {
     try {
       const data = await getBusinessVehicles(id);
@@ -394,7 +406,7 @@ export default function DeliveryRequestsScreen() {
             <View style={styles.metaItem}>
               <Ionicons name="cash-outline" size={16} color="#444" />
               <Text style={styles.metaText}>
-                {formatCost(item.estimatedCost)} KMF
+                {formatCost(item.estimatedCost)} {symbol}
               </Text>
             </View>
             <View style={styles.metaItem}>
@@ -756,7 +768,7 @@ export default function DeliveryRequestsScreen() {
                       <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Coût estimé :</Text>
                         <Text style={styles.detailValue}>
-                          {formatCost(currentRequestDetails.estimatedCost)} KMF
+                          {formatCost(currentRequestDetails.estimatedCost)} {symbol}
                         </Text>
                       </View>
                       <View style={styles.detailRow}>

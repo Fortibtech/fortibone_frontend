@@ -22,6 +22,8 @@ import { CardField, StripeProvider } from "@stripe/stripe-react-native";
 
 import { createWithdraw, GetWallet } from "@/api/wallet";
 import BackButtonAdmin from "@/components/Admin/BackButton";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 // Types & constantes
 type Method = "KARTAPAY" | "STRIPE";
@@ -39,7 +41,8 @@ function WithdrawContent() {
   const [loading, setLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [fetchingBalance, setFetchingBalance] = useState(true);
-
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   // Récupération du solde
   const fetchBalance = useCallback(async () => {
     try {
@@ -47,6 +50,9 @@ function WithdrawContent() {
       const data = await GetWallet();
       const balance = parseFloat(data?.balance || "0") || 0;
       setWalletBalance(balance);
+      if (!business) return;
+      const symbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(symbol);
     } catch (err) {
       console.error("Erreur récupération solde:", err);
       setWalletBalance(0);
@@ -67,7 +73,9 @@ function WithdrawContent() {
     if (val > (walletBalance || 0)) {
       Alert.alert(
         "Solde insuffisant",
-        `Vous avez seulement ${(walletBalance || 0).toLocaleString()} KMF`
+        `Vous avez seulement ${(
+          walletBalance || 0
+        ).toLocaleString()} ${symbol} sur votre compte`
       );
       return;
     }
@@ -91,7 +99,7 @@ function WithdrawContent() {
         Alert.alert(
           "Limite dépassée",
           method === "STRIPE"
-            ? `Maximum Stripe : ${MAX_AMOUNT_STRIPE.toLocaleString()} KMF`
+            ? `Maximum Stripe : ${MAX_AMOUNT_STRIPE.toLocaleString()} ${symbol}`
             : "Vous n'avez pas assez sur votre solde"
         );
         return;
@@ -109,7 +117,7 @@ function WithdrawContent() {
         "Montant invalide",
         `Doit être entre ${MIN_AMOUNT} et ${(
           walletBalance || 0
-        ).toLocaleString()} KMF`
+        ).toLocaleString()} ${symbol}`
       );
       return;
     }
@@ -168,7 +176,7 @@ function WithdrawContent() {
 
         Alert.alert(
           "Retrait envoyé !",
-          `${amount.toLocaleString()} KMF seront versés sur ${phoneNumber}\nDélai : 1 à 48h`,
+          `${amount.toLocaleString()} ${symbol} seront versés sur ${phoneNumber}\nDélai : 1 à 48h`,
           [{ text: "Super !", onPress: () => router.back() }]
         );
         return;
@@ -203,7 +211,7 @@ function WithdrawContent() {
 
       Alert.alert(
         "Retrait sur carte demandé !",
-        `${amount.toLocaleString()} KMF seront crédités sur votre carte sous 2 à 7 jours ouvrés`,
+        `${amount.toLocaleString()} ${symbol} seront crédités sur votre carte sous 2 à 7 jours ouvrés`,
         [{ text: "Parfait", onPress: () => router.back() }]
       );
     } catch (err: any) {
@@ -253,7 +261,7 @@ function WithdrawContent() {
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>Solde disponible</Text>
             <Text style={styles.balanceAmount}>
-              {(walletBalance || 0).toLocaleString("fr-FR")} KMF
+              {(walletBalance || 0).toLocaleString("fr-FR")} {symbol}
             </Text>
           </View>
 
@@ -295,9 +303,8 @@ function WithdrawContent() {
             <Text style={styles.sectionTitle}>Montant à retirer</Text>
             <Text style={styles.amountDisplay}>
               {amount.toLocaleString("fr-FR")}{" "}
-              <Text style={styles.currency}>KMF</Text>
+              <Text style={styles.currency}>{symbol}</Text>
             </Text>
-
             <View style={styles.presetsGrid}>
               {presets.map((val) => (
                 <TouchableOpacity

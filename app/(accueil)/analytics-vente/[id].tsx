@@ -13,6 +13,8 @@ import { StockCard } from "@/components/accueil/StockCard";
 import { AnalyticsOverview, getAnalyticsOverview } from "@/api/analytics";
 import { useLocalSearchParams } from "expo-router";
 import { formatMoney } from "@/utils/formatMoney";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 // Composant Header
 const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   return (
@@ -26,6 +28,8 @@ const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
 const StockTrackingScreen: React.FC = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<AnalyticsOverview | null>(null);
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +39,10 @@ const StockTrackingScreen: React.FC = () => {
     setError(null);
     try {
       const result = await getAnalyticsOverview(id);
+      if (business) {
+        const symbol = await getCurrencySymbolById(business.currencyId);
+        setSymbol(symbol);
+      }
       setData(result);
     } catch (error) {
       console.error("❌ Erreur lors du fetch overview:", error);
@@ -74,7 +82,7 @@ const StockTrackingScreen: React.FC = () => {
       iconColor: "#10B981",
       iconBgColor: "#D1FAE5",
       title: "Total des ventes",
-      value: formatMoney(data.totalSalesAmount),
+      value: `${formatMoney(data.totalSalesAmount)} ${symbol || ""}`,
     },
     {
       title: "Commandes totales",
@@ -86,7 +94,7 @@ const StockTrackingScreen: React.FC = () => {
 
     {
       title: "Valeur moyenne commande",
-      value: formatMoney(data.averageOrderValue),
+      value: `${formatMoney(data.averageOrderValue)} ${symbol || ""}`,
       icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#3B82F6",
       iconBgColor: "#DBEAFE",
@@ -114,7 +122,7 @@ const StockTrackingScreen: React.FC = () => {
     },
     {
       title: "Valeur de l'inventaire",
-      value: formatMoney(data.currentInventoryValue),
+      value: `${formatMoney(data.currentInventoryValue)} ${symbol || ""}`,
       icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#F97316",
       iconBgColor: "#FFEDD5",

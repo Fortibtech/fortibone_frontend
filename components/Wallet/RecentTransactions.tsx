@@ -26,7 +26,7 @@ type RecentTx = {
   type: "income" | "expense";
 };
 
-export const RecentTransactions = () => {
+export const RecentTransactions = ({ currency }: { currency: string }) => {
   const router = useRouter();
   const [transactions, setTransactions] = useState<RecentTx[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,7 +173,7 @@ export const RecentTransactions = () => {
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 0,
                 })}{" "}
-                KMF
+                {currency}
               </Text>
             </View>
           ))}

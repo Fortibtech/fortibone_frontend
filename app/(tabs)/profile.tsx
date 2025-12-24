@@ -111,31 +111,7 @@ const ProfilePage = () => {
       route: "/finance/Transactions",
       icon: "swap-horizontal-outline",
     },
-    // {
-    //   title: "Mes restaurants favoris",
-    //   route: "/(profile-particulier)/user-businesses",
-    //   icon: "business-outline",
-    // },
-    // {
-    //   title: "Notifications",
-    //   route: "/(profile-particulier)/notifications",
-    //   icon: "notifications-outline",
-    // },
-    // {
-    //   title: "Catégories",
-    //   route: "/(profile-particulier)/category",
-    //   icon: "grid-outline",
-    // },
-    // {
-    //   title: "Aide",
-    //   route: "/(profile-particulier)/help",
-    //   icon: "help-circle-outline",
-    // },
-    // {
-    //   title: "À propos",
-    //   route: "/(profile-particulier)/about",
-    //   icon: "information-circle-outline",
-    // },
+
   ];
 
   const renderMenuItem = ({

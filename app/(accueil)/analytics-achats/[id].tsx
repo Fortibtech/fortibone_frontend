@@ -13,6 +13,8 @@ import { StockCard } from "@/components/accueil/StockCard";
 import { useLocalSearchParams } from "expo-router";
 import { getSales, SalesResponse } from "@/api/analytics";
 import { formatMoney } from "@/utils/formatMoney";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 // Composant Header
 const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   return (
@@ -24,8 +26,11 @@ const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   );
 };
 const StockTrackingScreen: React.FC = () => {
+  const business = useBusinessStore((state) => state.business);
   const { id } = useLocalSearchParams<{ id: string }>();
+
   const [data, setData] = useState<SalesResponse | null>(null);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fetchData = async () => {
@@ -34,6 +39,10 @@ const StockTrackingScreen: React.FC = () => {
     setError(null);
     try {
       const result = await getSales(id);
+      if (business) {
+        const symbol = await getCurrencySymbolById(business.currencyId);
+        setSymbol(symbol);
+      }
       setData(result);
     } catch (error) {
       console.error("❌ Erreur lors du fetch overview:", error);
@@ -71,7 +80,10 @@ const StockTrackingScreen: React.FC = () => {
   const stockData = [
     {
       title: "Montant total des ventes",
-      value: formatMoney(data.salesByPeriod?.[0]?.totalAmount ?? 0),
+      value: `${formatMoney(data.salesByPeriod?.[0]?.totalRevenue ?? 0)} ${
+        symbol || ""
+      }`,
+
       icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#10B981",
       iconBgColor: "#D1FAE5",
@@ -85,12 +97,12 @@ const StockTrackingScreen: React.FC = () => {
     },
     {
       title: "Revenu par catégorie",
-      value: formatMoney(
+      value: `${formatMoney(
         data.salesByProductCategory?.reduce(
           (sum, c) => sum + (c.totalRevenue || 0),
           0
-        )
-      ),
+        ) ?? 0
+      )} ${symbol || ""}`,
       icon: "layers" as keyof typeof Feather.glyphMap,
       iconColor: "#F59E0B",
       iconBgColor: "#FEF3C7",
@@ -114,7 +126,9 @@ const StockTrackingScreen: React.FC = () => {
     },
     {
       title: "Top produit revenu",
-      value: formatMoney(data.topSellingProducts?.[0]?.totalRevenue ?? 0),
+      value: `${formatMoney(data.topSellingProducts?.[0]?.totalRevenue ?? 0)} ${
+        symbol || ""
+      }`,
       icon: "trending-up" as keyof typeof Feather.glyphMap,
       iconColor: "#06B6D4",
       iconBgColor: "#CFFAFE",

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -29,7 +29,6 @@ import { useBusinessStore } from "@/store/businessStore";
 import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 import PopularDishesChart from "@/components/Chart/PopularDishesChart";
 import ReservationsByPeriodChart from "@/components/Chart/ReservationsByPeriodChart";
-import AnalyticsCard from "@/components/accueil/AnalyticsCard";
 import SalesByPeriodChart from "@/components/Chart/SalesByPeriodChart";
 import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
 import InventoryLossesChart from "@/components/Chart/InventoryLossesChart";
@@ -572,10 +571,11 @@ const RestaurantHome: React.FC = () => {
           <>
             {renderOverview()}
             <View style={styles.section}>
-              <InventoryLossesChart
+              <PopularDishesChart
                 businessId={business.id}
                 currencyId={business.currencyId}
               />
+              <ReservationsByPeriodChart businessId={business.id} />
               <SalesByPeriodChart
                 businessId={business.id}
                 currencyId={business.currencyId}
@@ -588,8 +588,11 @@ const RestaurantHome: React.FC = () => {
                 businessId={business.id}
                 currencyId={business.currencyId}
               />
-              {/* <PopularDishesChart businessId={business.id} />
-              <ReservationsByPeriodChart businessId={business.id} /> */}
+
+              <InventoryLossesChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+              />
             </View>
             {/* {renderQuickActions()} */}
           </>

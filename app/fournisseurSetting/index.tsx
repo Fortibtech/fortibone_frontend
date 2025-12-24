@@ -24,6 +24,7 @@ import {
   cacheManager,
   SelectedBusinessManager,
 } from "@/api";
+import { useBusinessStore } from "@/store/businessStore";
 
 interface MenuItem {
   id: string;
@@ -96,6 +97,10 @@ const SettingsMenu: React.FC = () => {
     try {
       console.log("🧹 Début vidage complet...");
 
+      // 🔥 1. Reset business Zustand
+      useBusinessStore.getState().setBusiness(null);
+      console.log("✅ Business reset à null");
+
       // 🔥 2. Clear ton cache custom (mémoire + AsyncStorage)
       await cacheManager.clearAll();
       console.log("✅ CacheManager vidé");
@@ -125,6 +130,7 @@ const SettingsMenu: React.FC = () => {
 
       // Fallback dur
       try {
+        useBusinessStore.getState().setBusiness(null);
         await cacheManager.clearAll();
         await AsyncStorage.clear();
         await useUserStore.getState().logout();

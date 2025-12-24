@@ -31,9 +31,10 @@ import {
 
 interface Props {
   businessId: string | null;
+  currency?: string | null;
 }
 
-const ZoneTarifs = ({ businessId }: Props) => {
+const ZoneTarifs = ({ businessId, currency }: Props) => {
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -297,7 +298,9 @@ const ZoneTarifs = ({ businessId }: Props) => {
 
   const formatPrice = (price: string) => {
     const num = parseInt(price, 10);
-    return isNaN(num) ? "— KMF" : num.toLocaleString("fr") + " KMF";
+    return isNaN(num)
+      ? `— ${currency}`
+      : num.toLocaleString("fr") + " " + currency;
   };
 
   const getDistanceText = (min: number, max: number | null) => {
@@ -480,7 +483,7 @@ const ZoneTarifs = ({ businessId }: Props) => {
                   editable={!creating}
                 />
 
-                <Text style={styles.label}>Forfait de base (KMF) *</Text>
+                <Text style={styles.label}>Forfait de base ({currency}) *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="2000"
@@ -495,7 +498,7 @@ const ZoneTarifs = ({ businessId }: Props) => {
                   editable={!creating}
                 />
 
-                <Text style={styles.label}>Prix par km (KMF) *</Text>
+                <Text style={styles.label}>Prix par km ({currency}) *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="500"
@@ -625,7 +628,7 @@ const ZoneTarifs = ({ businessId }: Props) => {
                   editable={!editing}
                 />
 
-                <Text style={styles.label}>Forfait de base (KMF) *</Text>
+                <Text style={styles.label}>Forfait de base ({currency}) *</Text>
                 <TextInput
                   style={styles.input}
                   keyboardType="numeric"
@@ -639,7 +642,7 @@ const ZoneTarifs = ({ businessId }: Props) => {
                   editable={!editing}
                 />
 
-                <Text style={styles.label}>Prix par km (KMF) *</Text>
+                <Text style={styles.label}>Prix par km ({currency}) *</Text>
                 <TextInput
                   style={styles.input}
                   keyboardType="numeric"

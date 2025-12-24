@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -18,14 +18,34 @@ import { useRouter } from "expo-router";
 import { useProCartStore } from "@/stores/achatCartStore";
 import { passMultipleOrders } from "@/api/orers/createOrder";
 import BackButtonAdmin from "@/components/Admin/BackButton";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 export default function ShoppingCartScreen() {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const { items, getTotalPrice, getTotalItems, removeItem, clearCart } =
     useProCartStore();
 
-  const [loading, setLoading] = useState(false);
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
+  const fetchData = async () => {
+    if (!business) return;
+    setLoading(true);
 
+    try {
+      const symbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(symbol);
+    } catch (error) {
+      console.error("❌ Erreur lors du fetch overview:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchData();
+  }, [business]);
+  
   const handleCheckout = async () => {
     if (items.length === 0) {
       Alert.alert(
@@ -131,8 +151,8 @@ export default function ShoppingCartScreen() {
                   {item.productName}
                 </Text>
                 <Text style={styles.itemPrice}>
-                  {Number(item.variant.price).toLocaleString("fr-CM")} FCFA /
-                  pièce
+                  {Number(item.variant.price).toLocaleString("fr-CM")} {symbol}{" "}
+                  / pièce
                 </Text>
                 <Text style={styles.itemQty}>Quantité : {item.quantity}</Text>
                 <Text style={styles.itemTotal}>
@@ -140,7 +160,7 @@ export default function ShoppingCartScreen() {
                   {(Number(item.variant.price) * item.quantity).toLocaleString(
                     "fr-CM"
                   )}{" "}
-                  FCFA
+                  {symbol}
                 </Text>
               </View>
               <TouchableOpacity
@@ -168,7 +188,7 @@ export default function ShoppingCartScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total à payer :</Text>
             <Text style={styles.totalAmount}>
-              {totalAmount.toLocaleString("fr-CM")} FCFA
+              {totalAmount.toLocaleString("fr-CM")} {symbol}
             </Text>
           </View>
         </View>

@@ -794,10 +794,6 @@ const HomePage: React.FC = () => {
     if (business) {
       return (
         <View style={styles.section}>
-          <InventoryLossesChart
-            businessId={business.id}
-            currencyId={business.currencyId}
-          />
           <SalesByPeriodChart
             businessId={business.id}
             currencyId={business.currencyId}
@@ -807,6 +803,10 @@ const HomePage: React.FC = () => {
             currencyId={business.currencyId}
           />
           <RevenueDistributionChart
+            businessId={business.id}
+            currencyId={business.currencyId}
+          />
+          <InventoryLossesChart
             businessId={business.id}
             currencyId={business.currencyId}
           />

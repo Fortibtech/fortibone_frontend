@@ -129,8 +129,10 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
     strokeWidth: 3,
     decimalPlaces: 0,
     propsForLabels: {
-      fontSize: 12,
-      fontWeight: "700",
+      fontSize: 10,
+      fontWeight: "800",
+      translateX: -22,
+      translateY: 20,
     },
   };
 
@@ -192,10 +194,14 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
             />
 
             <View style={styles.donutCenter}>
-              <Text style={styles.donutCenterLabel}>Valeur totale perdue</Text>
-              <Text style={styles.donutCenterValue}>
-                {formatMoney(totalLossValue, symbol)}
-              </Text>
+              <View style={styles.donuContainer}>
+                <Text style={styles.donutCenterLabel}>
+                  Valeur totale perdue :
+                </Text>
+                <Text style={styles.donutCenterValue}>
+                  {formatMoney(totalLossValue, symbol)}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -302,16 +308,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  donuContainer: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    top: "70%",
+    right: "-15%",
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+  },
   donutCenterLabel: {
-    fontSize: 13,
+    fontSize: 18,
     color: "#666",
-    fontWeight: "600",
+    fontWeight: "800",
   },
   donutCenterValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "800",
-    color: "#2c2b2bff",
-    marginTop: 6,
+    color: "#b90707ff",
+    marginLeft: 6,
   },
   listContainer: {
     maxHeight: 400,
