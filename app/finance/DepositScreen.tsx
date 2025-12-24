@@ -1,5 +1,5 @@
 // app/deposit.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import {
 } from "@stripe/stripe-react-native";
 
 import { createDeposit } from "@/api/wallet";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 type Method = "STRIPE" | "KARTAPAY";
 
@@ -38,7 +40,8 @@ export default function DepositScreen() {
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [cardComplete, setCardComplete] = useState(false);
-
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const formattedAmount = amount
     ? parseInt(amount).toLocaleString("fr-FR")
     : "0";
@@ -172,6 +175,14 @@ export default function DepositScreen() {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    const fetchSymbol = async () => {
+      if (!business) return;
+      const symbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(symbol);
+    };
+    fetchSymbol();
+  }, [business]);
 
   return (
     <StripeProvider publishableKey="pk_test_51PBf5wRqgxgrSOxzkT3CoAj3wnYQKPSKxZLmtaH9lt8XXO8NoIknakl1nMxj14Mj25f3VC56dchbm7E4ATNXco2200dXM6svtP">
@@ -260,7 +271,7 @@ export default function DepositScreen() {
               <View style={styles.card}>
                 <View style={styles.amountContainer}>
                   <Text style={styles.amountValue}>{formattedAmount}</Text>
-                  <Text style={styles.currency}>KMF</Text>
+                  <Text style={styles.currency}>{symbol}</Text>
                 </View>
 
                 <View style={styles.amountOptions}>

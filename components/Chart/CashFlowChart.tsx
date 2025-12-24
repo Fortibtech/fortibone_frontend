@@ -1,4 +1,4 @@
-// components/charts/CashFlowChart.tsx → VERSION FINALE CORRIGÉE
+// components/charts/CashFlowChart.tsx → VERSION FINALE AVEC DEVISE DYNAMIQUE
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -25,9 +25,13 @@ export type CashFlowData = {
 
 type Props = {
   period?: "6m" | "12m" | "all";
+  currency?: string | null;
 };
 
-const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
+const CashFlowChart: React.FC<Props> = ({
+  period = "6m",
+  currency = "XAF",
+}) => {
   const [data, setData] = useState<CashFlowData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -88,7 +92,6 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
             const provider = (t.provider || "").toString().toUpperCase();
             const type = (t.type || "").toString().toUpperCase();
 
-            // LOGIQUE ULTRA ROBUSTE — même que partout ailleurs
             const isIncome =
               amount > 0 ||
               provider === "DEPOSIT" ||
@@ -106,8 +109,8 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
 
           return {
             month: monthName,
-            revenue: Math.round(revenue / 1000),
-            expense: Math.round(expense / 1000),
+            revenue: Math.round(revenue / 1000), // en milliers
+            expense: Math.round(expense / 1000), // en milliers
           };
         });
 
@@ -129,6 +132,12 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
   );
   const height = 200;
 
+  // Formatage intelligent de l'axe Y : XK + devise
+  const formatAxisLabel = (value: number) => {
+    if (value === 0) return "0";
+    return `${Math.round(value)}K ${currency}`;
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -146,10 +155,18 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
 
       <View style={styles.chart}>
         <View style={styles.yAxis}>
-          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.8)}K</Text>
-          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.6)}K</Text>
-          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.4)}K</Text>
-          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.2)}K</Text>
+          <Text style={styles.axisLabel}>
+            {formatAxisLabel(maxValue * 0.8)}
+          </Text>
+          <Text style={styles.axisLabel}>
+            {formatAxisLabel(maxValue * 0.6)}
+          </Text>
+          <Text style={styles.axisLabel}>
+            {formatAxisLabel(maxValue * 0.4)}
+          </Text>
+          <Text style={styles.axisLabel}>
+            {formatAxisLabel(maxValue * 0.2)}
+          </Text>
           <Text style={styles.axisLabel}>0</Text>
         </View>
 
@@ -192,7 +209,6 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
 
 export default CashFlowChart;
 
-// Couleurs unifiées avec le reste de l’app
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#fff",
@@ -213,7 +229,7 @@ const styles = StyleSheet.create({
     height: 240,
   },
   yAxis: {
-    width: 44,
+    width: 70, // Élargi pour accueillir "XK XAF"
     justifyContent: "space-between",
     paddingVertical: 12,
   },
@@ -245,10 +261,10 @@ const styles = StyleSheet.create({
     minHeight: 4,
   },
   revenueBar: {
-    backgroundColor: "#00af66", // VERT COMME PARTOUT
+    backgroundColor: "#00af66",
   },
   expenseBar: {
-    backgroundColor: "#ef4444", // ROUGE COMME PARTOUT
+    backgroundColor: "#ef4444",
   },
   monthLabel: {
     fontSize: 11,

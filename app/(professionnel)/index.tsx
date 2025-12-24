@@ -233,7 +233,6 @@ const HomePage: React.FC = () => {
     } catch (error) {
       if (mountedRef.current) {
         console.error("Erreur analytics:", error);
-        Alert.alert("Erreur", "Impossible de charger les statistiques");
       }
     } finally {
       if (mountedRef.current) {

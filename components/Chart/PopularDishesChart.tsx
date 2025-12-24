@@ -1,28 +1,18 @@
-// 1. PopularDishesChart.tsx
+// PopularDishesChart.tsx
 import { getRestaurantAnalytics } from "@/api/analytics";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
   Image,
+  ScrollView,
 } from "react-native";
 import { ProgressChart } from "react-native-chart-kit";
-
 const { width } = Dimensions.get("window");
-
-type UnitType = "DAY" | "WEEK" | "MONTH" | "YEAR";
-
-const UNITS: { key: UnitType; label: string }[] = [
-  { key: "DAY", label: "Jour" },
-  { key: "WEEK", label: "Semaine" },
-  { key: "MONTH", label: "Mois" },
-  { key: "YEAR", label: "Année" },
-];
 
 interface PopularDish {
   variantId: string;
@@ -43,11 +33,12 @@ const COLORS = [
   "#85C1E2",
 ];
 
-const PopularDishesChart: React.FC<{ businessId: string }> = ({
-  businessId,
-}) => {
-  const [unit, setUnit] = useState<UnitType>("MONTH");
+const PopularDishesChart: React.FC<{
+  businessId: string;
+  currencyId: string;
+}> = ({ businessId, currencyId }) => {
   const [loading, setLoading] = useState(true);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [dishes, setDishes] = useState<PopularDish[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +47,8 @@ const PopularDishesChart: React.FC<{ businessId: string }> = ({
     setLoading(true);
     setError(null);
     try {
-      const data = await getRestaurantAnalytics(businessId, { unit });
+      const data = await getRestaurantAnalytics(businessId);
+      const symbol = await getCurrencySymbolById(currencyId);
       const popular = data.popularDishes || [];
 
       if (popular.length === 0) {
@@ -65,7 +57,6 @@ const PopularDishesChart: React.FC<{ businessId: string }> = ({
         return;
       }
 
-      // Convertir totalRevenue en nombre
       const processed = popular.map((d) => ({
         ...d,
         totalRevenue: Number(d.totalRevenue),
@@ -79,9 +70,9 @@ const PopularDishesChart: React.FC<{ businessId: string }> = ({
       const total = top8.reduce((sum, d) => sum + d.totalRevenue, 0);
       setTotalRevenue(total);
       setDishes(top8);
+      setSymbol(symbol);
     } catch (err: any) {
       setError("Impossible de charger les plats populaires");
-      // Alert.alert("Erreur", err.message || "Une erreur est survenue");
     } finally {
       setLoading(false);
     }
@@ -89,12 +80,31 @@ const PopularDishesChart: React.FC<{ businessId: string }> = ({
 
   useEffect(() => {
     fetchData();
-  }, [businessId, unit]);
+  }, [businessId]);
 
   const chartConfig = {
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
-    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    color: (opacity = 1, index = 0) => {
+      // Utilise la même couleur que les segments, mais en semi-transparent pour le texte/légende
+      return (
+        COLORS[index % COLORS.length] +
+        Math.round(opacity * 255)
+          .toString(16)
+          .padStart(2, "0")
+      );
+    },
+    strokeWidth: 1, // Optionnel : bordure plus fine et élégante
+    useShadowColorFromDataset: false, // Important pour bien appliquer les couleurs
+    propsForLabels: {
+      fontSize: 11,
+      fontWeight: "700",
+      translateX: -2,
+      translateY: 0,
+    },
+    propsForBackgroundLines: {
+      strokeWidth: 0, // Enlève les lignes de grille inutiles
+    },
   };
 
   const chartData = {
@@ -111,29 +121,6 @@ const PopularDishesChart: React.FC<{ businessId: string }> = ({
     <View style={styles.chartCard}>
       <View style={styles.header}>
         <Text style={styles.title}>Plats les plus vendus</Text>
-        <Text style={styles.subtitle}>Répartition des revenus par plat</Text>
-
-        <View style={styles.filterButtons}>
-          {UNITS.map((u) => (
-            <TouchableOpacity
-              key={u.key}
-              style={[
-                styles.filterBtn,
-                unit === u.key && styles.filterBtnActive,
-              ]}
-              onPress={() => setUnit(u.key)}
-            >
-              <Text
-                style={[
-                  styles.filterBtnText,
-                  unit === u.key && styles.filterBtnTextActive,
-                ]}
-              >
-                {u.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </View>
 
       {loading ? (
@@ -154,7 +141,7 @@ const PopularDishesChart: React.FC<{ businessId: string }> = ({
           <View style={styles.totalCard}>
             <Text style={styles.totalLabel}>Revenu total des plats</Text>
             <Text style={styles.totalValue}>
-              {totalRevenue.toLocaleString("fr-FR")} KMF
+              {totalRevenue.toLocaleString("fr-FR")} {symbol}
             </Text>
           </View>
 
@@ -162,56 +149,72 @@ const PopularDishesChart: React.FC<{ businessId: string }> = ({
             <ProgressChart
               data={chartData}
               width={width - 64}
-              height={240}
-              strokeWidth={18}
+              height={270}
+              strokeWidth={10}
               radius={36}
               chartConfig={chartConfig}
               hideLegend={false}
+              style={styles.chart}
             />
           </View>
 
-          <ScrollView style={styles.list}>
+          {/* Liste avec ScrollView interne – même comportement que ton exemple */}
+          <ScrollView
+            style={styles.productList}
+            nestedScrollEnabled={true} // ← Crucial pour Android quand imbriqué
+            showsVerticalScrollIndicator={true}
+          >
+            <Text style={styles.gridTitle}>Top plats vendus</Text>
+
             {dishes.map((dish, index) => {
               const percentage =
                 totalRevenue > 0 ? (dish.totalRevenue / totalRevenue) * 100 : 0;
+              const dishColor = COLORS[index % COLORS.length];
+
               return (
                 <View key={dish.variantId} style={styles.dishItem}>
                   <View style={styles.dishLeft}>
-                    {dish.dishImageUrl ? (
-                      <Image
-                        source={{ uri: dish.dishImageUrl }}
-                        style={styles.dishImage}
-                      />
-                    ) : (
-                      <View style={styles.dishImagePlaceholder} />
-                    )}
-                    <View style={styles.dishInfo}>
-                      <Text style={styles.dishName} numberOfLines={1}>
-                        {dish.dishName}
-                      </Text>
-                      <View style={styles.progressBg}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            {
-                              width: `${percentage}%`,
-                              backgroundColor: COLORS[index % COLORS.length],
-                            },
-                          ]}
+                    {/* Badge de rang comme dans l'exemple */}
+                    <View
+                      style={[styles.rankBadge, { backgroundColor: dishColor }]}
+                    >
+                      <Text style={styles.rankText}>#{index + 1}</Text>
+                    </View>
+
+                    <View style={styles.dishInfoContainer}>
+                      {dish.dishImageUrl ? (
+                        <Image
+                          source={{ uri: dish.dishImageUrl }}
+                          style={styles.dishImage}
                         />
+                      ) : (
+                        <View style={styles.dishImagePlaceholder} />
+                      )}
+
+                      <View style={styles.dishInfo}>
+                        <Text style={styles.dishName} numberOfLines={2}>
+                          {dish.dishName}
+                        </Text>
+                        <View style={styles.progressBg}>
+                          <View
+                            style={[
+                              styles.progressFill,
+                              {
+                                width: `${percentage}%`,
+                                backgroundColor: dishColor,
+                              },
+                            ]}
+                          />
+                        </View>
                       </View>
                     </View>
                   </View>
+
                   <View style={styles.dishRight}>
                     <Text style={styles.dishRevenue}>
-                      {dish.totalRevenue.toLocaleString("fr-FR")} KMF
+                      {dish.totalRevenue.toLocaleString("fr-FR")} {symbol}
                     </Text>
-                    <Text
-                      style={[
-                        styles.dishPercentage,
-                        { color: COLORS[index % COLORS.length] },
-                      ]}
-                    >
+                    <Text style={[styles.dishPercentage, { color: dishColor }]}>
                       {percentage.toFixed(1)}%
                     </Text>
                     <Text style={styles.dishQty}>
@@ -230,6 +233,13 @@ const PopularDishesChart: React.FC<{ businessId: string }> = ({
 };
 
 const styles = StyleSheet.create({
+  chart: {
+    borderRadius: 12,
+    marginVertical: 8,
+    position: "relative",
+    right: 10,
+    bottom: 20,
+  },
   chartCard: {
     backgroundColor: "#fff",
     marginBottom: 16,
@@ -310,9 +320,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 10,
   },
-  list: {
-    maxHeight: 400,
+  productList: {
     marginTop: 10,
+    maxHeight: 500, // Même valeur que ton exemple
+  },
+  gridTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 12,
+    marginLeft: 8,
   },
   dishItem: {
     flexDirection: "row",
@@ -324,6 +341,24 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
   },
   dishLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  rankBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  rankText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  dishInfoContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
@@ -409,4 +444,5 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 });
+
 export default PopularDishesChart;

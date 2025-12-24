@@ -273,12 +273,11 @@ export const createWithdraw = async (
   }
 };
 
-
 // Types basés sur la réponse réelle de l'API (pas sur la doc obsolète)
 export interface TransferResponse {
   id: string;
   type: "TRANSFER";
-  amount: string;                  // vient en string : "-100" ou "+100"
+  amount: string; // vient en string : "-100" ou "+100"
   status: "COMPLETED" | "PENDING" | "FAILED";
   description: string;
   createdAt: string;
@@ -290,8 +289,8 @@ export interface TransferResponse {
 }
 
 export interface TransferRequest {
-  amount: number;                    // tu envoies un nombre positif
-  recipientIdentifier: string;       // email ou phone ou username
+  amount: number; // tu envoies un nombre positif
+  recipientIdentifier: string; // email ou phone ou username
 }
 
 /**
@@ -309,7 +308,7 @@ export const transferMoney = async (
   }
 
   const payload: TransferRequest = {
-    amount,                         // l'API attend un nombre positif
+    amount, // l'API attend un nombre positif
     recipientIdentifier: recipientIdentifier.trim(),
   };
 
@@ -325,7 +324,9 @@ export const transferMoney = async (
   } catch (error: any) {
     // Gestion propre des erreurs fréquentes
     if (error.response?.status === 400) {
-      const msg = error.response.data?.message || "Solde insuffisant ou destinataire invalide";
+      const msg =
+        error.response.data?.message ||
+        "Solde insuffisant ou destinataire invalide";
       throw new Error(msg);
     }
     if (error.response?.status === 404) {

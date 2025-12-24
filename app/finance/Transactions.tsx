@@ -33,6 +33,8 @@ import BackButtonAdmin from "@/components/Admin/BackButton";
 import Modal from "react-native-modal";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { MotiView } from "moti";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 type TransactionGroup = { title: string; data: FormattedTransaction[] };
 type FormattedTransaction = {
@@ -58,7 +60,17 @@ const TransactionHistory: React.FC = () => {
   const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchSymbol = async () => {
+      if (business) {
+        const symbol = await getCurrencySymbolById(business.currencyId);
+        setSymbol(symbol);
+      }
+    };
+    fetchSymbol();
+  }, [business]);
   // Filtres
   const [selectedType, setSelectedType] = useState<TransactionType | "">("");
   const [selectedStatus, setSelectedStatus] = useState<TransactionStatus | "">(
@@ -264,7 +276,7 @@ const TransactionHistory: React.FC = () => {
             minimumFractionDigits: 0,
             maximumFractionDigits: 2,
           })}{" "}
-          KMF
+          {symbol}
         </Text>
       </View>
     </View>

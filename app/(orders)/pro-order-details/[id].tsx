@@ -13,7 +13,6 @@ import {
   TextInput,
   Dimensions,
   Platform,
-
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -24,9 +23,15 @@ import Toast from "react-native-toast-message";
 import { getOrderById, updateOrderStatus } from "@/api/Orders";
 import { BusinessesService } from "@/api";
 
-
 import { OrderResponse } from "@/types/orders";
-import { createDeliveryEstimate, createDeliveryRequest, EstimateOption, EstimateResponse } from "@/api/delivery/estimateApi";
+import {
+  createDeliveryEstimate,
+  createDeliveryRequest,
+  EstimateOption,
+  EstimateResponse,
+} from "@/api/delivery/estimateApi";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -61,7 +66,8 @@ export default function OrderDetails() {
   // Modals
   const [mapVisible, setMapVisible] = useState(false);
   const mapRef = useRef<MapView>(null);
-
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   // Estimation
   const [estimating, setEstimating] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -91,6 +97,9 @@ export default function OrderDetails() {
       if (carriers.length > 0) {
         setSelectedCarrierId(carriers[0].id);
       }
+      if (!business) return;
+      const symbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(symbol);
     } catch {
       Alert.alert("Erreur", "Impossible de charger les livreurs.");
     } finally {
@@ -396,17 +405,17 @@ export default function OrderDetails() {
                   x{line.quantity}
                 </Text>
                 <Text style={[styles.td, { flex: 1, textAlign: "right" }]}>
-                  {pu} KMF
+                  {pu} {symbol}
                 </Text>
                 <Text style={[styles.td, { flex: 1, textAlign: "right" }]}>
-                  {totalLine} KMF
+                  {totalLine} {symbol}
                 </Text>
               </View>
             );
           })}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{total} KMF</Text>
+            <Text style={styles.totalValue}>{total} {symbol}</Text>
           </View>
         </View>
 

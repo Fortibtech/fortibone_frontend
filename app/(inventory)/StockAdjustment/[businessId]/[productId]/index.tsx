@@ -23,6 +23,8 @@ import {
   addVariantBatch,
 } from "@/api/Inventory";
 import Toast from "react-native-toast-message";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 // === Types ===
 type OperationType = "Entrée" | "Sortie" | "Ajustement";
@@ -77,7 +79,7 @@ export default function StockAdjustment() {
   // === Paramètres ===
   const { businessId: rawBusinessId, productId: rawProductId } =
     useLocalSearchParams();
-
+  const business = useBusinessStore((state) => state.business);
   const businessId = Array.isArray(rawBusinessId)
     ? rawBusinessId[0]?.trim()
     : rawBusinessId?.trim();
@@ -90,6 +92,7 @@ export default function StockAdjustment() {
   const [inventory, setInventory] = useState<Product[]>([]);
   const [operationType, setOperationType] = useState<OperationType>("Entrée");
   const [selectedLot, setSelectedLot] = useState<LotOption>(simulatedLots[0]);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [motif, setMotif] = useState<Motif>("Reception de stock");
   const [totalPages, setTotalPages] = useState(1);
@@ -98,6 +101,7 @@ export default function StockAdjustment() {
   const [showLot, setShowLot] = useState(false);
   const [showMotif, setShowMotif] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -121,6 +125,10 @@ export default function StockAdjustment() {
         setInventory((prev) => (page === 1 ? mapped : [...prev, ...mapped]));
         setTotalPages(res.totalPages);
         setCurrentPage(page);
+        if (business) {
+          const symbol = await getCurrencySymbolById(business.currencyId);
+          setSymbol(symbol);
+        }
       } catch (err) {
         Toast.show({
           type: "error",
@@ -326,7 +334,9 @@ export default function StockAdjustment() {
             <View style={styles.productDetails}>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Prix Unitaire</Text>
-                <Text style={styles.detailValue}>{currentProduct.price} KMF</Text>
+                <Text style={styles.detailValue}>
+                  {currentProduct.price} {symbol || ""}
+                </Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Stock Actuel</Text>
@@ -521,6 +531,7 @@ export default function StockAdjustment() {
         onClose={() => setModalVisible(false)}
         product={currentProduct}
         onValidate={handleValidate}
+        symbol={symbol || ""}
       />
 
       {/* Bottom Actions */}

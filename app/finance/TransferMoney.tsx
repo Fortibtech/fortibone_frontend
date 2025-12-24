@@ -19,6 +19,8 @@ import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import BackButtonAdmin from "@/components/Admin/BackButton";
 import { GetWallet, transferMoney } from "@/api/wallet";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 // Presets identiques à ceux du retrait
 const presets = [5000, 10000, 25000, 50000, 100000, 200000];
@@ -31,7 +33,8 @@ export default function TransferMoney() {
   const [loading, setLoading] = useState(false);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [fetchingBalance, setFetchingBalance] = useState(true);
-
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   // Récupération du solde au focus
   const fetchBalance = useCallback(async () => {
     try {
@@ -39,6 +42,9 @@ export default function TransferMoney() {
       const data = await GetWallet();
       const balance = parseFloat(data?.balance || "0") || 0;
       setWalletBalance(balance);
+      if (!business) return;
+      const symbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(symbol);
     } catch (err) {
       Alert.alert("Erreur", "Impossible de charger votre solde");
       setWalletBalance(0);
@@ -58,7 +64,7 @@ export default function TransferMoney() {
     if (val > (walletBalance || 0)) {
       Alert.alert(
         "Solde insuffisant",
-        `Vous avez seulement ${(walletBalance || 0).toLocaleString()} KMF`
+        `Vous avez seulement ${(walletBalance || 0).toLocaleString()} ${symbol}`
       );
       return;
     }
@@ -89,7 +95,7 @@ export default function TransferMoney() {
   // Lancer le transfert
   const initiateTransfer = async () => {
     if (amount < MIN_AMOUNT) {
-      Alert.alert("Montant trop faible", `Minimum ${MIN_AMOUNT} KMF`);
+      Alert.alert("Montant trop faible", `Minimum ${MIN_AMOUNT} ${symbol}`);
       return;
     }
     if (amount > (walletBalance || 0)) {
@@ -110,7 +116,7 @@ export default function TransferMoney() {
 
       Alert.alert(
         "Transfert réussi !",
-        `${amount.toLocaleString()} KMF envoyés à\n${result.description.replace(
+        `${amount.toLocaleString()} ${symbol} envoyés à\n${result.description.replace(
           "Transfert vers ",
           ""
         )}`,
@@ -180,7 +186,7 @@ export default function TransferMoney() {
             <Text style={styles.sectionTitle}>Montant à transférer</Text>
             <Text style={styles.amountDisplay}>
               {amount.toLocaleString("fr-FR")}{" "}
-              <Text style={styles.currency}>KMF</Text>
+              <Text style={styles.currency}>{symbol}</Text>
             </Text>
 
             <View style={styles.presetsGrid}>

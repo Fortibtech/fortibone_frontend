@@ -1,5 +1,7 @@
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 import { getBusinessOrders } from "@/api/Orders";
 import BackButtonAdmin from "@/components/Admin/BackButton";
+import { useBusinessStore } from "@/store/businessStore";
 import { OrderResponse } from "@/types/orders";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -24,7 +26,8 @@ export default function VentesScreen() {
   }>();
 
   const router = useRouter();
-
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -65,6 +68,9 @@ export default function VentesScreen() {
       setTotalPages(response.totalPages);
       setPage(newPage);
       setRetryCount(0);
+      if (!business) return;
+      const symbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(symbol);
     } catch (err: any) {
       if (
         err.message.includes("Transaction already closed") &&
@@ -94,7 +100,7 @@ export default function VentesScreen() {
 
   useEffect(() => {
     if (businessId) fetchOrders();
-  }, [businessId]);
+  }, [businessId, business]);
 
   // Formatage des données pour l'UI
   const formattedOrders = orders.map((order) => {
@@ -156,7 +162,7 @@ export default function VentesScreen() {
               .filter((ord) => ord.customerId === o.customerId)
               .reduce((sum, ord) => sum + parseFloat(ord.totalAmount), 0)
               .toFixed(2)
-              .replace(".", ",") + " KMF",
+              .replace(".", ",") + `${symbol}`,
           panierMoyen:
             (
               orders
@@ -165,7 +171,7 @@ export default function VentesScreen() {
               orders.filter((ord) => ord.customerId === o.customerId).length
             )
               .toFixed(2)
-              .replace(".", ",") + " KMF",
+              .replace(".", ",") + `${symbol}`,
           originalOrder: o,
         },
       ])
@@ -304,13 +310,13 @@ function CommandesList({
             <Ionicons name="filter-outline" size={18} color="#777" />
           )}
         </View>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.newBtn}
           onPress={() => router.push("/(orders)/screen/NouvelleCommande")}
         >
           <Ionicons name="add" size={18} color="#00A36C" />
           <Text style={styles.newBtnText}>Nouvelle Commande</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {orders.length === 0 ? (
@@ -397,7 +403,6 @@ function ClientsList({
 }) {
   const { businessId } = useLocalSearchParams(); // ← Récupère businessId
   const router = useRouter();
-
 
   return (
     <View style={{ flex: 1 }}>

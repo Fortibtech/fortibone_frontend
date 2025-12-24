@@ -14,9 +14,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import BackButtonAdmin from "@/components/Admin/BackButton";
 import { RecentTransactions } from "@/components/Wallet/RecentTransactions";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
+import { useBusinessStore } from "@/store/businessStore";
 
 const WalletScreen = () => {
   const [wallet, setWallet] = useState<Wallet | null>(null);
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fetchWallet = useCallback(async () => {
@@ -25,6 +29,9 @@ const WalletScreen = () => {
       setError(null);
       const data = await GetWallet();
       setWallet(data);
+      if (!business) return;
+      const symbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(symbol);
     } catch (err: any) {
       setError(err.message || "Impossible de charger le portefeuille");
       console.error(err);
@@ -80,10 +87,11 @@ const WalletScreen = () => {
         ) : (
           <>
             <WalletHeaderCard
+              symbol={symbol || "KMF"}
               balance={parseFloat(wallet?.balance || "0") || 0}
             />
-            <StatsCard />
-            <RecentTransactions />
+            <StatsCard symbol={symbol || "KMF"} />
+            <RecentTransactions currency={symbol || "KMF"} />
           </>
         )}
       </View>

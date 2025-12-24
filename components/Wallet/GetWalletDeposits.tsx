@@ -1,9 +1,10 @@
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const BalanceCard = ({ balance }: { balance: number }) => {
+const BalanceCard = ({ balance, symbol }: { balance: number; symbol: string }) => {
   const [hidden, setHidden] = useState(false);
   const router = useRouter();
 
@@ -18,7 +19,7 @@ const BalanceCard = ({ balance }: { balance: number }) => {
       {/* Ligne 2 - Montant */}
       <View style={styles.rowBetween}>
         <Text style={styles.amount}>
-          {hidden ? "••••••" : `${balance?.toFixed(2) ?? "0.00"} KMF`}
+          {hidden ? "••••••" : `${balance?.toFixed(2) ?? "0.00"} ${symbol}`}
         </Text>
         <TouchableOpacity onPress={() => setHidden(!hidden)}>
           <Ionicons
@@ -55,7 +56,7 @@ const BalanceCard = ({ balance }: { balance: number }) => {
           onPress={() => router.push("/finance/TransferMoney")}
         >
           <MaterialIcons name="swap-horiz" size={20} color="#fff" />
-          <Text style={styles.transferText}>Transfert</Text>
+          <Text style={styles.transferText}>Transfer</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -102,11 +103,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 48, // ✅ Réduit de 50 à 48
+    height: 40, // ✅ Réduit de 50 à 48
+    width: "100%",
     borderRadius: 24,
     paddingHorizontal: 10, // ✅ Réduit de 12 à 10
     gap: 6, // ✅ Réduit de 8 à 6
-    minWidth: 0, // ✅ Permet la compression si nécessaire
   },
   // Dépôt
   depositBtn: {

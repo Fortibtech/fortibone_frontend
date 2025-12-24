@@ -39,6 +39,8 @@ import {
 // Import des composants
 import { VariantFormModal } from "@/components/VariantFormModal";
 import { EditProductScreen } from "./edit";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 Dimensions.get("window");
 
@@ -59,7 +61,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
+  const businesssymbol = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   // États pour les variantes
   const [showVariantModal, setShowVariantModal] = useState(false);
   const [editingVariant, setEditingVariant] = useState<ProductVariant | null>(
@@ -86,7 +89,10 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
       // Charger les détails du produit avec variantes
       const productData = await ProductService.getProductById(productId);
       setProduct(productData);
-
+      if (businesssymbol) {
+        const symbol = await getCurrencySymbolById(businesssymbol.currencyId);
+        setSymbol(symbol);
+      }
       // Charger les détails de l'entreprise
       try {
         const businessData = await BusinessesService.getBusinessById(
@@ -279,7 +285,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         <View style={styles.variantMainInfo}>
           <Text style={styles.variantSku}>{variant.sku}</Text>
           <Text style={styles.variantPrice}>
-            {variant.price.toLocaleString()} KMF
+            {variant.price.toLocaleString()} {symbol || ""}
           </Text>
         </View>
 
@@ -330,7 +336,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         <View style={styles.variantDetailRow}>
           <Text style={styles.variantDetailLabel}>Prix d&apos;achat</Text>
           <Text style={styles.variantDetailValue}>
-            {variant.purchasePrice.toLocaleString()} KMF
+            {variant.purchasePrice.toLocaleString()} {symbol || ""}
           </Text>
         </View>
 

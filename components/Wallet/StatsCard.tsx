@@ -18,7 +18,7 @@ import {
 import TotalExpensesCard from "@/components/cards/TotalExpensesCard";
 import AvailableBalanceCard from "@/components/cards/AvailableBalanceCard";
 
-const StatsCard = () => {
+const StatsCard = ({ symbol }: { symbol: string }) => {
   const router = useRouter();
   const { width } = Dimensions.get("window");
 
@@ -99,9 +99,9 @@ const StatsCard = () => {
       ) : (
         <View style={styles.statsRow}>
           {/* Entrées */}
-          <AvailableBalanceCard />
+          <AvailableBalanceCard currency={symbol} />
           {/* Sorties */}
-          <TotalExpensesCard />
+          <TotalExpensesCard currency={symbol} />
         </View>
       )}
     </View>

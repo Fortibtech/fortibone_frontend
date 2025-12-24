@@ -20,6 +20,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import BackButtonAdmin from "@/components/Admin/BackButton";
 import { useProCartStore } from "@/stores/achatCartStore"; // Ton store
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 const { width } = Dimensions.get("window");
 
@@ -44,6 +46,7 @@ interface DisplayProduct {
 
 export default function ProductDetailsScreen() {
   const { productId } = useLocalSearchParams<{ productId: string }>();
+  const business = useBusinessStore((state) => state.business);
 
   const [productData, setProductData] = useState<DisplayProduct | null>(null);
   const [supplierBusinessId, setSupplierBusinessId] = useState<string | null>(
@@ -53,7 +56,7 @@ export default function ProductDetailsScreen() {
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
-
+  const [symbol, setSymbol] = useState<string | null>(null);
   // Zustand
   const items = useProCartStore((state) => state.items);
   const addItem = useProCartStore((state) => state.addItem);
@@ -79,10 +82,10 @@ export default function ProductDetailsScreen() {
       return;
     }
 
-    console.log("🛒 Action panier :", isInCart ? "Retirer" : "Ajouter");
-    console.log("Produit :", productData.name);
-    console.log("Fournisseur ID :", supplierBusinessId);
-    console.log("Quantité :", quantity);
+    // console.log("🛒 Action panier :", isInCart ? "Retirer" : "Ajouter");
+    // console.log("Produit :", productData.name);
+    // console.log("Fournisseur ID :", supplierBusinessId);
+    // console.log("Quantité :", quantity);
 
     if (isInCart) {
       removeItem(productData.id, productData.variant.id, supplierBusinessId);
@@ -117,7 +120,10 @@ export default function ProductDetailsScreen() {
     setLoading(true);
     try {
       const product: Product = await ProductService.getProductById(productId);
-
+      if (business) {
+        const symbol = await getCurrencySymbolById(business.currencyId);
+        setSymbol(symbol);
+      }
       // === RÉCUPÉRATION DU BUSINESS ID DU FOURNISSEUR ===
       // Adapte cette ligne selon la structure réelle de ton objet Product
       const businessId =
@@ -312,7 +318,10 @@ export default function ProductDetailsScreen() {
               <Text style={styles.price}>
                 {productData.price.toLocaleString("fr-FR")}
               </Text>
-              <Text style={styles.unit}> KMF {productData.priceUnit}</Text>
+              <Text style={styles.unit}>
+                {" "}
+                {symbol} {productData.priceUnit}
+              </Text>
             </View>
             <Text style={styles.minimum}>
               Minimum : {productData.minimumOrder} pièces

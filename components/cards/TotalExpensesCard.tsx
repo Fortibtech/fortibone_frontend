@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { GetWalletTransactions } from "@/api/wallet";
 
 type Props = {
-  currency?: string; // ex: "KMF", "MAD", "EUR" → par défaut KMF
+  currency: string | null;
   backgroundColor?: string;
   iconColor?: string;
 };

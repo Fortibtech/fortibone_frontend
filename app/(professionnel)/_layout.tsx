@@ -21,7 +21,6 @@ export default function RootLayout() {
   const totalTabBarHeight = baseTabBarHeight + bottomPadding;
   // On récupère le business actuel depuis le store (toujours à jour)
   const business = useBusinessStore((state) => state.business);
-
   return (
     <Tabs
       screenOptions={{
@@ -63,7 +62,6 @@ export default function RootLayout() {
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
-
       <Tabs.Screen
         name="produits"
         options={{
@@ -71,7 +69,6 @@ export default function RootLayout() {
           tabBarIcon: ({ color }) => <Cuboid size={24} color={color} />,
         }}
       />
-
       {/* ACHATS */}
       <Tabs.Screen
         name="achats"

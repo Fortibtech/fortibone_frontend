@@ -13,6 +13,8 @@ import { StockCard } from "@/components/accueil/StockCard";
 import { useLocalSearchParams } from "expo-router";
 import { getInventory, InventoryResponse } from "@/api/analytics";
 import { formatMoney } from "@/utils/formatMoney";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 // Composant Header
 const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
   return (
@@ -25,6 +27,8 @@ const Header: React.FC<{ onBackPress?: () => void }> = ({ onBackPress }) => {
 };
 const StockTrackingScreen: React.FC = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [data, setData] = useState<InventoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +38,10 @@ const StockTrackingScreen: React.FC = () => {
     setError(null);
     try {
       const result = await getInventory(id);
+      if (business) {
+        const symbol = await getCurrencySymbolById(business.currencyId);
+        setSymbol(symbol);
+      }
       setData(result);
     } catch (error) {
       console.error("❌ Erreur lors du fetch overview:", error);
@@ -71,7 +79,7 @@ const StockTrackingScreen: React.FC = () => {
   const stockData = [
     {
       title: "Valeur du stock",
-      value: formatMoney(data.currentInventoryValue),
+      value: `${formatMoney(data.totalStockValue ?? 0)} ${symbol || ""}`,
       icon: "dollar-sign" as keyof typeof Feather.glyphMap,
       iconColor: "#10B981",
       iconBgColor: "#D1FAE5",

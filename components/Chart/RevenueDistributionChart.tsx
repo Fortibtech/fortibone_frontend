@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   ActivityIndicator,
   ScrollView,
 } from "react-native";
@@ -13,15 +12,6 @@ import { getSales } from "@/api/analytics";
 import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 const { width } = Dimensions.get("window");
-
-type UnitType = "DAY" | "WEEK" | "MONTH" | "YEAR";
-
-const UNITS: { key: UnitType; label: string }[] = [
-  { key: "DAY", label: "Jour" },
-  { key: "WEEK", label: "Semaine" },
-  { key: "MONTH", label: "Mois" },
-  { key: "YEAR", label: "Année" },
-];
 
 interface TopSellingProduct {
   variantId: string;
@@ -99,15 +89,21 @@ const RevenueDistributionChart: React.FC<{
       Math.round(opacity * 255)
         .toString(16)
         .padStart(2, "0"),
-    strokeWidth: 2,
+    strokeWidth: 1,
     decimalPlaces: 0,
+    propsForLabels: {
+      fontSize: 11,
+      fontWeight: "700",
+      translateX: -2,
+      translateY: 0,
+    },
   };
 
   // === COULEURS PARFAITEMENT SYNCHRONISÉES ===
   const progressChartData = {
     labels: topProducts.map((p) =>
-      p.productName.length > 12
-        ? p.productName.slice(0, 10) + "..."
+      p.productName.length > 10
+        ? p.productName.slice(0, 1) + "..."
         : p.productName
     ),
     data: topProducts.map((p) =>
@@ -144,20 +140,21 @@ const RevenueDistributionChart: React.FC<{
             <ProgressChart
               data={progressChartData}
               width={width - 64}
-              height={260}
-              strokeWidth={18}
+              height={270}
+              strokeWidth={10}
               radius={40}
               chartConfig={chartConfig}
               hideLegend={false}
               style={styles.chart}
             />
-
             {/* Total au centre */}
             <View style={styles.donutCenter}>
-              <Text style={styles.donutCenterLabel}>Total</Text>
-              <Text style={styles.donutCenterValue}>
-                {totalRevenue.toLocaleString("fr-FR")} {symbol}
-              </Text>
+              <View style={styles.donuContainer}>
+                <Text style={styles.donutCenterLabel}>Total revenus : </Text>
+                <Text style={styles.donutCenterValue}>
+                  {totalRevenue.toLocaleString("fr-FR")} {symbol}
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -256,24 +253,38 @@ const styles = StyleSheet.create({
   },
   chart: {
     borderRadius: 12,
+    marginVertical: 8,
+    position: "relative",
+    right: 10,
+    bottom: 20,
   },
   donutCenter: {
+    flexDirection: "row",
     position: "absolute",
     width: width - 64,
     height: 260,
     alignItems: "center",
     justifyContent: "center",
   },
+  donuContainer: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    top: "75%",
+    right: "-3%",
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+  },
   donutCenterLabel: {
-    fontSize: 13,
+    fontSize: 18,
     color: "#666",
-    fontWeight: "600",
+    fontWeight: "800",
   },
   donutCenterValue: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#2629e0ff",
-    marginTop: 4,
+    color: "#40b907ff",
+    marginLeft: 6,
   },
   productList: {
     marginTop: 10,
