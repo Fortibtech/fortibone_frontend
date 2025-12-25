@@ -10,6 +10,7 @@ import {
 import { ProgressChart } from "react-native-chart-kit";
 import { getSales } from "@/api/analytics";
 import { getCurrencySymbolById } from "@/api/currency/currencyApi";
+import { formatMoney } from "./InventoryLossesChart";
 
 const { width } = Dimensions.get("window");
 
@@ -41,14 +42,14 @@ const RevenueDistributionChart: React.FC<{
   const [topProducts, setTopProducts] = useState<TopSellingProduct[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [symbol, setSymbol] = useState<string | null>(null);
+  const [symbol, setSymbol] = useState<string | undefined>(undefined);
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSales(businessId); // Tu avais retiré { unit }, donc je garde comme ça
-      const symbol = await getCurrencySymbolById(currencyId);
+      const data = await getSales(businessId);
+      const symbol: any = await getCurrencySymbolById(currencyId);
 
       const products: TopSellingProduct[] = data.topSellingProducts || [];
 
@@ -94,12 +95,9 @@ const RevenueDistributionChart: React.FC<{
     propsForLabels: {
       fontSize: 11,
       fontWeight: "700",
-      translateX: -2,
-      translateY: 0,
     },
   };
 
-  // === COULEURS PARFAITEMENT SYNCHRONISÉES ===
   const progressChartData = {
     labels: topProducts.map((p) =>
       p.productName.length > 10
@@ -109,7 +107,7 @@ const RevenueDistributionChart: React.FC<{
     data: topProducts.map((p) =>
       totalRevenue > 0 ? p.totalRevenue / totalRevenue : 0
     ),
-    colors: topProducts.map((_, index) => COLORS[index % COLORS.length]), // Même ordre exact
+    colors: topProducts.map((_, index) => COLORS[index % COLORS.length]),
   };
 
   return (
@@ -135,7 +133,7 @@ const RevenueDistributionChart: React.FC<{
         </View>
       ) : (
         <>
-          {/* Donut Chart avec couleurs identiques à la liste en bas */}
+          {/* Donut Chart SANS légende à droite */}
           <View style={styles.chartContainer}>
             <ProgressChart
               data={progressChartData}
@@ -144,21 +142,20 @@ const RevenueDistributionChart: React.FC<{
               strokeWidth={10}
               radius={40}
               chartConfig={chartConfig}
-              hideLegend={false}
+              hideLegend={true}
               style={styles.chart}
             />
-            {/* Total au centre */}
-            <View style={styles.donutCenter}>
-              <View style={styles.donuContainer}>
-                <Text style={styles.donutCenterLabel}>Total revenus : </Text>
-                <Text style={styles.donutCenterValue}>
-                  {totalRevenue.toLocaleString("fr-FR")} {symbol}
-                </Text>
-              </View>
-            </View>
           </View>
 
-          {/* Liste des top produits */}
+          {/* Total des revenus juste en dessous du cercle */}
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalLabel}>Total des revenus :</Text>
+            <Text style={styles.totalValue}>
+              {formatMoney(totalRevenue, symbol)}
+            </Text>
+          </View>
+
+          {/* Liste détaillée et lisible en bas */}
           <ScrollView style={styles.productList} nestedScrollEnabled>
             <Text style={styles.gridTitle}>Top produits vendus</Text>
             {topProducts.map((item, index) => {
@@ -249,42 +246,29 @@ const styles = StyleSheet.create({
   chartContainer: {
     alignItems: "center",
     marginVertical: 20,
-    position: "relative",
   },
   chart: {
     borderRadius: 12,
-    marginVertical: 8,
-    position: "relative",
-    right: 10,
-    bottom: 20,
   },
-  donutCenter: {
-    flexDirection: "row",
-    position: "absolute",
-    width: width - 64,
-    height: 260,
+  totalContainer: {
     alignItems: "center",
-    justifyContent: "center",
+    marginBottom: 24,
+    paddingVertical: 14,
+    backgroundColor: "#f0fffa",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#b0ffdd",
   },
-  donuContainer: {
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    top: "75%",
-    right: "-3%",
-    transform: [{ translateX: -50 }, { translateY: -50 }],
+  totalLabel: {
+    fontSize: 15,
+    color: "#006644",
+    fontWeight: "600",
   },
-  donutCenterLabel: {
-    fontSize: 18,
-    color: "#666",
+  totalValue: {
+    fontSize: 26,
     fontWeight: "800",
-  },
-  donutCenterValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#40b907ff",
-    marginLeft: 6,
+    color: "#00a06a",
+    marginTop: 4,
   },
   productList: {
     marginTop: 10,
