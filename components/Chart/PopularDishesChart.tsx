@@ -153,7 +153,7 @@ const PopularDishesChart: React.FC<{
               strokeWidth={10}
               radius={36}
               chartConfig={chartConfig}
-              hideLegend={false}
+              hideLegend={true}
               style={styles.chart}
             />
           </View>

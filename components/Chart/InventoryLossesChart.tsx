@@ -56,7 +56,7 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
       if (rawLosses.length === 0) {
         setLosses([]);
         setTotalLossValue(0);
-        setSymbol(currencySymbol as any);
+        setSymbol(currencySymbol as string);
         return;
       }
 
@@ -77,7 +77,7 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
 
       setLosses(sorted);
       setTotalLossValue(total);
-      setSymbol(currencySymbol as any);
+      setSymbol(currencySymbol as string);
     } catch (err) {
       console.error("Erreur lors du chargement des pertes :", err);
       setError("Impossible de charger les pertes d'inventaire");
@@ -103,22 +103,27 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
     return map[type] || type;
   };
 
-  // === COULEURS VIVES TIRANT SUR LE ROUGE ===
+  // Palette de couleurs centralisée
+  const VIVID_RED_PALETTE = [
+    "#FF1E1E",
+    "#FF453A",
+    "#FF6B6B",
+    "#FF3333",
+    "#FF1744",
+    "#F50057",
+    "#D50000",
+    "#C62828",
+  ];
+
+  const getColorForIndex = (index: number): string => {
+    return VIVID_RED_PALETTE[index % VIVID_RED_PALETTE.length];
+  };
+
   const chartConfig = {
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
     color: (opacity = 1, index = 0) => {
-      const vividRedPalette = [
-        "#FF1E1E", // Rouge ultra vif
-        "#FF453A",
-        "#FF6B6B",
-        "#FF3333",
-        "#FF1744",
-        "#F50057",
-        "#D50000",
-        "#C62828",
-      ];
-      const baseColor = vividRedPalette[index % vividRedPalette.length];
+      const baseColor = getColorForIndex(index);
       return opacity === 1
         ? baseColor
         : baseColor +
@@ -129,36 +134,42 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
     strokeWidth: 3,
     decimalPlaces: 0,
     propsForLabels: {
-      fontSize: 10,
-      fontWeight: "800",
-      translateX: -22,
-      translateY: 20,
+      fontSize: 0, // Cache complètement les labels sur les segments
     },
   };
 
   const chartData = {
-    labels: losses.map((l) =>
-      formatMovementType(l.movementType).length > 12
-        ? formatMovementType(l.movementType).substring(0, 10) + "..."
-        : formatMovementType(l.movementType)
-    ),
+    labels: [] as string[], // Aucun label/texte sur le donut
     data: losses.map((l) =>
       totalLossValue > 0 ? l.totalValue / totalLossValue : 0
     ),
-    colors: losses.map(
-      (_, i) =>
-        [
-          "#FF1E1E",
-          "#FF453A",
-          "#FF6B6B",
-          "#FF3333",
-          "#FF1744",
-          "#F50057",
-          "#D50000",
-          "#C62828",
-        ][i % 8]
-    ),
+    colors: losses.map((_, i) => getColorForIndex(i)),
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.chartCard, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#FF1E1E" />
+        <Text style={styles.loadingText}>Chargement des données...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.chartCard, styles.errorContainer]}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  if (losses.length === 0) {
+    return (
+      <View style={[styles.chartCard, styles.noDataContainer]}>
+        <Text style={styles.noDataText}>Aucune perte enregistrée</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.chartCard}>
@@ -166,127 +177,99 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
         <Text style={styles.title}>Pertes d&apos;inventaire par type</Text>
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF1E1E" />
-          <Text style={styles.loadingText}>Chargement des données...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : losses.length === 0 ? (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>Aucune perte enregistrée</Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.chartContainer}>
-            <ProgressChart
-              data={chartData}
-              width={width - 64}
-              height={280}
-              strokeWidth={20}
-              radius={44}
-              chartConfig={chartConfig}
-              hideLegend={false}
-              style={styles.chart}
-            />
+      {/* Cercle (donut) seul */}
+      <View style={styles.chartContainer}>
+        <ProgressChart
+          data={chartData}
+          width={width - 64}
+          height={280}
+          strokeWidth={20}
+          radius={44}
+          chartConfig={chartConfig}
+          hideLegend={true}
+          style={styles.chart}
+        />
+      </View>
 
-            <View style={styles.donutCenter}>
-              <View style={styles.donuContainer}>
-                <Text style={styles.donutCenterLabel}>
-                  Valeur totale perdue :
+      {/* TOTAL PERDU EN DESSOUS DU CERCLE */}
+      <View style={styles.totalContainer}>
+        <Text style={styles.totalLabel}>Valeur totale perdue :</Text>
+        <Text style={styles.totalValue}>
+          {formatMoney(totalLossValue, symbol)}
+        </Text>
+      </View>
+
+      {/* Liste détaillée */}
+      <ScrollView style={styles.listContainer}>
+        {losses.map((loss, index) => {
+          const percentage =
+            totalLossValue > 0 ? (loss.totalValue / totalLossValue) * 100 : 0;
+          const itemColor = getColorForIndex(index);
+
+          return (
+            <View key={loss.movementType + index} style={styles.lossItem}>
+              <View style={styles.lossLeft}>
+                <View
+                  style={[
+                    styles.colorIndicator,
+                    { backgroundColor: itemColor },
+                  ]}
+                />
+                <View style={styles.lossInfo}>
+                  <Text style={styles.lossType}>
+                    {formatMovementType(loss.movementType)}
+                  </Text>
+                  <View style={styles.progressBackground}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        {
+                          width: `${Math.min(percentage, 100)}%`,
+                          backgroundColor: itemColor,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.lossRight}>
+                <Text style={styles.lossValue}>
+                  {formatMoney(loss.totalValue, symbol)}
                 </Text>
-                <Text style={styles.donutCenterValue}>
-                  {formatMoney(totalLossValue, symbol)}
+                <Text style={[styles.lossPercentage, { color: itemColor }]}>
+                  {percentage.toFixed(1)}%
+                </Text>
+                <Text style={styles.lossQuantity}>
+                  {loss.totalQuantity} unité
+                  {loss.totalQuantity > 1 ? "s" : ""}
                 </Text>
               </View>
             </View>
-          </View>
-
-          <ScrollView style={styles.listContainer}>
-            {losses.map((loss, index) => {
-              const percentage =
-                totalLossValue > 0
-                  ? (loss.totalValue / totalLossValue) * 100
-                  : 0;
-              const itemColor = [
-                "#FF1E1E",
-                "#FF453A",
-                "#FF6B6B",
-                "#FF3333",
-                "#FF1744",
-                "#F50057",
-                "#D50000",
-                "#C62828",
-              ][index % 8];
-
-              return (
-                <View key={index} style={styles.lossItem}>
-                  <View style={styles.lossLeft}>
-                    <View
-                      style={[
-                        styles.colorIndicator,
-                        { backgroundColor: itemColor },
-                      ]}
-                    />
-                    <View style={styles.lossInfo}>
-                      <Text style={styles.lossType}>
-                        {formatMovementType(loss.movementType)}
-                      </Text>
-                      <View style={styles.progressBackground}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            {
-                              width: `${percentage}%`,
-                              backgroundColor: itemColor,
-                            },
-                          ]}
-                        />
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles.lossRight}>
-                    <Text style={styles.lossValue}>
-                      {formatMoney(loss.totalValue, symbol)}
-                    </Text>
-                    <Text style={[styles.lossPercentage, { color: itemColor }]}>
-                      {percentage.toFixed(1)}%
-                    </Text>
-                    <Text style={styles.lossQuantity}>
-                      {loss.totalQuantity} unité
-                      {loss.totalQuantity > 1 ? "s" : ""}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </ScrollView>
-        </>
-      )}
+          );
+        })}
+      </ScrollView>
     </View>
   );
 };
+
 const styles = StyleSheet.create({
-  header: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
   chartCard: {
     backgroundColor: "#fff",
     marginBottom: 16,
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
     borderWidth: 1,
     borderColor: "#FF1E1E",
-    elevation: 3,
+    elevation: 4,
     shadowColor: "#FF1E1E",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 20,
   },
   title: {
     fontSize: 18,
@@ -295,48 +278,40 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     alignItems: "center",
-    marginVertical: 10,
-    position: "relative",
+    marginBottom: 20,
   },
   chart: {
     borderRadius: 16,
   },
-  donutCenter: {
-    position: "absolute",
-    width: width - 64,
-    height: 280,
+  // TOTAL EN DESSOUS DU CERCLE
+  totalContainer: {
     alignItems: "center",
-    justifyContent: "center",
+    marginBottom: 24,
+    paddingVertical: 12,
+    backgroundColor: "#fff0f0",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFCCCC",
   },
-  donuContainer: {
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    top: "70%",
-    right: "-15%",
-    transform: [{ translateX: -50 }, { translateY: -50 }],
-  },
-  donutCenterLabel: {
-    fontSize: 18,
+  totalLabel: {
+    fontSize: 15,
     color: "#666",
-    fontWeight: "800",
+    fontWeight: "600",
   },
-  donutCenterValue: {
-    fontSize: 20,
+  totalValue: {
+    fontSize: 26,
     fontWeight: "800",
-    color: "#b90707ff",
-    marginLeft: 6,
+    color: "#c00",
+    marginTop: 4,
   },
   listContainer: {
     maxHeight: 400,
-    marginTop: 20,
   },
   lossItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
@@ -348,9 +323,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   colorIndicator: {
-    width: 10,
-    height: 44,
-    borderRadius: 5,
+    width: 12,
+    height: 48,
+    borderRadius: 6,
   },
   lossInfo: {
     flex: 1,
@@ -362,7 +337,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   progressBackground: {
-    height: 7,
+    height: 8,
     backgroundColor: "#F3F4F6",
     borderRadius: 4,
     overflow: "hidden",
@@ -373,50 +348,51 @@ const styles = StyleSheet.create({
   },
   lossRight: {
     alignItems: "flex-end",
+    minWidth: 110,
   },
   lossValue: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#312b2bff",
+    color: "#312b2b",
   },
   lossPercentage: {
     fontSize: 14,
     fontWeight: "700",
-    marginTop: 4,
+    marginTop: 2,
   },
   lossQuantity: {
     fontSize: 12,
     color: "#888",
-    marginTop: 4,
+    marginTop: 2,
   },
   loadingContainer: {
-    height: 280,
+    height: 380,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: 16,
     color: "#666",
-    fontSize: 14,
+    fontSize: 15,
   },
   errorContainer: {
-    height: 280,
+    height: 380,
     justifyContent: "center",
     alignItems: "center",
   },
   errorText: {
     color: "#EF4444",
-    fontSize: 15,
+    fontSize: 16,
     textAlign: "center",
   },
   noDataContainer: {
-    height: 280,
+    height: 380,
     justifyContent: "center",
     alignItems: "center",
   },
   noDataText: {
     color: "#999",
-    fontSize: 15,
+    fontSize: 16,
     fontStyle: "italic",
   },
 });
