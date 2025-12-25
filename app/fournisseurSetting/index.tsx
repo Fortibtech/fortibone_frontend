@@ -125,6 +125,7 @@ const SettingsMenu: React.FC = () => {
         position: "bottom",
         visibilityTime: 3000,
       });
+      router.replace("/");
     } catch (error) {
       console.error("❌ Erreur lors de la déconnexion :", error);
 
@@ -144,6 +145,7 @@ const SettingsMenu: React.FC = () => {
         text2: "Déconnexion forcée appliquée.",
         position: "bottom",
       });
+      router.replace("/");
     } finally {
       router.replace("/");
     }

@@ -64,10 +64,29 @@ const HomePage: React.FC = () => {
   // Date picker
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
-
   // Refs
   const analyticsLoadingRef = useRef(false);
   const mountedRef = useRef(true);
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      const all = await BusinessesService.getBusinesses();
+      setBusinesses(all);
+
+      if (!business && all.length > 0) {
+        const firstLivreur = all.find((b) => b.type === "COMMERCANT") || all[0];
+        setBusiness(firstLivreur);
+        await BusinessesService.selectBusiness(firstLivreur);
+      }
+    } catch (e) {
+      Alert.alert("Erreur", "Impossible de charger vos données livreur.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    loadInitialData();
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -179,32 +198,6 @@ const HomePage: React.FC = () => {
     return { startDate, endDate };
   }, [period, customStartDate, customEndDate]);
 
-  const loadInitialData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const all = await BusinessesService.getBusinesses();
-
-      if (!mountedRef.current) return;
-
-      setBusinesses(all);
-
-      if (!business && all.length > 0) {
-        const first = all[0];
-        setBusiness(first);
-        await BusinessesService.selectBusiness(first);
-      }
-    } catch (error) {
-      if (mountedRef.current) {
-        console.error("Erreur chargement entreprises:", error);
-        Alert.alert("Erreur", "Impossible de charger les entreprises");
-      }
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [business, setBusiness]);
-
   const loadAnalytics = useCallback(async () => {
     if (!business?.id || analyticsLoadingRef.current) return;
 
@@ -242,10 +235,6 @@ const HomePage: React.FC = () => {
     }
   }, [business?.id, period, getPeriodDates]);
 
-  useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
-
   const hasRedirectedRef = useRef(false);
   useEffect(() => {
     if (!business?.type || hasRedirectedRef.current) return;
@@ -282,12 +271,12 @@ const HomePage: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadInitialData();
+
     if (business?.id) {
       await loadAnalytics();
     }
     setRefreshing(false);
-  }, [loadInitialData, loadAnalytics, business?.id]);
+  }, [loadAnalytics, business?.id]);
 
   const handleBusinessSelect = useCallback(
     async (selected: Business) => {
@@ -422,6 +411,7 @@ const HomePage: React.FC = () => {
                 </View>
               ) : (
                 <View style={styles.cardsRow}>
+                  {/* Carte CA - prend plus de place à gauche */}
                   <View style={[styles.overviewCard, styles.cardYellow]}>
                     <View style={styles.cardIcon}>
                       <Image
@@ -429,7 +419,7 @@ const HomePage: React.FC = () => {
                         style={styles.cardEmoji}
                       />
                     </View>
-                    <View>
+                    <View style={styles.cardContent}>
                       <Text style={styles.cardLabel}>
                         CA {getPeriodLabel()}
                       </Text>
@@ -440,6 +430,7 @@ const HomePage: React.FC = () => {
                     </View>
                   </View>
 
+                  {/* Colonne droite avec les deux petites cartes */}
                   <View style={styles.cardFull}>
                     <View style={[styles.overviewCard, styles.cardPurple]}>
                       <View style={styles.cardIcon}>
@@ -448,7 +439,7 @@ const HomePage: React.FC = () => {
                           style={styles.cardEmojiDouble}
                         />
                       </View>
-                      <View>
+                      <View style={styles.cardContent}>
                         <Text style={styles.cardLabel}>
                           Commandes en attente
                         </Text>
@@ -466,7 +457,7 @@ const HomePage: React.FC = () => {
                           style={styles.cardEmojiDouble}
                         />
                       </View>
-                      <View>
+                      <View style={styles.cardContent}>
                         <Text style={styles.cardLabel}>Articles vendus</Text>
                         <Text style={styles.cardValue}>
                           {overallOverview?.totalSalesOrders || 0} article
@@ -480,7 +471,6 @@ const HomePage: React.FC = () => {
                 </View>
               )}
             </View>
-
             <AnalyticsCard
               id={business.id}
               currencyId={business.currencyId}
@@ -603,6 +593,107 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8F9FA",
     paddingBottom: 50,
   },
+  section: {
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    width: "100%",
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000",
+  },
+  filterIcon: {
+    padding: 8,
+  },
+
+  cardsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 12,
+    alignItems: "stretch",
+  },
+
+  overviewCard: {
+    borderRadius: 16,
+    padding: 16,
+    minHeight: 100,
+    flexDirection: "row", // Icône + texte côte à côte
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FFF", // fond par défaut
+  },
+
+  cardFull: {
+    flex: 1,
+    minWidth: 0, // indispensable pour le shrink sur petits écrans
+  },
+
+  cardIcon: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  cardContent: {
+    flex: 1, // prend tout l'espace restant
+    minWidth: 0, // permet au texte de se réduire si besoin
+  },
+
+  cardEmoji: {
+    width: 42,
+    height: 42,
+  },
+
+  cardEmojiDouble: {
+    width: 32,
+    height: 32,
+  },
+
+  cardLabel: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 4,
+  },
+
+  cardValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#000",
+    flexShrink: 1,
+  },
+
+  cardUnit: {
+    fontSize: 14,
+    color: "#666",
+  },
+
+  cardYellow: {
+    flex: 1.1, // la carte CA prend plus de place
+    backgroundColor: "#F1E9C7",
+    borderWidth: 2,
+    borderColor: "#FACC15",
+  },
+
+  cardPurple: {
+    backgroundColor: "#E5E9FF",
+    borderWidth: 2,
+    borderColor: "#506EFF",
+    marginBottom: 10,
+    padding: 12,
+  },
+
+  cardGreen: {
+    backgroundColor: "#F2FCF1",
+    borderWidth: 2,
+    borderColor: "#68F755",
+    padding: 12,
+  },
   avatarContainer: {
     borderRadius: 30,
     overflow: "hidden",
@@ -672,81 +763,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
   },
-  section: {
-    marginBottom: 24,
-    paddingHorizontal: 20,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-    width: "100%",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#000",
-  },
-  filterIcon: {
-    padding: 8,
-  },
-  cardsRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 12,
-  },
-  overviewCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
-    minHeight: 100,
-    justifyContent: "space-between",
-  },
-  cardFull: {
-    width: "50%",
-  },
-  cardYellow: {
-    backgroundColor: "#F1E9C7FF",
-    borderWidth: 2,
-    borderColor: "#FACC15",
-  },
-  cardPurple: {
-    backgroundColor: "#E5E9FFFF",
-    borderWidth: 2,
-    marginBottom: 10,
-    borderColor: "#506EFF",
-    padding: 10,
-  },
-  cardGreen: {
-    backgroundColor: "#F2FCF1FF",
-    borderWidth: 2,
-    borderColor: "#68F755",
-    padding: 10,
-  },
-  cardIcon: {},
-  cardEmoji: {
-    width: 42,
-    height: 42,
-  },
-  cardEmojiDouble: {
-    width: 24,
-    height: 24,
-  },
-  cardLabel: {
-    fontSize: 14,
-    color: "#666",
-    marginVertical: 12,
-  },
-  cardValue: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#000",
-  },
-  cardUnit: {
-    fontSize: 14,
-    color: "#666",
-  },
+
   noBusinessContainer: {
     alignItems: "center",
     justifyContent: "center",

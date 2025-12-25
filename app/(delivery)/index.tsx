@@ -278,39 +278,41 @@ const DeliveryHome: React.FC = () => {
         <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
 
         <View style={styles.cardsRow}>
+          {/* Carte Livraisons actives */}
           <View style={[styles.card, styles.cardYellow]}>
-            <View style={styles.cardIcon}>
-              <Ionicons name="bicycle" size={32} color="#854d0e" />
-            </View>
-            <View>
-              <Text style={styles.cardLabel}>Livraisons actives</Text>
-              <Text style={styles.cardValue}>{dashboard.activeDeliveries}</Text>
-            </View>
+            <Ionicons name="bicycle" size={48} color="#854d0e" />
+            <Text style={styles.cardLabel}>Livraisons actives</Text>
+            <Text
+              style={styles.cardValue}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {dashboard.activeDeliveries}
+            </Text>
           </View>
 
+          {/* Colonne droite : Demandes en attente + Total livraisons */}
           <View style={styles.rightColumn}>
             <View style={[styles.card, styles.cardPurple, styles.smallCard]}>
-              <View style={styles.cardIcon}>
-                <Ionicons name="time-outline" size={24} color="#4c1d95" />
-              </View>
-              <View>
-                <Text style={styles.cardLabel}> Demandes en{"\n"} attente</Text>
-                <Text style={styles.cardValue}>
-                  {dashboard.pendingRequests}
-                </Text>
-              </View>
+              <Ionicons name="time-outline" size={36} color="#4c1d95" />
+              <Text style={styles.cardLabel}>Demandes en attente</Text>
+              <Text style={styles.cardValue} numberOfLines={1}>
+                {dashboard.pendingRequests}
+              </Text>
             </View>
 
             <View style={[styles.card, styles.cardGreen, styles.smallCard]}>
-              <View style={styles.cardIcon}>
-                <Ionicons name="checkmark-done" size={24} color="#166534" />
-              </View>
-              <View>
-                <Text style={styles.cardLabel}>Total livraisons</Text>
-                <Text style={styles.cardValue}>
-                  {formatNumber(dashboard.totalDeliveries)}
-                </Text>
-              </View>
+              <Ionicons name="checkmark-done" size={36} color="#166534" />
+              <Text style={styles.cardLabel}>Total livraisons</Text>
+              <Text
+                style={styles.cardValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                {formatNumber(dashboard.totalDeliveries)}
+              </Text>
             </View>
           </View>
         </View>
@@ -377,37 +379,42 @@ const DeliveryHome: React.FC = () => {
 
   // ============ RENDER FINAL ============
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F8F9FA" }}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
 
+      {/* Header fixe en haut */}
       {renderHeader()}
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#00C851"]}
-          />
-        }
-      >
-        {business ? (
-          <>
-            {renderOnlineStatus()}
-            {renderOverview()}
-            {renderQuickActions()}
-          </>
-        ) : (
-          <View style={styles.noBusiness}>
-            <Ionicons name="bicycle-outline" size={90} color="#E0E0E0" />
-            <Text style={styles.noBusinessTitle}>Aucun profil livreur</Text>
-            <Text style={styles.noBusinessText}>
-              Sélectionnez ou créez un profil de livraison pour commencer
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+      {/* Contenu scrollable – prend tout l'espace entre header et tab bar */}
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 90 }} // Espace pour la tab navigation en bas
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#00C851"]}
+            />
+          }
+        >
+          {business ? (
+            <>
+              {renderOnlineStatus()}
+              {renderOverview()}
+              {renderQuickActions()}
+            </>
+          ) : (
+            <View style={styles.noBusiness}>
+              <Ionicons name="bicycle-outline" size={90} color="#E0E0E0" />
+              <Text style={styles.noBusinessTitle}>Aucun profil livreur</Text>
+              <Text style={styles.noBusinessText}>
+                Sélectionnez ou créez un profil de livraison pour commencer
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -416,7 +423,70 @@ export default DeliveryHome;
 
 // ====== STYLES ======
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8F9FA",
+  },
+  cardsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 12,
+  },
+
+  rightColumn: {
+    flex: 1,
+    gap: 12,
+    minWidth: 0, // essentiel pour éviter les débordements
+  },
+
+  card: {
+    flex: 1,
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center", // tout centré
+    justifyContent: "center",
+    gap: 12, // espace entre icône, label et valeur
+    borderWidth: 2,
+  },
+
+  smallCard: {
+    minHeight: 110,
+    justifyContent: "center",
+  },
+
+  cardYellow: {
+    flex: 1.5, // la carte principale prend plus de place
+    borderColor: "#FACC15",
+    backgroundColor: "#FFFBEB",
+  },
+
+  cardPurple: {
+    borderColor: "#8B5CF6",
+    backgroundColor: "#F3E8FF",
+  },
+
+  cardGreen: {
+    borderColor: "#10B981",
+    backgroundColor: "#F0FDF4",
+  },
+
+  cardLabel: {
+    fontSize: 14, // plus lisible (était 12)
+    color: "#666",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
+  cardValue: {
+    fontSize: 26, // garde la taille impactante
+    fontWeight: "700",
+    color: "#000",
+    textAlign: "center",
+    flexShrink: 1,
+    minWidth: 0,
+  },
+
   fullLoading: { flex: 1, justifyContent: "center", alignItems: "center" },
   fullLoadingText: { marginTop: 16, fontSize: 16, color: "#666" },
 
@@ -500,26 +570,6 @@ const styles = StyleSheet.create({
     color: "#000",
     marginBottom: 16,
   },
-
-  cardsRow: { flexDirection: "row", gap: 12 },
-  rightColumn: { flex: 1, gap: 12 },
-  card: {
-    flex: 1,
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 2,
-  },
-  smallCard: { minHeight: 90 },
-  cardYellow: { borderColor: "#FACC15", backgroundColor: "#FFFBEB" },
-  cardPurple: { borderColor: "#8B5CF6", backgroundColor: "#F3E8FF" },
-  cardGreen: { borderColor: "#10B981", backgroundColor: "#F0FDF4" },
-  cardIcon: { marginRight: 12 },
-  cardLabel: { fontSize: 12, color: "#666", marginBottom: 4 },
-  cardValue: { fontSize: 24, fontWeight: "700", color: "#000" },
 
   quickRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
   quickCard: {

@@ -83,15 +83,17 @@ const RestaurantHome: React.FC = () => {
       setBusinesses(all);
 
       if (!business && all.length > 0) {
-        setBusiness(all[0]);
+        const firstLivreur =
+          all.find((b) => b.type === "RESTAURATEUR") || all[0];
+        setBusiness(firstLivreur);
+        await BusinessesService.selectBusiness(firstLivreur);
       }
     } catch (e) {
-      Alert.alert("Erreur", "Impossible de charger vos commerces.");
+      Alert.alert("Erreur", "Impossible de charger vos données livreur.");
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -410,7 +412,9 @@ const RestaurantHome: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Ligne du haut : CA + colonne droite (En attente + En préparation) */}
         <View style={styles.cardsRow}>
+          {/* Carte CA principale */}
           <View style={[styles.card, styles.cardYellow]}>
             <View style={styles.cardIcon}>
               <Image
@@ -418,15 +422,21 @@ const RestaurantHome: React.FC = () => {
                 style={styles.emoji}
               />
             </View>
-            <View>
+            <View style={styles.cardContent}>
               <Text style={styles.cardLabel}>CA {getPeriodLabel()}</Text>
-              <Text style={styles.cardValue}>
+              <Text
+                style={styles.cardValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
                 {formatNumber(overview?.totalSalesAmount || 0)}{" "}
                 <Text style={styles.unit}>KMF</Text>
               </Text>
             </View>
           </View>
 
+          {/* Colonne droite : deux petites cartes */}
           <View style={styles.rightColumn}>
             <View style={[styles.card, styles.cardPurple, styles.smallCard]}>
               <View style={styles.cardIcon}>
@@ -435,9 +445,11 @@ const RestaurantHome: React.FC = () => {
                   style={styles.emojiSmall}
                 />
               </View>
-              <View>
+              <View style={styles.cardContent}>
                 <Text style={styles.cardLabel}>En attente</Text>
-                <Text style={styles.cardValue}>{pendingOrders}</Text>
+                <Text style={styles.cardValue} numberOfLines={1}>
+                  {pendingOrders}
+                </Text>
               </View>
             </View>
 
@@ -448,29 +460,33 @@ const RestaurantHome: React.FC = () => {
                   style={styles.emojiSmall}
                 />
               </View>
-              <View>
+              <View style={styles.cardContent}>
                 <Text style={styles.cardLabel}>En préparation</Text>
-                <Text style={styles.cardValue}>{inPreparation}</Text>
+                <Text style={styles.cardValue} numberOfLines={1}>
+                  {inPreparation}
+                </Text>
               </View>
             </View>
           </View>
         </View>
 
-        <View style={[styles.card, styles.cardGreen, { marginTop: 12 }]}>
+        {/* Carte pleine largeur : Prêtes à servir */}
+        <View style={[styles.card, styles.cardGreen, { marginTop: 16 }]}>
           <View style={styles.cardIcon}>
             <Image
               source={require("../../assets/images/logo/food-tray.png.png")}
               style={styles.emoji}
             />
           </View>
-          <View>
+          <View style={styles.cardContent}>
             <Text style={styles.cardLabel}>Prêtes à servir</Text>
-            <Text style={styles.cardValue}>
+            <Text style={styles.cardValue} numberOfLines={1}>
               {readyOrders} commande{readyOrders > 1 ? "s" : ""}
             </Text>
           </View>
         </View>
 
+        {/* Boutons */}
         <TouchableOpacity style={styles.ordersButton} onPress={openOrdersModal}>
           <Ionicons name="receipt" size={20} color="#7C3AED" />
           <Text style={styles.ordersButtonText}>
@@ -479,15 +495,6 @@ const RestaurantHome: React.FC = () => {
           </Text>
           <Ionicons name="chevron-forward" size={20} color="#7C3AED" />
         </TouchableOpacity>
-        {/* 
-        <TouchableOpacity
-          style={styles.statsButton}
-          onPress={() => setShowStatsChart(true)}
-        >
-          <Ionicons name="bar-chart" size={20} color="#6366F1" />
-          <Text style={styles.statsButtonText}>Statistiques graphiques</Text>
-          <Ionicons name="chevron-forward" size={20} color="#6366F1" />
-        </TouchableOpacity> */}
 
         <TouchableOpacity
           style={styles.statsButton}
@@ -789,6 +796,98 @@ const RestaurantHome: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  cardsRow: {
+    flexDirection: "row",
+    gap: 16,
+    marginBottom: 16,
+  },
+
+  rightColumn: {
+    flex: 1,
+    gap: 16,
+    minWidth: 0, // crucial pour le shrink
+  },
+
+  card: {
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16, // remplace justifyContent: "space-between"
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+
+  smallCard: {
+    minHeight: 100,
+  },
+
+  cardIcon: {
+    // plus de marginRight, on utilise gap dans card
+  },
+
+  cardContent: {
+    flex: 1, // prend tout l'espace restant
+    minWidth: 0, // autorise le rétrécissement
+  },
+
+  emoji: {
+    width: 48,
+    height: 48,
+  },
+
+  emojiSmall: {
+    width: 36, // un peu réduit pour gagner de la place
+    height: 36,
+  },
+
+  cardLabel: {
+    fontSize: 14, // augmenté un peu pour lisibilité (était 9 → trop petit !)
+    color: "#6B7280",
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+
+  cardValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#111827",
+    flexShrink: 1,
+  },
+
+  unit: {
+    fontSize: 18,
+    color: "#6B7280",
+    fontWeight: "600",
+  },
+
+  cardYellow: {
+    flex: 1.1, // la carte CA prend plus de place (équilibre visuel)
+    borderWidth: 1,
+    borderColor: "#FCD34D20",
+    backgroundColor: "#FEF3C7",
+  },
+
+  cardPurple: {
+    borderWidth: 1,
+    borderColor: "#A78BFA20",
+    backgroundColor: "#F9FAFB",
+  },
+
+  cardOrange: {
+    borderWidth: 1,
+    borderColor: "#FDBA7420",
+    backgroundColor: "#FEF3C7",
+  },
+
+  cardGreen: {
+    borderWidth: 1,
+    borderColor: "#10B98120",
+    backgroundColor: "#F0FDF4",
+  },
   container: {
     flex: 1,
     backgroundColor: "#FAFAFB",
@@ -858,48 +957,7 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   filterIcon: { padding: 8 },
-  cardsRow: { flexDirection: "row", gap: 16 },
-  rightColumn: { flex: 1, gap: 16 },
-  card: {
-    flex: 1,
-    borderRadius: 20,
-    padding: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  smallCard: { minHeight: 100 },
-  cardYellow: {
-    borderWidth: 1,
-    borderColor: "#FCD34D20",
-    backgroundColor: "#FEF3C7",
-  },
-  cardPurple: {
-    borderWidth: 1,
-    borderColor: "#A78BFA20",
-    backgroundColor: "#F9FAFB",
-  },
-  cardOrange: {
-    borderWidth: 1,
-    borderColor: "#FDBA7420",
-    backgroundColor: "#FEF3C7",
-  },
-  cardGreen: {
-    borderWidth: 1,
-    borderColor: "#10B98120",
-    backgroundColor: "#F0FDF4",
-  },
-  cardIcon: { marginRight: 16 },
-  emoji: { width: 48, height: 48 },
-  emojiSmall: { width: 32, height: 32 },
-  cardLabel: { fontSize: 9, color: "#6B7280", fontWeight: "500" },
-  cardValue: { fontSize: 24, fontWeight: "800", color: "#111827" },
-  unit: { fontSize: 16, color: "#6B7280", fontWeight: "600" },
+
   ordersButton: {
     marginTop: 20,
     flexDirection: "row",
