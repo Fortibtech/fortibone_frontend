@@ -255,25 +255,14 @@ const HomePage: React.FC = () => {
       const all = await BusinessesService.getBusinesses();
       setBusinesses(all);
 
-      if (business) {
-        if (business.type !== "FOURNISSEUR") {
-          redirectByBusinessType(business.type);
-          return;
-        }
-        return;
+      if (!business && all.length > 0) {
+        const firstLivreur =
+          all.find((b) => b.type === "FOURNISSEUR") || all[0];
+        setBusiness(firstLivreur);
+        await BusinessesService.selectBusiness(firstLivreur);
       }
-
-      if (all.length > 0) {
-        const first = all.find((b) => b.type === "FOURNISSEUR") || all[0];
-        await BusinessesService.selectBusiness(first);
-        setBusiness(first);
-
-        if (first.type !== "FOURNISSEUR") {
-          redirectByBusinessType(first.type);
-        }
-      }
-    } catch (error) {
-      Alert.alert("Erreur", "Impossible de charger les entreprises");
+    } catch (e) {
+      Alert.alert("Erreur", "Impossible de charger vos données livreur.");
     } finally {
       setLoading(false);
     }
@@ -627,25 +616,62 @@ const HomePage: React.FC = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <Text style={[styles.summaryValue, { color: "#FBBF24" }]}>
+          {/* Carte CA du mois */}
+          <View style={[styles.summaryCard, styles.summaryCardLarge]}>
+            <Text
+              style={[styles.summaryValue, { color: "#FBBF24" }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
               {monthlyOverview
                 ? formatCurrency(monthlyOverview.totalSalesAmount)
                 : "--"}
             </Text>
-            <Text style={styles.summaryLabel}>CA {getPeriodLabel()}</Text>
+            <Text
+              style={styles.summaryLabel}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              CA {getPeriodLabel()}
+            </Text>
           </View>
-          <View style={styles.summaryCardCA}>
-            <Text style={[styles.summaryValue, { color: "#8B5CF6" }]}>
+
+          {/* Carte Commandes en attente */}
+          <View style={[styles.summaryCard, styles.summaryCardCA]}>
+            <Text
+              style={[styles.summaryValue, { color: "#8B5CF6" }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {pendingOrdersCount}
             </Text>
-            <Text style={styles.summaryLabel}>Commandes en attente</Text>
+            <Text
+              style={styles.summaryLabel}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              Commandes en attente
+            </Text>
           </View>
+
+          {/* Carte Stocks faibles */}
           <View style={styles.summaryCard}>
-            <Text style={[styles.summaryValue, { color: "#EC4899" }]}>
+            <Text
+              style={[styles.summaryValue, { color: "#EC4899" }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {inventoryData ? inventoryData.productsLowStock.length : 0}
             </Text>
-            <Text style={styles.summaryLabel}>Stocks faibles</Text>
+            <Text
+              style={styles.summaryLabel}
+              numberOfLines={2}
+              ellipsizeMode="tail"
+            >
+              Stocks faibles
+            </Text>
           </View>
         </View>
 
@@ -1242,6 +1268,56 @@ const HomePage: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  summaryRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+  },
+
+  summaryCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D8D8D8",
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    minHeight: 100,
+  },
+
+  summaryCardLarge: {
+    minHeight: 120,
+  },
+
+  summaryCardCA: {
+    minHeight: 120,
+  },
+
+  summaryValue: {
+    fontSize: 26,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+    maxWidth: "100%", // limite la largeur à celle de la carte
+    flexShrink: 1,
+    minWidth: 0,
+  },
+
+  summaryLabel: {
+    fontSize: 13,
+    color: "#6B7280",
+    textAlign: "center",
+    maxWidth: "90%", // un peu plus étroit pour éviter les débordements sur les mots longs
+    flexShrink: 1,
+    minWidth: 0,
+  },
+
   pd: {
     marginHorizontal: 20,
   },
@@ -1387,56 +1463,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 8,
   },
-  summaryRow: {
-    flexDirection: "row",
-    gap: 7,
-    marginBottom: 16,
-    justifyContent: "center",
-    alignContent: "center",
-    alignItems: "center",
-  },
-  summaryCardCA: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 120,
-    backgroundColor: "#FFFFFF",
-    borderColor: "#D8D8D8FF",
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  summaryCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    height: 100,
-    backgroundColor: "#FFFFFF",
-    borderColor: "#D8D8D8FF",
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  summaryValue: {
-    fontSize: 26,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  summaryLabel: {
-    fontSize: 13,
-    color: "#6B7280",
-    textAlign: "center",
-  },
+
   analyticsButton: {
     marginBottom: 12,
     flexDirection: "row",
