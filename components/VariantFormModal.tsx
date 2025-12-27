@@ -138,13 +138,13 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
       errors.sku = "Le SKU est obligatoire"
     }
 
-    if (!formData.price.trim() && business?.type=="FOURNISSEUR" || !formData.price.trim() && business?.type=="COMMERCANT") {
+    if (!formData.price.trim() ) {
       errors.price = "Le prix est obligatoire"
     } else if (isNaN(Number.parseFloat(formData.price)) || Number.parseFloat(formData.price) <= 0) {
       errors.price = "Le prix doit être un nombre positif"
     }
 
-    if (!formData.purchasePrice.trim()) {
+    if (!formData.purchasePrice.trim() && business?.type !=="FOURNISSEUR" || !formData.price.trim() && business?.type !=="COMMERCANT") {
       errors.purchasePrice = "Le prix d'achat est obligatoire"
     } else if (isNaN(Number.parseFloat(formData.purchasePrice)) || Number.parseFloat(formData.purchasePrice) <= 0) {
       errors.purchasePrice = "Le prix d'achat doit être un nombre positif"
@@ -285,7 +285,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
         <View key={attribute.id} style={styles.formGroup}>
           <Text style={styles.label}>
             {attribute.name}
-            {attribute.required && <Text style={styles.required}> *</Text>}
+             <Text style={styles.required}> *</Text>
           </Text>
           
           <TouchableOpacity
@@ -378,7 +378,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
           <View key={attribute.id} style={styles.formGroup}>
             <Text style={styles.label}>
               {attribute.name}
-              {attribute.required && <Text style={styles.required}> *</Text>}
+               <Text style={styles.required}> *</Text>
             </Text>
             <View style={styles.selectContainer}>
               {attribute.options?.map((option) => (
@@ -403,7 +403,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
           <View key={attribute.id} style={styles.formGroup}>
             <Text style={styles.label}>
               {attribute.name}
-              {attribute.required && <Text style={styles.required}> *</Text>}
+               <Text style={styles.required}> *</Text>
             </Text>
             <TextInput
               style={[styles.input, error && styles.inputError]}
@@ -422,7 +422,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
           <View key={attribute.id} style={styles.formGroup}>
             <Text style={styles.label}>
               {attribute.name}
-              {attribute.required && <Text style={styles.required}> *</Text>}
+               <Text style={styles.required}> *</Text>
             </Text>
             <View style={styles.colorInputContainer}>
               <TextInput
@@ -443,7 +443,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
           <View key={attribute.id} style={styles.formGroup}>
             <Text style={styles.label}>
               {attribute.name}
-              {attribute.required && <Text style={styles.required}> *</Text>}
+               <Text style={styles.required}> *</Text>
             </Text>
             <TextInput
               style={[styles.input, error && styles.inputError]}
@@ -565,7 +565,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
 
                 <View style={[styles.formGroup, styles.halfWidth]}>
                   <Text style={styles.label}>
-                    Prix d'achat {business && business?.type === "FOURNISSEUR" || business && business?.type === "COMMERCANT" ? <Text style={styles.required}>*</Text> : null}
+                    Prix d'achat {business && business?.type !== "FOURNISSEUR" || business && business?.type !== "COMMERCANT" ? <Text style={styles.required}>*</Text> : null}
                   </Text>
                   <TextInput
                     style={[styles.input, formErrors.purchasePrice && styles.inputError]}
