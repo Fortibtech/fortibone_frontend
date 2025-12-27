@@ -21,6 +21,7 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // === TYPES ===
@@ -166,54 +167,58 @@ const GenderSelectionModal: React.FC<GenderSelectionModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Sélectionnez le sexe</Text>
-          <View style={styles.genderOptions}>
-            {["Masculin", "Féminin"].map((gender) => (
-              <TouchableOpacity
-                key={gender}
-                style={[
-                  styles.genderOption,
-                  tempSelectedGender === gender && styles.selectedOption,
-                ]}
-                onPress={() => setTempSelectedGender(gender)}
-              >
-                <Text
-                  style={[
-                    styles.genderText,
-                    tempSelectedGender === gender && styles.selectedText,
-                  ]}
-                >
-                  {gender}
-                </Text>
-                <View
-                  style={[
-                    styles.radioButton,
-                    tempSelectedGender === gender && styles.radioButtonSelected,
-                  ]}
-                >
-                  {tempSelectedGender === gender && (
-                    <Ionicons name="checkmark" size={16} color="#fff" />
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.modalButtonContainer}>
-            <CustomButton
-              title="Enregistrer"
-              onPress={handleSave}
-              backgroundColor={tempSelectedGender ? "#00C851" : "#E0E0E0"}
-              textColor={tempSelectedGender ? "#fff" : "#999"}
-              width="100%"
-              height={40}
-              borderRadius={20}
-              fontSize={14}
-            />
-          </View>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Sélectionnez le sexe</Text>
+              <View style={styles.genderOptions}>
+                {["Masculin", "Féminin"].map((gender) => (
+                  <TouchableOpacity
+                    key={gender}
+                    style={[
+                      styles.genderOption,
+                      tempSelectedGender === gender && styles.selectedOption,
+                    ]}
+                    onPress={() => setTempSelectedGender(gender)}
+                  >
+                    <Text
+                      style={[
+                        styles.genderText,
+                        tempSelectedGender === gender && styles.selectedText,
+                      ]}
+                    >
+                      {gender}
+                    </Text>
+                    <View
+                      style={[
+                        styles.radioButton,
+                        tempSelectedGender === gender && styles.radioButtonSelected,
+                      ]}
+                    >
+                      {tempSelectedGender === gender && (
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.modalButtonContainer}>
+                <CustomButton
+                  title="Enregistrer"
+                  onPress={handleSave}
+                  backgroundColor={tempSelectedGender ? "#00C851" : "#E0E0E0"}
+                  textColor={tempSelectedGender ? "#fff" : "#999"}
+                  width="100%"
+                  height={40}
+                  borderRadius={20}
+                  fontSize={14}
+                />
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };
@@ -433,6 +438,7 @@ const validatePhoneNumber = (
     "+39": 9, // Italie
     "+32": 9, // Belgique
     "+41": 9, // Suisse
+    "+269": 7, // Comores
   };
 
   const expected = rules[code] || 9;
@@ -965,13 +971,18 @@ const styles = StyleSheet.create({
 
     justifyContent: "flex-end",
     alignItems: "center",
+    
+    backgroundColor: "rgba(0,0,0,0.4)",
+    // paddingBottom: 30,
   },
   modalContainer: {
     backgroundColor: "#fff",
-    borderRadius: 15,
+    // borderRadius: 15,
+    borderTopRightRadius: 15,
+    borderTopLeftRadius: 15,
     padding: 20,
-    width: "90%",
-    maxWidth: 350,
+    width: "100%",
+    // maxWidth: 350,
     elevation: 5,
   },
   modalTitle: {
