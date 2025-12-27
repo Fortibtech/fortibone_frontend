@@ -155,7 +155,7 @@ export default function DepositScreen() {
 
       Alert.alert(
         "Dépôt réussi !",
-        `${formattedAmount} XAF ont été ajoutés à votre portefeuille`,
+        `${formattedAmount} ont été ajoutés à votre portefeuille`,
         [{ text: "Terminé", onPress: () => router.back() }]
       );
     } catch (err: any) {
@@ -258,7 +258,7 @@ export default function DepositScreen() {
                         method === "KARTAPAY" && styles.tabTextActive,
                       ]}
                     >
-                      MVola / Orange Money
+                      KARTAPAY
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -288,7 +288,7 @@ export default function DepositScreen() {
                         style={[
                           styles.amountOptionText,
                           parseInt(amount) === val &&
-                            styles.amountOptionTextActive,
+                          styles.amountOptionTextActive,
                         ]}
                       >
                         {val.toLocaleString("fr-FR")}
@@ -338,7 +338,7 @@ export default function DepositScreen() {
             {method === "KARTAPAY" && (
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>
-                  Numéro MVola / Orange Money
+                  Numéro de téléphone
                 </Text>
                 <View style={styles.card}>
                   <TextInput
