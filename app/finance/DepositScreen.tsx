@@ -142,16 +142,16 @@ export default function DepositScreen() {
         },
       });
 
-      if (resp.data?.clientSecret) {
-        const { error } = await confirmPayment(resp.data.clientSecret, {
-          paymentMethodType: "Card",
-        });
+      // if (resp.data?.clientSecret) {
+      //   const { error } = await confirmPayment(resp.data.clientSecret, {
+      //     paymentMethodType: "Card",
+      //   });
 
-        if (error) {
-          Alert.alert("Paiement refusé", error.message || "Échec du paiement");
-          return;
-        }
-      }
+      //   if (error) {
+      //     Alert.alert("Paiement refusé", error.message || "Échec du paiement");
+      //     return;
+      //   }
+      // }
 
       Alert.alert(
         "Dépôt réussi !",
