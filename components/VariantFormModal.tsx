@@ -32,6 +32,7 @@ import {
   type ProductVariant,
   type UpdateVariantData,
 } from "@/api"
+import { useBusinessStore } from "@/store/businessStore"
 
 interface VariantFormModalProps {
   visible: boolean
@@ -46,7 +47,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
   const [loadingAttributes, setLoadingAttributes] = useState(true)
   const [categoryAttributes, setCategoryAttributes] = useState<CategoryAttribute[]>([])
   const [imageUri, setImageUri] = useState<string>("")
-
+  const business = useBusinessStore((state) => state.business);
   const [formData, setFormData] = useState({
     sku: "",
     barcode: "",
@@ -74,7 +75,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
       const attributes = await CategoryService.getCategoryAttributes(product.categoryId)
       setCategoryAttributes(attributes)
     } catch (error) {
-      console.error("Erreur lors du chargement des attributs:", error)
+      console.error("Erreur lors du chargemeknt des attributs:", error)
       Alert.alert("Erreur", "Impossible de charger les attributs de la catégorie")
     } finally {
       setLoadingAttributes(false)
@@ -137,7 +138,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
       errors.sku = "Le SKU est obligatoire"
     }
 
-    if (!formData.price.trim()) {
+    if (!formData.price.trim() && business?.type=="FOURNISSEUR" || !formData.price.trim() && business?.type=="COMMERCANT") {
       errors.price = "Le prix est obligatoire"
     } else if (isNaN(Number.parseFloat(formData.price)) || Number.parseFloat(formData.price) <= 0) {
       errors.price = "Le prix doit être un nombre positif"
@@ -564,7 +565,7 @@ export const VariantFormModal: React.FC<VariantFormModalProps> = ({ visible, pro
 
                 <View style={[styles.formGroup, styles.halfWidth]}>
                   <Text style={styles.label}>
-                    Prix d'achat <Text style={styles.required}>*</Text>
+                    Prix d'achat {business && business?.type === "FOURNISSEUR" || business && business?.type === "COMMERCANT" ? <Text style={styles.required}>*</Text> : null}
                   </Text>
                   <TextInput
                     style={[styles.input, formErrors.purchasePrice && styles.inputError]}

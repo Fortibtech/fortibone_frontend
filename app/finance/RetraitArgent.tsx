@@ -357,7 +357,7 @@ function WithdrawContent() {
             </View>
           )}
 
-          {method === "STRIPE" && (
+          {/* {method === "STRIPE" && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Carte de retrait</Text>
               <View style={styles.cardWrapper}>
@@ -378,7 +378,7 @@ function WithdrawContent() {
                 Délai : 2 à 7 jours ouvrés • Frais possibles selon votre banque
               </Text>
             </View>
-          )}
+          )} */}
         </ScrollView>
       </KeyboardAvoidingView>
 
