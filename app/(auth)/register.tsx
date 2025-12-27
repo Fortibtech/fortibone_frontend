@@ -521,6 +521,21 @@ const Register: React.FC = () => {
     return phoneValid;
   }, [formData, validateEmail, validatePassword, selectedCountry]);
 
+  const isPasswordValid = useMemo(() => {
+    return validatePassword(formData.motDePasse);
+  }, [formData.motDePasse, validatePassword]);
+
+  const formValid = useMemo(() => {
+    const baseValid =
+      Object.values(formData).every((v) => v.trim() !== "") &&
+      validateEmail(formData.email) &&
+      isPasswordValid; // Use memoized value
+
+    if (!baseValid) return false;
+
+    return validatePhoneNumber(formData.phoneNumber, selectedCountry);
+  }, [formData, validateEmail, isPasswordValid, selectedCountry]);
+
   const getPhoneCode = (country: Country): string => {
     return country.idd.root + country.idd.suffixes[0];
   };
@@ -839,24 +854,20 @@ const Register: React.FC = () => {
               <Text
                 style={[
                   styles.passwordInfo,
-                  formData.motDePasse &&
-                    !validatePassword(formData.motDePasse) &&
-                    styles.errorText,
+                  formData.motDePasse && !isPasswordValid && styles.errorText,
                 ]}
               >
                 Le mot de passe doit comporter au moins 8 caractères et inclure
                 des lettres majuscules, minuscules et chiffres
-                {formData.motDePasse &&
-                  !validatePassword(formData.motDePasse) &&
-                  " - Insuffisant"}
+                {formData.motDePasse && !isPasswordValid && " - Insuffisant"}
               </Text>
 
               <View style={styles.createButtonContainer}>
                 <CustomButton
                   title="Créer un compte"
                   onPress={handleCreateAccount}
-                  backgroundColor={isFormValid() ? "#00C851" : "#E0E0E0"}
-                  textColor={isFormValid() ? "#fff" : "#999"}
+                  backgroundColor={formValid ? "#00C851" : "#E0E0E0"}
+                  textColor={formValid ? "#fff" : "#999"}
                   width="100%"
                   height={50}
                   borderRadius={25}
