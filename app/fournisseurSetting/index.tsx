@@ -25,6 +25,7 @@ import {
   SelectedBusinessManager,
 } from "@/api";
 import { useBusinessStore } from "@/store/businessStore";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface MenuItem {
   id: string;
@@ -228,7 +229,7 @@ const SettingsMenu: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <SafeAreaView style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
@@ -237,7 +238,7 @@ const SettingsMenu: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Menu</Text>
         <View style={styles.placeholder} />
-      </View>
+      </SafeAreaView>
 
       <ScrollView style={styles.content}>
         <View style={styles.profileCard}>
@@ -344,7 +345,6 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#F8F1F1FF",
-    height: 90,
   },
   backButton: {
     borderWidth: 1,
