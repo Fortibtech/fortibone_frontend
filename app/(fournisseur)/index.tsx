@@ -262,7 +262,7 @@ const HomePage: React.FC = () => {
         await BusinessesService.selectBusiness(firstLivreur);
       }
     } catch (e) {
-      Alert.alert("Erreur", "Impossible de charger vos données livreur.");
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -384,7 +384,8 @@ const HomePage: React.FC = () => {
       Alert.alert("Succès", `"${selected.name}" sélectionné`);
       redirectByBusinessType(selected.type);
     } catch (error) {
-      Alert.alert("Erreur", "Impossible de changer d'entreprise");
+      console.log(error);
+      // Alert.alert("Erreur", "Impossible de changer d'entreprise");
     }
   };
 
@@ -675,7 +676,7 @@ const HomePage: React.FC = () => {
           </View>
         </View>
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.analyticsButton}
           onPress={() =>
             business && router.push(`(analytics)?id=${business.id}`)
@@ -687,7 +688,7 @@ const HomePage: React.FC = () => {
           />
           <Text style={styles.analyticsButtonText}>Analytics Avancées</Text>
           <Ionicons name="chevron-forward" size={24} color="#8B5CF6" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         <TouchableOpacity
           style={styles.analyticsButton}
           onPress={() => router.push("/(carriers)/")}

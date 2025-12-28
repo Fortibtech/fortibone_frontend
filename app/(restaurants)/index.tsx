@@ -89,7 +89,8 @@ const RestaurantHome: React.FC = () => {
         await BusinessesService.selectBusiness(firstLivreur);
       }
     } catch (e) {
-      Alert.alert("Erreur", "Impossible de charger vos données livreur.");
+      console.log(e);
+      // Alert.alert("Erreur", "Impossible de charger vos données livreur.");
     } finally {
       setLoading(false);
     }
