@@ -31,18 +31,13 @@ const TotalExpensesCard: React.FC<Props> = ({
         status: "COMPLETED", // indispensable pour éviter le 400 sur status
         // type: "WITHDRAWAL" ou "PAYMENT" si tu veux être plus précis (optionnel)
       });
-
       const txs = response?.data || [];
-
       const total = txs
-        .filter(
-          (t: any) => !["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
-        )
+        .filter((t: any) => !["REFUND", "ADJUSTMENT"].includes(t.provider))
         .reduce(
           (sum: number, t: any) => sum + Math.abs(Number(t.amount || 0)),
           0
         );
-
       setTotalExpenses(total);
     } catch (err) {
       console.error("Erreur chargement dépenses", err);

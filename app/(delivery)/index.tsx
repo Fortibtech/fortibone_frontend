@@ -53,7 +53,7 @@ const DeliveryHome: React.FC = () => {
         await BusinessesService.selectBusiness(firstLivreur);
       }
     } catch (e) {
-      Alert.alert("Erreur", "Impossible de charger vos données livreur.");
+      console.log(e);
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,6 @@ const DeliveryHome: React.FC = () => {
       setDashboard(data);
     } catch (error) {
       console.error("Erreur dashboard :", error);
-      Alert.alert("Erreur", "Impossible de charger les statistiques.");
     }
   };
 
@@ -126,7 +125,7 @@ const DeliveryHome: React.FC = () => {
         if (target) router.replace(target);
       }, 100);
     } catch (error) {
-      Alert.alert("Erreur", "Impossible de changer d'entreprise");
+      console.log(error);
     }
   };
 
@@ -160,10 +159,6 @@ const DeliveryHome: React.FC = () => {
       });
     } catch (error) {
       console.error("❌ Erreur lors du changement de statut :", error);
-      Alert.alert(
-        "Erreur",
-        "Impossible de changer votre statut. Réessayez plus tard."
-      );
     } finally {
       setUpdatingStatus(false);
     }
@@ -505,7 +500,7 @@ const styles = StyleSheet.create({
   notificationBadge: {
     position: "absolute",
     top: 6,
-    right: 6,
+    right: 50,
     backgroundColor: "#FF3B30",
     borderRadius: 10,
     minWidth: 18,

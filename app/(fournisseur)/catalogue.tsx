@@ -7,7 +7,6 @@ import { ProductListScreen } from "@/components/produits/ProductListScreens";
 
 const Produits = () => {
   const business = useBusinessStore((state) => state.business);
-
   const [activeTab, setActiveTab] = useState<"inventory" | "products">(
     "products"
   );

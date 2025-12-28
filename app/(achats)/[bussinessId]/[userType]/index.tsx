@@ -112,7 +112,7 @@ export default function SuppliersMarket() {
           categoryId: selectedCategoryId || undefined, // ← Filtre catégorie
           sortBy: getSortByParam(),
           page: pageNum,
-          limit: 20,
+          limit: 100,
         });
 
         setProducts((prev) =>

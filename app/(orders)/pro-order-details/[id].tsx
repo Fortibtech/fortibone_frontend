@@ -1,6 +1,6 @@
 // app/(app)/orders/[id].tsx  (ou ton chemin actuel)
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -415,7 +415,9 @@ export default function OrderDetails() {
           })}
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{total} {symbol}</Text>
+            <Text style={styles.totalValue}>
+              {total} {symbol}
+            </Text>
           </View>
         </View>
 
