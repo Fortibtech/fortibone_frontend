@@ -1,6 +1,8 @@
 import EditBusinessCommercant from "@/components/update/CommercantComponent";
+import EditBusinessLivreur from "@/components/update/DeliveryComposant";
 import EditBusinessFournisseur from "@/components/update/FournisseurComponent";
-import RestaurateurComponent from "@/components/update/RestaurateurComponent";
+import EditBusinessRestaurateur from "@/components/update/RestaurateurComponent"; // ← Assure-toi que le nom correspond à ton fichier
+
 import { useLocalSearchParams } from "expo-router";
 
 import { StyleSheet, View, Text } from "react-native";
@@ -8,7 +10,7 @@ import { StyleSheet, View, Text } from "react-native";
 const Index = () => {
   const { businessId, type } = useLocalSearchParams<{
     businessId: string;
-    type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+    type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR" | "LIVREUR"; // ← LIVREUR ajouté
   }>();
 
   const renderComponent = () => {
@@ -18,9 +20,17 @@ const Index = () => {
       case "FOURNISSEUR":
         return <EditBusinessFournisseur id={businessId} />;
       case "RESTAURATEUR":
-        return <RestaurateurComponent id={businessId} />;
+        return <EditBusinessRestaurateur id={businessId} />;
+      case "LIVREUR":
+        return <EditBusinessLivreur id={businessId} />;
       default:
-        return <Text>Type inconnu</Text>;
+        return (
+          <View style={styles.fallbackContainer}>
+            <Text style={styles.fallbackText}>
+              Type de commerce inconnu : {type}
+            </Text>
+          </View>
+        );
     }
   };
 
@@ -30,7 +40,18 @@ const Index = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: "#fff",
+  },
+  fallbackContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 40,
+  },
+  fallbackText: {
+    fontSize: 18,
+    color: "#666",
+    textAlign: "center",
   },
 });
 
