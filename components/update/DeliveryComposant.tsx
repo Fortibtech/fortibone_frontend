@@ -1,4 +1,5 @@
-// app/(professionnel)/business/edit-restaurateur/[id].tsx
+// app/(professionnel)/business/edit-livreur/[id].tsx
+
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -22,10 +23,9 @@ import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { BusinessesService, Currency, CurrencyService } from "@/api";
-
 import { router } from "expo-router";
 import BackButtonWithClear from "@/components/Admin/BackButtonWithClear";
-import { getAllSectores, Sector } from "@/api/sector/sectorApi";
+import { Sector, getAllSectores } from "@/api/sector/sectorApi";
 
 type SearchResult = {
   latitude: number;
@@ -33,11 +33,26 @@ type SearchResult = {
   formattedAddress: string;
 };
 
+const VEHICLE_TYPES = [
+  "SCOOTER",
+  "MOTO",
+  "VOITURE",
+  "CAMIONNETTE",
+  "VELO",
+] as const;
+const EXPERIENCE_LEVELS = ["DÉBUTANT", "CONFIRMÉ", "EXPERT"] as const;
+const AVAILABILITY_ZONES = [
+  "Centre-ville",
+  "Banlieue",
+  "Tout",
+  "Zone spécifique",
+] as const;
+
 interface Props {
   id: string;
 }
 
-const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
+const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [business, setBusiness] = useState<any>(null);
@@ -51,8 +66,10 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
   // Modales
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [sectorModalVisible, setSectorModalVisible] = useState(false);
-  const [capacityModalVisible, setCapacityModalVisible] = useState(false);
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
+  const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
+  const [experienceModalVisible, setExperienceModalVisible] = useState(false);
+  const [zoneModalVisible, setZoneModalVisible] = useState(false);
 
   // Carte
   const [tempMarker, setTempMarker] = useState<{
@@ -92,10 +109,10 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
         longitude: biz.longitude || 9.7679,
       });
 
-      // Chargement des secteurs RESTAURATEUR
+      // Chargement des secteurs LIVREUR
       await loadSectors(biz.sectorId);
     } catch (err) {
-      Alert.alert("Erreur", "Impossible de charger le restaurant");
+      Alert.alert("Erreur", "Impossible de charger le profil livreur");
       router.back();
     } finally {
       setLoading(false);
@@ -105,7 +122,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
   const loadSectors = async (currentSectorId?: string) => {
     try {
       setSectorsLoading(true);
-      const fetched = await getAllSectores("RESTAURATEUR");
+      const fetched = await getAllSectores("LIVREUR");
       setSectors(fetched);
 
       if (currentSectorId) {
@@ -181,6 +198,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
   const validateAndSave = async () => {
     const errors: Record<string, string> = {};
     if (!business.name?.trim()) errors.name = "Nom requis";
+    if (!business.phone?.trim()) errors.phone = "Téléphone requis";
     if (!business.address?.trim()) errors.address = "Adresse requise";
     if (!business.description?.trim() || business.description.length < 20)
       errors.description = "Description de 20+ caractères requise";
@@ -189,7 +207,6 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
       errors.location = "Position GPS requise";
     if (!selectedSector?.id && !business.sectorId)
       errors.sector = "Secteur requis";
-    if (!business.capacity) errors.capacity = "Capacité requise";
 
     setValidationErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -199,18 +216,23 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
       const payload: any = {
         name: business.name.trim(),
         description: business.description.trim(),
-        type: "RESTAURATEUR",
+        type: "LIVREUR",
         address: business.address.trim(),
         latitude: Number(business.latitude),
         longitude: Number(business.longitude),
         currencyId: business.currencyId,
         sectorId: selectedSector?.id || business.sectorId,
-        postalCode: business.postalCode?.trim() || null,
-        websiteUrl: business.websiteUrl?.trim() || null,
-        phoneNumber: business.phone || null,
-        capacity: business.capacity,
-        deliveryEnabled: business.deliveryEnabled ?? false,
-        openingHours: business.openingHours || null,
+        postalCode: business.postalCode || null,
+        phoneNumber: business.phone?.trim() || null,
+        // Champs spécifiques livreur
+        vehicleType: business.vehicleType || null,
+        licensePlate: business.licensePlate?.trim() || null,
+        experienceLevel: business.experienceLevel || null,
+        baseZone: business.baseZone || null,
+        maxRadiusKm: Number(business.maxRadiusKm) || null,
+        availabilityHours: business.availabilityHours || null,
+        availableWeekends: business.availableWeekends ?? false,
+        hasInsurance: business.hasInsurance ?? false,
       };
 
       await BusinessesService.updateBusiness(id, payload);
@@ -237,7 +259,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
         });
       }
 
-      Alert.alert("Succès", "Restaurant mis à jour avec succès !", [
+      Alert.alert("Succès", "Profil livreur mis à jour avec succès !", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (err: any) {
@@ -264,8 +286,8 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
           backgroundColor: "#fff",
         }}
       >
-        <ActivityIndicator size="large" color="#059669" />
-        <Text style={{ marginTop: 16 }}>Chargement du restaurant...</Text>
+        <ActivityIndicator size="large" color="#00C851" />
+        <Text style={{ marginTop: 16 }}>Chargement du profil...</Text>
       </SafeAreaView>
     );
   }
@@ -283,15 +305,15 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
           <View style={styles.header}>
             <BackButtonWithClear />
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>Modifier mon restaurant</Text>
+              <Text style={styles.title}>Modifier mon profil livreur</Text>
             </View>
             <View style={{ width: 50 }} />
           </View>
 
           <View style={styles.content}>
-            {/* Nom */}
+            {/* Nom / Pseudo */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Nom du restaurant *</Text>
+              <Text style={styles.label}>Nom / Pseudo professionnel *</Text>
               <TextInput
                 style={[
                   styles.input,
@@ -299,10 +321,28 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                 ]}
                 value={business.name}
                 onChangeText={(t) => updateField({ name: t })}
-                placeholder="ex: Le Gourmet Parisien"
+                placeholder="ex: Rapid Express 237"
               />
               {validationErrors.name && (
                 <Text style={styles.errorText}>{validationErrors.name}</Text>
+              )}
+            </View>
+
+            {/* Téléphone */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Téléphone professionnel *</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  validationErrors.phone && styles.inputError,
+                ]}
+                value={business.phone || ""}
+                onChangeText={(t) => updateField({ phone: t })}
+                placeholder="+237 6XX XX XX XX"
+                keyboardType="phone-pad"
+              />
+              {validationErrors.phone && (
+                <Text style={styles.errorText}>{validationErrors.phone}</Text>
               )}
             </View>
 
@@ -328,68 +368,113 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
               )}
             </View>
 
-            {/* Capacité */}
+            {/* Véhicule principal */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Capacité (couverts) *</Text>
+              <Text style={styles.label}>Véhicule principal</Text>
               <TouchableOpacity
-                style={[
-                  styles.selectInput,
-                  validationErrors.capacity && styles.inputError,
-                ]}
-                onPress={() => setCapacityModalVisible(true)}
+                style={styles.selectInput}
+                onPress={() => setVehicleModalVisible(true)}
               >
-                <Text style={{ color: business.capacity ? "#000" : "#999" }}>
-                  {business.capacity || "Choisir capacité"}
+                <Text style={{ color: business.vehicleType ? "#000" : "#999" }}>
+                  {business.vehicleType || "Choisir véhicule"}
                 </Text>
                 <Feather name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
-              {validationErrors.capacity && (
-                <Text style={styles.errorText}>
-                  {validationErrors.capacity}
-                </Text>
-              )}
             </View>
 
-            {/* Livraison */}
+            {/* Immatriculation */}
             <View style={styles.formGroup}>
-              <View style={styles.switchRow}>
-                <Text style={styles.label}>Propose la livraison</Text>
-                <Switch
-                  value={business.deliveryEnabled ?? false}
-                  onValueChange={(value) =>
-                    updateField({ deliveryEnabled: value })
-                  }
-                  trackColor={{ true: "#059669" }}
-                />
-              </View>
+              <Text style={styles.label}>Immatriculation</Text>
+              <TextInput
+                style={styles.input}
+                value={business.licensePlate || ""}
+                onChangeText={(t) => updateField({ licensePlate: t })}
+                placeholder="ex: CM 1234 AB"
+              />
+            </View>
+
+            {/* Expérience */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Niveau d&apos;expérience</Text>
+              <TouchableOpacity
+                style={styles.selectInput}
+                onPress={() => setExperienceModalVisible(true)}
+              >
+                <Text
+                  style={{ color: business.experienceLevel ? "#000" : "#999" }}
+                >
+                  {business.experienceLevel || "Choisir expérience"}
+                </Text>
+                <Feather name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Zone principale */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Zone principale</Text>
+              <TouchableOpacity
+                style={styles.selectInput}
+                onPress={() => setZoneModalVisible(true)}
+              >
+                <Text style={{ color: business.baseZone ? "#000" : "#999" }}>
+                  {business.baseZone || "Choisir zone"}
+                </Text>
+                <Feather name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Rayon max */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Rayon maximum (km)</Text>
+              <TextInput
+                style={styles.input}
+                value={business.maxRadiusKm ? String(business.maxRadiusKm) : ""}
+                onChangeText={(t) =>
+                  updateField({ maxRadiusKm: Number(t) || null })
+                }
+                placeholder="15"
+                keyboardType="numeric"
+              />
             </View>
 
             {/* Horaires */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Horaires d&apos;ouverture</Text>
+              <Text style={styles.label}>Horaires habituels</Text>
               <TextInput
                 style={styles.input}
-                value={business.openingHours || ""}
-                onChangeText={(t) => updateField({ openingHours: t })}
-                placeholder="ex: Lun-Dim 11h-23h"
+                value={business.availabilityHours || ""}
+                onChangeText={(t) => updateField({ availabilityHours: t })}
+                placeholder="ex: 08h-22h"
               />
             </View>
 
-            {/* Téléphone */}
+            {/* Disponible week-ends */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Téléphone</Text>
-              <TextInput
-                style={styles.input}
-                value={business.phone || ""}
-                onChangeText={(t) => updateField({ phone: t })}
-                keyboardType="phone-pad"
-                placeholder="+237 6XX XX XX XX"
-              />
+              <View style={styles.switchRow}>
+                <Text style={styles.label}>Disponible week-ends</Text>
+                <Switch
+                  value={business.availableWeekends ?? false}
+                  onValueChange={(v) => updateField({ availableWeekends: v })}
+                  trackColor={{ true: "#00C851" }}
+                />
+              </View>
             </View>
 
-            {/* Adresse + Carte */}
+            {/* Véhicule assuré */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Adresse complète *</Text>
+              <View style={styles.switchRow}>
+                <Text style={styles.label}>Véhicule assuré</Text>
+                <Switch
+                  value={business.hasInsurance ?? false}
+                  onValueChange={(v) => updateField({ hasInsurance: v })}
+                  trackColor={{ true: "#00C851" }}
+                />
+              </View>
+            </View>
+
+            {/* Adresse de base */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Adresse de base *</Text>
               <TextInput
                 style={[
                   styles.input,
@@ -403,7 +488,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                 onPress={() => setMapModalVisible(true)}
               >
                 <Feather name="map" size={20} color="#fff" />
-                <Text style={styles.mapButtonText}>Modifier sur la carte</Text>
+                <Text style={styles.mapButtonText}>Modifier sur carte</Text>
               </TouchableOpacity>
               {validationErrors.address && (
                 <Text style={styles.errorText}>{validationErrors.address}</Text>
@@ -412,7 +497,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
 
             {/* Description */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Description *</Text>
+              <Text style={styles.label}>Description professionnelle *</Text>
               <TextInput
                 style={[
                   styles.input,
@@ -423,10 +508,10 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                 onChangeText={(t) => updateField({ description: t })}
                 multiline
                 textAlignVertical="top"
-                placeholder="Spécialités, ambiance, plats signature..."
+                placeholder="Expérience, rapidité, fiabilité..."
               />
               <Text style={styles.counter}>
-                {business.description?.length || 0}/20 min
+                {business.description?.length || 0}/500
               </Text>
               {validationErrors.description && (
                 <Text style={styles.errorText}>
@@ -435,9 +520,9 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
               )}
             </View>
 
-            {/* Logo */}
+            {/* Photo profil */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Logo restaurant</Text>
+              <Text style={styles.label}>Photo profil livreur</Text>
               <TouchableOpacity
                 style={styles.imagePickerButton}
                 onPress={() => pickImage("logo")}
@@ -451,16 +536,16 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                   <View style={styles.imagePlaceholder}>
                     <Feather name="camera" size={32} color="#999" />
                     <Text style={styles.imagePlaceholderText}>
-                      Changer le logo
+                      Changer photo
                     </Text>
                   </View>
                 )}
               </TouchableOpacity>
             </View>
 
-            {/* Couverture */}
+            {/* Photo couverture */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>Photo de couverture</Text>
+              <Text style={styles.label}>Photo couverture</Text>
               <TouchableOpacity
                 style={styles.coverPickerButton}
                 onPress={() => pickImage("cover")}
@@ -474,7 +559,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                   <View style={styles.coverPlaceholder}>
                     <Feather name="image" size={40} color="#999" />
                     <Text style={styles.coverPlaceholderText}>
-                      Changer la couverture
+                      Changer couverture
                     </Text>
                   </View>
                 )}
@@ -490,7 +575,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
               >
                 <Text style={{ color: business.currencyId ? "#000" : "#999" }}>
                   {currencies.find((c) => c.id === business.currencyId)?.code ||
-                    "Sélectionnez"}
+                    "Sélectionner"}
                 </Text>
                 <Feather name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
@@ -552,7 +637,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                     alignItems: "center",
                   }}
                 >
-                  <ActivityIndicator size="large" color="#059669" />
+                  <ActivityIndicator size="large" color="#00C851" />
                 </View>
               ) : (
                 <FlatList
@@ -604,7 +689,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                       </View>
 
                       {selectedSector?.id === item.id && (
-                        <Feather name="check" size={28} color="#059669" />
+                        <Feather name="check" size={28} color="#00C851" />
                       )}
                     </TouchableOpacity>
                   )}
@@ -614,39 +699,121 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
           </View>
         </Modal>
 
-        {/* ==================== MODALE CAPACITÉ ==================== */}
-        <Modal visible={capacityModalVisible} transparent animationType="fade">
+        {/* ==================== MODALES SIMPLES (Véhicule, Expérience, Zone) ==================== */}
+        <Modal visible={vehicleModalVisible} transparent animationType="fade">
           <TouchableOpacity
             style={styles.modalOverlay}
             activeOpacity={1}
-            onPress={() => setCapacityModalVisible(false)}
+            onPress={() => setVehicleModalVisible(false)}
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Capacité</Text>
-                <TouchableOpacity
-                  onPress={() => setCapacityModalVisible(false)}
-                >
+                <Text style={styles.modalTitle}>Véhicule principal</Text>
+                <TouchableOpacity onPress={() => setVehicleModalVisible(false)}>
                   <Feather name="x" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
               <FlatList
-                data={["20-50", "50-100", "100-200", "+200"]}
+                data={VEHICLE_TYPES}
                 keyExtractor={(item) => item}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={[
                       styles.currencyItem,
-                      business.capacity === item && styles.currencyItemSelected,
+                      business.vehicleType === item &&
+                        styles.currencyItemSelected,
                     ]}
                     onPress={() => {
-                      updateField({ capacity: item });
-                      setCapacityModalVisible(false);
+                      updateField({ vehicleType: item });
+                      setVehicleModalVisible(false);
                     }}
                   >
-                    <Text style={styles.currencyCode}>{item} couverts</Text>
-                    {business.capacity === item && (
-                      <Feather name="check" size={24} color="#059669" />
+                    <Text style={styles.currencyCode}>{item}</Text>
+                    {business.vehicleType === item && (
+                      <Feather name="check" size={24} color="#00C851" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        <Modal
+          visible={experienceModalVisible}
+          transparent
+          animationType="fade"
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setExperienceModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Expérience</Text>
+                <TouchableOpacity
+                  onPress={() => setExperienceModalVisible(false)}
+                >
+                  <Feather name="x" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={EXPERIENCE_LEVELS}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.currencyItem,
+                      business.experienceLevel === item &&
+                        styles.currencyItemSelected,
+                    ]}
+                    onPress={() => {
+                      updateField({ experienceLevel: item });
+                      setExperienceModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.currencyCode}>{item}</Text>
+                    {business.experienceLevel === item && (
+                      <Feather name="check" size={24} color="#00C851" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </TouchableOpacity>
+        </Modal>
+
+        <Modal visible={zoneModalVisible} transparent animationType="fade">
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setZoneModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Zone principale</Text>
+                <TouchableOpacity onPress={() => setZoneModalVisible(false)}>
+                  <Feather name="x" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={AVAILABILITY_ZONES}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.currencyItem,
+                      business.baseZone === item && styles.currencyItemSelected,
+                    ]}
+                    onPress={() => {
+                      updateField({ baseZone: item });
+                      setZoneModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.currencyCode}>{item}</Text>
+                    {business.baseZone === item && (
+                      <Feather name="check" size={24} color="#00C851" />
                     )}
                   </TouchableOpacity>
                 )}
@@ -664,7 +831,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
           >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Choisir une devise</Text>
+                <Text style={styles.modalTitle}>Choisir devise</Text>
                 <TouchableOpacity
                   onPress={() => setCurrencyModalVisible(false)}
                 >
@@ -717,7 +884,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                       <Text style={styles.currencyName}>{item.name}</Text>
                     </View>
                     {item.id === business.currencyId && (
-                      <Feather name="check" size={24} color="#059669" />
+                      <Feather name="check" size={24} color="#00C851" />
                     )}
                   </TouchableOpacity>
                 )}
@@ -773,7 +940,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                   autoFocus
                 />
                 {isSearchingAddress && (
-                  <ActivityIndicator size="small" color="#059669" />
+                  <ActivityIndicator size="small" color="#00C851" />
                 )}
               </View>
               <TouchableOpacity onPress={() => setMapModalVisible(false)}>
@@ -799,7 +966,7 @@ const EditBusinessRestaurateur: React.FC<Props> = ({ id }) => {
                         setAddressSearch("");
                       }}
                     >
-                      <Feather name="map-pin" size={20} color="#059669" />
+                      <Feather name="map-pin" size={20} color="#00C851" />
                       <Text style={styles.resultText}>
                         {item.formattedAddress}
                       </Text>
@@ -905,7 +1072,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#059669",
+    backgroundColor: "#00C851",
     padding: 14,
     borderRadius: 12,
     marginTop: 10,
@@ -918,7 +1085,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   saveButton: {
-    backgroundColor: "#059669",
+    backgroundColor: "#00C851",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
@@ -945,7 +1112,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  imagePlaceholderText: { marginTop: 8, color: "#999", fontSize: 14 },
+  imagePlaceholderText: {
+    marginTop: 8,
+    color: "#999",
+    fontSize: 14,
+    textAlign: "center",
+  },
   coverPickerButton: { marginTop: 12, borderRadius: 16, overflow: "hidden" },
   coverPreview: { width: "100%", height: 200, borderRadius: 16 },
   coverPlaceholder: {
@@ -1011,7 +1183,7 @@ const styles = StyleSheet.create({
   sectorName: { fontSize: 16, fontWeight: "600", color: "#111" },
   sectorDescription: { fontSize: 14, color: "#666", marginTop: 4 },
 
-  // Autres modales
+  // Modales simples
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -1072,7 +1244,7 @@ const styles = StyleSheet.create({
   },
   previewAddressText: { fontSize: 15, color: "#333", marginBottom: 12 },
   confirmMapButton: {
-    backgroundColor: "#059669",
+    backgroundColor: "#00C851",
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
@@ -1080,4 +1252,4 @@ const styles = StyleSheet.create({
   confirmMapText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 });
 
-export default EditBusinessRestaurateur;
+export default EditBusinessLivreur;

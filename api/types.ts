@@ -1,4 +1,8 @@
 export interface Business {
+  deliveryZones(deliveryZones: any): unknown;
+  longitude: number;
+  latitude: number;
+  sectorId(sectorId: any): unknown;
   id: string;
   name: string;
   description?: string;
