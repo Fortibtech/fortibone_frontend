@@ -1,7 +1,14 @@
-import { getBusinesses } from "@/api/client/business";
+import { getBusinesses, BusinessType } from "@/api/client/business";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { JSX, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  JSX,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -25,66 +32,143 @@ const { width } = Dimensions.get("window");
 interface Category {
   id: string;
   name: string;
+  type?: BusinessType | "all";
 }
 
 const EnterprisePage: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>([
-    { id: "all", name: "Tout" },
-  ]);
-  const [activeCategory, setActiveCategory] = useState<string>("all"); // Basé sur type
+  // Catégories basées sur le type d'entreprise
+  const categories: Category[] = [
+    { id: "all", name: "Tout", type: "all" },
+    { id: "restaurateur", name: "Restaurants", type: "RESTAURATEUR" },
+    { id: "commercant", name: "Commerçants", type: "COMMERCANT" },
+  ];
+
+  const [activeCategory, setActiveCategory] = useState<string>("all");
   const [enterprises, setEnterprises] = useState<Business[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>("");
-  const [selectedSector, setSelectedSector] = useState<string | null>(null); // Filtre dropdown par activitySector
+  const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [dropdownVisible, setDropdownVisible] = useState<boolean>(false);
+  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+
   const searchInputRef = useRef<TextInput>(null);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Liste des secteurs uniques pour le dropdown
-  const availableSectors = useMemo(() => {
-    const sectors = enterprises
-      .map((b) => b.activitySector?.trim())
-      .filter(Boolean);
-    return Array.from(new Set(sectors)).sort();
-  }, [enterprises]);
-
-  useEffect(() => {
-    const loadEnterprises = async () => {
+  // ==================== FONCTION DE CHARGEMENT AVEC FILTRES BACKEND ====================
+  const loadEnterprises = useCallback(
+    async (page: number = 1, resetData: boolean = false) => {
       try {
         setLoading(true);
-        const res: GetBusinessesResponse = await getBusinesses();
 
-        const filtered: Business[] = res.data
-          .filter((b) => b.type === "RESTAURATEUR" || b.type === "COMMERCANT")
-          .map((b) => {
-            let imageUrl =
-              "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image";
-            const possible = [b.logoUrl, b.coverImageUrl].filter(Boolean);
-            if (possible.length > 0) {
-              imageUrl = possible[0];
-              if (!imageUrl.startsWith("http"))
-                imageUrl = `https://${imageUrl}`;
-            }
-            return { ...b, imageUrl };
-          });
+        // Récupère le type correspondant à la catégorie active
+        const currentCategory = categories.find((c) => c.id === activeCategory);
+        const businessType =
+          currentCategory?.type !== "all"
+            ? (currentCategory?.type as BusinessType)
+            : undefined;
 
-        setEnterprises(filtered);
+        // 🔥 APPEL API AVEC TOUS LES FILTRES
+        const res: GetBusinessesResponse = await getBusinesses({
+          type: businessType, // ✅ Filtrage par type (backend)
+          search: searchText || undefined, // ✅ Recherche textuelle (backend)
+          page: page, // ✅ Pagination (backend)
+          limit: 90, // 20 entreprises par page
+        });
 
-        // 🔥 Tabs basés sur le TYPE (comme au début)
-        const typeCategories: Category[] = [
-          { id: "restaurateur", name: "Restaurants" },
-          { id: "commercant", name: "Commerçants" },
-        ];
+        const processedData: Business[] = res.data.map((b) => {
+          let imageUrl =
+            "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image";
+          const possible = [b.logoUrl, b.coverImageUrl].filter(Boolean);
+          if (possible.length > 0) {
+            imageUrl = possible[0];
+            if (!imageUrl.startsWith("http")) imageUrl = `https://${imageUrl}`;
+          }
+          return { ...b, imageUrl };
+        });
 
-        setCategories([{ id: "all", name: "Tout" }, ...typeCategories]);
+        // ✅ Filtrage par secteur (optionnel frontend car pas disponible dans l'API)
+        const filteredBySector = selectedSector
+          ? processedData.filter(
+              (b) =>
+                b.activitySector?.toLowerCase().trim() ===
+                selectedSector.toLowerCase()
+            )
+          : processedData;
+
+        if (resetData) {
+          setEnterprises(filteredBySector);
+        } else {
+          setEnterprises((prev) => [...prev, ...filteredBySector]);
+        }
+
+        // Mise à jour de la pagination
+        const total = res.pagination?.totalPages || res.totalPages || 1;
+        setTotalPages(total);
+        setHasMore(page < total);
+        setCurrentPage(page);
       } catch (err) {
         console.error("Erreur chargement entreprises:", err);
       } finally {
         setLoading(false);
       }
-    };
-    loadEnterprises();
+    },
+    [activeCategory, searchText, selectedSector]
+  );
+
+  // ==================== CHARGEMENT DES SECTEURS DISPONIBLES ====================
+  const loadAvailableSectors = useCallback(async () => {
+    try {
+      // Charge TOUTES les entreprises pour extraire les secteurs uniques
+      const res: GetBusinessesResponse = await getBusinesses({
+        limit: 1000, // Grande limite pour récupérer tous les secteurs
+      });
+
+      const sectors = res.data
+        .map((b) => b.activitySector?.trim())
+        .filter(Boolean) as string[];
+
+      const uniqueSectors = Array.from(new Set(sectors)).sort();
+      setAvailableSectors(uniqueSectors);
+    } catch (err) {
+      console.error("Erreur chargement secteurs:", err);
+    }
   }, []);
 
+  // ==================== EFFETS ====================
+
+  // Chargement initial des secteurs
+  useEffect(() => {
+    loadAvailableSectors();
+  }, []);
+
+  // Rechargement quand les filtres changent
+  useEffect(() => {
+    loadEnterprises(1, true); // Reset à la page 1
+  }, [activeCategory, selectedSector]);
+
+  // Debounce pour la recherche textuelle
+  useEffect(() => {
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(() => {
+      loadEnterprises(1, true); // Reset à la page 1
+    }, 500); // Attend 500ms après la dernière saisie
+
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [searchText]);
+
+  // ==================== NAVIGATION ====================
   const navigateToDetails = (business: Business) => {
     if (business.type === "RESTAURATEUR") {
       router.push({
@@ -99,27 +183,14 @@ const EnterprisePage: React.FC = () => {
     }
   };
 
-  const filteredEnterprises = useMemo(() => {
-    return enterprises.filter((business) => {
-      const typeLower = business.type.toLowerCase();
+  // ==================== PAGINATION INFINIE ====================
+  const loadMoreEnterprises = () => {
+    if (!loading && hasMore) {
+      loadEnterprises(currentPage + 1, false);
+    }
+  };
 
-      // Filtre par tab (type : restaurateur / commercant)
-      const matchTab = activeCategory === "all" || typeLower === activeCategory; // "restaurateur" ou "commercant"
-
-      // Filtre par dropdown (activitySector)
-      const sectorLower = business.activitySector?.toLowerCase().trim() || "";
-      const matchSector =
-        !selectedSector || sectorLower === selectedSector.toLowerCase();
-
-      // Recherche par nom
-      const matchSearch = business.name
-        .toLowerCase()
-        .includes(searchText.toLowerCase());
-
-      return matchTab && matchSector && matchSearch;
-    });
-  }, [enterprises, activeCategory, selectedSector, searchText]);
-
+  // ==================== RENDERS ====================
   const renderHeader = (): JSX.Element => (
     <View style={styles.header}>
       <Pressable onPress={() => searchInputRef.current?.focus()}>
@@ -133,14 +204,14 @@ const EnterprisePage: React.FC = () => {
 
       <TextInput
         ref={searchInputRef}
-        placeholder="Rechercher par nom ou secteur..."
+        placeholder="Rechercher par nom..."
         placeholderTextColor="#999"
         style={styles.searchInput}
         value={searchText}
         onChangeText={setSearchText}
       />
 
-      {/* Icône dropdown pour filtrer par secteur d'activité */}
+      {/* Dropdown pour filtrer par secteur */}
       <Pressable
         onPress={() => setDropdownVisible(true)}
         style={styles.dropdownTrigger}
@@ -158,7 +229,7 @@ const EnterprisePage: React.FC = () => {
         </Pressable>
       )}
 
-      {/* Modal Dropdown pour activitySector */}
+      {/* Modal Dropdown pour secteur d'activité */}
       <Modal
         visible={dropdownVisible}
         transparent
@@ -168,43 +239,45 @@ const EnterprisePage: React.FC = () => {
         <TouchableWithoutFeedback onPress={() => setDropdownVisible(false)}>
           <View style={styles.modalOverlay}>
             <View style={styles.dropdownMenu}>
-              <TouchableOpacity
-                style={[
-                  styles.dropdownItem,
-                  !selectedSector && styles.dropdownItemActive,
-                ]}
-                onPress={() => {
-                  setSelectedSector(null);
-                  setDropdownVisible(false);
-                }}
-              >
-                <Text style={styles.dropdownText}>Tous les secteurs</Text>
-                {!selectedSector && (
-                  <Ionicons name="checkmark" size={20} color="#00C851" />
-                )}
-              </TouchableOpacity>
-
-              {availableSectors.map((sector) => (
+              <ScrollView showsVerticalScrollIndicator={true}>
                 <TouchableOpacity
-                  key={sector}
                   style={[
                     styles.dropdownItem,
-                    selectedSector?.toLowerCase() === sector.toLowerCase() &&
-                      styles.dropdownItemActive,
+                    !selectedSector && styles.dropdownItemActive,
                   ]}
                   onPress={() => {
-                    setSelectedSector(sector);
+                    setSelectedSector(null);
                     setDropdownVisible(false);
                   }}
                 >
-                  <Text style={styles.dropdownText}>
-                    {sector.charAt(0).toUpperCase() + sector.slice(1)}
-                  </Text>
-                  {selectedSector?.toLowerCase() === sector.toLowerCase() && (
+                  <Text style={styles.dropdownText}>Tous les secteurs</Text>
+                  {!selectedSector && (
                     <Ionicons name="checkmark" size={20} color="#00C851" />
                   )}
                 </TouchableOpacity>
-              ))}
+
+                {availableSectors.map((sector) => (
+                  <TouchableOpacity
+                    key={sector}
+                    style={[
+                      styles.dropdownItem,
+                      selectedSector?.toLowerCase() === sector.toLowerCase() &&
+                        styles.dropdownItemActive,
+                    ]}
+                    onPress={() => {
+                      setSelectedSector(sector);
+                      setDropdownVisible(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownText}>
+                      {sector.charAt(0).toUpperCase() + sector.slice(1)}
+                    </Text>
+                    {selectedSector?.toLowerCase() === sector.toLowerCase() && (
+                      <Ionicons name="checkmark" size={20} color="#00C851" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           </View>
         </TouchableWithoutFeedback>
@@ -262,7 +335,7 @@ const EnterprisePage: React.FC = () => {
         resizeMode="cover"
       />
       <View style={styles.enterpriseContent}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.enterpriseTitle} numberOfLines={1}>
             {item.name}
           </Text>
@@ -281,8 +354,17 @@ const EnterprisePage: React.FC = () => {
     </TouchableOpacity>
   );
 
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={{ paddingVertical: 20 }}>
+        <ActivityIndicator size="small" color="#00C851" />
+      </View>
+    );
+  };
+
   const renderEnterpriseGrid = () => {
-    if (loading) {
+    if (loading && enterprises.length === 0) {
       return (
         <View style={{ flex: 1, alignItems: "center", marginTop: 50 }}>
           <ActivityIndicator size="large" color="#00C851" />
@@ -290,23 +372,29 @@ const EnterprisePage: React.FC = () => {
       );
     }
 
-    if (filteredEnterprises.length === 0) {
+    if (enterprises.length === 0) {
       return (
         <View style={{ alignItems: "center", marginTop: 50 }}>
-          <Text>Aucune entreprise trouvée.</Text>
+          <Ionicons name="search-outline" size={80} color="#E0E0E0" />
+          <Text style={{ marginTop: 16, fontSize: 16, color: "#999" }}>
+            Aucune entreprise trouvée
+          </Text>
         </View>
       );
     }
 
     return (
       <FlatList
-        data={filteredEnterprises}
+        data={enterprises}
         renderItem={renderEnterpriseCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         numColumns={2}
         contentContainerStyle={styles.grid}
         columnWrapperStyle={styles.columnWrapper}
         showsVerticalScrollIndicator={false}
+        onEndReached={loadMoreEnterprises}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
       />
     );
   };
@@ -380,6 +468,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E8E9ED",
     minHeight: 48,
+    justifyContent: "center",
   },
   activeTab: {
     backgroundColor: "#00C851",
@@ -407,6 +496,7 @@ const styles = StyleSheet.create({
     padding: 12,
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   enterpriseTitle: {
     fontSize: 15,

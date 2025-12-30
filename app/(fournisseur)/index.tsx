@@ -90,7 +90,7 @@ const HomePage: React.FC = () => {
     label: getMonthName(new Date().getMonth()),
   });
   const [showPeriodModal, setShowPeriodModal] = useState(false);
-
+  const [refreshKey, setRefreshKey] = useState(0);
   // ===================== UTILITAIRES =====================
   function getMonthName(monthIndex: number): string {
     const months = [
@@ -109,6 +109,9 @@ const HomePage: React.FC = () => {
     ];
     return months[monthIndex];
   }
+  const triggerRefresh = useCallback(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, []);
 
   const formatDateFR = (date: Date): string => {
     const options: Intl.DateTimeFormatOptions = {
@@ -370,6 +373,7 @@ const HomePage: React.FC = () => {
     await loadInitialData();
     if (business?.id) {
       await Promise.all([loadAnalytics(), loadTopProducts()]);
+      triggerRefresh(); // 👈 AJOUTER CETTE LIGNE
     }
     setRefreshing(false);
   };
@@ -824,18 +828,22 @@ const HomePage: React.FC = () => {
           <SalesByPeriodChart
             businessId={business.id}
             currencyId={business.currencyId}
+            refreshKey={refreshKey}
           />
           <ExpenseDistributionChart
             businessId={business.id}
             currencyId={business.currencyId}
+            refreshKey={refreshKey}
           />
           <RevenueDistributionChart
             businessId={business.id}
             currencyId={business.currencyId}
+            refreshKey={refreshKey}
           />
           <InventoryLossesChart
             businessId={business.id}
             currencyId={business.currencyId}
+            refreshKey={refreshKey}
           />
         </View>
       );

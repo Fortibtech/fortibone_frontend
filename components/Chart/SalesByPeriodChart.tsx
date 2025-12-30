@@ -39,17 +39,15 @@ interface SalePeriod {
 const SalesByPeriodChart: React.FC<{
   businessId: string;
   currencyId: string;
-}> = ({ businessId, currencyId }) => {
+  refreshKey?: number;
+}> = ({ businessId, currencyId, refreshKey = 0 }) => {
   const [unit, setUnit] = useState<UnitType>("MONTH");
   const [loading, setLoading] = useState(true);
   const [symbol, setSymbol] = useState<string | null>(null);
   const [periods, setPeriods] = useState<SalePeriod[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  // Pour forcer une nouvelle animation de tracé à chaque changement
   const [chartKey, setChartKey] = useState(0);
 
-  // Animations d'entrée
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(20)).current;
 
@@ -71,7 +69,7 @@ const SalesByPeriodChart: React.FC<{
 
   useEffect(() => {
     fetchData();
-  }, [businessId, unit]);
+  }, [businessId, unit, refreshKey]); // 👈 Ajouter refreshKey
 
   // Animation d'entrée + relance du tracé de la courbe quand les données sont prêtes
   useEffect(() => {

@@ -26,9 +26,10 @@ interface ReservationByPeriod {
   totalReservations: number;
 }
 
-const ReservationsByPeriodChart: React.FC<{ businessId: string }> = ({
-  businessId,
-}) => {
+const ReservationsByPeriodChart: React.FC<{
+  businessId: string;
+  refreshKey?: number;
+}> = ({ businessId, refreshKey = 0 }) => {
   const [unit, setUnit] = useState<UnitType>("MONTH");
   const [loading, setLoading] = useState(true);
   const [reservations, setReservations] = useState<ReservationByPeriod[]>([]);
@@ -47,16 +48,15 @@ const ReservationsByPeriodChart: React.FC<{ businessId: string }> = ({
       setReservations(periods);
     } catch (err: any) {
       setError("Impossible de charger les réservations");
-      // Alert.alert("Erreur", err.message || "Une erreur est survenue");
     } finally {
       setLoading(false);
     }
   };
 
+  // 👇 MODIFIER LE useEffect ICI
   useEffect(() => {
     fetchData();
-  }, [businessId, unit]);
-
+  }, [businessId, unit, refreshKey]);
   const chartConfig = {
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
