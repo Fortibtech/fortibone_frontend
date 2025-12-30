@@ -57,14 +57,22 @@ const Cart = () => {
           onPress: async () => {
             setIsBuyNowLoading(true);
 
+            // 🔥 CORRECTION ICI : on n'envoie QUE variantId et quantity
             const payload = {
               items: items.map((item) => ({
                 variantId: item.variantId,
                 quantity: item.quantity,
+                // ❌ PLUS DE "name" ICI !
               })),
               notes: "Achat rapide – Acheter maintenant",
               useWallet: false,
             };
+
+            // Optionnel : log propre pour vérification
+            console.log(
+              "📤 Payload corrigé envoyé :",
+              JSON.stringify(payload.items, null, 2)
+            );
 
             try {
               const orders = await passMultipleOrders(payload);
@@ -76,12 +84,22 @@ const Cart = () => {
               });
 
               clearCart();
-              router.push("/(profile-particulier)/your-orders"); // ou "/(tabs)/orders" selon ta structure
+              router.push("/(profile-particulier)/your-orders");
             } catch (err: any) {
+              console.error(
+                "❌ Erreur passMultipleOrders :",
+                err.response?.data || err
+              );
+
+              const message =
+                err.response?.data?.message ||
+                err.message ||
+                "Impossible de passer la commande";
+
               Toast.show({
                 type: "error",
                 text1: "Échec de l'achat",
-                text2: err.message || "Vérifiez le stock ou votre connexion.",
+                text2: Array.isArray(message) ? message.join(", ") : message,
               });
             } finally {
               setIsBuyNowLoading(false);
@@ -359,7 +377,7 @@ const Cart = () => {
                       <>
                         <Ionicons name="flash" size={20} color="#fff" />
                         <Text style={styles.buyNowButtonText}>
-                          Passer la commande maintenant • {totalPrice} KMF
+                          Passer la commande maintenant
                         </Text>
                       </>
                     )}

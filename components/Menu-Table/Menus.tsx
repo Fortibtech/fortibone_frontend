@@ -17,25 +17,24 @@ import {
 import Animated, { FadeInUp } from "react-native-reanimated";
 import { getMenus, Menu } from "@/api/menu/menuApi";
 import Toast from "react-native-toast-message";
-import { createOrder } from "@/api/Orders";
 
 const Menus = ({ restaurantsId }: { restaurantsId: string }) => {
   const addItem = useCartStore((state) => state.addItem);
   const removeItem = useCartStore((state) => state.removeItem);
   const isInCart = useCartStore((state) => state.isInCart);
+
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMenu, setSelectedMenu] = useState<Menu | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [quantity, setQuantity] = useState(1); // Quantité dans la modale
-  const [isOrdering, setIsOrdering] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   const fetchMenus = async () => {
     if (!restaurantsId) return;
     setLoading(true);
     try {
       const menuData = await getMenus(restaurantsId);
-      setMenus(menuData);
+      setMenus(menuData.filter((menu) => menu.isActive));
     } catch (err) {
       console.error("Erreur chargement des menus :", err);
     } finally {
@@ -49,7 +48,7 @@ const Menus = ({ restaurantsId }: { restaurantsId: string }) => {
 
   const openMenuDetails = (menu: Menu) => {
     setSelectedMenu(menu);
-    setQuantity(1); // Réinitialiser à 1 à chaque ouverture
+    setQuantity(1);
     setModalVisible(true);
   };
 
@@ -62,98 +61,59 @@ const Menus = ({ restaurantsId }: { restaurantsId: string }) => {
   const incrementQuantity = () => setQuantity((prev) => prev + 1);
   const decrementQuantity = () => setQuantity((prev) => Math.max(1, prev - 1));
 
-  // Prix total selon quantité
-  const totalPrice = selectedMenu ? Number(selectedMenu.price) * quantity : 0;
-
-  const handleDirectOrder = async () => {
-    if (!selectedMenu || isOrdering) return;
-
-    setIsOrdering(true);
-
-    const payload: any = {
-      type: "SALE" as const,
-      businessId: restaurantsId,
-      supplierBusinessId: null,
-      notes: `Commande directe depuis la carte - Menu: ${selectedMenu.name} × ${quantity}`,
-      tableId: null,
-      reservationDate: new Date().toISOString(),
-      lines: [
-        {
-          variantId: selectedMenu.menuItems[0].variantId, // On utilise l'ID du menu comme variantId
-          quantity: quantity,
-        },
-      ],
-      useWallet: false,
-      shippingFee: 0,
-      discountAmount: 0,
-    };
-
-    try {
-      const response = await createOrder(payload);
-
-      Toast.show({
-        type: "success",
-        text1: "Commande passée avec succès !",
-        text2: `${quantity} × ${selectedMenu.name} - N°${
-          response.orderNumber || response.id
-        }`,
-      });
-
-      closeModal();
-    } catch (err: any) {
-      console.error("Erreur commande directe :", err);
-      const message =
-        err.response?.data?.message ||
-        err.message ||
-        "Impossible de passer la commande";
-
-      Toast.show({
-        type: "error",
-        text1: "Échec de la commande",
-        text2: Array.isArray(message) ? message[0] : message,
-      });
-    } finally {
-      setIsOrdering(false);
-    }
-  };
-  const variantId = selectedMenu?.menuItems?.[0]?.variantId ?? "MENU_BASE";
-
-  const alreadyInCart = selectedMenu && isInCart(selectedMenu.id, variantId);
   const handleToggleCart = () => {
     if (!selectedMenu) return;
 
-    const variantId = selectedMenu.menuItems?.[0]?.variantId ?? "MENU_BASE";
+    // Vérifie si le menu est déjà entièrement dans le panier
+    let allItemsInCart = true;
 
-    if (alreadyInCart) {
-      removeItem(selectedMenu.id, variantId);
+    selectedMenu.menuItems.forEach((menuItem) => {
+      const productId = menuItem.variant.productId || selectedMenu.id;
+      const inCart = isInCart(productId, menuItem.variantId);
+
+      if (!inCart) allItemsInCart = false;
+    });
+
+    if (allItemsInCart) {
+      // Retirer tous les plats du menu
+      selectedMenu.menuItems.forEach((menuItem) => {
+        const productId = menuItem.variant.productId || selectedMenu.id;
+        removeItem(productId, menuItem.variantId);
+      });
 
       Toast.show({
         type: "info",
-        text1: "Retiré du panier",
+        text1: "Menu retiré",
         text2: selectedMenu.name,
       });
     } else {
-      addItem(
-        {
-          productId: selectedMenu.id,
-          variantId,
-          name: selectedMenu.name,
-          price: Number(selectedMenu.price),
-          imageUrl: selectedMenu.imageUrl,
-          businessId: restaurantsId,
-        },
-        quantity
-      );
+      // AJOUTER CHAQUE PLAT AVEC SA VRAIE variantId
+      selectedMenu.menuItems.forEach((menuItem) => {
+        const productId = menuItem.variant.productId || selectedMenu.id;
+
+        addItem(
+          {
+            productId,
+            variantId: menuItem.variantId, // ← VRAIE variantId !
+            name: menuItem.variant.product.name,
+            price: Number(menuItem.variant.price),
+            imageUrl: menuItem.variant.imageUrl || undefined,
+            businessId: restaurantsId,
+          },
+          quantity * menuItem.quantity
+        );
+      });
 
       Toast.show({
         type: "success",
-        text1: "Ajouté au panier",
+        text1: "Menu ajouté !",
         text2: `${quantity} × ${selectedMenu.name}`,
       });
     }
 
     closeModal();
   };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -187,7 +147,7 @@ const Menus = ({ restaurantsId }: { restaurantsId: string }) => {
                     onPress={() => openMenuDetails(menu)}
                     style={({ pressed }) => [
                       styles.menuCardClient,
-                      pressed && { opacity: 0.7 },
+                      pressed && { opacity: 0.85 },
                     ]}
                   >
                     <View style={styles.menuImageWrapper}>
@@ -234,14 +194,6 @@ const Menus = ({ restaurantsId }: { restaurantsId: string }) => {
                           color="#00af66"
                         />
                       </View>
-
-                      {menu.isActive === false && (
-                        <View style={styles.inactiveBadge}>
-                          <Text style={styles.inactiveBadgeText}>
-                            Bientôt disponible
-                          </Text>
-                        </View>
-                      )}
                     </View>
                   </Pressable>
                 </Animated.View>
@@ -253,7 +205,6 @@ const Menus = ({ restaurantsId }: { restaurantsId: string }) => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Modale Détails du Menu avec Quantité */}
       <Modal
         visible={modalVisible}
         transparent
@@ -286,22 +237,65 @@ const Menus = ({ restaurantsId }: { restaurantsId: string }) => {
                   <View style={styles.modalBody}>
                     <Text style={styles.modalTitle}>{selectedMenu.name}</Text>
 
-                    <Text style={styles.modalUnitPrice}>
-                      Prix unitaire :{" "}
-                      {Number(selectedMenu.price).toLocaleString("fr-FR")} KMF
-                    </Text>
+                    <View style={styles.modalPriceContainer}>
+                      <Text style={styles.modalPrice}>
+                        {Number(selectedMenu.price).toLocaleString("fr-FR")} KMF
+                      </Text>
+                    </View>
 
-                    {selectedMenu.description ? (
+                    {selectedMenu.description && (
                       <Text style={styles.modalDescription}>
                         {selectedMenu.description}
                       </Text>
-                    ) : (
-                      <Text style={styles.modalNoDesc}>
-                        Formule complète sans description détaillée.
-                      </Text>
                     )}
 
-                    {/* Contrôles de quantité */}
+                    <View style={styles.includedSection}>
+                      <Text style={styles.includedTitle}>
+                        Cette formule comprend :
+                      </Text>
+
+                      {selectedMenu.menuItems.length === 0 ? (
+                        <Text style={styles.noItemsText}>
+                          Aucune information sur la composition
+                        </Text>
+                      ) : (
+                        <View style={styles.itemsList}>
+                          {selectedMenu.menuItems.map((item) => (
+                            <View key={item.id} style={styles.menuItemRow}>
+                              <View style={styles.itemImageWrapper}>
+                                {item.variant.imageUrl ? (
+                                  <Image
+                                    source={{ uri: item.variant.imageUrl }}
+                                    style={styles.itemImage}
+                                    resizeMode="cover"
+                                  />
+                                ) : (
+                                  <View style={styles.itemImagePlaceholder}>
+                                    <Ionicons
+                                      name="restaurant-outline"
+                                      size={28}
+                                      color="#BBB"
+                                    />
+                                  </View>
+                                )}
+                              </View>
+
+                              <View style={styles.itemDetails}>
+                                <Text style={styles.itemQuantity}>
+                                  {item.quantity > 1
+                                    ? `${item.quantity}×`
+                                    : "1×"}
+                                </Text>
+                                <Text style={styles.itemName}>
+                                  {item.variant.product.name}
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+
                     <View style={styles.quantitySection}>
                       <Text style={styles.quantityLabel}>Quantité</Text>
                       <View style={styles.quantityControls}>
@@ -324,64 +318,33 @@ const Menus = ({ restaurantsId }: { restaurantsId: string }) => {
                       </View>
                     </View>
 
-                    {/* Total mis à jour */}
                     <View style={styles.totalSection}>
-                      <Text style={styles.totalLabel}>Total à payer</Text>
+                      <Text style={styles.totalLabel}>Total</Text>
                       <Text style={styles.totalAmount}>
-                        {totalPrice.toLocaleString("fr-FR")} KMF
+                        {(Number(selectedMenu.price) * quantity).toLocaleString(
+                          "fr-FR"
+                        )}{" "}
+                        KMF
+                      </Text>
+                    </View>
+
+                    <View style={styles.marketingFooter}>
+                      <Text style={styles.marketingText}>
+                        Une formule pensée pour vous faire plaisir ❤️
                       </Text>
                     </View>
                   </View>
                 </ScrollView>
 
-                {/* Bouton Commande Directe */}
+                {/* Bouton Ajouter au panier */}
                 <View style={styles.modalFooter}>
                   <TouchableOpacity
-                    onPress={handleDirectOrder}
-                    disabled={isOrdering || selectedMenu.isActive === false}
-                    style={[
-                      styles.directOrderButton,
-                      (isOrdering || selectedMenu.isActive === false) &&
-                        styles.directOrderButtonDisabled,
-                    ]}
-                  >
-                    {isOrdering ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <>
-                        <Ionicons name="send-outline" size={24} color="#fff" />
-                        <Text style={styles.directOrderButtonText}>
-                          Commander{" "}
-                          {quantity > 1 ? `${quantity} menus` : "ce menu"} •{" "}
-                          {totalPrice.toLocaleString("fr-FR")} KMF
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
                     onPress={handleToggleCart}
-                    disabled={selectedMenu.isActive === false}
-                    style={[
-                      styles.cartButton,
-                      alreadyInCart
-                        ? styles.cartButtonRemove
-                        : styles.cartButtonAdd,
-                    ]}
+                    style={styles.cartButtonAdd}
                   >
-                    <Ionicons
-                      name={alreadyInCart ? "trash-outline" : "cart-outline"}
-                      size={22}
-                      color={alreadyInCart ? "#DC2626" : "#00af66"}
-                    />
-                    <Text
-                      style={[
-                        styles.cartButtonText,
-                        alreadyInCart && { color: "#DC2626" },
-                      ]}
-                    >
-                      {alreadyInCart
-                        ? "Retirer du panier"
-                        : "Ajouter au panier"}
+                    <Ionicons name="cart-outline" size={24} color="#00af66" />
+                    <Text style={styles.cartButtonText}>
+                      Ajouter {quantity > 1 ? `${quantity} menus` : "au panier"}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -395,117 +358,6 @@ const Menus = ({ restaurantsId }: { restaurantsId: string }) => {
 };
 
 const styles = StyleSheet.create({
-  quantitySection: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginVertical: 24,
-  },
-  quantityLabel: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-  },
-  cartButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    borderRadius: 16,
-    gap: 10,
-    borderWidth: 2,
-  },
-
-  cartButtonAdd: {
-    backgroundColor: "#ECFDF5",
-    borderColor: "#00af66",
-  },
-
-  cartButtonRemove: {
-    backgroundColor: "#FEF2F2",
-    borderColor: "#DC2626",
-  },
-
-  cartButtonText: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#00af66",
-  },
-  quantityControls: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f0fdf4",
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  modalUnitPrice: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 20,
-  },
-  quantityButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 2,
-  },
-  quantityNumber: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#00af66",
-    minWidth: 40,
-    textAlign: "center",
-  },
-  totalSection: {
-    backgroundColor: "#ecfdf5",
-    padding: 20,
-    borderRadius: 16,
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  totalLabel: {
-    fontSize: 16,
-    color: "#059669",
-    fontWeight: "600",
-  },
-  totalAmount: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#059669",
-    marginTop: 8,
-  },
-
-  modalFooter: {
-    padding: 20,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    flexDirection: "column",
-    gap: 12,
-  },
-  directOrderButton: {
-    backgroundColor: "#00af66",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 18,
-    borderRadius: 16,
-    gap: 12,
-  },
-  directOrderButtonDisabled: {
-    backgroundColor: "#9ca3af",
-    opacity: 0.7,
-  },
-  directOrderButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -516,10 +368,10 @@ const styles = StyleSheet.create({
 
   scrollContent: { paddingHorizontal: 20, paddingTop: 20 },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
-    color: "#333",
-    marginBottom: 20,
+    color: "#1F2937",
+    marginBottom: 24,
     textAlign: "center",
   },
 
@@ -544,15 +396,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   menuCardContent: { padding: 18 },
-  menuCardTitle: { fontSize: 19, fontWeight: "700", color: "#1F2937" },
+  menuCardTitle: { fontSize: 20, fontWeight: "700", color: "#1F2937" },
   menuCardDescription: {
-    fontSize: 14.5,
+    fontSize: 15,
     color: "#6B7280",
     marginTop: 8,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   menuCardNoDesc: {
-    fontSize: 14,
+    fontSize: 14.5,
     color: "#9CA3AF",
     fontStyle: "italic",
     marginTop: 8,
@@ -561,22 +413,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 12,
+    marginTop: 16,
   },
   menuCardPrice: {
-    fontSize: 23,
+    fontSize: 24,
     fontWeight: "800",
     color: "#00af66",
   },
-  inactiveBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 12,
-  },
-  inactiveBadgeText: { fontSize: 12, color: "#6B7280", fontWeight: "600" },
 
   emptyCard: {
     backgroundColor: "#fff",
@@ -586,80 +429,198 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   emptyText: {
-    marginTop: 12,
+    marginTop: 16,
     fontSize: 16,
     color: "#999",
     textAlign: "center",
   },
 
-  // Modale
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    maxHeight: "90%",
+    maxHeight: "92%",
     overflow: "hidden",
   },
   modalHeader: {
-    padding: 20,
+    padding: 16,
     alignItems: "flex-end",
   },
   modalImage: {
     width: "100%",
-    height: 300,
+    height: 320,
   },
   modalImagePlaceholder: {
     width: "100%",
-    height: 300,
+    height: 320,
     backgroundColor: "#F0FDF4",
     justifyContent: "center",
     alignItems: "center",
   },
   modalBody: { padding: 24 },
   modalTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#1F2937",
-    marginBottom: 8,
-  },
-  modalPrice: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#00af66",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  modalPriceContainer: {
+    backgroundColor: "#ECFDF5",
+    padding: 16,
+    borderRadius: 16,
+    alignItems: "center",
     marginBottom: 20,
   },
-  modalDescription: {
-    fontSize: 16,
-    color: "#4B5563",
-    lineHeight: 24,
+  modalPrice: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#059669",
   },
-  modalNoDesc: {
+  modalDescription: {
+    fontSize: 16.5,
+    color: "#4B5563",
+    lineHeight: 26,
+    marginBottom: 24,
+  },
+
+  includedSection: { marginTop: 8 },
+  includedTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 16,
+  },
+  itemsList: { gap: 16 },
+  menuItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FDFB",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E0F2EE",
+  },
+  itemImageWrapper: {
+    width: 70,
+    height: 70,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginRight: 16,
+  },
+  itemImage: { width: "100%", height: "100%" },
+  itemImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#E0F2EE",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  itemDetails: { flex: 1, flexDirection: "row", alignItems: "center" },
+  itemQuantity: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#00af66",
+    marginRight: 12,
+    minWidth: 40,
+  },
+  itemName: { fontSize: 17, fontWeight: "600", color: "#1F2937", flex: 1 },
+  noItemsText: {
     fontSize: 15,
     color: "#9CA3AF",
     fontStyle: "italic",
+    textAlign: "center",
+    padding: 20,
   },
 
-  addToCartButton: {
-    backgroundColor: "#00af66",
+  quantitySection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginVertical: 24,
+  },
+  quantityLabel: { fontSize: 18, fontWeight: "600", color: "#333" },
+  quantityControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f0fdf4",
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  quantityButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 2,
+  },
+  quantityNumber: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#00af66",
+    minWidth: 40,
+    textAlign: "center",
+  },
+
+  totalSection: {
+    backgroundColor: "#ecfdf5",
+    padding: 20,
+    borderRadius: 16,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  totalLabel: { fontSize: 16, color: "#059669", fontWeight: "600" },
+  totalAmount: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#059669",
+    marginTop: 8,
+  },
+
+  marketingFooter: {
+    marginTop: 20,
+    marginBottom: 20,
+    padding: 20,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  marketingText: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#059669",
+    textAlign: "center",
+  },
+
+  modalFooter: {
+    padding: 20,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  cartButtonAdd: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 16,
     gap: 12,
+    borderWidth: 2,
+    backgroundColor: "#ECFDF5",
+    borderColor: "#00af66",
   },
-  addToCartButtonDisabled: {
-    backgroundColor: "#9ca3af",
-  },
-  addToCartButtonText: {
-    color: "#fff",
+  cartButtonText: {
     fontSize: 18,
     fontWeight: "700",
+    color: "#00af66",
   },
 });
 

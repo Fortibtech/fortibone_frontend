@@ -5,7 +5,6 @@ import React, {
   JSX,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -26,9 +25,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Business, GetBusinessesResponse } from "@/api/client/business";
-
 const { width } = Dimensions.get("window");
-
 interface Category {
   id: string;
   name: string;
