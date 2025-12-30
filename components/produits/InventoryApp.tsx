@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   StyleSheet,
   Modal,
   ActivityIndicator,
@@ -13,12 +12,11 @@ import {
   Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router"; // ← useFocusEffect ajouté
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import Toast from "react-native-toast-message";
 import { format } from "date-fns";
-
 import {
   getBusinessInventory,
   InventoryItem,
@@ -26,8 +24,7 @@ import {
   Batch,
   recordExpiredLosses,
 } from "@/api/Inventory";
-
-// === Types ===
+import { SafeAreaView } from "react-native-safe-area-context";
 export interface Product {
   id: string;
   name: string;
@@ -37,39 +34,33 @@ export interface Product {
   lots: number;
   sold: number;
   imageUrl: string;
-  // expirationDate supprimé → géré via lots
 }
+
 type InventoryAppProps = {
   id: string;
 };
 
 const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
-  useEffect(() => {
-    console.log("📦 InventoryApp → id reçu :", id);
-  }, [id]);
-
   const [searchText, setSearchText] = useState("");
   const [inventory, setInventory] = useState<Product[]>([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
-
-  // === Badge expirations (7 jours) ===
+  const [loading, setLoading] = useState(true); // Chargement global
   const [expiringCount, setExpiringCount] = useState(0);
   const [expiringModal, setExpiringModal] = useState(false);
-
-  // === Modal expirés ===
   const [expiringBatches, setExpiringBatches] = useState<Batch[]>([]);
   const [loadingExpiring, setLoadingExpiring] = useState(false);
   const [submittingLosses, setSubmittingLosses] = useState(false);
 
-  // === Charger inventaire ===
-  const fetchInventory = useCallback(
-    async (pageToLoad: number) => {
-      if (loading || pageToLoad > totalPages) return;
-      setLoading(true);
-      try {
-        const res = await getBusinessInventory(id as string, pageToLoad, 10);
+  // === Chargement complet de l'inventaire (toutes les pages) ===
+  const loadFullInventory = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      let allProducts: Product[] = [];
+      let page = 1;
+      let totalPages = 1;
+
+      do {
+        const res = await getBusinessInventory(id, page, 20); // 20 par page pour aller plus vite
         const mapped: Product[] = res.data.map((item: InventoryItem) => ({
           id: item.id,
           name: item.product.name,
@@ -80,39 +71,55 @@ const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
           sold: 0,
           imageUrl: item.imageUrl,
         }));
-        setInventory((prev) =>
-          pageToLoad === 1 ? mapped : [...prev, ...mapped]
-        );
-        setTotalPages(res.totalPages);
-      } catch (err) {
-        Toast.show({
-          type: "error",
-          text1: "Erreur",
-          text2: "Impossible de charger l’inventaire",
-        });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [loading, totalPages, id]
-  );
+        allProducts = [...allProducts, ...mapped];
+        totalPages = res.totalPages;
+        page++;
+      } while (page <= totalPages);
 
-  // === Charger badge expirations (7 jours) ===
-  const fetchExpiringCount = async () => {
+      setInventory(allProducts);
+    } catch (err) {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible de charger l’inventaire",
+      });
+      setInventory([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  // === Badge expirations (30 jours pour cohérence avec modal) ===
+  const fetchExpiringCount = useCallback(async () => {
+    if (!id) return;
     try {
-      const data = await getExpiringSoonProducts(id as string, 30);
+      const data = await getExpiringSoonProducts(id, 30);
       setExpiringCount(data.length);
     } catch (err) {
       console.error("Erreur badge expirés", err);
       setExpiringCount(0);
     }
-  };
+  }, [id]);
 
-  // === Charger produits expirant bientôt (30 jours) ===
+  // === Chargement au montage ===
+  useEffect(() => {
+    loadFullInventory();
+    fetchExpiringCount();
+  }, [loadFullInventory, fetchExpiringCount]);
+
+  // === Rechargement à chaque retour sur l'écran (focus) ===
+  useFocusEffect(
+    useCallback(() => {
+      loadFullInventory();
+      fetchExpiringCount();
+    }, [loadFullInventory, fetchExpiringCount])
+  );
+
+  // === Chargement des produits expirants pour le modal ===
   const fetchExpiringProducts = async () => {
     setLoadingExpiring(true);
     try {
-      const data = await getExpiringSoonProducts(id as string, 30);
+      const data = await getExpiringSoonProducts(id, 30);
       setExpiringBatches(data);
     } catch (err) {
       Toast.show({
@@ -125,35 +132,18 @@ const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
     }
   };
 
-  // === Chargement initial ===
-  useEffect(() => {
-    fetchInventory(1);
-    fetchExpiringCount();
-  }, [fetchInventory]);
-
-  const handleLoadMore = () => {
-    if (page < totalPages && !loading) {
-      setPage(page + 1);
-      fetchInventory(page + 1);
-    }
-  };
-
-  // === Recharger après pertes ===
-  const handleLossesRecorded = () => {
-    setInventory([]);
-    setPage(1);
-    fetchInventory(1);
-    fetchExpiringCount();
-    fetchExpiringProducts();
-  };
-
-  // === Ouvrir modal expirés (recharge la liste) ===
   const openExpiringModal = async () => {
     await fetchExpiringProducts();
     setExpiringModal(true);
   };
 
-  // === Filtrage ===
+  // === Après enregistrement des pertes ===
+  const handleLossesRecorded = () => {
+    loadFullInventory();
+    fetchExpiringCount();
+  };
+
+  // === Filtrage local ===
   const filteredProducts = inventory.filter((p) =>
     p.name.toLowerCase().includes(searchText.toLowerCase())
   );
@@ -162,7 +152,7 @@ const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
   const handleRecordLosses = async () => {
     setSubmittingLosses(true);
     try {
-      const response = await recordExpiredLosses(id as string);
+      const response = await recordExpiredLosses(id);
       Toast.show({
         type: "success",
         text1: "Pertes enregistrées",
@@ -181,8 +171,9 @@ const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
     }
   };
 
-  // === Export PDF ===
+  // === Export PDF (inchangé) ===
   const exportToPDF = async () => {
+    // ... (ton code existant, identique)
     try {
       const html = `
         <!DOCTYPE html>
@@ -229,7 +220,6 @@ const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
     }
   };
 
-  // === Rendu ligne tableau ===
   const renderItem = ({ item }: { item: Product }) => (
     <View style={styles.tableRow}>
       <Text style={[styles.tableCellText, styles.colId]}>
@@ -262,17 +252,6 @@ const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerNav}>
-          {/* <TouchableOpacity onPress={() => router.back()}>
-            <Feather name="arrow-left" size={24} color="#374151" />
-          </TouchableOpacity> */}
-
-          {/* <View style={styles.tabContainer}>
-            <TouchableOpacity style={[styles.tab, styles.activeTabStyle]}>
-              <Text style={styles.activeTabText}>Inventaire</Text>
-            </TouchableOpacity>
-          </View> */}
-
-          {/* Icône alerte → ouvre modal expirés */}
           <TouchableOpacity
             onPress={openExpiringModal}
             style={styles.alertIcon}
@@ -312,40 +291,53 @@ const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
 
       {/* Tableau */}
       <View style={styles.tableContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.table}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, styles.colId]}>#</Text>
-              <Text style={[styles.tableHeaderText, styles.colProduct]}>
-                Produit
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.colSku]}>SKU</Text>
-              <Text style={[styles.tableHeaderText, styles.colQty]}>Qté</Text>
-              <Text style={[styles.tableHeaderText, styles.colLots]}>Lots</Text>
-              <Text style={[styles.tableHeaderText, styles.colSold]}>
-                Vendu
-              </Text>
-              <Text style={[styles.tableHeaderText, styles.colActions]}>
-                Details
-              </Text>
-            </View>
-
-            <FlatList
-              data={filteredProducts}
-              keyExtractor={(item) => item.id}
-              renderItem={renderItem}
-              onEndReached={handleLoadMore}
-              onEndReachedThreshold={0.5}
-              ListFooterComponent={
-                loading ? <ActivityIndicator style={{ margin: 20 }} /> : null
-              }
-              style={styles.tableBody}
-            />
+        {loading ? (
+          <View
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          >
+            <ActivityIndicator size="large" color="#10B981" />
           </View>
-        </ScrollView>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderText, styles.colId]}>#</Text>
+                <Text style={[styles.tableHeaderText, styles.colProduct]}>
+                  Produit
+                </Text>
+                <Text style={[styles.tableHeaderText, styles.colSku]}>SKU</Text>
+                <Text style={[styles.tableHeaderText, styles.colQty]}>Qté</Text>
+                <Text style={[styles.tableHeaderText, styles.colLots]}>
+                  Lots
+                </Text>
+                <Text style={[styles.tableHeaderText, styles.colSold]}>
+                  Vendu
+                </Text>
+                <Text style={[styles.tableHeaderText, styles.colActions]}>
+                  Détails
+                </Text>
+              </View>
+
+              <FlatList
+                data={filteredProducts}
+                keyExtractor={(item) => item.id}
+                renderItem={renderItem}
+                ListEmptyComponent={
+                  <View style={{ padding: 40, alignItems: "center" }}>
+                    <Text style={{ color: "#9CA3AF" }}>
+                      {searchText
+                        ? "Aucun produit correspondant"
+                        : "Aucun produit en stock"}
+                    </Text>
+                  </View>
+                }
+              />
+            </View>
+          </ScrollView>
+        )}
       </View>
 
-      {/* === MODAL PRODUITS EXPIRÉS === */}
+      {/* Modal expirés */}
       <Modal
         animationType="slide"
         transparent
@@ -359,7 +351,7 @@ const InventoryApp: React.FC<InventoryAppProps> = ({ id }) => {
             </Text>
 
             {loadingExpiring ? (
-              <ActivityIndicator size="large" color="#3498db" />
+              <ActivityIndicator size="large" color="#10B981" />
             ) : expiringBatches.length === 0 ? (
               <Text style={styles.emptyText}>
                 Aucun produit à expirer bientôt.
