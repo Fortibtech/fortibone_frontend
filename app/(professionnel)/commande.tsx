@@ -17,10 +17,8 @@ import { useBusinessStore } from "@/store/businessStore";
 export default function OrdersScreen() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
-
   // On met à jour le store quand on clique sur une entreprise
   const setBusiness = useBusinessStore((state) => state.setBusiness);
-
   useEffect(() => {
     const fetchBusinesses = async () => {
       try {

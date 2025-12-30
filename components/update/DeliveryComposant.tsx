@@ -15,13 +15,13 @@ import {
   Platform,
   Image,
   ActivityIndicator,
-  Switch,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+
 import { BusinessesService, Currency, CurrencyService } from "@/api";
 import { router } from "expo-router";
 import BackButtonWithClear from "@/components/Admin/BackButtonWithClear";
@@ -32,21 +32,6 @@ type SearchResult = {
   longitude: number;
   formattedAddress: string;
 };
-
-const VEHICLE_TYPES = [
-  "SCOOTER",
-  "MOTO",
-  "VOITURE",
-  "CAMIONNETTE",
-  "VELO",
-] as const;
-const EXPERIENCE_LEVELS = ["DÉBUTANT", "CONFIRMÉ", "EXPERT"] as const;
-const AVAILABILITY_ZONES = [
-  "Centre-ville",
-  "Banlieue",
-  "Tout",
-  "Zone spécifique",
-] as const;
 
 interface Props {
   id: string;
@@ -67,9 +52,6 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
   const [mapModalVisible, setMapModalVisible] = useState(false);
   const [sectorModalVisible, setSectorModalVisible] = useState(false);
   const [currencyModalVisible, setCurrencyModalVisible] = useState(false);
-  const [vehicleModalVisible, setVehicleModalVisible] = useState(false);
-  const [experienceModalVisible, setExperienceModalVisible] = useState(false);
-  const [zoneModalVisible, setZoneModalVisible] = useState(false);
 
   // Carte
   const [tempMarker, setTempMarker] = useState<{
@@ -102,17 +84,19 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
 
       setBusiness(biz);
       setCurrencies(currencyList);
-      setPreviewAddress(biz.address || "");
+      setPreviewAddress(biz.address || "Aucune adresse définie");
 
       setTempMarker({
         latitude: biz.latitude || 4.0511,
         longitude: biz.longitude || 9.7679,
       });
 
-      // Chargement des secteurs LIVREUR
       await loadSectors(biz.sectorId);
-    } catch (err) {
-      Alert.alert("Erreur", "Impossible de charger le profil livreur");
+    } catch (err: any) {
+      Alert.alert(
+        "Erreur",
+        err.message || "Impossible de charger le profil livreur"
+      );
       router.back();
     } finally {
       setLoading(false);
@@ -129,8 +113,11 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
         const current = fetched.find((s: Sector) => s.id === currentSectorId);
         if (current) setSelectedSector(current);
       }
-    } catch (err) {
-      Alert.alert("Erreur", "Impossible de charger les secteurs");
+    } catch (err: any) {
+      Alert.alert(
+        "Erreur",
+        err.message || "Impossible de charger les secteurs"
+      );
     } finally {
       setSectorsLoading(false);
     }
@@ -166,7 +153,9 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
           ].filter(Boolean);
           finalAddress = parts.join(", ");
         }
-      } catch {}
+      } catch (err) {
+        console.warn("Reverse geocoding failed", err);
+      }
     }
 
     if (finalAddress) {
@@ -176,9 +165,12 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
   };
 
   const pickImage = async (type: "logo" | "cover") => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert("Permission refusée", "Activez l'accès à la galerie");
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission refusée",
+        "Veuillez autoriser l’accès à la galerie."
+      );
       return;
     }
 
@@ -196,12 +188,14 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
   };
 
   const validateAndSave = async () => {
+    console.log("🔘 Bouton Sauvegarder cliqué");
+
     const errors: Record<string, string> = {};
     if (!business.name?.trim()) errors.name = "Nom requis";
     if (!business.phone?.trim()) errors.phone = "Téléphone requis";
     if (!business.address?.trim()) errors.address = "Adresse requise";
     if (!business.description?.trim() || business.description.length < 20)
-      errors.description = "Description de 20+ caractères requise";
+      errors.description = "Description d'au moins 20 caractères requise";
     if (!business.currencyId) errors.currency = "Devise requise";
     if (!business.latitude || !business.longitude)
       errors.location = "Position GPS requise";
@@ -209,35 +203,47 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
       errors.sector = "Secteur requis";
 
     setValidationErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+
+    if (Object.keys(errors).length > 0) {
+      console.log("❌ Validation échouée :", errors);
+
+      // Message clair avec liste des erreurs
+      const errorMessages = Object.values(errors).join("\n• ");
+      Alert.alert(
+        "Informations manquantes",
+        "Veuillez corriger les points suivants :\n\n• " + errorMessages,
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    console.log("✅ Validation réussie");
 
     setSaving(true);
     try {
-      const payload: any = {
+      const payload = {
         name: business.name.trim(),
         description: business.description.trim(),
-        type: "LIVREUR",
         address: business.address.trim(),
         latitude: Number(business.latitude),
         longitude: Number(business.longitude),
         currencyId: business.currencyId,
         sectorId: selectedSector?.id || business.sectorId,
-        postalCode: business.postalCode || null,
+        postalCode: business.postalCode?.trim() || null,
+        websiteUrl: business.websiteUrl?.trim() || null,
         phoneNumber: business.phone?.trim() || null,
-        // Champs spécifiques livreur
-        vehicleType: business.vehicleType || null,
-        licensePlate: business.licensePlate?.trim() || null,
-        experienceLevel: business.experienceLevel || null,
-        baseZone: business.baseZone || null,
-        maxRadiusKm: Number(business.maxRadiusKm) || null,
-        availabilityHours: business.availabilityHours || null,
-        availableWeekends: business.availableWeekends ?? false,
-        hasInsurance: business.hasInsurance ?? false,
       };
+
+      console.log(
+        "📤 Payload envoyé vers l'API :",
+        JSON.stringify(payload, null, 2)
+      );
 
       await BusinessesService.updateBusiness(id, payload);
 
-      // Upload images si modifiées
+      console.log("✅ Mise à jour réussie sur le serveur");
+
+      // Upload images si nouvelles
       if (
         business.logoUrl?.startsWith("file://") ||
         business.logoUrl?.startsWith("content://")
@@ -247,6 +253,7 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
           type: "image/jpeg",
           name: "logo.jpg",
         });
+        console.log("🖼️ Logo uploadé");
       }
       if (
         business.coverImageUrl?.startsWith("file://") ||
@@ -257,12 +264,15 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
           type: "image/jpeg",
           name: "cover.jpg",
         });
+        console.log("🖼️ Couverture uploadée");
       }
 
       Alert.alert("Succès", "Profil livreur mis à jour avec succès !", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (err: any) {
+      console.error("❌ Erreur lors de la sauvegarde :", err);
+      console.error("Détails erreur :", err.message || err);
       Alert.alert("Erreur", err.message || "Échec de la sauvegarde");
     } finally {
       setSaving(false);
@@ -276,18 +286,15 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
         s.description.toLowerCase().includes(sectorSearchQuery.toLowerCase()))
   );
 
+  const currentCurrency = currencies.find((c) => c.id === business?.currencyId);
+
   if (loading || !business) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#fff",
-        }}
-      >
-        <ActivityIndicator size="large" color="#00C851" />
-        <Text style={{ marginTop: 16 }}>Chargement du profil...</Text>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00C851" />
+          <Text style={styles.loadingText}>Chargement du profil...</Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -368,120 +375,18 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
               )}
             </View>
 
-            {/* Véhicule principal */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Véhicule principal</Text>
-              <TouchableOpacity
-                style={styles.selectInput}
-                onPress={() => setVehicleModalVisible(true)}
-              >
-                <Text style={{ color: business.vehicleType ? "#000" : "#999" }}>
-                  {business.vehicleType || "Choisir véhicule"}
-                </Text>
-                <Feather name="chevron-down" size={20} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Immatriculation */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Immatriculation</Text>
-              <TextInput
-                style={styles.input}
-                value={business.licensePlate || ""}
-                onChangeText={(t) => updateField({ licensePlate: t })}
-                placeholder="ex: CM 1234 AB"
-              />
-            </View>
-
-            {/* Expérience */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Niveau d&apos;expérience</Text>
-              <TouchableOpacity
-                style={styles.selectInput}
-                onPress={() => setExperienceModalVisible(true)}
-              >
-                <Text
-                  style={{ color: business.experienceLevel ? "#000" : "#999" }}
-                >
-                  {business.experienceLevel || "Choisir expérience"}
-                </Text>
-                <Feather name="chevron-down" size={20} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Zone principale */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Zone principale</Text>
-              <TouchableOpacity
-                style={styles.selectInput}
-                onPress={() => setZoneModalVisible(true)}
-              >
-                <Text style={{ color: business.baseZone ? "#000" : "#999" }}>
-                  {business.baseZone || "Choisir zone"}
-                </Text>
-                <Feather name="chevron-down" size={20} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Rayon max */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Rayon maximum (km)</Text>
-              <TextInput
-                style={styles.input}
-                value={business.maxRadiusKm ? String(business.maxRadiusKm) : ""}
-                onChangeText={(t) =>
-                  updateField({ maxRadiusKm: Number(t) || null })
-                }
-                placeholder="15"
-                keyboardType="numeric"
-              />
-            </View>
-
-            {/* Horaires */}
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Horaires habituels</Text>
-              <TextInput
-                style={styles.input}
-                value={business.availabilityHours || ""}
-                onChangeText={(t) => updateField({ availabilityHours: t })}
-                placeholder="ex: 08h-22h"
-              />
-            </View>
-
-            {/* Disponible week-ends */}
-            <View style={styles.formGroup}>
-              <View style={styles.switchRow}>
-                <Text style={styles.label}>Disponible week-ends</Text>
-                <Switch
-                  value={business.availableWeekends ?? false}
-                  onValueChange={(v) => updateField({ availableWeekends: v })}
-                  trackColor={{ true: "#00C851" }}
-                />
-              </View>
-            </View>
-
-            {/* Véhicule assuré */}
-            <View style={styles.formGroup}>
-              <View style={styles.switchRow}>
-                <Text style={styles.label}>Véhicule assuré</Text>
-                <Switch
-                  value={business.hasInsurance ?? false}
-                  onValueChange={(v) => updateField({ hasInsurance: v })}
-                  trackColor={{ true: "#00C851" }}
-                />
-              </View>
-            </View>
-
-            {/* Adresse de base */}
+            {/* Adresse de base - AVEC ERREUR GPS VISIBILE */}
             <View style={styles.formGroup}>
               <Text style={styles.label}>Adresse de base *</Text>
               <TextInput
                 style={[
                   styles.input,
-                  validationErrors.address && styles.inputError,
+                  (validationErrors.address || validationErrors.location) &&
+                    styles.inputError,
                 ]}
                 value={business.address}
                 onChangeText={(t) => updateField({ address: t })}
+                placeholder="Rue, quartier, ville"
               />
               <TouchableOpacity
                 style={styles.mapButton}
@@ -490,9 +395,22 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
                 <Feather name="map" size={20} color="#fff" />
                 <Text style={styles.mapButtonText}>Modifier sur carte</Text>
               </TouchableOpacity>
+
+              {/* Erreurs visibles */}
               {validationErrors.address && (
                 <Text style={styles.errorText}>{validationErrors.address}</Text>
               )}
+              {validationErrors.location && (
+                <Text style={styles.errorText}>
+                  {validationErrors.location}
+                </Text>
+              )}
+
+              {/* Aide pour l'utilisateur */}
+              <Text style={{ fontSize: 13, color: "#666", marginTop: 8 }}>
+                Utilisez le bouton &quot;Modifier sur carte&quot; pour placer précisément
+                votre position GPS.
+              </Text>
             </View>
 
             {/* Description */}
@@ -570,15 +488,22 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
             <View style={styles.formGroup}>
               <Text style={styles.label}>Devise principale *</Text>
               <TouchableOpacity
-                style={styles.selectInput}
+                style={[
+                  styles.selectInput,
+                  validationErrors.currency && styles.inputError,
+                ]}
                 onPress={() => setCurrencyModalVisible(true)}
               >
                 <Text style={{ color: business.currencyId ? "#000" : "#999" }}>
-                  {currencies.find((c) => c.id === business.currencyId)?.code ||
-                    "Sélectionner"}
+                  {currentCurrency?.code || "Sélectionner"}
                 </Text>
                 <Feather name="chevron-down" size={20} color="#666" />
               </TouchableOpacity>
+              {validationErrors.currency && (
+                <Text style={styles.errorText}>
+                  {validationErrors.currency}
+                </Text>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -597,7 +522,7 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
           </TouchableOpacity>
         </View>
 
-        {/* ==================== MODALE SECTEURS (améliorée) ==================== */}
+        {/* MODALE SECTEURS */}
         <Modal visible={sectorModalVisible} transparent animationType="slide">
           <View style={styles.modalOverlayFull}>
             <View style={styles.sectorModalContent}>
@@ -699,130 +624,7 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
           </View>
         </Modal>
 
-        {/* ==================== MODALES SIMPLES (Véhicule, Expérience, Zone) ==================== */}
-        <Modal visible={vehicleModalVisible} transparent animationType="fade">
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setVehicleModalVisible(false)}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Véhicule principal</Text>
-                <TouchableOpacity onPress={() => setVehicleModalVisible(false)}>
-                  <Feather name="x" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={VEHICLE_TYPES}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.currencyItem,
-                      business.vehicleType === item &&
-                        styles.currencyItemSelected,
-                    ]}
-                    onPress={() => {
-                      updateField({ vehicleType: item });
-                      setVehicleModalVisible(false);
-                    }}
-                  >
-                    <Text style={styles.currencyCode}>{item}</Text>
-                    {business.vehicleType === item && (
-                      <Feather name="check" size={24} color="#00C851" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </TouchableOpacity>
-        </Modal>
-
-        <Modal
-          visible={experienceModalVisible}
-          transparent
-          animationType="fade"
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setExperienceModalVisible(false)}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Expérience</Text>
-                <TouchableOpacity
-                  onPress={() => setExperienceModalVisible(false)}
-                >
-                  <Feather name="x" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={EXPERIENCE_LEVELS}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.currencyItem,
-                      business.experienceLevel === item &&
-                        styles.currencyItemSelected,
-                    ]}
-                    onPress={() => {
-                      updateField({ experienceLevel: item });
-                      setExperienceModalVisible(false);
-                    }}
-                  >
-                    <Text style={styles.currencyCode}>{item}</Text>
-                    {business.experienceLevel === item && (
-                      <Feather name="check" size={24} color="#00C851" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </TouchableOpacity>
-        </Modal>
-
-        <Modal visible={zoneModalVisible} transparent animationType="fade">
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setZoneModalVisible(false)}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Zone principale</Text>
-                <TouchableOpacity onPress={() => setZoneModalVisible(false)}>
-                  <Feather name="x" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={AVAILABILITY_ZONES}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.currencyItem,
-                      business.baseZone === item && styles.currencyItemSelected,
-                    ]}
-                    onPress={() => {
-                      updateField({ baseZone: item });
-                      setZoneModalVisible(false);
-                    }}
-                  >
-                    <Text style={styles.currencyCode}>{item}</Text>
-                    {business.baseZone === item && (
-                      <Feather name="check" size={24} color="#00C851" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </TouchableOpacity>
-        </Modal>
-
-        {/* ==================== MODALE DEVISE ==================== */}
+        {/* MODALE DEVISE */}
         <Modal visible={currencyModalVisible} transparent animationType="fade">
           <TouchableOpacity
             style={styles.modalOverlay}
@@ -838,6 +640,7 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
                   <Feather name="x" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
+
               <View style={styles.searchContainer}>
                 <Feather
                   name="search"
@@ -853,6 +656,7 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
                   autoFocus
                 />
               </View>
+
               <FlatList
                 data={currencies.filter(
                   (c) =>
@@ -893,7 +697,7 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
           </TouchableOpacity>
         </Modal>
 
-        {/* ==================== MODALE CARTE ==================== */}
+        {/* MODALE CARTE */}
         <Modal visible={mapModalVisible} animationType="slide">
           <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
             <View style={styles.mapSearchHeader}>
@@ -1007,7 +811,9 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
 
             <View style={styles.mapBottomBar}>
               <Text style={styles.previewAddressText} numberOfLines={2}>
-                {previewAddress || business.address}
+                {previewAddress ||
+                  business.address ||
+                  "Positionnez le marqueur"}
               </Text>
               <TouchableOpacity
                 style={styles.confirmMapButton}
@@ -1025,6 +831,8 @@ const EditBusinessLivreur: React.FC<Props> = ({ id }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#fff" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 12, fontSize: 16, color: "#666" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -1091,12 +899,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  switchRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-  },
 
   // Images
   imagePickerButton: { alignSelf: "center", marginTop: 12 },
@@ -1138,7 +940,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // Modale secteurs améliorée
+  // Modale secteurs
   modalOverlayFull: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -1157,7 +959,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#f9f9f9",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderColor: "#eee",
   },
   modalTitle: { fontSize: 19, fontWeight: "700", color: "#111" },
   searchContainer: {
@@ -1167,7 +969,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderColor: "#eee",
   },
   sectorItem: {
     flexDirection: "row",

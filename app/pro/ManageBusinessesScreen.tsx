@@ -88,10 +88,7 @@ const ManageBusinessesScreen: React.FC = () => {
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.businessName}>{item.name}</Text>
-          <Text style={styles.businessType}>
-            {item.type === "COMMERCANT" ? "Commerçant" : "Fournisseur"} •{" "}
-            {item.type}
-          </Text>
+          <Text style={styles.businessType}>{item.type}</Text>
           {item.address && (
             <Text style={styles.businessAddress} numberOfLines={1}>
               {item.address}
