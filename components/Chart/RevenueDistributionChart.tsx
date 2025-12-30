@@ -37,7 +37,8 @@ const COLORS = [
 const RevenueDistributionChart: React.FC<{
   businessId: string;
   currencyId: string;
-}> = ({ businessId, currencyId }) => {
+  refreshKey?: number;
+}> = ({ businessId, currencyId, refreshKey = 0 }) => {
   const [loading, setLoading] = useState(true);
   const [topProducts, setTopProducts] = useState<TopSellingProduct[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -64,11 +65,10 @@ const RevenueDistributionChart: React.FC<{
         (a, b) => b.totalRevenue - a.totalRevenue
       );
       const top = sorted.slice(0, 8);
-
       const total = top.reduce((sum, p) => sum + p.totalRevenue, 0);
+
       setTotalRevenue(total);
       setTopProducts(top);
-
       setSymbol(symbol);
     } catch (err: any) {
       console.log("API error:", err?.response?.data);
@@ -78,9 +78,10 @@ const RevenueDistributionChart: React.FC<{
     }
   };
 
+  // Recharger quand businessId, currencyId OU refreshKey change
   useEffect(() => {
     fetchData();
-  }, [businessId, currencyId]);
+  }, [businessId, currencyId, refreshKey]); // 👈 Ajouter refreshKey
 
   const chartConfig = {
     backgroundGradientFrom: "#fff",

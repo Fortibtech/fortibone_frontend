@@ -36,7 +36,8 @@ const COLORS = [
 const PopularDishesChart: React.FC<{
   businessId: string;
   currencyId: string;
-}> = ({ businessId, currencyId }) => {
+  refreshKey?: number;
+}> = ({ businessId, currencyId, refreshKey = 0 }) => {
   const [loading, setLoading] = useState(true);
   const [symbol, setSymbol] = useState<string | null>(null);
   const [dishes, setDishes] = useState<PopularDish[]>([]);
@@ -78,10 +79,10 @@ const PopularDishesChart: React.FC<{
     }
   };
 
+  // 👇 MODIFIER LE useEffect ICI
   useEffect(() => {
     fetchData();
-  }, [businessId]);
-
+  }, [businessId, currencyId, refreshKey]);
   const chartConfig = {
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",

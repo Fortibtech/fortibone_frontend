@@ -57,12 +57,14 @@ type AnalyticsComponentProps = {
   id: string;
   currencyId: string;
   show: boolean;
+  refreshKey?: number; // 👈 Nouvelle prop
 };
 
 export default function AnalyticsComponent({
   id,
   currencyId,
   show,
+  refreshKey = 0,
 }: AnalyticsComponentProps) {
   const [data, setData] = useState<SalesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,9 +84,11 @@ export default function AnalyticsComponent({
       setLoading(false);
     }
   };
+
+  // Recharger quand id OU refreshKey change
   useEffect(() => {
     fetchData();
-  }, [id]);
+  }, [id, refreshKey]); // 👈 Ajouter refreshKey en dépendance
 
   if (loading) {
     return (
@@ -153,10 +157,26 @@ export default function AnalyticsComponent({
         <Ionicons name="chevron-forward" size={20} color="#6366F1" />
       </TouchableOpacity>
       <Text style={styles.sectionTitle}>Statistiques</Text>
-      <SalesByPeriodChart businessId={id} currencyId={currencyId} />
-      <ExpenseDistributionChart businessId={id} currencyId={currencyId} />
-      <RevenueDistributionChart businessId={id} currencyId={currencyId} />
-      <InventoryLossesChart businessId={id} currencyId={currencyId} />
+      <SalesByPeriodChart
+        businessId={id}
+        currencyId={currencyId}
+        refreshKey={refreshKey} // 👈 Nouvelle prop
+      />
+      <ExpenseDistributionChart
+        businessId={id}
+        currencyId={currencyId}
+        refreshKey={refreshKey} // 👈 Nouvelle prop
+      />
+      <RevenueDistributionChart
+        businessId={id}
+        currencyId={currencyId}
+        refreshKey={refreshKey} // 👈 Nouvelle prop
+      />
+      <InventoryLossesChart
+        businessId={id}
+        currencyId={currencyId}
+        refreshKey={refreshKey} // 👈 Nouvelle prop
+      />
     </ScrollView>
   );
 }

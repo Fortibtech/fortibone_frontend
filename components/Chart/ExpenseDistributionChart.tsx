@@ -51,13 +51,14 @@ const COLORS = [
 const ExpenseDistributionChart: React.FC<{
   businessId: string;
   currencyId: string;
-}> = ({ businessId, currencyId }) => {
+  refreshKey?: number;
+}> = ({ businessId, currencyId, refreshKey = 0 }) => {
   const [unit, setUnit] = useState<UnitType>("MONTH");
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CategoryData[]>([]);
-
   const [error, setError] = useState<string | null>(null);
   const [symbol, setSymbol] = useState<string | null>(null);
+
   const fetchData = async () => {
     setLoading(true);
     setError(null);
@@ -69,13 +70,11 @@ const ExpenseDistributionChart: React.FC<{
 
       if (cats.length === 0) {
         setCategories([]);
-
         return;
       }
 
       const sorted = [...cats].sort((a, b) => b.totalRevenue - a.totalRevenue);
       const top = sorted.slice(0, 8);
-
       const total = top.reduce((sum, cat) => sum + cat.totalRevenue, 0);
 
       setSymbol(symbol);
@@ -91,15 +90,15 @@ const ExpenseDistributionChart: React.FC<{
     } catch (err: any) {
       console.log("API error:", err?.response?.data);
       setError("Impossible de charger les données");
-      // Alert.alert("Erreur", "Impossible de charger les données");
     } finally {
       setLoading(false);
     }
   };
 
+  // Recharger quand businessId, unit OU refreshKey change
   useEffect(() => {
     fetchData();
-  }, [businessId, unit]);
+  }, [businessId, unit, refreshKey]); // 👈 Ajouter refreshKey
 
   const chartConfig = {
     backgroundGradientFrom: "#fff",

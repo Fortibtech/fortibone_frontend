@@ -1,39 +1,6 @@
 // src/api/business.ts
 import axiosInstance from "../axiosInstance";
 
-// ✅ Structure Business réelle
-export interface Business {
-  id: string;
-  name: string;
-  description: string;
-  type: "COMMERCANT" | "AUTRE_TYPE" | string;
-  logoUrl: string;
-  coverImageUrl: string;
-  address: string;
-  phoneNumber: string;
-  isVerified: boolean;
-  createdAt: string;
-  updatedAt: string;
-  currencyId: string;
-  averageRating: number;
-  activitySector: string;
-  reviewCount: number;
-  ownerId: string;
-  owner: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  };
-}
-
-// ✅ Réponse de l'API Businesses
-export interface GetBusinessesResponse {
-  data: Business[];
-  totalPages: number;
-  totalItems: number;
-  currentPage: number;
-}
-
 // ✅ Interfaces Product & Variants
 export interface ProductAttribute {
   id: string;
@@ -92,12 +59,130 @@ export interface GetProductsByBusinessResponse {
   totalPages: number;
 }
 
-// ✅ Fonction pour récupérer les businesses
-export async function getBusinesses(): Promise<GetBusinessesResponse> {
+// ==================== TYPES ====================
+
+export interface Business {
+  id: string;
+  name: string;
+  description: string;
+  type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR" | "LIVREUR";
+  logoUrl: string;
+  coverImageUrl: string;
+  address: string;
+  phoneNumber: string;
+  isVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+  currencyId: string;
+  averageRating: number;
+  activitySector: string;
+  reviewCount: number;
+  ownerId: string;
+  owner: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
+// Réponse de l'API Businesses
+export interface GetBusinessesResponse {
+  data: Business[];
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  // Ancienne structure (pour compatibilité)
+  totalPages?: number;
+  totalItems?: number;
+  currentPage?: number;
+}
+
+// Types des paramètres de filtrage
+export type BusinessType =
+  | "COMMERCANT"
+  | "FOURNISSEUR"
+  | "RESTAURATEUR"
+  | "LIVREUR";
+
+export interface GetBusinessesParams {
+  search?: string; // Recherche par nom ou description
+  type?: BusinessType; // Filtrer par type
+  page?: number; // Numéro de page (défaut: 1)
+  limit?: number; // Éléments par page (défaut: 10)
+  latitude?: number; // Latitude pour recherche proximité
+  longitude?: number; // Longitude pour recherche proximité
+  radius?: number; // Rayon en km (défaut: 10)
+}
+
+// ==================== FONCTION ====================
+
+/**
+ * Récupère la liste des entreprises avec filtres optionnels
+ * @param params - Paramètres de filtrage et pagination
+ * @returns Liste d'entreprises avec métadonnées de pagination
+ *
+ * @example
+ * // Toutes les entreprises (défaut)
+ * const businesses = await getBusinesses();
+ *
+ * @example
+ * // Restaurants uniquement
+ * const restaurants = await getBusinesses({ type: "RESTAURATEUR" });
+ *
+ * @example
+ * // Recherche de proximité
+ * const nearby = await getBusinesses({
+ *   latitude: -11.7085,
+ *   longitude: 43.2551,
+ *   radius: 5
+ * });
+ *
+ * @example
+ * // Recherche textuelle avec pagination
+ * const results = await getBusinesses({
+ *   search: "Pizza",
+ *   page: 2,
+ *   limit: 20
+ * });
+ */
+export async function getBusinesses(
+  params?: GetBusinessesParams
+): Promise<GetBusinessesResponse> {
   try {
-    const response = await axiosInstance.get<GetBusinessesResponse>(
-      "/businesses"
-    );
+    // Construction des query parameters
+    const queryParams = new URLSearchParams();
+
+    if (params?.search) {
+      queryParams.append("search", params.search);
+    }
+    if (params?.type) {
+      queryParams.append("type", params.type);
+    }
+    if (params?.page !== undefined) {
+      queryParams.append("page", params.page.toString());
+    }
+    if (params?.limit !== undefined) {
+      queryParams.append("limit", params.limit.toString());
+    }
+    if (params?.latitude !== undefined) {
+      queryParams.append("latitude", params.latitude.toString());
+    }
+    if (params?.longitude !== undefined) {
+      queryParams.append("longitude", params.longitude.toString());
+    }
+    if (params?.radius !== undefined) {
+      queryParams.append("radius", params.radius.toString());
+    }
+
+    // Construction de l'URL avec query string
+    const url = `/businesses${
+      queryParams.toString() ? `?${queryParams.toString()}` : ""
+    }`;
+
+    const response = await axiosInstance.get<GetBusinessesResponse>(url);
     return response.data;
   } catch (error: any) {
     console.error(

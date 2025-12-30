@@ -22,6 +22,7 @@ interface LossByMovementType {
 interface InventoryLossesChartProps {
   businessId: string;
   currencyId: string;
+  refreshKey?: number;
 }
 
 export const formatMoney = (value: number, symbol: string = ""): string => {
@@ -37,6 +38,7 @@ export const formatMoney = (value: number, symbol: string = ""): string => {
 const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
   businessId,
   currencyId,
+  refreshKey = 0,
 }) => {
   const [loading, setLoading] = useState(true);
   const [losses, setLosses] = useState<LossByMovementType[]>([]);
@@ -70,7 +72,6 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
         (sum, item) => sum + item.totalValue,
         0
       );
-
       const sorted = processedLosses.sort(
         (a, b) => b.totalValue - a.totalValue
       );
@@ -86,9 +87,10 @@ const InventoryLossesChart: React.FC<InventoryLossesChartProps> = ({
     }
   };
 
+  // Recharger quand businessId, currencyId OU refreshKey change
   useEffect(() => {
     fetchData();
-  }, [businessId, currencyId]);
+  }, [businessId, currencyId, refreshKey]); // 👈 Ajouter refreshKey
 
   const formatMovementType = (type: string): string => {
     const map: Record<string, string> = {

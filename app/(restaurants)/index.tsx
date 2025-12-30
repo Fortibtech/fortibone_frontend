@@ -74,7 +74,10 @@ const RestaurantHome: React.FC = () => {
   // Date pickers
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
-
+  const [refreshKey, setRefreshKey] = useState(0);
+  const triggerRefresh = useCallback(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, []);
   // --------------------------- INIT ---------------------------
   const loadInitialData = async () => {
     try {
@@ -309,7 +312,10 @@ const RestaurantHome: React.FC = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadInitialData();
-    if (business?.id) await loadStats(business.id);
+    if (business?.id) {
+      await loadStats(business.id);
+      triggerRefresh(); // 👈 AJOUTER CETTE LIGNE
+    }
     setRefreshing(false);
   };
 
@@ -582,24 +588,31 @@ const RestaurantHome: React.FC = () => {
               <PopularDishesChart
                 businessId={business.id}
                 currencyId={business.currencyId}
+                refreshKey={refreshKey} 
               />
-              <ReservationsByPeriodChart businessId={business.id} />
+              <ReservationsByPeriodChart
+                businessId={business.id}
+                refreshKey={refreshKey} 
+              />
               <SalesByPeriodChart
                 businessId={business.id}
                 currencyId={business.currencyId}
+                refreshKey={refreshKey} // 👈 AJOUTER
               />
               <ExpenseDistributionChart
                 businessId={business.id}
                 currencyId={business.currencyId}
+                refreshKey={refreshKey} // 👈 AJOUTER
               />
               <RevenueDistributionChart
                 businessId={business.id}
                 currencyId={business.currencyId}
+                refreshKey={refreshKey} // 👈 AJOUTER
               />
-
               <InventoryLossesChart
                 businessId={business.id}
                 currencyId={business.currencyId}
+                refreshKey={refreshKey} // 👈 AJOUTER
               />
             </View>
             {/* {renderQuickActions()} */}

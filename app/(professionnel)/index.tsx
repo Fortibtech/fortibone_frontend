@@ -43,7 +43,6 @@ const HomePage: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   // Analytics states
   const [overallOverview, setOverallOverview] =
     useState<AnalyticsOverview | null>(null);
@@ -67,6 +66,10 @@ const HomePage: React.FC = () => {
   // Refs
   const analyticsLoadingRef = useRef(false);
   const mountedRef = useRef(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const triggerRefresh = useCallback(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, []);
   const loadInitialData = async () => {
     try {
       setLoading(true);
@@ -275,9 +278,10 @@ const HomePage: React.FC = () => {
 
     if (business?.id) {
       await loadAnalytics();
+      triggerRefresh(); // 👈 Déclenche le refresh des graphiques
     }
     setRefreshing(false);
-  }, [loadAnalytics, business?.id]);
+  }, [loadAnalytics, business?.id, triggerRefresh]);
 
   const handleBusinessSelect = useCallback(
     async (selected: Business) => {
@@ -476,6 +480,7 @@ const HomePage: React.FC = () => {
               id={business.id}
               currencyId={business.currencyId}
               show={true}
+              refreshKey={refreshKey} // 👈 Nouvelle prop
             />
           </>
         ) : (
