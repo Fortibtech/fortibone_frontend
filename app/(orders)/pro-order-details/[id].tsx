@@ -1,4 +1,4 @@
-// app/(app)/orders/[id].tsx  (ou ton chemin actuel)
+// app/(app)/orders/[id].tsx
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -21,7 +21,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
 
 import { getOrderById, updateOrderStatus } from "@/api/Orders";
-import { BusinessesService } from "@/api";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
+import { useBusinessStore } from "@/store/businessStore";
 
 import { OrderResponse } from "@/types/orders";
 import {
@@ -30,8 +31,7 @@ import {
   EstimateOption,
   EstimateResponse,
 } from "@/api/delivery/estimateApi";
-import { useBusinessStore } from "@/store/businessStore";
-import { getCurrencySymbolById } from "@/api/currency/currencyApi";
+import { getLivreurs, Livreur } from "@/api/delivery/getApi";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -49,12 +49,14 @@ export default function OrderDetails() {
   const [updating, setUpdating] = useState(false);
 
   // Livreur
-  const [businesses, setBusinesses] = useState<any[]>([]);
+  const [businesses, setBusinesses] = useState<Livreur[]>([]); // Pour compatibilité
+  const [allLivreurs, setAllLivreurs] = useState<Livreur[]>([]); // Tous les livreurs
   const [loadingCarriers, setLoadingCarriers] = useState(true);
   const [selectedCarrierId, setSelectedCarrierId] = useState<string | null>(
     null
   );
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); // Recherche dans dropdown
 
   // Coordonnées
   const [pickupCoords] = useState(INITIAL_PICKUP);
@@ -68,6 +70,7 @@ export default function OrderDetails() {
   const mapRef = useRef<MapView>(null);
   const business = useBusinessStore((state) => state.business);
   const [symbol, setSymbol] = useState<string | null>(null);
+
   // Estimation
   const [estimating, setEstimating] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -87,21 +90,45 @@ export default function OrderDetails() {
   );
   const [feePayer, setFeePayer] = useState<"SENDER" | "RECEIVER">("SENDER");
 
-  /* ===================== CHARGEMENT LIVREURS ===================== */
+  /* ===================== CHARGEMENT DES LIVREURS DISPONIBLES ===================== */
   const loadCarriers = async () => {
     try {
       setLoadingCarriers(true);
-      const all = await BusinessesService.getCarriers();
-      const carriers = all.filter((b: any) => b.type === "LIVREUR");
+
+      const response = await getLivreurs({
+        limit: 100,
+      });
+
+      const carriers = response.data;
+
+      setAllLivreurs(carriers);
       setBusinesses(carriers);
-      if (carriers.length > 0) {
+
+      if (carriers.length === 0) {
+        Toast.show({
+          type: "info",
+          text1: "Aucun livreur disponible",
+          text2: "Réessayez plus tard",
+        });
+        setSelectedCarrierId(null);
+      } else {
         setSelectedCarrierId(carriers[0].id);
       }
-      if (!business) return;
-      const symbol = await getCurrencySymbolById(business.currencyId);
-      setSymbol(symbol);
-    } catch {
-      Alert.alert("Erreur", "Impossible de charger les livreurs.");
+
+      if (business?.currencyId) {
+        const sym = await getCurrencySymbolById(business.currencyId);
+        setSymbol(sym || "FCFA");
+      }
+    } catch (error: any) {
+      console.error("Erreur chargement livreurs :", error);
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible de charger les livreurs",
+      });
+      setAllLivreurs([]);
+      setBusinesses([]);
+      setSelectedCarrierId(null);
     } finally {
       setLoadingCarriers(false);
     }
@@ -137,9 +164,9 @@ export default function OrderDetails() {
     fetchOrder();
   }, [id]);
 
-  const selectedCarrier = businesses.find((b) => b.id === selectedCarrierId);
+  const selectedCarrier = allLivreurs.find((b) => b.id === selectedCarrierId);
 
-  /* ===================== ESTIMATION (NOUVELLE API) ===================== */
+  /* ===================== ESTIMATION ===================== */
   const handleEstimate = async () => {
     if (!order || !selectedCarrierId || !deliveryCoords) {
       Toast.show({
@@ -163,7 +190,6 @@ export default function OrderDetails() {
       const result = await createDeliveryEstimate(payload);
       setEstimationResult(result);
 
-      // Pré-sélection de la première option
       if (result.options.length > 0) {
         setSelectedOption(result.options[0]);
       }
@@ -188,7 +214,7 @@ export default function OrderDetails() {
     }
   };
 
-  /* ===================== CRÉATION DEMANDE (NOUVELLE API) ===================== */
+  /* ===================== CRÉATION DEMANDE ===================== */
   const handleCreateDelivery = async () => {
     if (
       !order ||
@@ -422,7 +448,7 @@ export default function OrderDetails() {
         </View>
 
         {/* Bloc Livraison */}
-        {businesses.length > 0 && (
+        {allLivreurs.length > 0 && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Livraison</Text>
 
@@ -432,9 +458,11 @@ export default function OrderDetails() {
               onPress={() => setDropdownOpen(!dropdownOpen)}
               disabled={loadingCarriers}
             >
-              <Text style={styles.dropdownText}>
+              <Text style={styles.dropdownText} numberOfLines={1}>
                 {selectedCarrier
                   ? selectedCarrier.name
+                  : loadingCarriers
+                  ? "Chargement..."
                   : "Sélectionner un livreur"}
               </Text>
               <Ionicons
@@ -445,31 +473,81 @@ export default function OrderDetails() {
             </TouchableOpacity>
 
             {dropdownOpen && (
-              <View style={styles.dropdownList}>
-                {businesses.map((carrier) => (
-                  <TouchableOpacity
-                    key={carrier.id}
-                    style={[
-                      styles.dropdownItem,
-                      selectedCarrierId === carrier.id &&
-                        styles.dropdownItemSelected,
-                    ]}
-                    onPress={() => {
-                      setSelectedCarrierId(carrier.id);
-                      setDropdownOpen(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        selectedCarrierId === carrier.id &&
-                          styles.dropdownItemTextSelected,
-                      ]}
-                    >
-                      {carrier.name}
+              <View style={styles.dropdownContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Rechercher un livreur..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoFocus
+                />
+
+                <ScrollView
+                  style={styles.dropdownList}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {allLivreurs
+                    .filter((carrier) =>
+                      carrier.name
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase())
+                    )
+                    .map((carrier) => (
+                      <TouchableOpacity
+                        key={carrier.id}
+                        style={[
+                          styles.dropdownItem,
+                          selectedCarrierId === carrier.id &&
+                            styles.dropdownItemSelected,
+                        ]}
+                        onPress={() => {
+                          setSelectedCarrierId(carrier.id);
+                          setSearchQuery("");
+                          setDropdownOpen(false);
+                        }}
+                      >
+                        <View style={styles.dropdownItemContent}>
+                          <View style={styles.onlineIndicator}>
+                            <View
+                              style={[
+                                styles.onlineDot,
+                                {
+                                  backgroundColor: carrier.isOnline
+                                    ? "#16A34A"
+                                    : "#9CA3AF",
+                                },
+                              ]}
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              style={[
+                                styles.dropdownItemText,
+                                selectedCarrierId === carrier.id &&
+                                  styles.dropdownItemTextSelected,
+                              ]}
+                            >
+                              {carrier.name}
+                            </Text>
+                            {carrier.averageRating > 0 && (
+                              <Text style={styles.ratingText}>
+                                ⭐ {carrier.averageRating.toFixed(1)} (
+                                {carrier.reviewCount})
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+
+                  {allLivreurs.filter((c) =>
+                    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <Text style={styles.noResultText}>
+                      Aucun livreur trouvé
                     </Text>
-                  </TouchableOpacity>
-                ))}
+                  )}
+                </ScrollView>
               </View>
             )}
 
@@ -617,7 +695,7 @@ export default function OrderDetails() {
         </SafeAreaView>
       </Modal>
 
-      {/* Modal Estimation - Nouvelle structure */}
+      {/* Modal Estimation */}
       <Modal
         animationType="slide"
         transparent
@@ -796,7 +874,7 @@ export default function OrderDetails() {
   );
 }
 
-/* ===================== STYLES COMPLETS ===================== */
+/* ===================== STYLES ===================== */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -877,7 +955,17 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: "right",
   },
-
+  addressSection: {
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
+    backgroundColor: "#FAFAFA", // Légère distinction visuelle
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    marginHorizontal: -20, // Pour que le fond aille jusqu'aux bords du modal
+  },
   card: {
     marginHorizontal: 16,
     marginBottom: 20,
@@ -917,14 +1005,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EAEAEA",
   },
-  dropdownText: { fontSize: 15, color: "#333", fontWeight: "500" },
-  dropdownList: {
+  dropdownText: { fontSize: 15, color: "#333", fontWeight: "500", flex: 1 },
+
+  // Nouveau dropdown avec recherche
+  dropdownContainer: {
     marginTop: 8,
     backgroundColor: "#fff",
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#EAEAEA",
-    maxHeight: 200,
+    maxHeight: 300,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -935,14 +1025,32 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
     }),
   },
+  searchInput: {
+    margin: 12,
+    padding: 12,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 10,
+    fontSize: 15,
+  },
+  dropdownList: { maxHeight: 240 },
   dropdownItem: {
     padding: 14,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
   dropdownItemSelected: { backgroundColor: "#EFF6FF" },
+  dropdownItemContent: { flexDirection: "row", alignItems: "center" },
+  onlineIndicator: { marginRight: 12 },
+  onlineDot: { width: 10, height: 10, borderRadius: 5 },
   dropdownItemText: { fontSize: 15, color: "#333" },
   dropdownItemTextSelected: { color: "#2563EB", fontWeight: "600" },
+  ratingText: { fontSize: 13, color: "#666", marginTop: 2 },
+  noResultText: {
+    textAlign: "center",
+    padding: 20,
+    color: "#999",
+    fontStyle: "italic",
+  },
 
   mapButton: {
     flexDirection: "row",
@@ -1025,7 +1133,7 @@ const styles = StyleSheet.create({
   // Modal Estimation
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1035,7 +1143,6 @@ const styles = StyleSheet.create({
     width: "90%",
     height: SCREEN_HEIGHT * 0.85,
     maxHeight: SCREEN_HEIGHT * 0.9,
-    flexDirection: "column",
     overflow: "hidden",
   },
   modalHeader: {
@@ -1111,7 +1218,6 @@ const styles = StyleSheet.create({
   createDeliveryBtnDisabled: { backgroundColor: "#93C5FD", opacity: 0.7 },
   createDeliveryText: { color: "#fff", fontWeight: "600", fontSize: 16 },
 
-  // Options de tarif
   optionCard: {
     backgroundColor: "#F9F9F9",
     borderRadius: 12,
