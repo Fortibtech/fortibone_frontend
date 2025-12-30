@@ -1,13 +1,7 @@
 import { getBusinesses, BusinessType } from "@/api/client/business";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, {
-  JSX,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { JSX, useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -25,7 +19,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { Business, GetBusinessesResponse } from "@/api/client/business";
+
 const { width } = Dimensions.get("window");
+
 interface Category {
   id: string;
   name: string;
@@ -33,7 +29,7 @@ interface Category {
 }
 
 const EnterprisePage: React.FC = () => {
-  // Catégories basées sur le type d'entreprise
+  // Catégories affichées
   const categories: Category[] = [
     { id: "all", name: "Tout", type: "all" },
     { id: "restaurateur", name: "Restaurants", type: "RESTAURATEUR" },
@@ -56,27 +52,21 @@ const EnterprisePage: React.FC = () => {
   const searchInputRef = useRef<TextInput>(null);
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // ==================== FONCTION DE CHARGEMENT AVEC FILTRES BACKEND ====================
+  // ==================== CHARGEMENT DES ENTREPRISES ====================
   const loadEnterprises = useCallback(
     async (page: number = 1, resetData: boolean = false) => {
       try {
         setLoading(true);
 
-        // Récupère le type correspondant à la catégorie active
-        const currentCategory = categories.find((c) => c.id === activeCategory);
-        const businessType =
-          currentCategory?.type !== "all"
-            ? (currentCategory?.type as BusinessType)
-            : undefined;
-
-        // 🔥 APPEL API AVEC TOUS LES FILTRES
+        // On récupère les données avec les filtres de recherche et pagination
+        // On ne filtre pas par type ici pour pouvoir tout exclure manuellement ensuite
         const res: GetBusinessesResponse = await getBusinesses({
-          type: businessType, // ✅ Filtrage par type (backend)
-          search: searchText || undefined, // ✅ Recherche textuelle (backend)
-          page: page, // ✅ Pagination (backend)
-          limit: 90, // 20 entreprises par page
+          search: searchText || undefined,
+          page: page,
+          limit: 90,
         });
 
+        // Traitement des images
         const processedData: Business[] = res.data.map((b) => {
           let imageUrl =
             "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image";
@@ -88,22 +78,39 @@ const EnterprisePage: React.FC = () => {
           return { ...b, imageUrl };
         });
 
-        // ✅ Filtrage par secteur (optionnel frontend car pas disponible dans l'API)
-        const filteredBySector = selectedSector
-          ? processedData.filter(
-              (b) =>
-                b.activitySector?.toLowerCase().trim() ===
-                selectedSector.toLowerCase()
-            )
-          : processedData;
+        // 🔥 EXCLUSION DES TYPES INDÉSIRABLES
+        let filteredData = processedData.filter(
+          (b) => b.type !== "FOURNISSEUR" && b.type !== "LIVREUR"
+        );
 
-        if (resetData) {
-          setEnterprises(filteredBySector);
-        } else {
-          setEnterprises((prev) => [...prev, ...filteredBySector]);
+        // Appliquer le filtre par catégorie si ce n'est pas "Tout"
+        if (activeCategory !== "all") {
+          const currentCategory = categories.find(
+            (c) => c.id === activeCategory
+          );
+          if (currentCategory?.type && currentCategory.type !== "all") {
+            filteredData = filteredData.filter(
+              (b) => b.type === currentCategory.type
+            );
+          }
         }
 
-        // Mise à jour de la pagination
+        // Filtre par secteur d'activité
+        const finalData = selectedSector
+          ? filteredData.filter(
+              (b) =>
+                b.activitySector?.toLowerCase().trim() ===
+                selectedSector.toLowerCase().trim()
+            )
+          : filteredData;
+
+        if (resetData) {
+          setEnterprises(finalData);
+        } else {
+          setEnterprises((prev) => [...prev, ...finalData]);
+        }
+
+        // Pagination
         const total = res.pagination?.totalPages || res.totalPages || 1;
         setTotalPages(total);
         setHasMore(page < total);
@@ -120,16 +127,21 @@ const EnterprisePage: React.FC = () => {
   // ==================== CHARGEMENT DES SECTEURS DISPONIBLES ====================
   const loadAvailableSectors = useCallback(async () => {
     try {
-      // Charge TOUTES les entreprises pour extraire les secteurs uniques
       const res: GetBusinessesResponse = await getBusinesses({
-        limit: 1000, // Grande limite pour récupérer tous les secteurs
+        limit: 1000,
       });
 
-      const sectors = res.data
+      const allSectors = res.data
         .map((b) => b.activitySector?.trim())
         .filter(Boolean) as string[];
 
-      const uniqueSectors = Array.from(new Set(sectors)).sort();
+      // On garde uniquement les secteurs des entreprises autorisées
+      const validSectors = res.data
+        .filter((b) => b.type !== "FOURNISSEUR" && b.type !== "LIVREUR")
+        .map((b) => b.activitySector?.trim())
+        .filter(Boolean) as string[];
+
+      const uniqueSectors = Array.from(new Set(validSectors)).sort();
       setAvailableSectors(uniqueSectors);
     } catch (err) {
       console.error("Erreur chargement secteurs:", err);
@@ -137,26 +149,22 @@ const EnterprisePage: React.FC = () => {
   }, []);
 
   // ==================== EFFETS ====================
-
-  // Chargement initial des secteurs
   useEffect(() => {
     loadAvailableSectors();
-  }, []);
+  }, [loadAvailableSectors]);
 
-  // Rechargement quand les filtres changent
   useEffect(() => {
-    loadEnterprises(1, true); // Reset à la page 1
-  }, [activeCategory, selectedSector]);
+    loadEnterprises(1, true);
+  }, [activeCategory, selectedSector, loadEnterprises]);
 
-  // Debounce pour la recherche textuelle
   useEffect(() => {
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current);
     }
 
     debounceTimeout.current = setTimeout(() => {
-      loadEnterprises(1, true); // Reset à la page 1
-    }, 500); // Attend 500ms après la dernière saisie
+      loadEnterprises(1, true);
+    }, 500);
 
     return () => {
       if (debounceTimeout.current) {
@@ -208,7 +216,6 @@ const EnterprisePage: React.FC = () => {
         onChangeText={setSearchText}
       />
 
-      {/* Dropdown pour filtrer par secteur */}
       <Pressable
         onPress={() => setDropdownVisible(true)}
         style={styles.dropdownTrigger}
@@ -226,7 +233,6 @@ const EnterprisePage: React.FC = () => {
         </Pressable>
       )}
 
-      {/* Modal Dropdown pour secteur d'activité */}
       <Modal
         visible={dropdownVisible}
         transparent
