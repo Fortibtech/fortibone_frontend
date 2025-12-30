@@ -6,17 +6,39 @@ import axiosInstance from "@/api/axiosInstance";
    TYPES RÉELS – 100% conformes à ton API
    ========================================== */
 
+/* ==========================================
+   INPUTS – Ce que tu envoies au backend
+   ========================================== */
+
+export interface CreateMenuInput {
+  name: string;
+  description?: string;
+  price: number; // ← tu envoies en centimes (ex: 50000)
+  isActive: boolean;
+  items?: Array<{ variantId: string; quantity: number }>;
+}
+
+/* ==========================================
+   FONCTIONS API – Corrigées & optimisées
+   ========================================== */
+/**
+ * Structure exacte renvoyée par ton API
+ *
+ *
+ */
+
 export interface MenuItemVariant {
   id: string;
   sku: string;
-  barcode: string;
+  barcode: string | null;
   price: string;
   purchasePrice: string;
   quantityInStock: number;
   alertThreshold: number | null;
-  itemsPerLot: number;
-  lotPrice: string;
+  itemsPerLot: number | null;
+  lotPrice: string | null;
   imageUrl: string | null;
+  createdAt: string;
   productId: string;
   product: {
     name: string;
@@ -31,43 +53,16 @@ export interface MenuItem {
   variant: MenuItemVariant;
 }
 
-/**
- * Structure exacte renvoyée par ton API
- */
 export interface Menu {
   id: string;
   name: string;
   description: string | null;
-  price: string; // ← Attention : string, pas number !
+  price: string; // ⚠️ string côté API
   isActive: boolean;
-  imageUrl: string | null; // ← peut être null si pas d’image
+  imageUrl: string | null;
   businessId: string;
   menuItems: MenuItem[];
 }
-
-/* ==========================================
-   INPUTS – Ce que tu envoies au backend
-   ========================================== */
-
-export interface CreateMenuInput {
-  name: string;
-  description?: string;
-  price: number; // ← tu envoies en centimes (ex: 50000)
-  isActive: boolean;
-  items?: Array<{ variantId: string; quantity: number }>;
-}
-
-export interface UpdateMenuInput {
-  name?: string;
-  description?: string | null;
-  price?: number; // ← toujours en centimes
-  isActive?: boolean;
-}
-
-/* ==========================================
-   FONCTIONS API – Corrigées & optimisées
-   ========================================== */
-
 // Récupérer tous les menus d’un restaurant
 export const getMenus = async (businessId: string): Promise<Menu[]> => {
   const { data } = await axiosInstance.get<Menu[]>(
@@ -75,6 +70,7 @@ export const getMenus = async (businessId: string): Promise<Menu[]> => {
   );
   return data;
 };
+
 
 // Créer un menu
 export const createMenu = async (
@@ -88,6 +84,12 @@ export const createMenu = async (
   return data;
 };
 
+export interface UpdateMenuInput {
+  name?: string;
+  description?: string | null;
+  price?: number; // ← toujours en centimes
+  isActive?: boolean;
+}
 // Mettre à jour un menu
 export const updateMenu = async (
   businessId: string,

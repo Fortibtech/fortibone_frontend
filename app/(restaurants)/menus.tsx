@@ -1,4 +1,4 @@
-// app/menu/index.tsx  (ou le chemin de ton MenuScreen)
+// app/menu/index.tsx
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -32,24 +32,28 @@ import {
   deleteMenu,
   uploadImageMenu,
 } from "@/api/menu/menuApi";
-import ProductListScreen from "@/components/produits/ProductListScreens";
+import { ProductListScreen } from "@/components/produits/ProductListScreens";
 import { getCurrencySymbolById } from "@/api/currency/currencyApi";
+import { getProductsByBusiness, ProductVariant, Produit } from "@/api/Products";
+import InventoryApp from "@/components/produits/InventoryApp";
 
-// Import du composant pour les plats individuels
+// Import du composant Inventaire
 
-type TabType = "MENUS" | "PLATS";
+type TabType = "MENUS" | "PLATS" | "INVENTAIRE";
 
 export default function MenuScreen() {
   const business = useBusinessStore((state) => state.business);
   const version = useBusinessStore((state) => state.version);
-  const businessId = business?.id;
+  const businessId: any = business?.id;
   const [activeTab, setActiveTab] = useState<TabType>("MENUS");
-  // États pour l'onglet Menus
+
+  // États pour les menus
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [symbol, setSymbol] = useState<string | null>(null);
-  // États du modal (création/édition menu)
+
+  // États du modal
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentMenuId, setCurrentMenuId] = useState<string | null>(null);
@@ -60,6 +64,16 @@ export default function MenuScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // États pour la composition du menu (SEULEMENT en CREATE)
+  const [selectedItems, setSelectedItems] = useState<
+    { variant: ProductVariant; quantity: number }[]
+  >([]);
+  const [products, setProducts] = useState<Produit[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestedPrice, setSuggestedPrice] = useState<number | null>(null);
+
   const fetchMenus = async () => {
     if (!businessId) {
       setMenus([]);
@@ -69,16 +83,44 @@ export default function MenuScreen() {
       const data = await getMenus(businessId);
       setMenus(data || []);
       if (!business) return;
-      const symbol = await getCurrencySymbolById(business.currencyId);
-      setSymbol(symbol);
+      const currSymbol = await getCurrencySymbolById(business.currencyId);
+      setSymbol(currSymbol);
     } catch (error: any) {
       Alert.alert("Erreur", error.message || "Impossible de charger les menus");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const fetchProducts = async () => {
+    if (!businessId) return;
+    setLoadingProducts(true);
+    try {
+      const response = await getProductsByBusiness(businessId, { limit: 100 });
+      setProducts(response.data);
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de charger les plats");
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const calculateSuggestedPrice = () => {
+    const total = selectedItems.reduce((sum, item) => {
+      const variantPrice = parseFloat(item.variant.price || "0");
+      return sum + variantPrice * item.quantity;
+    }, 0);
+    setSuggestedPrice(total > 0 ? Math.round(total) : null);
+  };
+
+  useEffect(() => {
+    calculateSuggestedPrice();
+  }, [selectedItems]);
 
   useFocusEffect(
     useCallback(() => {
       if (activeTab === "MENUS") {
+        setLoading(true);
         fetchMenus();
       }
     }, [businessId, version, activeTab])
@@ -104,13 +146,18 @@ export default function MenuScreen() {
     setImageUri(null);
     setCurrentMenuId(null);
     setIsEditMode(false);
+    setSelectedItems([]);
+    setSearchQuery("");
+    setSuggestedPrice(null);
   };
 
   const openCreateModal = () => {
     resetForm();
+    fetchProducts(); // Charge les produits pour la sélection (CREATE uniquement)
     setModalVisible(true);
   };
-  const openEditModal = (menu: Menu) => {
+
+  const openEditModal = async (menu: Menu) => {
     setIsEditMode(true);
     setCurrentMenuId(menu.id);
     setName(menu.name);
@@ -118,8 +165,11 @@ export default function MenuScreen() {
     setPrice(menu.price.toString());
     setIsActive(menu.isActive);
     setImageUri(menu.imageUrl || null);
+    setSelectedItems([]); // Pas de sélection en mode EDIT (items non modifiables via PATCH)
+    setSuggestedPrice(null);
     setModalVisible(true);
   };
+
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -133,65 +183,130 @@ export default function MenuScreen() {
     }
   };
 
+  const addOrUpdateItem = (variant: ProductVariant) => {
+    setSelectedItems((prev) => {
+      const existing = prev.find((i) => i.variant.id === variant.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.variant.id === variant.id ? { ...i, quantity: i.quantity + 1 } : i
+        );
+      }
+      return [...prev, { variant, quantity: 1 }];
+    });
+  };
+
+  const removeItem = (variantId: string) => {
+    setSelectedItems((prev) => prev.filter((i) => i.variant.id !== variantId));
+  };
+
+  const updateQuantity = (variantId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeItem(variantId);
+      return;
+    }
+    setSelectedItems((prev) =>
+      prev.map((i) => (i.variant.id === variantId ? { ...i, quantity } : i))
+    );
+  };
+
+  // ✅ FONCTION handleSave CORRIGÉE : CREATE vs UPDATE séparés
   const handleSave = async () => {
-    if (!name.trim() || !price.trim()) {
-      Alert.alert("Erreur", "Nom et prix obligatoires");
+    if (!name.trim()) {
+      Alert.alert("Erreur", "Le nom du menu est obligatoire");
       return;
     }
 
-    const priceNum = parseInt(price.replace(/[^0-9]/g, ""), 10);
+    if (!isEditMode && selectedItems.length === 0) {
+      Alert.alert("Erreur", "Ajoutez au moins un plat à la formule (création)");
+      return;
+    }
+
+    if (!price.trim()) {
+      Alert.alert("Erreur", "Le prix est obligatoire");
+      return;
+    }
+
+    const priceNum = parseFloat(price.replace(/[^0-9.]/g, ""));
     if (isNaN(priceNum) || priceNum <= 0) {
-      Alert.alert("Erreur", "Prix invalide");
+      Alert.alert("Erreur", "Le prix doit être un nombre valide supérieur à 0");
       return;
     }
 
-    if (!businessId) return;
+    if (!businessId) {
+      Alert.alert("Erreur", "Business non chargé");
+      return;
+    }
 
     setSaving(true);
 
     try {
+      let menuId: string;
+
       if (isEditMode && currentMenuId) {
-        await updateMenu(businessId, currentMenuId, {
+        // ✅ UPDATE (PATCH) : SANS items (selon doc API)
+        const updatePayload = {
           name: name.trim(),
-          description: description.trim() || undefined,
+          description: description.trim() || "",
           price: priceNum,
           isActive,
-        });
+        };
 
-        if (
-          imageUri &&
-          imageUri !== menus.find((m) => m.id === currentMenuId)?.imageUrl
-        ) {
-          setUploadingImage(true);
-          await uploadImageMenu(businessId, currentMenuId, imageUri);
-        }
+        console.log(
+          "📤 UPDATE Payload (PATCH) :",
+          JSON.stringify(updatePayload, null, 2)
+        );
 
-        Alert.alert("Succès", "Menu modifié !");
+        await updateMenu(businessId, currentMenuId, updatePayload);
+        menuId = currentMenuId;
+        Alert.alert("Succès", "Menu modifié avec succès !");
       } else {
-        const created = await createMenu(businessId, {
+        // ✅ CREATE (POST) : AVEC items
+        const itemsPayload = selectedItems.map((item) => ({
+          variantId: item.variant.id,
+          quantity: item.quantity,
+        }));
+
+        const createPayload = {
           name: name.trim(),
-          description: description.trim() || undefined,
+          description: description.trim() || "",
           price: priceNum,
           isActive,
-          items: [],
-        });
+          items: itemsPayload,
+        };
 
-        if (imageUri) {
+        console.log(
+          "📤 CREATE Payload (POST) :",
+          JSON.stringify(createPayload, null, 2)
+        );
+
+        const created = await createMenu(businessId, createPayload);
+        menuId = created.id;
+        Alert.alert("Succès", "Menu créé avec succès !");
+      }
+
+      // Upload image si nouvelle photo
+      if (imageUri) {
+        const currentImageUrl = menus.find(
+          (m) => m.id === currentMenuId
+        )?.imageUrl;
+        if (imageUri !== currentImageUrl) {
           setUploadingImage(true);
-          await uploadImageMenu(businessId, created.id, imageUri);
+          await uploadImageMenu(businessId, menuId, imageUri);
+          setUploadingImage(false);
         }
-
-        Alert.alert("Succès", "Menu créé !");
       }
 
       await fetchMenus();
       setModalVisible(false);
       resetForm();
     } catch (err: any) {
-      Alert.alert("Erreur", err.message || "Échec de la sauvegarde");
+      console.error("❌ Erreur sauvegarde :", err.response?.data || err);
+
+      const errorMessage =
+        err.response?.data?.message || err.message || "Échec de la sauvegarde";
+      Alert.alert("Erreur API", errorMessage);
     } finally {
       setSaving(false);
-      setUploadingImage(false);
     }
   };
 
@@ -207,7 +322,7 @@ export default function MenuScreen() {
           try {
             await deleteMenu(businessId, menu.id);
             await fetchMenus();
-            Alert.alert("Supprimé", `"${menu.name}" a été supprimé`);
+            Alert.alert("Supprimé", `"${menu.name}" supprimé`);
           } catch (err: any) {
             Alert.alert("Erreur", err.message || "Impossible de supprimer");
           }
@@ -279,19 +394,19 @@ export default function MenuScreen() {
     </View>
   );
 
+  const showAddButton = activeTab === "MENUS";
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Gestion du menu</Text>
-        {activeTab === "MENUS" && (
+        {showAddButton && (
           <TouchableOpacity style={styles.addButton} onPress={openCreateModal}>
             <Ionicons name="add" size={28} color="#FFF" />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Onglets */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === "MENUS" && styles.tabActive]}
@@ -303,7 +418,7 @@ export default function MenuScreen() {
               activeTab === "MENUS" && styles.tabTextActive,
             ]}
           >
-            Menus & Formules
+            Menus
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -319,9 +434,21 @@ export default function MenuScreen() {
             Plats individuels
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "INVENTAIRE" && styles.tabActive]}
+          onPress={() => setActiveTab("INVENTAIRE")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "INVENTAIRE" && styles.tabTextActive,
+            ]}
+          >
+            Inventaire
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Contenu */}
       {activeTab === "MENUS" ? (
         <>
           {loading && menus.length === 0 ? (
@@ -360,11 +487,13 @@ export default function MenuScreen() {
             />
           )}
         </>
-      ) : (
+      ) : activeTab === "PLATS" ? (
         <ProductListScreen />
+      ) : (
+        <InventoryApp id={businessId} />
       )}
 
-      {/* Modal (uniquement pour les Menus) */}
+      {/* Modal adapté : sélection items MASQUÉE en mode EDIT */}
       {activeTab === "MENUS" && (
         <Modal visible={modalVisible} transparent animationType="slide">
           <View style={styles.modalOverlay}>
@@ -437,6 +566,196 @@ export default function MenuScreen() {
                     keyboardType="number-pad"
                   />
 
+                  {/* Prix suggéré SEULEMENT en CREATE */}
+                  {!isEditMode && suggestedPrice !== null && (
+                    <View style={styles.suggestedPriceContainer}>
+                      <Text style={styles.suggestedPriceText}>
+                        Prix suggéré :{" "}
+                        <Text style={{ fontWeight: "800", color: "#6366F1" }}>
+                          {suggestedPrice.toLocaleString("fr-FR")} {symbol}
+                        </Text>
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setPrice(suggestedPrice.toString())}
+                      >
+                        <Text style={styles.applySuggestedText}>Appliquer</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* Sélection items SEULEMENT en CREATE */}
+                  {!isEditMode && (
+                    <>
+                      <Text style={[styles.label, { marginTop: 24 }]}>
+                        Composition du menu *
+                      </Text>
+
+                      {loadingProducts ? (
+                        <ActivityIndicator style={{ marginVertical: 20 }} />
+                      ) : (
+                        <>
+                          <TextInput
+                            style={[styles.input, { marginBottom: 12 }]}
+                            placeholder="Rechercher un plat..."
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                          />
+
+                          <FlatList
+                            data={products.filter((p) =>
+                              p.name
+                                .toLowerCase()
+                                .includes(searchQuery.toLowerCase())
+                            )}
+                            keyExtractor={(item) => item.id}
+                            scrollEnabled={false}
+                            renderItem={({ item: produit }) => (
+                              <View>
+                                {produit.variants.map((variant) => {
+                                  const isSelected = selectedItems.some(
+                                    (i) => i.variant.id === variant.id
+                                  );
+                                  return (
+                                    <TouchableOpacity
+                                      key={variant.id}
+                                      style={[
+                                        styles.variantItem,
+                                        isSelected &&
+                                          styles.variantItemSelected,
+                                      ]}
+                                      onPress={() => addOrUpdateItem(variant)}
+                                    >
+                                      {variant.imageUrl ? (
+                                        <Image
+                                          source={{ uri: variant.imageUrl }}
+                                          style={styles.variantImage}
+                                        />
+                                      ) : (
+                                        <View
+                                          style={styles.variantPlaceholderImage}
+                                        >
+                                          <Ionicons
+                                            name="restaurant"
+                                            size={32}
+                                            color="#CCC"
+                                          />
+                                        </View>
+                                      )}
+                                      <View style={styles.variantInfo}>
+                                        <Text style={styles.variantName}>
+                                          {produit.name}
+                                        </Text>
+                                        {variant.attributeValues.length > 0 && (
+                                          <Text
+                                            style={styles.variantAttributes}
+                                          >
+                                            {variant.attributeValues
+                                              .map((av) => av.value)
+                                              .join(", ")}
+                                          </Text>
+                                        )}
+                                        <Text style={styles.variantPrice}>
+                                          {parseFloat(
+                                            variant.price
+                                          ).toLocaleString("fr-FR")}{" "}
+                                          {symbol}
+                                        </Text>
+                                      </View>
+                                      {isSelected && (
+                                        <Ionicons
+                                          name="checkmark-circle"
+                                          size={28}
+                                          color="#10B981"
+                                        />
+                                      )}
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            )}
+                            style={{ maxHeight: 300 }}
+                          />
+                        </>
+                      )}
+
+                      {selectedItems.length > 0 && (
+                        <View style={styles.selectedItemsSection}>
+                          <Text style={styles.label}>
+                            Éléments inclus ({selectedItems.length})
+                          </Text>
+                          {selectedItems.map((item) => (
+                            <View
+                              key={item.variant.id}
+                              style={styles.selectedItemRow}
+                            >
+                              <Text
+                                style={styles.selectedItemText}
+                                numberOfLines={1}
+                              >
+                                {item.quantity}x{" "}
+                                {item.variant.productName || produit.name}{" "}
+                                {item.variant.attributeValues.length > 0 &&
+                                  `(${item.variant.attributeValues
+                                    .map((av) => av.value)
+                                    .join(", ")})`}
+                              </Text>
+                              <View style={styles.quantityControls}>
+                                <Pressable
+                                  onPress={() =>
+                                    updateQuantity(
+                                      item.variant.id,
+                                      item.quantity - 1
+                                    )
+                                  }
+                                  hitSlop={10}
+                                >
+                                  <Ionicons
+                                    name="remove-circle"
+                                    size={28}
+                                    color="#EF4444"
+                                  />
+                                </Pressable>
+                                <Text style={styles.quantityText}>
+                                  {item.quantity}
+                                </Text>
+                                <Pressable
+                                  onPress={() =>
+                                    updateQuantity(
+                                      item.variant.id,
+                                      item.quantity + 1
+                                    )
+                                  }
+                                  hitSlop={10}
+                                >
+                                  <Ionicons
+                                    name="add-circle"
+                                    size={32}
+                                    color="#6366F1"
+                                  />
+                                </Pressable>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </>
+                  )}
+
+                  {/* Info en mode EDIT : composition non modifiable */}
+                  {isEditMode && (
+                    <View style={styles.editInfoBox}>
+                      <Ionicons
+                        name="information-circle-outline"
+                        size={20}
+                        color="#6366F1"
+                      />
+                      <Text style={styles.editInfoText}>
+                        La composition des plats est modifiable uniquement lors
+                        de la création
+                      </Text>
+                    </View>
+                  )}
+
                   <View style={styles.switchRow}>
                     <Text style={styles.label}>Visible aux clients</Text>
                     <Switch
@@ -449,10 +768,19 @@ export default function MenuScreen() {
                   <TouchableOpacity
                     style={[
                       styles.saveButton,
-                      (!name || !price || saving) && styles.saveButtonDisabled,
+                      (!name ||
+                        !price ||
+                        (!isEditMode && selectedItems.length === 0) ||
+                        saving) &&
+                        styles.saveButtonDisabled,
                     ]}
                     onPress={handleSave}
-                    disabled={!name || !price || saving}
+                    disabled={
+                      !name ||
+                      !price ||
+                      (!isEditMode && selectedItems.length === 0) ||
+                      saving
+                    }
                   >
                     {saving ? (
                       <ActivityIndicator color="#FFF" />
@@ -503,8 +831,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
-  // Onglets
   tabsContainer: {
     flexDirection: "row",
     backgroundColor: "#FFF",
@@ -520,7 +846,6 @@ const styles = StyleSheet.create({
   tabActive: { borderBottomWidth: 3, borderBottomColor: "#7C3AED" },
   tabText: { fontSize: 16, color: "#666" },
   tabTextActive: { fontWeight: "700", color: "#7C3AED" },
-
   list: { padding: 24 },
   menuCard: {
     backgroundColor: "#FFF",
@@ -590,7 +915,6 @@ const styles = StyleSheet.create({
   },
   statusText: { fontSize: 13, fontWeight: "700", color: "#059669" },
   actions: { flexDirection: "row", alignItems: "center" },
-
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   empty: {
     flex: 1,
@@ -624,7 +948,6 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   emptyButtonText: { color: "#FFF", fontWeight: "800", fontSize: 18 },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -688,6 +1011,85 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
     fontSize: 16,
+  },
+  suggestedPriceContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  suggestedPriceText: { fontSize: 15, color: "#166534" },
+  applySuggestedText: { color: "#6366F1", fontWeight: "700" },
+  variantItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  variantItemSelected: {
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1,
+    borderColor: "#10B981",
+  },
+  variantImage: { width: 60, height: 60, borderRadius: 12 },
+  variantPlaceholderImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  variantInfo: { flex: 1, marginLeft: 12 },
+  variantName: { fontSize: 16, fontWeight: "600" },
+  variantAttributes: { fontSize: 14, color: "#6B7280" },
+  variantPrice: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#6366F1",
+    marginTop: 4,
+  },
+  selectedItemsSection: { marginTop: 24 },
+  selectedItemRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  selectedItemText: { flex: 1, fontSize: 15, fontWeight: "600" },
+  quantityControls: { flexDirection: "row", alignItems: "center", gap: 8 },
+  quantityText: {
+    fontSize: 18,
+    fontWeight: "800",
+    minWidth: 30,
+    textAlign: "center",
+  },
+  editInfoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  editInfoText: {
+    fontSize: 15,
+    color: "#1E40AF",
+    marginLeft: 12,
+    fontWeight: "500",
   },
   switchRow: {
     flexDirection: "row",
