@@ -1,0 +1,110 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid;
+}
+
+.alertExpiring {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+}
+
+.alertLowStock {
+    background-color: #fffbeb;
+    border-color: #fde68a;
+}
+
+.alertIcon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.alertContent {
+    flex: 1;
+}
+
+.alertTitle {
+    font-size: 15px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.alertExpiring .alertTitle {
+    color: #991b1b;
+}
+
+.alertLowStock .alertTitle {
+    color: #92400e;
+}
+
+.alertDescription {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+
+.alertLink {
+    font-size: 13px;
+    font-weight: 500;
+    color: #059669;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.alertLink:hover {
+    text-decoration: underline;
+}
+
+.dismissBtn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: #9ca3af;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.dismissBtn:hover {
+    color: #6b7280;
+}
+
+.section {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.sectionTitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sectionIcon {
+    font-size: 18px;
+}
+
+.noAlerts {
+    text-align: center;
+    padding: 24px;
+    color: #9ca3af;
+    font-size: 14px;
+}

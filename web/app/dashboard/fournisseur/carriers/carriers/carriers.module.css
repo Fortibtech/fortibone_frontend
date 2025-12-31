@@ -1,0 +1,267 @@
+.container {
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.backBtn {
+    width: 44px;
+    height: 44px;
+    border: 1px solid #e5e7eb;
+    border-radius: 50%;
+    background: white;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.backBtn:hover {
+    background: #f3f4f6;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+}
+
+/* Loading & Empty */
+.loadingContainer,
+.emptyContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #00A36C;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Carriers List */
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.carrierCard {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: white;
+    border: 1px solid #eaeaea;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.carrierCard:hover {
+    border-color: #00A36C;
+    box-shadow: 0 4px 12px rgba(0, 163, 108, 0.1);
+}
+
+.carrierIcon {
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    background: #F0FDF4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.carrierInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.carrierName {
+    font-size: 17px;
+    font-weight: 600;
+    color: #111;
+}
+
+.carrierType {
+    font-size: 14px;
+    color: #00A36C;
+}
+
+.carrierArrow {
+    font-size: 24px;
+    color: #999;
+}
+
+/* Modal */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modalContent {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.modalTitle {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111;
+    margin: 0;
+}
+
+.closeBtn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f0f0f0;
+    border-radius: 50%;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.closeBtn:hover {
+    background: #e5e5e5;
+}
+
+.modalBody {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.loadingTariffs,
+.emptyTariffs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.tarifsTitle {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111;
+    margin: 0 0 16px 0;
+}
+
+.tarifCard {
+    background: #F9F9F9;
+    border: 1px solid #eaeaea;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+
+.tarifName {
+    font-size: 17px;
+    font-weight: 600;
+    color: #111;
+    margin: 0 0 6px 0;
+}
+
+.tarifDescription {
+    font-size: 14px;
+    color: #666;
+    font-style: italic;
+    margin: 0 0 12px 0;
+}
+
+.tarifDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tarifRow {
+    display: flex;
+    justify-content: space-between;
+}
+
+.tarifLabel {
+    font-size: 14px;
+    color: #666;
+}
+
+.tarifValue {
+    font-size: 14px;
+    font-weight: 600;
+    color: #00A36C;
+}
+
+.modalFooter {
+    padding: 16px;
+    border-top: 1px solid #eee;
+}
+
+.closeButton {
+    width: 100%;
+    padding: 14px;
+    background: #f0f0f0;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+}
+
+.closeButton:hover {
+    background: #e5e5e5;
+}

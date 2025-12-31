@@ -1,0 +1,256 @@
+.container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #d1fae5 100%);
+    padding: var(--space-4);
+}
+
+.loadingContainer {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    color: var(--color-gray-500);
+}
+
+.card {
+    width: 100%;
+    max-width: 440px;
+    background: white;
+    border-radius: var(--radius-2xl);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    padding: var(--space-8);
+    animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Back Button */
+.backButton {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    background: none;
+    border: none;
+    color: var(--color-gray-500);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: var(--space-6);
+    transition: color var(--transition-fast);
+}
+
+.backButton:hover {
+    color: var(--color-primary);
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: var(--space-8);
+}
+
+.iconWrapper {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--space-6);
+    background: var(--color-primary-50);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+}
+
+.title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-gray-900);
+    margin: 0 0 var(--space-3) 0;
+}
+
+.description {
+    font-size: var(--text-sm);
+    color: var(--color-gray-500);
+    margin: 0;
+    line-height: 1.6;
+}
+
+.description strong {
+    color: var(--color-gray-700);
+}
+
+/* Timer */
+.timer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: var(--space-6);
+}
+
+.timerWarning {
+    color: var(--color-error);
+}
+
+/* OTP Container */
+.otpContainer {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+}
+
+.otpInput {
+    width: 52px;
+    height: 60px;
+    text-align: center;
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    color: var(--color-gray-900);
+    background: var(--color-gray-50);
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-xl);
+    transition: all var(--transition-fast);
+    caret-color: var(--color-primary);
+}
+
+.otpInput:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    background: white;
+    box-shadow: 0 0 0 3px var(--color-primary-50);
+}
+
+.otpInput.filled {
+    border-color: var(--color-primary);
+    background: var(--color-primary-50);
+}
+
+/* Error / Success */
+.error,
+.success {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-4);
+}
+
+.error {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+.success {
+    background-color: #f0fdf4;
+    color: #16a34a;
+}
+
+/* Resend */
+.resendText {
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--color-gray-500);
+    margin: 0 0 var(--space-6) 0;
+}
+
+.resendButton {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.resendButton:hover:not(.disabled) {
+    text-decoration: underline;
+}
+
+.resendButton.disabled {
+    color: var(--color-gray-400);
+    cursor: not-allowed;
+}
+
+/* Verify Button */
+.verifyButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-4);
+    background: var(--color-gray-200);
+    color: var(--color-gray-400);
+    border: none;
+    border-radius: var(--radius-xl);
+    font-size: var(--text-base);
+    font-weight: 600;
+    cursor: not-allowed;
+    transition: all var(--transition-fast);
+}
+
+.verifyButton.active {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);
+}
+
+.verifyButton.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(5, 150, 105, 0.5);
+}
+
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .card {
+        padding: var(--space-6);
+    }
+
+    .otpContainer {
+        gap: var(--space-2);
+    }
+
+    .otpInput {
+        width: 44px;
+        height: 52px;
+        font-size: var(--text-xl);
+    }
+}

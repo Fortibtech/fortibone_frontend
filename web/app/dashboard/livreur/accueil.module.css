@@ -1,0 +1,279 @@
+.dashboard {
+    padding: 0;
+}
+
+/* Online Section - Comme mobile */
+.onlineSection {
+    margin-bottom: 24px;
+}
+
+.onlineCard {
+    background: white;
+    border-radius: 16px;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e0e0e0;
+}
+
+.onlineLeft {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.onlineDot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.onlineDot.online {
+    background: #10B981;
+}
+
+.onlineDot.offline {
+    background: #EF4444;
+}
+
+.onlineText {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111;
+}
+
+.toggleSwitch {
+    width: 56px;
+    height: 32px;
+    border-radius: 16px;
+    background: #CCC;
+    padding: 4px;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.3s ease;
+}
+
+.toggleSwitch.toggleOn {
+    background: #10B981;
+}
+
+.toggleKnob {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.3s ease;
+}
+
+.toggleSwitch.toggleOn .toggleKnob {
+    transform: translateX(24px);
+}
+
+/* Section */
+.section {
+    margin-bottom: 24px;
+}
+
+.section h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 16px;
+}
+
+/* Overview Grid - Reproduit le mobile Livreur */
+.overviewGrid {
+    display: flex;
+    gap: 12px;
+}
+
+.overviewCard {
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border: 2px solid;
+    text-align: center;
+}
+
+.cardLarge {
+    flex: 1.5;
+    min-height: 200px;
+}
+
+.rightColumn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rightColumn .overviewCard {
+    flex: 1;
+    padding: 16px;
+    min-height: 90px;
+}
+
+.cardYellow {
+    background: #FFFBEB;
+    border-color: #FACC15;
+}
+
+.cardPurple {
+    background: #F3E8FF;
+    border-color: #8B5CF6;
+}
+
+.cardGreen {
+    background: #F0FDF4;
+    border-color: #10B981;
+}
+
+.cardIcon {
+    font-size: 3rem;
+}
+
+.rightColumn .cardIcon {
+    font-size: 2rem;
+}
+
+.cardContent {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+}
+
+.cardLabel {
+    font-size: 0.95rem;
+    color: #666;
+    font-weight: 600;
+}
+
+.cardValue {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111;
+}
+
+.rightColumn .cardValue {
+    font-size: 1.5rem;
+}
+
+/* Quick Access Grid */
+.quickGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.quickCard {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid #f0f0f0;
+    transition: all 0.2s ease;
+}
+
+.quickCard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.quickIcon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.quickBlue {
+    background: #E5F3FF;
+}
+
+.quickGreen {
+    background: #ECFDF3;
+}
+
+.quickOrange {
+    background: #FFF7ED;
+}
+
+.quickLabel {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Loading */
+.loadingContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f0f0f0;
+    border-top-color: #00C851;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loadingContainer p {
+    color: #888;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .overviewGrid {
+        flex-direction: column;
+    }
+
+    .cardLarge {
+        min-height: auto;
+    }
+
+    .rightColumn {
+        flex-direction: row;
+    }
+
+    .quickGrid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .rightColumn {
+        flex-direction: column;
+    }
+
+    .quickGrid {
+        grid-template-columns: 1fr;
+    }
+}

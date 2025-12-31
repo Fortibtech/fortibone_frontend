@@ -1,0 +1,430 @@
+/* Vehicles Livreur - Aligné Mobile */
+
+.container {
+    padding: var(--space-6);
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* Onglets */
+.tabsContainer {
+    display: flex;
+    background: white;
+    border-bottom: 1px solid var(--color-gray-200);
+    margin-bottom: var(--space-6);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.tab {
+    flex: 1;
+    padding: var(--space-4);
+    border: none;
+    background: transparent;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--color-gray-500);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.tab:hover {
+    background: var(--color-gray-50);
+}
+
+.tabActive {
+    color: #10B981;
+    border-bottom: 3px solid #10B981;
+    font-weight: 700;
+}
+
+/* Vehicles Content */
+.vehiclesContent {
+    background: white;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    padding: var(--space-6);
+}
+
+.addButton {
+    width: 100%;
+    padding: var(--space-4);
+    background: #10B981;
+    color: white;
+    border: none;
+    border-radius: var(--radius-lg);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: var(--space-6);
+    transition: all 0.2s ease;
+}
+
+.addButton:hover {
+    background: #059669;
+}
+
+.vehiclesList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.vehicleCard {
+    background: white;
+    border-radius: var(--radius-xl);
+    padding: var(--space-5);
+    border: 1px solid var(--color-gray-200);
+    transition: box-shadow 0.2s ease;
+}
+
+.vehicleCard:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.iconContainer {
+    font-size: 2rem;
+}
+
+.infoContainer {
+    flex: 1;
+}
+
+.vehicleName {
+    display: block;
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-gray-900);
+}
+
+.vehiclePlate {
+    display: block;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: #10B981;
+    margin-top: 4px;
+}
+
+.vehicleCustomName {
+    display: block;
+    font-size: var(--text-sm);
+    color: var(--color-gray-500);
+    font-style: italic;
+    margin-top: 6px;
+}
+
+.statusChip {
+    padding: var(--space-2) var(--space-3);
+    border-radius: 999px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+}
+
+.statusChip.active {
+    background: #DCFCE7;
+    color: #166534;
+}
+
+.statusChip.inactive {
+    background: var(--color-gray-100);
+    color: var(--color-gray-600);
+}
+
+.metaRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+}
+
+.metaItem {
+    background: var(--color-gray-100);
+    padding: var(--space-2) var(--space-3);
+    border-radius: 999px;
+    font-size: var(--text-sm);
+    color: var(--color-gray-700);
+}
+
+.actionsRow {
+    display: flex;
+    gap: var(--space-3);
+}
+
+.editButton,
+.deleteButton {
+    flex: 1;
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.editButton {
+    background: #ECFDF5;
+    color: #10B981;
+    border: none;
+}
+
+.editButton:hover {
+    background: #D1FAE5;
+}
+
+.deleteButton {
+    background: #FEF2F2;
+    color: #DC2626;
+    border: none;
+}
+
+.deleteButton:hover {
+    background: #FECACA;
+}
+
+/* Map Content */
+.mapContent {
+    background: white;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    padding: var(--space-16);
+    min-height: 400px;
+}
+
+.mapPlaceholder {
+    text-align: center;
+}
+
+.mapPlaceholder span {
+    font-size: 5rem;
+    display: block;
+    margin-bottom: var(--space-6);
+}
+
+.mapPlaceholder h3 {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+}
+
+.mapPlaceholder p {
+    color: var(--color-gray-500);
+    max-width: 400px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* Empty State */
+.emptyState {
+    text-align: center;
+    padding: var(--space-16);
+}
+
+.emptyIcon {
+    font-size: 5rem;
+    display: block;
+    margin-bottom: var(--space-4);
+}
+
+.emptyState h3 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+}
+
+.emptyState p {
+    color: var(--color-gray-500);
+}
+
+/* Loading */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-16);
+    gap: var(--space-4);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--color-gray-200);
+    border-top-color: #10B981;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Modal */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: var(--space-4);
+}
+
+.modalContent {
+    background: white;
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-5);
+    border-bottom: 1px solid var(--color-gray-100);
+}
+
+.modalHeader h2 {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    margin: 0;
+}
+
+.modalClose {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-gray-100);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.modalBody {
+    padding: var(--space-5);
+}
+
+.modalBody label {
+    display: block;
+    font-size: var(--text-base);
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+    margin-top: var(--space-4);
+    color: var(--color-gray-900);
+}
+
+.modalBody label:first-child {
+    margin-top: 0;
+}
+
+.modalBody input,
+.modalBody select {
+    width: 100%;
+    padding: var(--space-3);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-base);
+}
+
+.modalBody input:focus,
+.modalBody select:focus {
+    outline: none;
+    border-color: #10B981;
+}
+
+.switchRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--color-gray-50);
+    border-radius: var(--radius-lg);
+    margin-top: var(--space-4);
+}
+
+.switch {
+    position: relative;
+    width: 52px;
+    height: 28px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: var(--color-gray-300);
+    transition: .3s;
+    border-radius: 28px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+.switch input:checked+.slider {
+    background-color: #10B981;
+}
+
+.switch input:checked+.slider:before {
+    transform: translateX(24px);
+}
+
+.modalActions {
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    border-top: 1px solid var(--color-gray-100);
+}
+
+.cancelBtn {
+    flex: 1;
+    padding: var(--space-4);
+    background: var(--color-gray-100);
+    color: var(--color-gray-700);
+    border: none;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.confirmBtn {
+    flex: 1;
+    padding: var(--space-4);
+    background: #10B981;
+    color: white;
+    border: none;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.confirmBtn:disabled {
+    opacity: 0.7;
+}

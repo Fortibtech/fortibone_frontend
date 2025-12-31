@@ -1,0 +1,314 @@
+.container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #d1fae5 100%);
+    padding: var(--space-4);
+    position: relative;
+    overflow: hidden;
+}
+
+.content {
+    width: 100%;
+    max-width: 520px;
+    background: white;
+    border-radius: var(--radius-2xl);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    padding: var(--space-10);
+    position: relative;
+    z-index: 1;
+    animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Logo Section */
+.logoSection {
+    text-align: center;
+    margin-bottom: var(--space-10);
+}
+
+.logoWrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.logoIcon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    border-radius: var(--radius-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);
+}
+
+.logoText {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--color-gray-900);
+}
+
+.tagline {
+    color: var(--color-gray-500);
+    font-size: var(--text-sm);
+    max-width: 280px;
+    margin: 0 auto;
+}
+
+/* Selection Section */
+.selectionSection {
+    margin-bottom: var(--space-8);
+}
+
+.title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-gray-900);
+    margin: 0 0 var(--space-2) 0;
+    text-align: center;
+}
+
+.subtitle {
+    color: var(--color-primary);
+    font-size: var(--text-sm);
+    margin: 0 0 var(--space-6) 0;
+    text-align: center;
+}
+
+.optionsGrid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+/* Option Cards */
+.optionCard {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    background: var(--color-gray-50);
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-xl);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.optionCard:hover {
+    background: var(--color-primary-50);
+    transform: translateY(-2px);
+}
+
+.optionCard.selected {
+    background: rgba(5, 150, 105, 0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+}
+
+.optionIcon {
+    width: 56px;
+    height: 56px;
+    background: white;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+}
+
+.optionContent {
+    flex: 1;
+}
+
+.optionTitle {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-gray-900);
+    margin: 0 0 var(--space-1) 0;
+}
+
+.optionDescription {
+    font-size: var(--text-sm);
+    color: var(--color-gray-500);
+    margin: 0;
+}
+
+.checkmark {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.optionCard.selected .checkmark {
+    opacity: 1;
+}
+
+/* Action Section */
+.actionSection {
+    text-align: center;
+}
+
+.continueButton {
+    width: 100%;
+    padding: var(--space-4) var(--space-6);
+    background: var(--color-gray-200);
+    color: var(--color-gray-400);
+    border: none;
+    border-radius: var(--radius-xl);
+    font-size: var(--text-base);
+    font-weight: 600;
+    cursor: not-allowed;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.continueButton.active {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);
+}
+
+.continueButton.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(5, 150, 105, 0.5);
+}
+
+.continueButton:disabled {
+    cursor: not-allowed;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loginLink {
+    margin-top: var(--space-6);
+    font-size: var(--text-sm);
+    color: var(--color-gray-500);
+}
+
+.loginLink a {
+    color: var(--color-primary);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.loginLink a:hover {
+    text-decoration: underline;
+}
+
+/* Background Decoration */
+.backgroundDecor {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.circle1 {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+    top: -200px;
+    right: -100px;
+}
+
+.circle2 {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.08) 0%, rgba(5, 150, 105, 0.02) 100%);
+    bottom: -100px;
+    left: -100px;
+}
+
+.circle3 {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.06) 0%, transparent 100%);
+    top: 50%;
+    left: 10%;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .content {
+        padding: var(--space-6);
+    }
+
+    .logoIcon {
+        width: 48px;
+        height: 48px;
+        font-size: var(--text-2xl);
+    }
+
+    .logoText {
+        font-size: var(--text-2xl);
+    }
+
+    .title {
+        font-size: var(--text-xl);
+    }
+
+    .optionCard {
+        padding: var(--space-4);
+    }
+
+    .optionIcon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .optionIcon svg {
+        width: 28px;
+        height: 28px;
+    }
+}

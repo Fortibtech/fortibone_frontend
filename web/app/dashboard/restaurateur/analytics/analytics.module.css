@@ -1,0 +1,200 @@
+.container {
+    min-height: 100vh;
+    background: #F8F9FA;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: white;
+    border-bottom: 1px solid #eee;
+}
+
+.backButton {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111;
+}
+
+.content {
+    padding: 16px;
+}
+
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #00BFA5;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.cardsRow {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.card {
+    flex: 1;
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px dashed #e5e5e5;
+}
+
+.cardLabel {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.cardValue {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111;
+}
+
+.currency {
+    font-size: 12px;
+    font-weight: 400;
+    color: #666;
+}
+
+.chartCard {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid #00D09C;
+}
+
+.chartHeader {
+    margin-bottom: 16px;
+}
+
+.chartTitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111;
+}
+
+.chartPlaceholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px;
+    background: #f9fafb;
+    border-radius: 12px;
+}
+
+.chartIcon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.chartPlaceholder p {
+    color: #666;
+    font-size: 14px;
+}
+
+.section {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.sectionTitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111;
+    margin-bottom: 16px;
+}
+
+.customersList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.customerItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 12px;
+}
+
+.customerRank {
+    width: 28px;
+    height: 28px;
+    background: #00BFA5;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.customerInfo {
+    flex: 1;
+}
+
+.customerName {
+    display: block;
+    font-weight: 600;
+    color: #111;
+}
+
+.customerOrders {
+    font-size: 12px;
+    color: #666;
+}
+
+.customerTotal {
+    font-weight: 600;
+    color: #00BFA5;
+}
+
+.emptyState {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 400px;
+    color: #999;
+}

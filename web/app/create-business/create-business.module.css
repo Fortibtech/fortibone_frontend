@@ -1,0 +1,232 @@
+.container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 50%, #d1fae5 100%);
+    padding: var(--space-4);
+}
+
+.content {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: var(--space-8) 0;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-10);
+}
+
+.backLink {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    color: var(--color-gray-500);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.backLink:hover {
+    color: var(--color-primary);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.logoIcon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+.logoText {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--color-gray-900);
+}
+
+/* Title Section */
+.titleSection {
+    text-align: center;
+    margin-bottom: var(--space-10);
+}
+
+.title {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    color: var(--color-gray-900);
+    margin: 0 0 var(--space-3) 0;
+}
+
+.subtitle {
+    font-size: var(--text-base);
+    color: var(--color-gray-500);
+    margin: 0;
+}
+
+/* Options Grid */
+.optionsGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+}
+
+.optionCard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-6);
+    background: white;
+    border: 2px solid transparent;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.optionCard:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.optionCard.selected {
+    border-color: var(--color-primary);
+    background: var(--color-primary-50);
+}
+
+.optionIcon {
+    width: 72px;
+    height: 72px;
+    background: var(--color-gray-100);
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-gray-400);
+    transition: all 0.2s ease;
+}
+
+.optionCard.selected .optionIcon {
+    background: white;
+    color: var(--color-primary);
+}
+
+.optionContent {
+    flex: 1;
+}
+
+.optionTitle {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-gray-900);
+    margin: 0 0 var(--space-1) 0;
+}
+
+.optionDescription {
+    font-size: var(--text-sm);
+    color: var(--color-gray-500);
+    margin: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 32px;
+    height: 32px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    border: 3px solid white;
+    box-shadow: var(--shadow-md);
+}
+
+/* Continue Button */
+.continueButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: var(--space-5);
+    background: var(--color-gray-200);
+    color: var(--color-gray-400);
+    border: none;
+    border-radius: var(--radius-xl);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    cursor: not-allowed;
+    transition: all var(--transition-fast);
+}
+
+.continueButton.active {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);
+}
+
+.continueButton.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(5, 150, 105, 0.5);
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .optionsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .optionCard {
+        flex-direction: row;
+        text-align: left;
+    }
+
+    .optionIcon {
+        width: 56px;
+        height: 56px;
+    }
+
+    .optionIcon svg {
+        width: 28px;
+        height: 28px;
+    }
+
+    .title {
+        font-size: var(--text-2xl);
+    }
+}

@@ -1,0 +1,144 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 20px;
+}
+
+/* User Section */
+.userSection {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.avatarImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatarInitial {
+    color: white;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.userInfo {
+    flex: 1;
+}
+
+.userName {
+    font-size: 20px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 4px 0;
+}
+
+.userEmail {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0 0 4px 0;
+}
+
+.businessName {
+    font-size: 13px;
+    color: #10b981;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* Section */
+.section {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.sectionTitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 16px 0;
+}
+
+/* Menu List */
+.menuList {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.menuItem {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #374151;
+    transition: background 0.2s ease;
+}
+
+.menuItem:hover {
+    background: #f3f4f6;
+}
+
+.menuIcon {
+    font-size: 20px;
+    margin-right: 14px;
+}
+
+.menuLabel {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.menuArrow {
+    font-size: 18px;
+    color: #9ca3af;
+}
+
+/* Logout Button */
+.logoutBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 16px;
+    background: #fee2e2;
+    border: none;
+    border-radius: 12px;
+    color: #dc2626;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.logoutBtn:hover {
+    background: #fecaca;
+}
+
+.logoutIcon {
+    font-size: 18px;
+}

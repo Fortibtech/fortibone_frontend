@@ -1,0 +1,177 @@
+.container {
+    min-height: 100vh;
+    background: #f9f9f9;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    background: white;
+    border-bottom: 1px solid #eee;
+}
+
+.backButton {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    color: #666;
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #00A36C;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
+    text-align: center;
+}
+
+.emptyIcon {
+    font-size: 90px;
+    opacity: 0.5;
+}
+
+.emptyTitle {
+    font-size: 20px;
+    font-weight: 600;
+    color: #4b5563;
+    margin-top: 16px;
+}
+
+.emptySubtitle {
+    font-size: 15px;
+    color: #9ca3af;
+    margin-top: 8px;
+}
+
+.list {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.orderItem {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.orderItem:hover {
+    transform: translateY(-2px);
+}
+
+.orderDetails {
+    flex: 1;
+}
+
+.orderNumber {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 4px;
+}
+
+.rowBetween {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.orderInfo {
+    font-size: 15px;
+    color: #374151;
+    font-weight: 600;
+}
+
+.statusBadge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.orderDate {
+    display: block;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.orderNotes {
+    display: block;
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 6px;
+    font-style: italic;
+}
+
+.chevron {
+    font-size: 24px;
+    color: #aaa;
+    margin-left: 8px;
+}
+
+.loadMore {
+    width: 100%;
+    padding: 14px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    color: #00A36C;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.loadMore:hover {
+    background: #f5f5f5;
+}

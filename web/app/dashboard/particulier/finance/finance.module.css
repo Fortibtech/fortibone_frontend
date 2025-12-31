@@ -1,0 +1,220 @@
+.container {
+    padding: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.header {
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111;
+}
+
+/* Balance Card */
+.balanceCard {
+    background: linear-gradient(135deg, #00BFA5 0%, #00897B 100%);
+    border-radius: 20px;
+    padding: 28px;
+    color: white;
+    margin-bottom: 24px;
+}
+
+.balanceInfo {
+    margin-bottom: 20px;
+}
+
+.balanceLabel {
+    display: block;
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 6px;
+}
+
+.balanceAmount {
+    font-size: 36px;
+    font-weight: 700;
+}
+
+.actions {
+    display: flex;
+    gap: 12px;
+}
+
+.actionBtn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    color: white;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.actionBtn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Stats */
+.statsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.statCard {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: white;
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+}
+
+.statLabel {
+    display: block;
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.statValue {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111;
+}
+
+/* Section */
+.section {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.sectionTitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111;
+}
+
+.seeAll {
+    font-size: 14px;
+    color: #00BFA5;
+    text-decoration: none;
+}
+
+/* Transactions */
+.txList {
+    display: flex;
+    flex-direction: column;
+}
+
+.txItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.txItem:last-child {
+    border-bottom: none;
+}
+
+.txIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.txIcon.income {
+    background: #ecfdf5;
+    color: #00af66;
+}
+
+.txIcon.expense {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.txInfo {
+    flex: 1;
+}
+
+.txTitle {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111;
+}
+
+.txDate {
+    font-size: 12px;
+    color: #999;
+}
+
+.txAmount {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.txAmount.positive {
+    color: #00af66;
+}
+
+.txAmount.negative {
+    color: #ef4444;
+}
+
+/* Empty & Loading */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 0;
+    color: #999;
+}
+
+.emptyState p {
+    margin-top: 12px;
+}
+
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
