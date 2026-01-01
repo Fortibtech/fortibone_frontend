@@ -34,7 +34,7 @@ export default function DepositPage() {
         fetchWallet();
     }, []);
 
-    const currencySymbol = wallet?.currency?.symbol || 'XAF';
+    const currencySymbol = wallet?.currency?.symbol || 'KMF';
 
     const handlePreset = (val: number) => {
         setAmount(val);

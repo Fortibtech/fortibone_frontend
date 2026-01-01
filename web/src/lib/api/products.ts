@@ -109,9 +109,21 @@ export const getProducts = async (
     }
 };
 
+// Legacy endpoint that requires businessId - kept for backward compatibility
 export const getProductById = async (businessId: string, productId: string): Promise<Product> => {
     const response = await axiosInstance.get(`/businesses/${businessId}/products/${productId}`);
     return response.data;
+};
+
+// Direct endpoint that fetches product by ID only (matches mobile API)
+export const getProductByIdDirect = async (productId: string): Promise<Product> => {
+    try {
+        const response = await axiosInstance.get(`/products/${productId}`);
+        return response.data;
+    } catch (error: any) {
+        console.error('Erreur récupération produit:', error.response?.data || error.message);
+        throw error;
+    }
 };
 
 export const createProduct = async (
@@ -196,6 +208,49 @@ export const searchProducts = async (
         return response.data;
     } catch (error: any) {
         console.error('Erreur recherche produits:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+// Reviews
+export interface ReviewAuthor {
+    id: string;
+    firstName: string;
+    lastName: string;
+    profileImageUrl: string | null;
+}
+
+export interface ProductReview {
+    id: string;
+    rating: number;
+    comment: string;
+    createdAt: string;
+    productId: string;
+    authorId: string;
+    author: ReviewAuthor;
+}
+
+export interface ReviewsResponse {
+    data: ProductReview[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
+export const getProductReviews = async (
+    productId: string,
+    page = 1,
+    limit = 10
+): Promise<ReviewsResponse> => {
+    try {
+        const response = await axiosInstance.get<ReviewsResponse>(
+            `/products/${productId}/reviews`,
+            { params: { page, limit } }
+        );
+        return response.data;
+    } catch (error: any) {
+        console.error('Erreur récupération avis:', error.response?.data || error.message);
         throw error;
     }
 };

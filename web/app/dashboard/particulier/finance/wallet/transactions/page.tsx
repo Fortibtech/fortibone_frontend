@@ -178,6 +178,22 @@ export default function TransactionsPage() {
                             </div>
                         </div>
 
+                        {/* Status filter - MATCHING MOBILE */}
+                        <div className={styles.filterSection}>
+                            <label className={styles.filterLabel}>Statut</label>
+                            <div className={styles.chips}>
+                                {(['PENDING', 'COMPLETED', 'FAILED', 'CANCELLED'] as TransactionStatus[]).map((s) => (
+                                    <button
+                                        key={s}
+                                        className={`${styles.chip} ${selectedStatus === s ? styles.active : ''}`}
+                                        onClick={() => setSelectedStatus(selectedStatus === s ? '' : s)}
+                                    >
+                                        {s === 'COMPLETED' ? 'Terminée' : s === 'PENDING' ? 'En attente' : s === 'FAILED' ? 'Échouée' : 'Annulée'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className={styles.filterSection}>
                             <label className={styles.filterLabel}>Période</label>
                             <div className={styles.chips}>

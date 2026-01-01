@@ -107,7 +107,7 @@ export default function OrdersPage() {
                                         </span>
                                         <div className={styles.rowBetween}>
                                             <span className={styles.orderInfo}>
-                                                Total: {parseFloat(order.totalAmount).toLocaleString('fr-FR')} XAF
+                                                Total: {parseFloat(order.totalAmount).toLocaleString('fr-FR')} KMF
                                             </span>
                                             <span
                                                 className={styles.statusBadge}
@@ -136,8 +136,12 @@ export default function OrdersPage() {
                         })}
 
                         {hasMore && orders.length > 0 && (
-                            <button className={styles.loadMore}>
-                                Charger plus
+                            <button
+                                className={styles.loadMore}
+                                onClick={() => setPage(prev => prev + 1)}
+                                disabled={loading}
+                            >
+                                {loading ? 'Chargement...' : 'Charger plus'}
                             </button>
                         )}
                     </div>

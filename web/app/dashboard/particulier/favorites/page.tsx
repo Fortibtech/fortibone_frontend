@@ -111,7 +111,7 @@ export default function FavoritesPage() {
                                         )}
                                         {item.price && (
                                             <span className={styles.itemPrice}>
-                                                {item.price.toLocaleString('fr-FR')} XAF
+                                                {item.price.toLocaleString('fr-FR')} KMF
                                             </span>
                                         )}
                                     </div>

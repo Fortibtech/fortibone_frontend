@@ -79,6 +79,12 @@ export default function BusinessesPage() {
 
             // Filter by sector frontend if needed
             let newBusinesses = response.data as unknown as DisplayBusiness[];
+
+            // 🔥 PARITY FIX: Exclude FOURNISSEUR and LIVREUR (B2B types) like Mobile
+            newBusinesses = newBusinesses.filter(
+                b => b.type !== 'FOURNISSEUR' && b.type !== 'LIVREUR'
+            );
+
             if (selectedSector) {
                 newBusinesses = newBusinesses.filter(
                     b => b.activitySector?.toLowerCase().trim() === selectedSector.toLowerCase()

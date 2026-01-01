@@ -2,16 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getWallet, getWalletTransactions, type Wallet, type WalletTransaction } from '@/lib/api';
 import styles from './finance.module.css';
 
 export default function FinancePage() {
+    const router = useRouter();
     const [wallet, setWallet] = useState<Wallet | null>(null);
     const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [monthlyRevenue, setMonthlyRevenue] = useState(0);
-    const [monthlyExpenses, setMonthlyExpenses] = useState(0);
+    const [hidden, setHidden] = useState(false);
+    const [totalDeposits, setTotalDeposits] = useState(0);
+    const [totalWithdrawals, setTotalWithdrawals] = useState(0);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -19,37 +22,50 @@ export default function FinancePage() {
                 setLoading(true);
                 const [walletData, txData] = await Promise.all([
                     getWallet(),
-                    getWalletTransactions({ page: 1, limit: 100 }) // Get more for stats
+                    getWalletTransactions({ page: 1, limit: 50 })
                 ]);
                 setWallet(walletData);
                 const allTransactions = txData.data || [];
-                setTransactions(allTransactions.slice(0, 5)); // Show only 5 recent
+                setTransactions(allTransactions);
 
-                // Calculate monthly stats
-                const now = new Date();
-                const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                // Calculate totals like mobile StatsCard
+                // Check both 'type' and 'provider' fields (API may use either)
+                // Income: DEPOSIT, PAYMENT, REFUND types/providers
+                const deposits = allTransactions
+                    .filter((tx: WalletTransaction) => {
+                        const provider = (tx.provider || '').toUpperCase();
+                        const type = ((tx as any).type || '').toUpperCase();  // API returns type field
+                        const amount = parseFloat(String(tx.amount)) || 0;
+                        const isCompleted = tx.status?.toUpperCase() === 'COMPLETED';
 
-                const revenue = allTransactions
-                    .filter(tx => {
-                        const txDate = new Date(tx.createdAt);
-                        const amount = parseFloat(String(tx.amount));
-                        return txDate >= firstDayOfMonth &&
-                            (amount > 0 || tx.provider?.toUpperCase() === 'DEPOSIT');
+                        // Income types
+                        const incomeTypes = ['DEPOSIT', 'PAYMENT', 'REFUND'];
+                        const isIncomeType = incomeTypes.includes(type) || incomeTypes.includes(provider);
+                        const isPositiveAmount = amount > 0;
+
+                        return isCompleted && (isIncomeType || isPositiveAmount);
                     })
-                    .reduce((sum, tx) => sum + Math.abs(parseFloat(String(tx.amount))), 0);
+                    .reduce((sum: number, tx: WalletTransaction) => sum + Math.abs(parseFloat(String(tx.amount))), 0);
 
-                const expenses = allTransactions
-                    .filter(tx => {
-                        const txDate = new Date(tx.createdAt);
-                        const amount = parseFloat(String(tx.amount));
-                        return txDate >= firstDayOfMonth &&
-                            amount < 0 &&
-                            tx.provider?.toUpperCase() !== 'DEPOSIT';
+                // Expenses: WITHDRAWAL, TRANSFER types/providers, or negative amounts
+                const withdrawals = allTransactions
+                    .filter((tx: WalletTransaction) => {
+                        const provider = (tx.provider || '').toUpperCase();
+                        const type = ((tx as any).type || '').toUpperCase();  // API returns type field
+                        const amount = parseFloat(String(tx.amount)) || 0;
+                        const isCompleted = tx.status?.toUpperCase() === 'COMPLETED';
+
+                        // Expense types
+                        const expenseTypes = ['WITHDRAWAL', 'TRANSFER'];
+                        const isExpenseType = expenseTypes.includes(type) || expenseTypes.includes(provider);
+                        const isNegativeAmount = amount < 0;
+
+                        return isCompleted && (isExpenseType || isNegativeAmount);
                     })
-                    .reduce((sum, tx) => sum + Math.abs(parseFloat(String(tx.amount))), 0);
+                    .reduce((sum: number, tx: WalletTransaction) => sum + Math.abs(parseFloat(String(tx.amount))), 0);
 
-                setMonthlyRevenue(revenue);
-                setMonthlyExpenses(expenses);
+                setTotalDeposits(deposits);
+                setTotalWithdrawals(withdrawals);
             } catch (error) {
                 console.error('Erreur chargement wallet:', error);
             } finally {
@@ -60,89 +76,86 @@ export default function FinancePage() {
     }, []);
 
     const balance = parseFloat(wallet?.balance || '0');
-    const currencySymbol = wallet?.currency?.symbol || 'XAF';
+    const currencySymbol = wallet?.currency?.symbol || 'KMF';
 
     const formatAmount = (amount: number) => amount.toLocaleString('fr-FR');
 
     return (
         <DashboardLayout businessType="PARTICULIER">
             <div className={styles.container}>
-                {/* Header */}
+                {/* Header - Mobile Style */}
                 <div className={styles.header}>
                     <h1 className={styles.title}>Finances</h1>
+                    <button className={styles.refreshBtn} onClick={() => window.location.reload()}>
+                        🔄
+                    </button>
                 </div>
 
-                {/* Balance Card */}
+                {/* Balance Card - Mobile Style (Green bordered) */}
                 <div className={styles.balanceCard}>
-                    <div className={styles.balanceInfo}>
-                        <span className={styles.balanceLabel}>Solde disponible</span>
+                    <div className={styles.balanceRow}>
+                        <div className={styles.walletIcon}>💳</div>
+                        <span className={styles.balanceLabel}>Active Balance</span>
+                    </div>
+
+                    <div className={styles.balanceAmountRow}>
                         {loading ? (
-                            <div className={styles.skeleton} style={{ width: 180, height: 40 }} />
+                            <div className={styles.skeleton} style={{ width: 180, height: 32 }} />
                         ) : (
                             <span className={styles.balanceAmount}>
-                                {formatAmount(balance)} {currencySymbol}
+                                {hidden ? '••••••' : `${formatAmount(balance)} ${currencySymbol}`}
                             </span>
                         )}
+                        <button className={styles.eyeBtn} onClick={() => setHidden(!hidden)}>
+                            {hidden ? '👁️' : '👁️‍🗨️'}
+                        </button>
                     </div>
 
-                    <div className={styles.actions}>
-                        <Link href="/dashboard/particulier/finance/wallet/deposit" className={styles.actionBtn}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="12" y1="19" x2="12" y2="5" />
-                                <polyline points="5 12 12 5 19 12" />
-                            </svg>
-                            <span>Dépôt</span>
+                    {/* Action Buttons - Mobile Style */}
+                    <div className={styles.actionsRow}>
+                        <Link href="/dashboard/particulier/finance/wallet/deposit" className={styles.depositBtn}>
+                            ↙️ Dépôt
                         </Link>
-                        <Link href="/dashboard/particulier/finance/wallet/withdraw" className={styles.actionBtn}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="12" y1="5" x2="12" y2="19" />
-                                <polyline points="19 12 12 19 5 12" />
-                            </svg>
-                            <span>Retrait</span>
+                        <Link href="/dashboard/particulier/finance/wallet/withdraw" className={styles.withdrawBtn}>
+                            ↗️ Retrait
                         </Link>
-                        <Link href="/dashboard/particulier/finance/wallet/transfer" className={styles.actionBtn}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                                <polyline points="12 5 19 12 12 19" />
-                            </svg>
-                            <span>Transfert</span>
+                        <Link href="/dashboard/particulier/finance/wallet/transfer" className={styles.transferBtn}>
+                            ↔️ Transfer
                         </Link>
                     </div>
                 </div>
 
-                {/* Quick Stats */}
-                <div className={styles.statsGrid}>
-                    <div className={styles.statCard}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00BFA5" strokeWidth="2">
-                            <line x1="12" y1="19" x2="12" y2="5" />
-                            <polyline points="5 12 12 5 19 12" />
-                        </svg>
-                        <div>
-                            <span className={styles.statLabel}>Revenus du mois</span>
-                            <span className={styles.statValue}>
-                                {loading ? '...' : `${formatAmount(monthlyRevenue)} ${currencySymbol}`}
+                {/* Stats Card - Mobile Style */}
+                <div className={styles.statsCard}>
+                    <div className={styles.statsHeader}>
+                        <span className={styles.statsTitle}>Statistiques</span>
+                        <Link href="/dashboard/particulier/finance/stats" className={styles.seeMore}>
+                            Voir plus →
+                        </Link>
+                    </div>
+                    <div className={styles.statsRow}>
+                        <div className={styles.statBox}>
+                            <div className={styles.statIcon}>↙️</div>
+                            <span className={styles.statLabel}>Total Entrées</span>
+                            <span className={styles.statValue} style={{ color: '#00af66' }}>
+                                {loading ? '...' : `${formatAmount(totalDeposits)} ${currencySymbol}`}
                             </span>
                         </div>
-                    </div>
-                    <div className={styles.statCard}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <polyline points="19 12 12 19 5 12" />
-                        </svg>
-                        <div>
-                            <span className={styles.statLabel}>Dépenses du mois</span>
-                            <span className={styles.statValue}>
-                                {loading ? '...' : `${formatAmount(monthlyExpenses)} ${currencySymbol}`}
+                        <div className={styles.statBox}>
+                            <div className={styles.statIcon}>↗️</div>
+                            <span className={styles.statLabel}>Total Sorties</span>
+                            <span className={styles.statValue} style={{ color: '#ff4444' }}>
+                                {loading ? '...' : `${formatAmount(totalWithdrawals)} ${currencySymbol}`}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Recent Transactions */}
+                {/* Recent Transactions - Mobile Style */}
                 <div className={styles.section}>
                     <div className={styles.sectionHeader}>
                         <h2 className={styles.sectionTitle}>Transactions récentes</h2>
-                        <Link href="/dashboard/particulier/finance/transactions" className={styles.seeAll}>
+                        <Link href="/dashboard/particulier/finance/wallet/transactions" className={styles.seeAll}>
                             Voir tout
                         </Link>
                     </div>
@@ -161,20 +174,17 @@ export default function FinancePage() {
                         </div>
                     ) : transactions.length === 0 ? (
                         <div className={styles.emptyState}>
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1">
-                                <rect x="2" y="5" width="20" height="14" rx="2" />
-                                <line x1="2" y1="10" x2="22" y2="10" />
-                            </svg>
+                            <span className={styles.emptyIcon}>💳</span>
                             <p>Aucune transaction récente</p>
                         </div>
                     ) : (
                         <div className={styles.txList}>
-                            {transactions.map((tx) => {
+                            {transactions.slice(0, 5).map((tx) => {
                                 const isIncome = parseFloat(String(tx.amount)) > 0 || tx.provider?.toUpperCase() === 'DEPOSIT';
                                 return (
                                     <div key={tx.id} className={styles.txItem}>
                                         <div className={`${styles.txIcon} ${isIncome ? styles.income : styles.expense}`}>
-                                            {isIncome ? '↑' : '↓'}
+                                            {isIncome ? '↓' : '↑'}
                                         </div>
                                         <div className={styles.txInfo}>
                                             <span className={styles.txTitle}>

@@ -14,6 +14,7 @@ export interface UserProfile {
     city: string;
     gender: string;
     dateOfBirth: string;
+    address?: string;
 }
 
 interface UserStore {

@@ -42,7 +42,7 @@ export default function CoursesPage() {
     const [detailsModalOpen, setDetailsModalOpen] = useState(false);
     const [currentRequestDetails, setCurrentRequestDetails] = useState<IncomingDeliveryRequest | null>(null);
 
-    const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+    const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Load data
     const loadIncoming = useCallback(async (): Promise<void> => {
@@ -348,7 +348,7 @@ export default function CoursesPage() {
                                                     <div className={styles.orderNumber}>Commande #{item.order.orderNumber}</div>
                                                 </div>
                                             </div>
-                                            <div className={styles.statusChip} style={{ Background: statusConfig.bg, color: statusConfig.color }}>
+                                            <div className={styles.statusChip} style={{ background: statusConfig.bg, color: statusConfig.color }}>
                                                 {statusConfig.label}
                                             </div>
                                         </div>

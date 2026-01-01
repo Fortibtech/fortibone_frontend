@@ -65,7 +65,7 @@ export default function WalletPage() {
         return num.toLocaleString('fr-FR', { minimumFractionDigits: 0 });
     };
 
-    const currencySymbol = wallet?.currency?.symbol || 'XAF';
+    const currencySymbol = wallet?.currency?.symbol || 'KMF';
 
     // Extraire le type de dashboard depuis le pathname
     const dashboardType = pathname.split('/')[2] || 'commercant';

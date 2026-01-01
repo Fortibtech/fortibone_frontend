@@ -25,8 +25,8 @@ interface Product {
     price: number;
     currencyCode: string;
     productImageUrl?: string;
-    latitude: number | null;
-    longitude: number | null;
+    latitude: number;
+    longitude: number;
     averageRating?: number;
     reviewCount?: number;
     businessId: string;
@@ -78,21 +78,24 @@ export default function MapPage() {
 
                 const merged = [...commercantRes.data, ...restaurantRes.data];
 
-                const mappedProducts: Product[] = merged
-                    .filter(p => p.latitude && p.longitude) // Only with coords
-                    .map(p => ({
-                        id: p.id,
-                        productId: p.id,
-                        name: p.name,
-                        price: parseFloat(p.variants?.[0]?.price || '0'),
-                        currencyCode: 'XAF',
-                        productImageUrl: p.imageUrl || p.variants?.[0]?.imageUrl,
-                        latitude: Number(p.latitude),
-                        longitude: Number(p.longitude),
-                        averageRating: p.averageRating,
-                        reviewCount: p.reviewCount,
-                        businessId: p.businessId,
-                    }));
+                // API returns products with optional lat/lng when available
+                const mergedWithLocation = (merged as any[]).filter(
+                    (p) => p.latitude != null && p.longitude != null
+                );
+
+                const mappedProducts: Product[] = mergedWithLocation.map((p) => ({
+                    id: p.id,
+                    productId: p.id,
+                    name: p.name,
+                    price: parseFloat(p.variants?.[0]?.price || '0'),
+                    currencyCode: 'KMF',
+                    productImageUrl: p.imageUrl || p.variants?.[0]?.imageUrl || undefined,
+                    latitude: Number(p.latitude),
+                    longitude: Number(p.longitude),
+                    averageRating: p.averageRating,
+                    reviewCount: p.reviewCount,
+                    businessId: p.businessId,
+                }));
 
                 setProducts(mappedProducts);
             } catch (error) {

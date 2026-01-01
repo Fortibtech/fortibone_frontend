@@ -96,6 +96,37 @@ export const createOrder = async (payload: CreateOrderPayload): Promise<Order> =
     }
 };
 
+export interface MultiOrderPayload {
+    items: {
+        variantId: string;
+        quantity: number;
+    }[];
+    notes?: string;
+    useWallet?: boolean;
+}
+
+export const passMultipleOrders = async (payload: MultiOrderPayload): Promise<Order[]> => {
+    try {
+        // 🔥 FIXED: Mobile uses /orders/checkout, NOT /orders/multi
+        // See: api/orers/createOrder.ts line 99
+        const response = await axiosInstance.post<Order[]>('/orders/checkout', payload);
+        return response.data;
+    } catch (error: any) {
+        console.error('Erreur passMultipleOrders:', error.response?.data || error.message);
+
+        // Better error handling matching mobile
+        const serverError = error.response?.data;
+        if (serverError?.message) {
+            throw new Error(
+                Array.isArray(serverError.message)
+                    ? serverError.message.join('\n')
+                    : serverError.message
+            );
+        }
+        throw new Error('Impossible de valider le panier. Veuillez réessayer.');
+    }
+};
+
 export const getMyOrders = async (params?: {
     search?: string;
     page?: number;

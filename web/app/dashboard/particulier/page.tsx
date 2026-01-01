@@ -33,7 +33,6 @@ export default function ParticulierDashboard() {
     const [suggestions, setSuggestions] = useState<Product[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [debugData, setDebugData] = useState<string>('');
 
     // User location for distance calculation
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -60,7 +59,6 @@ export default function ParticulierDashboard() {
         try {
             setLoading(true);
             setError(null);
-            setDebugData('Loading...');
 
             const [commercantRes, restaurantRes] = await Promise.all([
                 searchProducts({
@@ -76,22 +74,29 @@ export default function ParticulierDashboard() {
             ]);
 
             const merged = [...commercantRes.data, ...restaurantRes.data];
-            setDebugData(`Loaded: ${merged.length} items. First item: ${JSON.stringify(merged[0], null, 2)}`);
+
+            // Debug: Log API response structure
+            console.log('Products API response sample:', merged[0]);
 
             // Transform to match interface
-            const transformedProducts: Product[] = merged.map(p => {
+            const transformedProducts: Product[] = merged.map((p: any) => {
                 const firstVariant = p.variants?.[0];
+                // CRITICAL: Use p.productId for the actual Product ID, p.id is BusinessProduct ID
+                const actualProductId = p.productId || p.id;
+                // Price: use direct price field if available, otherwise from variant
+                const price = p.price ? parseFloat(p.price) : (p.convertedPrice || (firstVariant ? parseFloat(firstVariant.price) : 0));
                 return {
                     id: p.id,
-                    productId: p.id,
+                    productId: actualProductId,
                     name: p.name,
-                    price: firstVariant ? parseFloat(firstVariant.price) : 0,
-                    currencyCode: 'XAF',
-                    productImageUrl: p.imageUrl || firstVariant?.imageUrl || undefined,
-                    latitude: null,
-                    longitude: null,
-                    averageRating: p.averageRating,
-                    reviewCount: p.reviewCount,
+                    price: price,
+                    currencyCode: 'KMF',
+                    productImageUrl: p.productImageUrl || p.imageUrl || firstVariant?.imageUrl || undefined,
+                    // Try to get location from business if available
+                    latitude: p.business?.latitude || p.latitude || null,
+                    longitude: p.business?.longitude || p.longitude || null,
+                    averageRating: p.averageRating || 0,
+                    reviewCount: p.reviewCount || p.totalReviews || 0,
                     businessId: p.businessId,
                 };
             });
@@ -100,7 +105,6 @@ export default function ParticulierDashboard() {
         } catch (error: any) {
             console.error('Error fetching products:', error);
             setError(error.message || 'Erreur lors du chargement des produits');
-            setDebugData(`Error details: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}`);
             setProducts([]);
         } finally {
             setLoading(false);
@@ -125,19 +129,22 @@ export default function ParticulierDashboard() {
 
             const merged = [...commercantRes.data, ...restaurantRes.data].slice(0, 5);
 
-            const transformedSuggestions: Product[] = merged.map(p => {
+            const transformedSuggestions: Product[] = merged.map((p: any) => {
                 const firstVariant = p.variants?.[0];
+                // CRITICAL: Use p.productId for the actual Product ID
+                const actualProductId = p.productId || p.id;
+                const price = p.price ? parseFloat(p.price) : (p.convertedPrice || (firstVariant ? parseFloat(firstVariant.price) : 0));
                 return {
                     id: p.id,
-                    productId: p.id,
+                    productId: actualProductId,
                     name: p.name,
-                    price: firstVariant ? parseFloat(firstVariant.price) : 0,
-                    currencyCode: 'XAF',
-                    productImageUrl: p.imageUrl || firstVariant?.imageUrl || undefined,
+                    price: price,
+                    currencyCode: 'KMF',
+                    productImageUrl: p.productImageUrl || p.imageUrl || firstVariant?.imageUrl || undefined,
                     latitude: null,
                     longitude: null,
-                    averageRating: p.averageRating,
-                    reviewCount: p.reviewCount,
+                    averageRating: p.averageRating || 0,
+                    reviewCount: p.reviewCount || p.totalReviews || 0,
                     businessId: p.businessId,
                 };
             });
@@ -323,20 +330,7 @@ export default function ParticulierDashboard() {
                         <div className={styles.bannerImage}>📦</div>
                     </div>
 
-                    {/* DEBUG DATA */}
-                    {debugData && (
-                        <pre style={{
-                            padding: '10px',
-                            background: '#f3f4f6',
-                            fontSize: '11px',
-                            overflow: 'auto',
-                            maxHeight: '200px',
-                            marginBottom: '20px',
-                            border: '1px solid #ddd'
-                        }}>
-                            {debugData}
-                        </pre>
-                    )}
+
 
                     {/* PRODUCT GRID (2 columns like mobile) */}
                     {error && (
@@ -383,16 +377,18 @@ export default function ParticulierDashboard() {
                                         <div className={styles.productInfo}>
                                             <h3 className={styles.productName}>{product.name}</h3>
                                             <p className={styles.productPrice}>
-                                                {product.price.toLocaleString('fr-FR')} {product.currencyCode}
+                                                {(product.price || 0).toLocaleString('fr-FR')} {product.currencyCode}
                                             </p>
-                                            {product.averageRating && (
-                                                <div className={styles.rating}>
-                                                    <span className={styles.stars}>{renderStars(product.averageRating)}</span>
-                                                    {product.reviewCount && product.reviewCount > 0 && (
-                                                        <span className={styles.reviewCount}>({product.reviewCount})</span>
-                                                    )}
-                                                </div>
-                                            )}
+                                            <div className={styles.rating}>
+                                                <span className={styles.stars}>
+                                                    {product.averageRating !== undefined && product.averageRating > 0
+                                                        ? renderStars(product.averageRating)
+                                                        : '☆☆☆☆☆'}
+                                                </span>
+                                                <span className={styles.reviewCount}>
+                                                    {(product.reviewCount || 0) > 0 && `(${product.reviewCount})`}
+                                                </span>
+                                            </div>
                                             <p className={styles.distance}>{distanceText}</p>
                                         </div>
                                     </div>

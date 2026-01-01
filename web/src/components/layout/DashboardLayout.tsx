@@ -21,6 +21,12 @@ export default function DashboardLayout({
     customHeaderRender
 }: DashboardLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+    // Toggle collapse state
+    const toggleCollapse = () => {
+        setSidebarCollapsed(!sidebarCollapsed);
+    };
 
     // Afficher le BusinessSelector seulement pour les PRO (pas PARTICULIER)
     const showBusinessSelector = businessType !== 'PARTICULIER';
@@ -28,8 +34,12 @@ export default function DashboardLayout({
     return (
         <div className={styles.layout}>
             {/* Desktop Sidebar */}
-            <div className={`${styles.sidebarContainer} ${sidebarOpen ? styles.open : ''}`}>
-                <Sidebar businessType={businessType} />
+            <div className={`${styles.sidebarContainer} ${sidebarCollapsed ? styles.collapsed : ''} ${sidebarOpen ? styles.open : ''}`}>
+                <Sidebar
+                    businessType={businessType}
+                    collapsed={sidebarCollapsed}
+                    onToggleCollapse={toggleCollapse}
+                />
             </div>
 
             {/* Mobile Overlay */}
@@ -41,7 +51,7 @@ export default function DashboardLayout({
             )}
 
             {/* Main Content */}
-            <main className={styles.main}>
+            <main className={`${styles.main} ${sidebarCollapsed ? styles.collapsed : ''}`}>
                 {customHeaderRender ? (
                     customHeaderRender({ onMenuClick: () => setSidebarOpen(!sidebarOpen) })
                 ) : (

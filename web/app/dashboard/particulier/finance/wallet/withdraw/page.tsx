@@ -35,7 +35,7 @@ export default function WithdrawPage() {
     }, []);
 
     const balance = parseFloat(wallet?.balance || '0');
-    const currencySymbol = wallet?.currency?.symbol || 'XAF';
+    const currencySymbol = wallet?.currency?.symbol || 'KMF';
 
     const handlePreset = (val: number) => {
         if (val > balance) {

@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { useCartStore, type CartItem } from '@/stores/cartStore';
-import { createOrder } from '@/lib/api/orders';
+import { createOrder, passMultipleOrders } from '@/lib/api/orders';
+import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import styles from './cart.module.css';
 
 type PaymentOption = 'CARD' | 'CASH' | 'WALLET';
@@ -17,50 +18,84 @@ export default function CartPage() {
     const [showPaymentUI, setShowPaymentUI] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState<PaymentOption>('CARD');
 
+    // Modal state for confirmations
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalConfig, setModalConfig] = useState<{
+        title: string;
+        message: string;
+        type: 'success' | 'error' | 'warning' | 'info';
+        showCancel: boolean;
+        onConfirm?: () => void;
+    }>({
+        title: '',
+        message: '',
+        type: 'info',
+        showCancel: false,
+    });
+
     const totalPrice = getTotalPrice().toFixed(2);
     const totalItemsCount = getTotalItems();
 
-    const handleBuyNow = async () => {
+    // Show confirmation modal before checkout
+    const handleBuyNow = () => {
         if (items.length === 0) {
-            alert('Votre panier est vide');
+            setModalConfig({
+                title: 'Panier vide',
+                message: 'Votre panier est vide',
+                type: 'warning',
+                showCancel: false,
+            });
+            setModalOpen(true);
             return;
         }
 
-        if (!confirm(`Valider ${totalItemsCount} article(s) pour ${totalPrice} XAF ?`)) {
-            return;
-        }
+        // Show confirmation modal
+        setModalConfig({
+            title: 'Confirmer la commande',
+            message: `Valider ${totalItemsCount} article(s) pour ${totalPrice} KMF ?`,
+            type: 'info',
+            showCancel: true,
+            onConfirm: executeCheckout,
+        });
+        setModalOpen(true);
+    };
 
+    // Execute the actual checkout
+    const executeCheckout = async () => {
         setIsLoading(true);
         try {
-            // Group items by businessId
-            const grouped = items.reduce((acc, item) => {
-                if (!acc[item.businessId]) {
-                    acc[item.businessId] = [];
-                }
-                acc[item.businessId].push(item);
-                return acc;
-            }, {} as Record<string, CartItem[]>);
+            const payload = {
+                items: items.map(item => ({
+                    variantId: item.variantId,
+                    quantity: item.quantity
+                })),
+                notes: `Commande web - Paiement: ${selectedPayment}`,
+                useWallet: false
+            };
 
-            // Create one order per business
-            const orderPromises = Object.entries(grouped).map(([businessId, businessItems]) =>
-                createOrder({
-                    businessId,
-                    type: 'SALE',
-                    lines: businessItems.map(item => ({
-                        variantId: item.variantId,
-                        quantity: item.quantity,
-                    })),
-                    notes: `Commande web - Paiement: ${selectedPayment}`,
-                })
-            );
+            const orders = await passMultipleOrders(payload);
 
-            await Promise.all(orderPromises);
-
-            alert(`✅ Commande(s) passée(s) avec succès!\n${orderPromises.length} commande(s) créée(s).`);
-            clearCart();
-            router.push('/dashboard/particulier/orders');
+            // Show success modal
+            setModalConfig({
+                title: 'Commande confirmée !',
+                message: `${orders.length} commande(s) créée(s) avec succès.`,
+                type: 'success',
+                showCancel: false,
+                onConfirm: () => {
+                    clearCart();
+                    router.push('/dashboard/particulier/orders');
+                },
+            });
+            setModalOpen(true);
         } catch (error: any) {
-            alert(`❌ Erreur: ${error.message || 'Échec de la commande'}`);
+            console.error('Checkout error:', error);
+            setModalConfig({
+                title: 'Erreur',
+                message: error.message || 'Échec de la commande',
+                type: 'error',
+                showCancel: false,
+            });
+            setModalOpen(true);
         } finally {
             setIsLoading(false);
         }
@@ -90,7 +125,7 @@ export default function CartPage() {
                         {item.variantName ? ` - ${item.variantName}` : ''}
                     </span>
                     <span className={styles.itemPrice}>
-                        {formattedPrice} XAF × {item.quantity}
+                        {formattedPrice} KMF × {item.quantity}
                     </span>
                     <div className={styles.quantityControls}>
                         <button
@@ -141,7 +176,7 @@ export default function CartPage() {
 
                         <div className={styles.totalSection}>
                             <span className={styles.totalLabel}>Total à payer</span>
-                            <span className={styles.totalAmount}>{totalPrice} XAF</span>
+                            <span className={styles.totalAmount}>{totalPrice} KMF</span>
                         </div>
 
                         <p className={styles.paymentMethodLabel}>Mode de paiement</p>
@@ -168,7 +203,7 @@ export default function CartPage() {
                             onClick={handleBuyNow}
                             disabled={isLoading}
                         >
-                            {isLoading ? 'Traitement...' : `Confirmer • ${totalPrice} XAF`}
+                            {isLoading ? 'Traitement...' : `Confirmer • ${totalPrice} KMF`}
                         </button>
                     </div>
                 ) : (
@@ -188,7 +223,7 @@ export default function CartPage() {
                                 <div className={styles.footer}>
                                     <div className={styles.totalContainer}>
                                         <span className={styles.footerLabel}>Total</span>
-                                        <span className={styles.footerPrice}>{totalPrice} XAF</span>
+                                        <span className={styles.footerPrice}>{totalPrice} KMF</span>
                                     </div>
 
                                     <button
@@ -196,7 +231,7 @@ export default function CartPage() {
                                         onClick={handleBuyNow}
                                         disabled={isLoading}
                                     >
-                                        {isLoading ? 'Traitement...' : `⚡ Passer la commande • ${totalPrice} XAF`}
+                                        {isLoading ? 'Traitement...' : `⚡ Passer la commande • ${totalPrice} KMF`}
                                     </button>
                                 </div>
                             </>
@@ -204,6 +239,18 @@ export default function CartPage() {
                     </>
                 )}
             </div>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onConfirm={modalConfig.onConfirm}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                type={modalConfig.type}
+                showCancel={modalConfig.showCancel}
+                confirmText={modalConfig.showCancel ? 'Confirmer' : 'OK'}
+            />
         </DashboardLayout>
     );
 }

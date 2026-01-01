@@ -7,6 +7,11 @@
 .sidebarContainer {
     flex-shrink: 0;
     width: var(--sidebar-width);
+    transition: width var(--transition-base);
+}
+
+.sidebarContainer.collapsed {
+    width: var(--sidebar-collapsed-width);
 }
 
 .main {
@@ -18,10 +23,15 @@
     transition: margin-left var(--transition-base);
 }
 
+.main.collapsed {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
 .content {
     flex: 1;
-    padding: var(--space-6);
+    /* padding: var(--space-6); moved to container class in globals */
     overflow-y: auto;
+    width: 100%;
 }
 
 .overlay {
@@ -49,21 +59,33 @@
         z-index: 100;
         transform: translateX(-100%);
         transition: transform var(--transition-base);
+        width: var(--sidebar-width);
+        /* Always full width on mobile/tablet opening */
     }
 
     .sidebarContainer.open {
         transform: translateX(0);
     }
 
+    .sidebarContainer.collapsed {
+        /* No collapse concept on mobile overlay, it's just open or closed */
+        width: var(--sidebar-width);
+    }
+
     .main {
-        margin-left: 0;
+        margin-left: 0 !important;
+        /* Force no margin */
         padding-bottom: var(--mobile-nav-height);
+    }
+
+    .main.collapsed {
+        margin-left: 0;
     }
 }
 
 /* Mobile */
 @media (max-width: 640px) {
     .content {
-        padding: var(--space-4);
+        /* padding handled by container */
     }
 }

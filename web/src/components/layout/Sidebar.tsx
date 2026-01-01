@@ -155,7 +155,7 @@ const navigationByType: Record<string, NavItem[]> = {
     ],
 };
 
-export default function Sidebar({ businessType = 'PARTICULIER' }: SidebarProps) {
+export default function Sidebar({ businessType = 'PARTICULIER', collapsed = false, onToggleCollapse }: SidebarProps & { collapsed?: boolean; onToggleCollapse?: () => void }) {
     const pathname = usePathname();
     const { userProfile, logout } = useUserStore();
 
@@ -167,7 +167,13 @@ export default function Sidebar({ businessType = 'PARTICULIER' }: SidebarProps) 
     };
 
     return (
-        <aside className={styles.sidebar}>
+        <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''}`}>
+            <button className={styles.toggleBtn} onClick={onToggleCollapse} title={collapsed ? "Agrandir" : "Réduire"}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+
             {/* Logo */}
             <div className={styles.logo}>
                 <div className={styles.logoIcon}>K</div>
@@ -184,12 +190,18 @@ export default function Sidebar({ businessType = 'PARTICULIER' }: SidebarProps) 
             {/* Navigation */}
             <nav className={styles.nav}>
                 {navItems.map((item) => {
-                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                    // For home pages (exact dashboard paths), use exact match only
+                    // For other pages, also match sub-routes
+                    const isHomePage = item.href.match(/^\/dashboard\/[a-z]+$/i);
+                    const isActive = isHomePage
+                        ? pathname === item.href  // Exact match for home pages
+                        : (pathname === item.href || pathname.startsWith(item.href + '/'));
                     return (
                         <Link
                             key={item.href}
                             href={item.href}
                             className={`${styles.navItem} ${isActive ? styles.active : ''}`}
+                            title={collapsed ? item.label : undefined}
                         >
                             <span className={styles.navIcon}>{icons[item.icon]}</span>
                             <span className={styles.navLabel}>{item.label}</span>

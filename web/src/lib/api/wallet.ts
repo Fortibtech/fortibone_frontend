@@ -11,6 +11,8 @@ export interface WalletTransaction {
     provider: string;
     providerTransactionId: string;
     status: TransactionStatus;
+    type?: TransactionType;  // API returns this field
+    description?: string;    // API returns this field
     metadata: Record<string, any>;
     createdAt: string;
     orderId?: string;

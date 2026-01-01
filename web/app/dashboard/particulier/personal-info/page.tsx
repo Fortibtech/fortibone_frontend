@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { useUserStore } from '@/stores/userStore';
+import { updateUserProfile } from '@/lib/api/users';
 import styles from './personal-info.module.css';
 
 export default function PersonalInfoPage() {
@@ -19,17 +20,27 @@ export default function PersonalInfoPage() {
     });
 
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+        setError(null);
+        setSuccess(false);
     };
 
     const handleSave = async () => {
         try {
             setSaving(true);
+            setError(null);
+            setSuccess(false);
 
-            // TODO: Replace with actual API call
-            // await api.put('/users/me', formData);
+            // Call the actual API
+            await updateUserProfile({
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                phoneNumber: formData.phone,
+            });
 
             // Update local store
             if (userProfile) {
@@ -42,10 +53,10 @@ export default function PersonalInfoPage() {
                 });
             }
 
-            alert('Informations mises à jour avec succès !');
-        } catch (error) {
-            console.error('Error saving:', error);
-            alert('Erreur lors de la sauvegarde');
+            setSuccess(true);
+        } catch (err: any) {
+            console.error('Error saving:', err);
+            setError(err.message || 'Erreur lors de la sauvegarde');
         } finally {
             setSaving(false);
         }
@@ -115,6 +126,18 @@ export default function PersonalInfoPage() {
                                 rows={3}
                             />
                         </div>
+
+                        {/* Status Messages */}
+                        {error && (
+                            <div className={styles.errorMessage}>
+                                ❌ {error}
+                            </div>
+                        )}
+                        {success && (
+                            <div className={styles.successMessage}>
+                                ✅ Informations mises à jour avec succès !
+                            </div>
+                        )}
 
                         <button
                             type="button"

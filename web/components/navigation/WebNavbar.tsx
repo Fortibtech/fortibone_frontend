@@ -5,13 +5,31 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './WebNavbar.module.css';
 
+// Profile types for header differentiation
+type ProfileType = 'particulier' | 'pro';
+
+const getProfileType = (pathname: string | null): ProfileType => {
+    if (!pathname) return 'particulier';
+
+    // PRO profiles: commercant, fournisseur, restaurateur, livreur
+    const proProfiles = ['/commercant', '/fournisseur', '/restaurateur', '/livreur'];
+    const isPro = proProfiles.some(profile => pathname.includes(profile));
+
+    return isPro ? 'pro' : 'particulier';
+};
+
 export default function WebNavbar() {
     const pathname = usePathname();
+    const profileType = getProfileType(pathname);
 
     const isActive = (path: string) => pathname?.includes(path);
 
+    // Dynamic header class based on profile type
+    const headerClass = `${styles.header} ${profileType === 'particulier' ? styles.headerParticulier : styles.headerPro
+        }`;
+
     return (
-        <header className={styles.header}>
+        <header className={headerClass}>
             <div className={styles.container}>
                 <nav className={styles.navbar}>
                     {/* Logo Section */}
