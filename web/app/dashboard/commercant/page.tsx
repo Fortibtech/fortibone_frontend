@@ -7,7 +7,7 @@ import { getAnalyticsOverview, getPendingOrdersCount, getProcessingPurchasesCoun
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { PeriodFilter, getPeriodDates, getPeriodLabel, PeriodType, PeriodDates } from '@/components/shared';
-import { SalesByPeriodChart, ExpenseDistributionChart, RevenueDistributionChart, InventoryLossesChart } from '@/components/charts';
+import { SalesByPeriodChart, ExpenseDistributionChart, RevenueDistributionChart, InventoryLossesChart, CashFlowChart } from '@/components/charts';
 import styles from './accueil.module.css';
 
 export default function CommercantDashboard() {
@@ -237,6 +237,10 @@ export default function CommercantDashboard() {
                             data={[]}
                             loading={loading}
                             currencySymbol={currencySymbol}
+                        />
+                        <CashFlowChart
+                            period="6m"
+                            currency={currencySymbol}
                         />
                     </section>
                 </div>

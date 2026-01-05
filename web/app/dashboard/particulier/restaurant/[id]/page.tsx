@@ -8,6 +8,8 @@ import { getProducts, Product } from '@/lib/api/products';
 import { getTables, Table } from '@/lib/api/tables';
 import axiosInstance from '@/lib/api/axiosInstance';
 import { Business } from '@/stores/businessStore';
+import WebBusinessHeader from '@/components/business/WebBusinessHeader';
+import WebProductCard from '@/components/cards/WebProductCard';
 import styles from './restaurant-detail.module.css';
 
 interface RestaurantDetailPageProps {
@@ -143,19 +145,6 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
         }
     };
 
-    const renderStars = (rating: number) => {
-        const stars = [];
-        const fullStars = Math.floor(rating);
-        for (let i = 0; i < 5; i++) {
-            stars.push(
-                <span key={i} style={{ color: i < fullStars ? '#f59e0b' : '#d1d5db' }}>
-                    ★
-                </span>
-            );
-        }
-        return stars;
-    };
-
     if (loading) {
         return (
             <DashboardLayout businessType="PARTICULIER">
@@ -187,67 +176,23 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
             <div className={styles.container}>
                 {/* Back button */}
                 <button onClick={() => router.back()} className={styles.backButton}>
-                    ← Retour
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Retour
                 </button>
 
-                {/* Restaurant Header */}
-                <div className={styles.header}>
-                    <div className={styles.coverImage}>
-                        {restaurant.coverImageUrl ? (
-                            <img src={restaurant.coverImageUrl} alt={restaurant.name} />
-                        ) : (
-                            <div className={styles.coverPlaceholder}>
-                                🍽️
-                            </div>
-                        )}
-                    </div>
-
-                    <div className={styles.restaurantInfo}>
-                        {restaurant.logoUrl && (
-                            <img
-                                src={restaurant.logoUrl}
-                                alt={restaurant.name}
-                                className={styles.logo}
-                            />
-                        )}
-
-                        <div className={styles.infoContent}>
-                            <div className={styles.typeTag}>Restaurant</div>
-                            <h1 className={styles.restaurantName}>{restaurant.name}</h1>
-
-                            <div className={styles.rating}>
-                                {renderStars(restaurant.averageRating || 0)}
-                                <span className={styles.ratingText}>
-                                    {(restaurant.averageRating || 0).toFixed(1)} ({restaurant.reviewCount || 0} avis)
-                                </span>
-                            </div>
-
-                            {restaurant.description && (
-                                <p className={styles.description}>{restaurant.description}</p>
-                            )}
-
-                            <div className={styles.metaRow}>
-                                {restaurant.address && (
-                                    <div className={styles.address}>
-                                        <span>📍</span>
-                                        <span>{restaurant.address}</span>
-                                    </div>
-                                )}
-
-                                {restaurant.phoneNumber && (
-                                    <div className={styles.phone}>
-                                        <span>📞</span>
-                                        <a href={`tel:${restaurant.phoneNumber}`}>{restaurant.phoneNumber}</a>
-                                    </div>
-                                )}
-                            </div>
-
-                            {restaurant.isVerified && (
-                                <span className={styles.verifiedBadge}>✓ Restaurant vérifié</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                {/* Unified Header */}
+                <WebBusinessHeader
+                    name={restaurant.name}
+                    type="RESTAURANT"
+                    coverImageUrl={restaurant.coverImageUrl}
+                    logoUrl={restaurant.logoUrl}
+                    rating={restaurant.averageRating || 0}
+                    reviewCount={restaurant.reviewCount || 0}
+                    description={restaurant.description}
+                    address={restaurant.address}
+                    phoneNumber={restaurant.phoneNumber}
+                    isVerified={restaurant.isVerified}
+                />
 
                 {/* TABS: Menu | Réserver une table */}
                 <div className={styles.tabsContainer}>
@@ -255,7 +200,7 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
                         className={`${styles.tab} ${activeTab === 'menu' ? styles.activeTab : ''}`}
                         onClick={() => setActiveTab('menu')}
                     >
-                        🍽️ Menus
+                        🍽️ Carte & Menus
                     </button>
                     <button
                         className={`${styles.tab} ${activeTab === 'table' ? styles.activeTab : ''}`}
@@ -270,7 +215,7 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
                     /* Menu Section */
                     <section className={styles.menuSection}>
                         <h2 className={styles.sectionTitle}>
-                            Notre Menu
+                            Notre Carte
                             {products.length > 0 && (
                                 <span className={styles.menuCount}>({products.length} plats)</span>
                             )}
@@ -294,28 +239,17 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
                                     const imageUrl = product.imageUrl || firstVariant?.imageUrl;
 
                                     return (
-                                        <div
+                                        <WebProductCard
                                             key={product.id}
-                                            className={styles.menuCard}
-                                            onClick={() => handleProductClick(product.id)}
-                                        >
-                                            <div className={styles.menuImage}>
-                                                {imageUrl ? (
-                                                    <img src={imageUrl} alt={product.name} />
-                                                ) : (
-                                                    <div className={styles.imagePlaceholder}>🍽️</div>
-                                                )}
-                                            </div>
-                                            <div className={styles.menuInfo}>
-                                                <h3 className={styles.menuName}>{product.name}</h3>
-                                                {product.description && (
-                                                    <p className={styles.menuDesc}>{product.description}</p>
-                                                )}
-                                                <span className={styles.menuPrice}>
-                                                    {price.toLocaleString('fr-FR')} KMF
-                                                </span>
-                                            </div>
-                                        </div>
+                                            id={product.id}
+                                            name={product.name}
+                                            price={price}
+                                            currencyCode="KMF"
+                                            imageUrl={imageUrl || undefined}
+                                            rating={0}
+                                            reviewCount={0}
+                                            onPress={() => handleProductClick(product.id)}
+                                        />
                                     );
                                 })}
                             </div>
@@ -334,7 +268,7 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
                         ) : tables.length === 0 ? (
                             <div className={styles.emptyMenu}>
                                 <span className={styles.emptyIcon}>🪑</span>
-                                <p>Aucune table disponible</p>
+                                <p>Aucune table disponible pour le moment</p>
                             </div>
                         ) : (
                             <div className={styles.tablesGrid}>
@@ -342,22 +276,24 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
                                     <div
                                         key={table.id}
                                         className={`${styles.tableCard} ${!table.isAvailable ? styles.tableUnavailable : ''}`}
+                                        onClick={() => table.isAvailable && openReservationModal(table)}
                                     >
+                                        <div className={styles.tableHeader}>
+                                            <span className={styles.tableIcon}>🪑</span>
+                                            <span className={`${styles.statusDot} ${table.isAvailable ? styles.availableDot : styles.unavailableDot}`}></span>
+                                        </div>
+
                                         <div className={styles.tableInfo}>
                                             <h3 className={styles.tableName}>Table {table.name}</h3>
-                                            <p className={styles.tableCapacity}>{table.capacity} places</p>
-                                            <span className={`${styles.tableStatus} ${table.isAvailable ? styles.available : styles.unavailable}`}>
-                                                {table.isAvailable ? '✓ Disponible' : '✗ Indisponible'}
-                                            </span>
+                                            <p className={styles.tableCapacity}>{table.capacity} Personnes</p>
                                         </div>
-                                        {table.isAvailable && (
-                                            <button
-                                                className={styles.reserveBtn}
-                                                onClick={() => openReservationModal(table)}
-                                            >
-                                                Réserver
-                                            </button>
-                                        )}
+
+                                        <button
+                                            className={styles.statusBadge}
+                                            disabled={!table.isAvailable}
+                                        >
+                                            {table.isAvailable ? 'Réserver' : 'Occupé'}
+                                        </button>
                                     </div>
                                 ))}
                             </div>
@@ -366,17 +302,18 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
                 )}
             </div>
 
-            {/* Reservation Modal */}
+            {/* Reservation Modal - Keeping existing modal logic but ensuring styling context */}
             {showReservationModal && selectedTable && (
                 <div className={styles.modalOverlay} onClick={() => setShowReservationModal(false)}>
                     <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                        <h2 className={styles.modalTitle}>Réserver {selectedTable.name}</h2>
+                        <h2 className={styles.modalTitle}>Réserver la Table {selectedTable.name}</h2>
                         <p className={styles.modalSubtitle}>{selectedTable.capacity} places</p>
 
                         <div className={styles.formGroup}>
                             <label>Date</label>
                             <input
                                 type="date"
+                                className={styles.input}
                                 value={reservationDate}
                                 onChange={(e) => setReservationDate(e.target.value)}
                                 min={new Date().toISOString().split('T')[0]}
@@ -387,6 +324,7 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
                             <label>Heure</label>
                             <input
                                 type="time"
+                                className={styles.input}
                                 value={reservationTime}
                                 onChange={(e) => setReservationTime(e.target.value)}
                             />
@@ -395,6 +333,7 @@ export default function RestaurantDetailPage({ params }: RestaurantDetailPagePro
                         <div className={styles.formGroup}>
                             <label>Notes (optionnel)</label>
                             <textarea
+                                className={styles.textarea}
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Ex: anniversaire, allergies..."

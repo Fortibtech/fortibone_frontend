@@ -245,35 +245,44 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                             </div>
                         )}
 
-                        {/* Quantity */}
+                        {/* Actions: Grid Layout for Qty + Add Button */}
                         <div className={styles.quantitySection}>
-                            <label>Quantité:</label>
-                            <div className={styles.quantityControls}>
-                                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
-                                <span>{quantity}</span>
-                                <button onClick={() => setQuantity(quantity + 1)}>+</button>
+                            {/* Stock Indicator */}
+                            {selectedVariant && (
+                                <div className={styles.stock}>
+                                    {selectedVariant.quantityInStock > 0 ? (
+                                        <span className={styles.inStock}>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                            En stock ({selectedVariant.quantityInStock})
+                                        </span>
+                                    ) : (
+                                        <span className={styles.outOfStock}>Rupture de stock</span>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Grouped Action Bar */}
+                            <div className={styles.addToCartGroup}>
+                                <div className={styles.quantityControls}>
+                                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button>
+                                    <span>{quantity}</span>
+                                    <button onClick={() => setQuantity(quantity + 1)}>+</button>
+                                </div>
+
+                                <button
+                                    onClick={handleAddToCart}
+                                    className={styles.addToCartBtn}
+                                    disabled={!selectedVariant || selectedVariant.quantityInStock === 0}
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                                        <path d="M16 10a4 4 0 0 1-8 0"></path>
+                                    </svg>
+                                    Ajouter au panier
+                                </button>
                             </div>
                         </div>
-
-                        {/* Stock */}
-                        {selectedVariant && (
-                            <div className={styles.stock}>
-                                {selectedVariant.quantityInStock > 0 ? (
-                                    <span className={styles.inStock}>✓ En stock ({selectedVariant.quantityInStock} disponibles)</span>
-                                ) : (
-                                    <span className={styles.outOfStock}>✗ Rupture de stock</span>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Add to cart */}
-                        <button
-                            onClick={handleAddToCart}
-                            className={styles.addToCartBtn}
-                            disabled={!selectedVariant || selectedVariant.quantityInStock === 0}
-                        >
-                            Ajouter au panier
-                        </button>
                     </div>
                 </div>
 

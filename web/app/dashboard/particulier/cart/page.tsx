@@ -114,42 +114,55 @@ export default function CartPage() {
 
         return (
             <div key={item.id} className={styles.cartItem}>
+                {/* Image */}
                 {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} className={styles.itemImage} />
                 ) : (
                     <div className={styles.itemImagePlaceholder}>📦</div>
                 )}
+
+                {/* Details Container (Flex Row on Desktop) */}
                 <div className={styles.itemDetails}>
-                    <span className={styles.itemName}>
-                        {item.name}
-                        {item.variantName ? ` - ${item.variantName}` : ''}
-                    </span>
-                    <span className={styles.itemPrice}>
-                        {formattedPrice} KMF × {item.quantity}
-                    </span>
-                    <div className={styles.quantityControls}>
+                    {/* Info Column */}
+                    <div className={styles.itemInfoCol}>
+                        <span className={styles.itemName}>{item.name}</span>
+                        {item.variantName && (
+                            <span className={styles.itemVariant}>{item.variantName}</span>
+                        )}
+                    </div>
+
+                    {/* Actions Column (Qty + Price + Remove) */}
+                    <div className={styles.itemActionsCol}>
+                        <div className={styles.quantityControls}>
+                            <button
+                                className={styles.quantityBtn}
+                                onClick={() => updateQuantity(item.productId, item.variantId, item.quantity - 1)}
+                                disabled={item.quantity <= 1}
+                            >
+                                −
+                            </button>
+                            <span className={styles.quantityText}>{item.quantity}</span>
+                            <button
+                                className={styles.quantityBtn}
+                                onClick={() => updateQuantity(item.productId, item.variantId, item.quantity + 1)}
+                            >
+                                +
+                            </button>
+                        </div>
+
+                        <span className={styles.itemPrice}>
+                            {(item.price * item.quantity).toLocaleString()} KMF
+                        </span>
+
                         <button
-                            className={styles.quantityBtn}
-                            onClick={() => updateQuantity(item.productId, item.variantId, item.quantity - 1)}
-                            disabled={item.quantity <= 1}
+                            className={styles.removeBtn}
+                            onClick={() => removeItem(item.productId, item.variantId)}
+                            title="Retirer"
                         >
-                            −
-                        </button>
-                        <span className={styles.quantityText}>{item.quantity}</span>
-                        <button
-                            className={styles.quantityBtn}
-                            onClick={() => updateQuantity(item.productId, item.variantId, item.quantity + 1)}
-                        >
-                            +
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     </div>
                 </div>
-                <button
-                    className={styles.removeBtn}
-                    onClick={() => removeItem(item.productId, item.variantId)}
-                >
-                    🗑️
-                </button>
             </div>
         );
     };
@@ -159,71 +172,93 @@ export default function CartPage() {
             <div className={styles.container}>
                 {/* Header */}
                 <div className={styles.header}>
-                    <button onClick={handleGoBack} className={styles.backButton}>←</button>
+                    <button onClick={handleGoBack} className={styles.backButton}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    </button>
                     <h1 className={styles.title}>
-                        {showPaymentUI ? 'Paiement' : `Panier (${totalItemsCount})`}
+                        {showPaymentUI ? 'Paiement sécurisé' : `Mon Panier (${totalItemsCount})`}
                     </h1>
                     <div style={{ width: 40 }} />
                 </div>
 
                 {showPaymentUI ? (
-                    /* Payment UI */
-                    <div className={styles.paymentContent}>
+                    /* === PAYMENT UI (Centered Card) === */
+                    <div className={styles.paymentContainer}>
                         <div className={styles.paymentHeader}>
-                            <span className={styles.paymentIcon}>✅</span>
+                            <span className={styles.paymentIcon}>🛡️</span>
                             <h2 className={styles.paymentTitle}>Finaliser la commande</h2>
                         </div>
 
-                        <div className={styles.totalSection}>
-                            <span className={styles.totalLabel}>Total à payer</span>
-                            <span className={styles.totalAmount}>{totalPrice} KMF</span>
-                        </div>
+                        <div className={styles.paymentBody}>
+                            <div className={styles.totalSection}>
+                                <span className={styles.totalLabel}>Montant à payer</span>
+                                <span className={styles.totalAmount}>{parseInt(totalPrice).toLocaleString()} KMF</span>
+                            </div>
 
-                        <p className={styles.paymentMethodLabel}>Mode de paiement</p>
-                        <div className={styles.paymentOptions}>
-                            {(['CARD', 'CASH', 'WALLET'] as PaymentOption[]).map((method) => (
-                                <button
-                                    key={method}
-                                    className={`${styles.paymentOption} ${selectedPayment === method ? styles.selected : ''}`}
-                                    onClick={() => setSelectedPayment(method)}
-                                >
-                                    <span className={styles.paymentIcon}>
-                                        {method === 'CARD' ? '💳' : method === 'CASH' ? '💵' : '👛'}
-                                    </span>
-                                    <span className={styles.paymentOptionText}>
-                                        {method === 'CARD' ? 'Carte bancaire' : method === 'CASH' ? 'Espèces' : 'Portefeuille'}
-                                    </span>
-                                    {selectedPayment === method && <span>✓</span>}
-                                </button>
-                            ))}
-                        </div>
+                            <p className={styles.paymentMethodLabel}>Choisir un mode de paiement</p>
+                            <div className={styles.paymentOptions}>
+                                {(['CARD', 'WALLET', 'CASH'] as PaymentOption[]).map((method) => (
+                                    <button
+                                        key={method}
+                                        className={`${styles.paymentOption} ${selectedPayment === method ? styles.selected : ''}`}
+                                        onClick={() => setSelectedPayment(method)}
+                                    >
+                                        <span className={styles.paymentIcon}>
+                                            {method === 'CARD' ? '💳' : method === 'WALLET' ? '👛' : '💵'}
+                                        </span>
+                                        <div className={styles.paymentOptionText}>
+                                            {method === 'CARD' ? 'Carte bancaire' : method === 'WALLET' ? 'Portefeuille Komora' : 'Paiement à la livraison'}
+                                        </div>
+                                        {selectedPayment === method && <span style={{ color: '#059669', fontSize: '20px' }}>●</span>}
+                                    </button>
+                                ))}
+                            </div>
 
-                        <button
-                            className={styles.payButton}
-                            onClick={handleBuyNow}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? 'Traitement...' : `Confirmer • ${totalPrice} KMF`}
-                        </button>
+                            <button
+                                className={styles.payButton}
+                                onClick={handleBuyNow}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? 'Validation en cours...' : `Confirmer le paiement`}
+                            </button>
+                        </div>
                     </div>
                 ) : (
-                    /* Cart Content */
+                    /* === CART GRID === */
                     <>
                         {items.length === 0 ? (
                             <div className={styles.empty}>
                                 <span className={styles.emptyIcon}>🛒</span>
                                 <p className={styles.emptyText}>Votre panier est vide</p>
+                                <button onClick={() => router.back()} style={{ color: '#059669', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>
+                                    Continuer mes achats
+                                </button>
                             </div>
                         ) : (
-                            <>
-                                <div className={styles.itemsList}>
-                                    {items.map(renderCartItem)}
+                            <div className={styles.cartLayout}>
+                                {/* Left Column: Items */}
+                                <div className={styles.itemsSection}>
+                                    <div className={styles.itemsList}>
+                                        {items.map(renderCartItem)}
+                                    </div>
                                 </div>
 
-                                <div className={styles.footer}>
-                                    <div className={styles.totalContainer}>
-                                        <span className={styles.footerLabel}>Total</span>
-                                        <span className={styles.footerPrice}>{totalPrice} KMF</span>
+                                {/* Right Column: Summary (Sticky) */}
+                                <div className={styles.summaryCard}>
+                                    <h3 className={styles.summaryTitle}>Résumé de la commande</h3>
+
+                                    <div className={styles.summaryRow}>
+                                        <span>Sous-total ({totalItemsCount} articles)</span>
+                                        <span>{parseInt(totalPrice).toLocaleString()} KMF</span>
+                                    </div>
+                                    <div className={styles.summaryRow}>
+                                        <span>Livraison</span>
+                                        <span style={{ color: '#059669' }}>Gratuit</span>
+                                    </div>
+
+                                    <div className={styles.summaryTotal}>
+                                        <span>Total</span>
+                                        <span className={styles.totalValue}>{parseInt(totalPrice).toLocaleString()} KMF</span>
                                     </div>
 
                                     <button
@@ -231,10 +266,14 @@ export default function CartPage() {
                                         onClick={handleBuyNow}
                                         disabled={isLoading}
                                     >
-                                        {isLoading ? 'Traitement...' : `⚡ Passer la commande • ${totalPrice} KMF`}
+                                        Passer au paiement
                                     </button>
+
+                                    <div style={{ fontSize: '12px', color: '#999', textAlign: 'center', marginTop: '8px' }}>
+                                        🔒 Paiement 100% sécurisé
+                                    </div>
                                 </div>
-                            </>
+                            </div>
                         )}
                     </>
                 )}

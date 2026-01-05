@@ -69,6 +69,9 @@ export default function WalletPage() {
 
     // Extraire le type de dashboard depuis le pathname
     const dashboardType = pathname.split('/')[2] || 'commercant';
+    const basePath = dashboardType === 'particulier'
+        ? `/dashboard/particulier/finance`
+        : `/dashboard/${dashboardType}`;
 
     return (
         <DashboardLayout businessType={dashboardType.toUpperCase() as any}>
@@ -92,15 +95,15 @@ export default function WalletPage() {
                         )}
                     </div>
                     <div className={styles.balanceActions}>
-                        <Link href={`/dashboard/${dashboardType}/wallet/deposit`} className={styles.actionButton}>
+                        <Link href={`${basePath}/wallet/deposit`} className={styles.actionButton}>
                             {icons.deposit}
                             <span>Dépôt</span>
                         </Link>
-                        <Link href={`/dashboard/${dashboardType}/wallet/withdraw`} className={styles.actionButton}>
+                        <Link href={`${basePath}/wallet/withdraw`} className={styles.actionButton}>
                             {icons.withdraw}
                             <span>Retrait</span>
                         </Link>
-                        <Link href={`/dashboard/${dashboardType}/wallet/transfer`} className={styles.actionButton}>
+                        <Link href={`${basePath}/wallet/transfer`} className={styles.actionButton}>
                             {icons.transfer}
                             <span>Transfert</span>
                         </Link>
@@ -109,7 +112,7 @@ export default function WalletPage() {
 
                 {/* Quick Actions */}
                 <div className={styles.quickActions}>
-                    <Link href={`/dashboard/${dashboardType}/wallet/transactions`} className={styles.quickLink}>
+                    <Link href={`${basePath}/wallet/transactions`} className={styles.quickLink}>
                         {icons.history}
                         <span>Historique des transactions</span>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -122,7 +125,7 @@ export default function WalletPage() {
                 <div className={styles.section}>
                     <div className={styles.sectionHeader}>
                         <h2 className={styles.sectionTitle}>Transactions récentes</h2>
-                        <Link href={`/dashboard/${dashboardType}/wallet/transactions`} className={styles.seeAll}>
+                        <Link href={`${basePath}/wallet/transactions`} className={styles.seeAll}>
                             Voir tout
                         </Link>
                     </div>

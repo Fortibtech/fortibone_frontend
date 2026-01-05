@@ -1,24 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { DashboardLayout } from '@/components/layout';
+import { getBusinesses, type PaginatedResponse } from '@/lib/api/business';
+import { useProCartStore } from '@/stores/proCartStore';
 import styles from './achats.module.css';
 
-interface Product {
+interface Supplier {
     id: string;
     name: string;
-    price: number;
-    imageUrl?: string;
-    supplierName: string;
-    currencyCode: string;
-}
-
-interface CartItem extends Product {
-    quantity: number;
-}
-
-interface Category {
-    id: string;
-    name: string;
+    description?: string;
+    logoUrl?: string;
+    type: string;
+    reviewCount?: number;
 }
 
 // Icons
@@ -36,300 +32,137 @@ const icons = {
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
         </svg>
     ),
-    filter: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-        </svg>
-    ),
-    close: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-    ),
-    plus: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-    ),
-    minus: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-    ),
-    package: (
+    box: (
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
             <line x1="12" y1="22.08" x2="12" y2="12" />
         </svg>
     ),
 };
 
-const BackArrow = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <line x1="19" y1="12" x2="5" y2="12" />
-        <polyline points="12 19 5 12 12 5" />
-    </svg>
-);
-
 export default function AchatsPage() {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [cart, setCart] = useState<CartItem[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState<string>('all');
-    const [showCart, setShowCart] = useState(false);
-    const [categories] = useState<Category[]>([
-        { id: 'all', name: 'Tout' },
-        { id: 'food', name: 'Alimentaire' },
-        { id: 'beverage', name: 'Boissons' },
-        { id: 'hygiene', name: 'Hygiène' },
-        { id: 'equipment', name: 'Équipements' },
-    ]);
+    const { getTotalItems } = useProCartStore();
+    const totalCartItems = getTotalItems();
 
-    // Simulated data - would come from API
-    useEffect(() => {
-        const loadProducts = async () => {
-            setLoading(true);
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            setProducts([
-                { id: '1', name: 'Huile de palme 5L', price: 4500, imageUrl: '', supplierName: 'Fournisseur ABC', currencyCode: 'KMF' },
-                { id: '2', name: 'Riz local 25kg', price: 12000, imageUrl: '', supplierName: 'Agro Plus', currencyCode: 'KMF' },
-                { id: '3', name: 'Sucre en poudre 10kg', price: 8500, imageUrl: '', supplierName: 'Import Co', currencyCode: 'KMF' },
-                { id: '4', name: 'Farine de blé 25kg', price: 9000, imageUrl: '', supplierName: 'Fournisseur ABC', currencyCode: 'KMF' },
-                { id: '5', name: 'Eau minérale (pack 6)', price: 3000, imageUrl: '', supplierName: 'Boissons Express', currencyCode: 'KMF' },
-                { id: '6', name: 'Savon liquide 5L', price: 2500, imageUrl: '', supplierName: 'Hygiène Pro', currencyCode: 'KMF' },
-            ]);
+    const loadSuppliers = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await getBusinesses({
+                type: 'FOURNISSEUR',
+                limit: 50,
+            });
+            setSuppliers(response.data || []);
+        } catch (error) {
+            console.error('Erreur chargement fournisseurs:', error);
+            setSuppliers([]);
+        } finally {
             setLoading(false);
-        };
-
-        loadProducts();
+        }
     }, []);
 
-    const addToCart = useCallback((product: Product) => {
-        setCart(prev => {
-            const existing = prev.find(item => item.id === product.id);
-            if (existing) {
-                return prev.map(item =>
-                    item.id === product.id
-                        ? { ...item, quantity: item.quantity + 1 }
-                        : item
-                );
-            }
-            return [...prev, { ...product, quantity: 1 }];
-        });
-    }, []);
+    useEffect(() => {
+        loadSuppliers();
+    }, [loadSuppliers]);
 
-    const updateQuantity = useCallback((productId: string, delta: number) => {
-        setCart(prev => {
-            return prev
-                .map(item => {
-                    if (item.id === productId) {
-                        const newQty = item.quantity + delta;
-                        return newQty > 0 ? { ...item, quantity: newQty } : null;
-                    }
-                    return item;
-                })
-                .filter(Boolean) as CartItem[];
-        });
-    }, []);
-
-    const getTotalItems = () => cart.reduce((sum, item) => sum + item.quantity, 0);
-    const getTotalPrice = () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-    const formatPrice = (price: number) => price.toLocaleString('fr-FR');
-
-    const filteredProducts = products.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredSuppliers = suppliers.filter((s) =>
+        s.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
-        <div className={styles.container}>
-            {/* Header */}
-            <div className={styles.header}>
-                <div className={styles.headerLeft}>
-                    <button
-                        className={styles.backButton}
-                        onClick={() => window.history.back()}
-                        aria-label="Retour"
-                    >
-                        <BackArrow />
-                    </button>
-                    <div>
-                        <h1 className={styles.title}>Achats Fournisseurs</h1>
-                        <p className={styles.subtitle}>Approvisionnez-vous auprès de nos fournisseurs partenaires</p>
-                    </div>
-                </div>
-                <button className={styles.cartButton} onClick={() => setShowCart(true)}>
-                    {icons.cart}
-                    <span>Panier</span>
-                    {getTotalItems() > 0 && (
-                        <span className={styles.cartBadge}>{getTotalItems()}</span>
-                    )}
-                </button>
-            </div>
-
-            {/* Search */}
-            <div className={styles.searchSection}>
-                <div className={styles.searchBar}>
-                    {icons.search}
-                    <input
-                        type="text"
-                        className={styles.searchInput}
-                        placeholder="Rechercher un produit..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <button className={styles.filterButton}>
-                        {icons.filter}
-                        <span>Filtres</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Categories */}
-            <div className={styles.categoriesSection}>
-                <div className={styles.categoriesGrid}>
-                    {categories.map(cat => (
-                        <button
-                            key={cat.id}
-                            className={`${styles.categoryChip} ${selectedCategory === cat.id ? styles.categoryChipActive : ''}`}
-                            onClick={() => setSelectedCategory(cat.id)}
-                        >
-                            {cat.name}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Products */}
-            <div className={styles.productsSection}>
-                <div className={styles.resultsInfo}>
-                    <span className={styles.resultsCount}>
-                        {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} disponible{filteredProducts.length > 1 ? 's' : ''}
-                    </span>
-                    <select className={styles.sortSelect}>
-                        <option value="relevance">Pertinence</option>
-                        <option value="price_asc">Prix croissant</option>
-                        <option value="price_desc">Prix décroissant</option>
-                    </select>
-                </div>
-
-                {loading ? (
-                    <div className={styles.loadingContainer}>
-                        <div className={styles.spinner} />
-                        <p className={styles.loadingText}>Chargement des produits...</p>
-                    </div>
-                ) : filteredProducts.length === 0 ? (
-                    <div className={styles.emptyState}>
-                        <div className={styles.emptyIcon}>{icons.package}</div>
-                        <h3 className={styles.emptyTitle}>Aucun produit trouvé</h3>
-                        <p className={styles.emptyText}>Essayez avec d&apos;autres mots-clés</p>
-                    </div>
-                ) : (
-                    <div className={styles.productsGrid}>
-                        {filteredProducts.map(product => (
-                            <div key={product.id} className={styles.productCard}>
-                                <div className={styles.productImage}>
-                                    {product.imageUrl ? (
-                                        <img src={product.imageUrl} alt={product.name} />
-                                    ) : (
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#f8f8f8' }}>
-                                            {icons.package}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className={styles.productInfo}>
-                                    <h3 className={styles.productName}>{product.name}</h3>
-                                    <p className={styles.supplierName}>{product.supplierName}</p>
-                                    <p className={styles.productPrice}>
-                                        {formatPrice(product.price)} {product.currencyCode}
-                                    </p>
-                                    <button
-                                        className={styles.addToCartBtn}
-                                        onClick={() => addToCart(product)}
-                                    >
-                                        + Ajouter au panier
-                                    </button>
-                                </div>
+        <ProtectedRoute requiredProfileType="PRO">
+            <DashboardLayout businessType="COMMERCANT" title="Achats Fournisseurs">
+                <div className={styles.container}>
+                    {/* Header */}
+                    <div className={styles.header}>
+                        <div className={styles.headerLeft}>
+                            <div>
+                                <h1 className={styles.title}>Achats Fournisseurs</h1>
+                                <p className={styles.subtitle}>
+                                    Approvisionnez-vous auprès de nos fournisseurs partenaires
+                                </p>
                             </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Cart Sidebar */}
-            {showCart && (
-                <>
-                    <div className={styles.cartOverlay} onClick={() => setShowCart(false)} />
-                    <div className={styles.cartModal}>
-                        <div className={styles.cartHeader}>
-                            <h2 className={styles.cartTitle}>Mon Panier ({getTotalItems()})</h2>
-                            <button className={styles.closeButton} onClick={() => setShowCart(false)}>
-                                {icons.close}
-                            </button>
                         </div>
-
-                        <div className={styles.cartContent}>
-                            {cart.length === 0 ? (
-                                <div className={styles.emptyState}>
-                                    <div className={styles.emptyIcon}>{icons.cart}</div>
-                                    <h3 className={styles.emptyTitle}>Panier vide</h3>
-                                    <p className={styles.emptyText}>Ajoutez des produits pour passer commande</p>
-                                </div>
-                            ) : (
-                                cart.map(item => (
-                                    <div key={item.id} className={styles.cartItem}>
-                                        <div className={styles.cartItemImage}>
-                                            {icons.package}
-                                        </div>
-                                        <div className={styles.cartItemInfo}>
-                                            <h4 className={styles.cartItemName}>{item.name}</h4>
-                                            <p className={styles.cartItemPrice}>
-                                                {formatPrice(item.price)} {item.currencyCode}
-                                            </p>
-                                        </div>
-                                        <div className={styles.cartItemActions}>
-                                            <button
-                                                className={styles.qtyButton}
-                                                onClick={() => updateQuantity(item.id, -1)}
-                                            >
-                                                {icons.minus}
-                                            </button>
-                                            <span className={styles.qtyText}>{item.quantity}</span>
-                                            <button
-                                                className={styles.qtyButton}
-                                                onClick={() => updateQuantity(item.id, 1)}
-                                            >
-                                                {icons.plus}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
+                        <Link href="/dashboard/commercant/achats/cart" className={styles.cartButton}>
+                            {icons.cart}
+                            <span>Panier</span>
+                            {totalCartItems > 0 && (
+                                <span className={styles.cartBadge}>{totalCartItems}</span>
                             )}
-                        </div>
+                        </Link>
+                    </div>
 
-                        <div className={styles.cartFooter}>
-                            <div className={styles.cartTotal}>
-                                <span className={styles.cartTotalLabel}>Total</span>
-                                <span className={styles.cartTotalValue}>
-                                    {formatPrice(getTotalPrice())} KMF
-                                </span>
-                            </div>
-                            <button
-                                className={styles.checkoutButton}
-                                disabled={cart.length === 0}
-                            >
-                                Passer la commande
-                            </button>
+                    {/* Search */}
+                    <div className={styles.searchSection}>
+                        <div className={styles.searchBar}>
+                            {icons.search}
+                            <input
+                                type="text"
+                                className={styles.searchInput}
+                                placeholder="Rechercher un fournisseur..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
                         </div>
                     </div>
-                </>
-            )}
-        </div>
+
+                    {/* Suppliers Grid */}
+                    <div className={styles.suppliersSection}>
+                        <div className={styles.resultsInfo}>
+                            <span className={styles.resultsCount}>
+                                {filteredSuppliers.length} fournisseur{filteredSuppliers.length > 1 ? 's' : ''} disponible{filteredSuppliers.length > 1 ? 's' : ''}
+                            </span>
+                        </div>
+
+                        {loading ? (
+                            <div className={styles.loadingContainer}>
+                                <div className={styles.spinner} />
+                                <p className={styles.loadingText}>Chargement des fournisseurs...</p>
+                            </div>
+                        ) : filteredSuppliers.length === 0 ? (
+                            <div className={styles.emptyState}>
+                                <div className={styles.emptyIcon}>{icons.box}</div>
+                                <h3 className={styles.emptyTitle}>
+                                    {searchQuery ? `Aucun fournisseur trouvé pour "${searchQuery}"` : 'Aucun fournisseur disponible'}
+                                </h3>
+                                <p className={styles.emptyText}>Revenez plus tard</p>
+                            </div>
+                        ) : (
+                            <div className={styles.suppliersGrid}>
+                                {filteredSuppliers.map((supplier) => (
+                                    <Link
+                                        key={supplier.id}
+                                        href={`/dashboard/commercant/achats/${supplier.id}`}
+                                        className={styles.supplierCard}
+                                    >
+                                        <div className={styles.logoContainer}>
+                                            {supplier.logoUrl ? (
+                                                <img
+                                                    src={supplier.logoUrl}
+                                                    alt={supplier.name}
+                                                    className={styles.logo}
+                                                />
+                                            ) : (
+                                                <span className={styles.logoPlaceholder}>📦</span>
+                                            )}
+                                        </div>
+                                        <h3 className={styles.supplierName}>{supplier.name}</h3>
+                                        <p className={styles.supplierDesc}>
+                                            {supplier.description || 'Fournisseur'}
+                                        </p>
+                                        <span className={styles.supplierReviews}>
+                                            {supplier.reviewCount || 0} avis
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </DashboardLayout>
+        </ProtectedRoute>
     );
 }

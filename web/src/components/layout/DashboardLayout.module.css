@@ -8,6 +8,7 @@
     flex-shrink: 0;
     width: var(--sidebar-width);
     transition: width var(--transition-base);
+    z-index: 50;
 }
 
 .sidebarContainer.collapsed {
@@ -16,22 +17,35 @@
 
 .main {
     flex: 1;
-    margin-left: var(--sidebar-width);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    width: 100%;
     transition: margin-left var(--transition-base);
+
+    /* === CENTERED LAYOUT (Desktop) === */
+    /* Instead of margin-left, we use flex behavior, but on very large screens we center content */
+    position: relative;
+    max-width: 100%;
+    /* Default fluid */
 }
 
-.main.collapsed {
-    margin-left: var(--sidebar-collapsed-width);
-}
+/* On Large Desktop, we center the content area if needed, but 'main' usually takes full width
+   Actually, the sidebar is fixed or flex? 
+   If sidebar is fixed: main needs margin.
+   If sidebar is flex: main takes remaining space.
+   Current implementation uses flex (line 2), so main takes remaining.
+*/
 
 .content {
     flex: 1;
-    /* padding: var(--space-6); moved to container class in globals */
     overflow-y: auto;
     width: 100%;
+
+    /* === THE STAGE (Centered Content) === */
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--space-6);
 }
 
 .overlay {
@@ -87,5 +101,24 @@
 @media (max-width: 640px) {
     .content {
         /* padding handled by container */
+    }
+}
+
+/* Visibility Utilities for Hybrid Header */
+.desktopOnly {
+    display: block;
+}
+
+.mobileOnly {
+    display: none;
+}
+
+@media (max-width: 1024px) {
+    .desktopOnly {
+        display: none;
+    }
+
+    .mobileOnly {
+        display: block;
     }
 }

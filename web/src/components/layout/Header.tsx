@@ -1,6 +1,7 @@
 'use client';
 
 import { useUserStore } from '@/stores/userStore';
+import { useBusinessStore } from '@/stores/businessStore';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 export default function Header({ title, onMenuClick }: HeaderProps) {
     const { userProfile } = useUserStore();
+    const { selectedBusiness } = useBusinessStore();
 
     return (
         <header className={styles.header}>
@@ -48,18 +50,37 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
                     <span className={styles.badge}>3</span>
                 </button>
 
-                {/* Search (desktop only) */}
-                <div className={styles.searchContainer}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                    <input
-                        type="text"
-                        placeholder="Rechercher..."
-                        className={styles.searchInput}
-                    />
-                </div>
+                {/* Search (desktop only) - Visible only for PARTICULIER or if no business selected */}
+                {!selectedBusiness && (
+                    <div className={styles.searchContainer}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input
+                            type="text"
+                            placeholder="Rechercher..."
+                            className={styles.searchInput}
+                        />
+                    </div>
+                )}
+
+                {/* Avatar / Profile Link - Mimics Mobile App behavior */}
+                {userProfile && (
+                    <a
+                        href={selectedBusiness ? `/dashboard/${selectedBusiness.type.toLowerCase()}/settings` : '/dashboard/profile'}
+                        className={styles.avatarBtn}
+                        aria-label="Profil & Paramètres"
+                    >
+                        {userProfile.profileImageUrl ? (
+                            <img src={userProfile.profileImageUrl} alt={userProfile.firstName} className={styles.avatarImg} />
+                        ) : (
+                            <div className={styles.avatarPlaceholder}>
+                                {userProfile.firstName.charAt(0).toUpperCase()}
+                            </div>
+                        )}
+                    </a>
+                )}
             </div>
         </header>
     );

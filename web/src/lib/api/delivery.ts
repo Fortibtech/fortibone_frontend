@@ -340,3 +340,175 @@ export const getTariffs = async (businessId: string): Promise<Tariff[]> => {
         return [];
     }
 };
+
+// ==================== ESTIMATION & CRÉATION ====================
+
+export interface EstimateBody {
+    pickupLat: number;
+    pickupLng: number;
+    deliveryLat: number;
+    deliveryLng: number;
+    carrierId: string;
+}
+
+export interface EstimateOption {
+    tariffId: string;
+    tariffName: string;
+    vehicleType: string;
+    totalCost: number;
+    currency: string;
+}
+
+export interface EstimateResponse {
+    carrierId: string;
+    distanceKm: number;
+    distanceMeters: number;
+    options: EstimateOption[];
+}
+
+/**
+ * Estimer le coût d'une livraison
+ */
+export const createDeliveryEstimate = async (data: EstimateBody): Promise<EstimateResponse> => {
+    try {
+        const response = await axiosInstance.post<EstimateResponse>('/delivery/estimate', data);
+        return response.data;
+    } catch (error: any) {
+        console.error('❌ Erreur estimation livraison:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+export interface CreateDeliveryRequestBody {
+    orderId: string;
+    carrierId: string;
+    pickupAddress: string;
+    pickupLat: number;
+    pickupLng: number;
+    deliveryAddress: string;
+    deliveryLat: number;
+    deliveryLng: number;
+    distanceMeters: number;
+    estimatedCost: number;
+    feePayer: FeePayer;
+    tariffId: string;
+}
+
+export interface DeliveryRequestResponse {
+    id: string;
+    status: string;
+    pickupAddress: string;
+    deliveryAddress: string;
+    distanceMeters: number;
+    estimatedCost: string;
+    feePayer: FeePayer;
+    deliveryCode: string;
+    orderId: string;
+    carrierId: string;
+    senderId: string;
+    createdAt: string;
+    updatedAt: string;
+    tariffId: string;
+    assignedVehicleId: string | null;
+    carrier: { id: string; name: string; ownerId: string };
+    sender: { id: string; name: string; ownerId: string };
+    order: { id: string; orderNumber: string; totalAmount: string };
+}
+
+/**
+ * Créer une demande de livraison
+ */
+export const createDeliveryRequest = async (
+    data: CreateDeliveryRequestBody
+): Promise<DeliveryRequestResponse> => {
+    try {
+        const response = await axiosInstance.post<DeliveryRequestResponse>('/delivery/requests', data);
+        return response.data;
+    } catch (error: any) {
+        console.error('❌ Erreur création livraison:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+// ==================== LIVREURS DISPONIBLES ====================
+
+export interface LivreurOwner {
+    id: string;
+    firstName: string;
+    lastName: string;
+}
+
+export interface Livreur {
+    id: string;
+    name: string;
+    description: string | null;
+    type: 'LIVREUR';
+    logoUrl: string | null;
+    coverImageUrl: string | null;
+    address: string | null;
+    phoneNumber: string | null;
+    businessEmail: string | null;
+    isVerified: boolean;
+    createdAt: string;
+    updatedAt: string;
+    activitySector: string | null;
+    commerceType: 'PHYSICAL' | 'HYBRID';
+    currencyId: string;
+    averageRating: number;
+    reviewCount: number;
+    isOnline: boolean;
+    ownerId: string;
+    acceptsCashOnDelivery: boolean;
+    sectorId: string | null;
+    owner: LivreurOwner;
+}
+
+export interface PaginatedLivreurResponse {
+    data: Livreur[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
+export interface GetLivreurParams {
+    page?: number;
+    limit?: number;
+    search?: string;
+    latitude?: number;
+    longitude?: number;
+    radius?: number;
+    isOnline?: boolean;
+}
+
+/**
+ * Récupérer la liste des livreurs disponibles
+ */
+export const getLivreurs = async (params?: GetLivreurParams): Promise<PaginatedLivreurResponse> => {
+    try {
+        const response = await axiosInstance.get<PaginatedLivreurResponse>('/businesses', {
+            params: {
+                type: 'LIVREUR',
+                page: params?.page ?? 1,
+                limit: params?.limit ?? 100,
+                search: params?.search,
+                latitude: params?.latitude,
+                longitude: params?.longitude,
+                radius: params?.radius,
+                isOnline: params?.isOnline,
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('❌ Erreur récupération livreurs:', error);
+        throw error;
+    }
+};
+
+/**
+ * Récupérer uniquement les livreurs en ligne
+ */
+export const getOnlineLivreurs = async (): Promise<Livreur[]> => {
+    const response = await getLivreurs({ isOnline: true });
+    return response.data;
+};

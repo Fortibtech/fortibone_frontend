@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getWallet, getWalletTransactions, type Wallet, type WalletTransaction } from '@/lib/api';
+import { CashFlowChart } from '@/components/charts';
 import StatsCard from '@/components/wallet/StatsCard';
 import styles from './wallet.module.css';
 
@@ -121,6 +122,9 @@ export default function WalletPage() {
 
                 {/* Statistiques - Comme sur mobile */}
                 <StatsCard symbol={currencySymbol} dashboardType={dashboardType} />
+
+                {/* Flux de trésorerie */}
+                <CashFlowChart period="6m" currency={currencySymbol} />
 
                 {/* Recent Transactions */}
                 <div className={styles.section}>

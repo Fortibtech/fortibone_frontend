@@ -5,7 +5,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
 import { getBusinessOrders, updateOrderStatus } from '@/lib/api/orders';
-import styles from '../../commercant/orders/orders.module.css';
+import styles from '../../fournisseur/orders/orders.module.css';
 
 const statusLabels: Record<string, string> = {
     PENDING: 'En attente',

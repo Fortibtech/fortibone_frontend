@@ -1,232 +1,242 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
-import { getBusinessOrders } from '@/lib/api/orders';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { getBusinessOrders, updateOrderStatus } from '@/lib/api/orders';
 import styles from './ventes.module.css';
 
-interface Order {
-    id: string;
-    orderNumber: string;
-    status: string;
-    totalAmount: string;
-    createdAt: string;
-    customer?: {
-        firstName: string;
-        lastName: string;
-    };
-    lines?: Array<{
-        id: string;
-        productName: string;
-        quantity: number;
-        unitPrice: string;
-    }>;
-}
+const statusLabels: Record<string, string> = {
+    PENDING: 'En attente',
+    CONFIRMED: 'Confirmée',
+    PROCESSING: 'En préparation',
+    SHIPPED: 'Expédiée',
+    DELIVERED: 'Livrée',
+    COMPLETED: 'Terminée',
+    CANCELLED: 'Annulée',
+    REFUNDED: 'Remboursée',
+};
+
+const statusColors: Record<string, string> = {
+    PENDING: '#f59e0b',
+    CONFIRMED: '#3b82f6',
+    PROCESSING: '#8b5cf6',
+    SHIPPED: '#06b6d4',
+    DELIVERED: '#10b981',
+    COMPLETED: '#059669',
+    CANCELLED: '#ef4444',
+    REFUNDED: '#6b7280',
+};
 
 export default function VentesPage() {
+    const router = useRouter();
     const { selectedBusiness } = useBusinessStore();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'cancelled'>('all');
+    const [filter, setFilter] = useState<string>('all');
+    const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
     useEffect(() => {
-        const fetchOrders = async () => {
-            if (!selectedBusiness) {
-                setLoading(false);
-                return;
-            }
-            try {
-                const data = await getBusinessOrders(selectedBusiness.id, { limit: 50 });
-                // Filtrer uniquement les commandes de type SALE (ventes)
-                const salesOrders = data?.data?.filter((o: any) => o.type === 'SALE') || data?.data || [];
-                setOrders(salesOrders);
-            } catch (error) {
-                console.error('Error fetching orders:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchOrders();
+        if (selectedBusiness) {
+            loadOrders();
+        }
     }, [selectedBusiness]);
 
-    const filteredOrders = orders.filter(order => {
+    const loadOrders = async () => {
+        if (!selectedBusiness) return;
+        try {
+            const data = await getBusinessOrders(selectedBusiness.id, { limit: 50 });
+            setOrders(data.data || []);
+        } catch (error) {
+            console.error('Error loading orders:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleStatusChange = async (orderId: string, newStatus: string) => {
+        try {
+            await updateOrderStatus(orderId, newStatus as any);
+            setOrders(orders.map(o =>
+                o.id === orderId ? { ...o, status: newStatus } : o
+            ));
+            setSelectedOrder(null);
+        } catch (error) {
+            console.error('Error updating order status:', error);
+        }
+    };
+
+    const filteredOrders = orders.filter(o => {
         if (filter === 'all') return true;
-        if (filter === 'pending') return ['PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.status);
-        if (filter === 'completed') return order.status === 'COMPLETED' || order.status === 'DELIVERED';
-        if (filter === 'cancelled') return order.status === 'CANCELLED';
-        return true;
+        if (filter === 'active') return ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'].includes(o.status);
+        if (filter === 'completed') return ['DELIVERED', 'COMPLETED'].includes(o.status);
+        return o.status === filter;
     });
 
-    const getStatusLabel = (status: string) => {
-        const labels: Record<string, string> = {
-            'PENDING': 'En attente',
-            'CONFIRMED': 'Confirmée',
-            'PROCESSING': 'En préparation',
-            'READY': 'Prête',
-            'DELIVERED': 'Livrée',
-            'COMPLETED': 'Terminée',
-            'CANCELLED': 'Annulée',
-        };
-        return labels[status] || status;
+    const formatDate = (dateStr: string) => {
+        return new Date(dateStr).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
-
-    const getStatusClass = (status: string) => {
-        if (['PENDING'].includes(status)) return styles.statusPending;
-        if (['CONFIRMED', 'PROCESSING'].includes(status)) return styles.statusProcessing;
-        if (['READY', 'DELIVERED', 'COMPLETED'].includes(status)) return styles.statusCompleted;
-        if (['CANCELLED'].includes(status)) return styles.statusCancelled;
-        return '';
-    };
-
-    const totalSales = orders.reduce((acc, order) => {
-        if (order.status !== 'CANCELLED') {
-            return acc + parseFloat(order.totalAmount || '0');
-        }
-        return acc;
-    }, 0);
-
-    const pendingCount = orders.filter(o => ['PENDING', 'CONFIRMED', 'PROCESSING'].includes(o.status)).length;
-    const completedCount = orders.filter(o => o.status === 'COMPLETED' || o.status === 'DELIVERED').length;
 
     return (
         <ProtectedRoute requiredProfileType="PRO">
             <DashboardLayout businessType="COMMERCANT" title="Ventes">
                 <div className={styles.container}>
-                    {/* En-tête avec stats */}
+                    {/* Header */}
                     <div className={styles.header}>
-                        <h1>Ventes</h1>
-                        <p>Gérez vos ventes et suivez vos commandes clients</p>
-                    </div>
-
-                    {/* Cartes de statistiques */}
-                    <div className={styles.statsGrid}>
-                        <div className={styles.statCard}>
-                            <div className={styles.statIcon} style={{ backgroundColor: '#ecfdf5' }}>💰</div>
-                            <div className={styles.statInfo}>
-                                <span className={styles.statLabel}>Total des ventes</span>
-                                <span className={styles.statValue}>{totalSales.toLocaleString()} KMF</span>
-                            </div>
-                        </div>
-                        <div className={styles.statCard}>
-                            <div className={styles.statIcon} style={{ backgroundColor: '#fef3c7' }}>⏳</div>
-                            <div className={styles.statInfo}>
-                                <span className={styles.statLabel}>En attente</span>
-                                <span className={styles.statValue}>{pendingCount}</span>
-                            </div>
-                        </div>
-                        <div className={styles.statCard}>
-                            <div className={styles.statIcon} style={{ backgroundColor: '#dbeafe' }}>✅</div>
-                            <div className={styles.statInfo}>
-                                <span className={styles.statLabel}>Terminées</span>
-                                <span className={styles.statValue}>{completedCount}</span>
-                            </div>
-                        </div>
-                        <div className={styles.statCard}>
-                            <div className={styles.statIcon} style={{ backgroundColor: '#ede9fe' }}>📦</div>
-                            <div className={styles.statInfo}>
-                                <span className={styles.statLabel}>Total commandes</span>
+                        <h1>Gestion des ventes</h1>
+                        <div className={styles.stats}>
+                            <div className={styles.statItem}>
                                 <span className={styles.statValue}>{orders.length}</span>
+                                <span className={styles.statLabel}>Total</span>
+                            </div>
+                            <div className={styles.statItem}>
+                                <span className={styles.statValue} style={{ color: '#f59e0b' }}>
+                                    {orders.filter(o => o.status === 'PENDING').length}
+                                </span>
+                                <span className={styles.statLabel}>En attente</span>
+                            </div>
+                            <div className={styles.statItem}>
+                                <span className={styles.statValue} style={{ color: '#8b5cf6' }}>
+                                    {orders.filter(o => o.status === 'PROCESSING').length}
+                                </span>
+                                <span className={styles.statLabel}>En cours</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Filtres */}
+                    {/* Filters */}
                     <div className={styles.filters}>
-                        <button
-                            className={`${styles.filterBtn} ${filter === 'all' ? styles.active : ''}`}
-                            onClick={() => setFilter('all')}
-                        >
-                            Toutes
-                        </button>
-                        <button
-                            className={`${styles.filterBtn} ${filter === 'pending' ? styles.active : ''}`}
-                            onClick={() => setFilter('pending')}
-                        >
-                            En cours
-                        </button>
-                        <button
-                            className={`${styles.filterBtn} ${filter === 'completed' ? styles.active : ''}`}
-                            onClick={() => setFilter('completed')}
-                        >
-                            Terminées
-                        </button>
-                        <button
-                            className={`${styles.filterBtn} ${filter === 'cancelled' ? styles.active : ''}`}
-                            onClick={() => setFilter('cancelled')}
-                        >
-                            Annulées
-                        </button>
+                        {['all', 'active', 'PENDING', 'PROCESSING', 'completed'].map(f => {
+                            const count = f === 'all' ? orders.length :
+                                f === 'active' ? orders.filter(o => ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'].includes(o.status)).length :
+                                    f === 'completed' ? orders.filter(o => ['DELIVERED', 'COMPLETED'].includes(o.status)).length :
+                                        orders.filter(o => o.status === f).length;
+                            return (
+                                <button
+                                    key={f}
+                                    className={`${styles.filterBtn} ${filter === f ? styles.active : ''}`}
+                                    onClick={() => setFilter(f)}
+                                >
+                                    {f === 'all' ? 'Toutes' :
+                                        f === 'active' ? 'En cours' :
+                                            f === 'completed' ? 'Terminées' :
+                                                statusLabels[f] || f}
+                                    <span className={styles.filterCount}>({count})</span>
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    {/* Liste des commandes */}
+                    {/* Orders List */}
                     <div className={styles.ordersList}>
                         {loading ? (
                             <div className={styles.loading}>
                                 <div className={styles.spinner} />
                                 <p>Chargement des ventes...</p>
                             </div>
-                        ) : filteredOrders.length === 0 ? (
-                            <div className={styles.empty}>
-                                <div className={styles.emptyIcon}>📋</div>
-                                <h3>Aucune vente</h3>
-                                <p>{filter === 'all' ? 'Vous n\'avez pas encore de ventes' : 'Aucune vente dans cette catégorie'}</p>
-                            </div>
-                        ) : (
+                        ) : filteredOrders.length > 0 ? (
                             filteredOrders.map(order => (
                                 <div key={order.id} className={styles.orderCard}>
                                     <div className={styles.orderHeader}>
-                                        <span className={styles.orderNumber}>#{order.orderNumber}</span>
-                                        <span className={`${styles.orderStatus} ${getStatusClass(order.status)}`}>
-                                            {getStatusLabel(order.status)}
+                                        <div className={styles.orderNumber}>
+                                            <strong>#{order.orderNumber}</strong>
+                                            <span className={styles.orderDate}>{formatDate(order.createdAt)}</span>
+                                        </div>
+                                        <span
+                                            className={styles.orderStatus}
+                                            style={{
+                                                backgroundColor: `${statusColors[order.status]}15`,
+                                                color: statusColors[order.status]
+                                            }}
+                                        >
+                                            {statusLabels[order.status] || order.status}
                                         </span>
                                     </div>
-                                    <div className={styles.orderBody}>
-                                        <div className={styles.orderCustomer}>
-                                            <span className={styles.customerIcon}>👤</span>
-                                            <span>{order.customer?.firstName} {order.customer?.lastName || 'Client'}</span>
-                                        </div>
-                                        <div className={styles.orderMeta}>
-                                            <span className={styles.orderDate}>
-                                                {new Date(order.createdAt).toLocaleDateString('fr-FR', {
-                                                    day: 'numeric',
-                                                    month: 'short',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                })}
-                                            </span>
-                                            <span className={styles.orderAmount}>
-                                                {parseFloat(order.totalAmount).toLocaleString()} KMF
-                                            </span>
-                                        </div>
+
+                                    <div className={styles.orderCustomer}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                            <circle cx="12" cy="7" r="4" />
+                                        </svg>
+                                        <span>{order.customer?.firstName} {order.customer?.lastName}</span>
                                     </div>
-                                    {order.lines && order.lines.length > 0 && (
-                                        <div className={styles.orderItems}>
-                                            {order.lines.slice(0, 3).map((line: any, idx: number) => (
-                                                <span key={idx} className={styles.orderItem}>
-                                                    {line.quantity}x {line.productName}
-                                                </span>
-                                            ))}
-                                            {order.lines.length > 3 && (
-                                                <span className={styles.moreItems}>
-                                                    +{order.lines.length - 3} autres
-                                                </span>
+
+                                    <div className={styles.orderItems}>
+                                        {order.lines?.slice(0, 3).map((line: any, idx: number) => (
+                                            <div key={idx} className={styles.orderItem}>
+                                                <span className={styles.itemQty}>{line.quantity}x</span>
+                                                <span className={styles.itemName}>{line.variant?.product?.name || 'Produit'}</span>
+                                            </div>
+                                        ))}
+                                        {order.lines?.length > 3 && (
+                                            <span className={styles.moreItems}>+{order.lines.length - 3} autres...</span>
+                                        )}
+                                    </div>
+
+                                    <div className={styles.orderFooter}>
+                                        <span className={styles.orderTotal}>
+                                            {parseFloat(order.totalAmount).toLocaleString('fr-FR')} KMF
+                                        </span>
+                                        <div className={styles.orderActions}>
+                                            <button
+                                                className={styles.detailBtn}
+                                                onClick={() => router.push(`/dashboard/commercant/ventes/${order.id}`)}
+                                            >
+                                                Voir détail
+                                            </button>
+                                            {order.status === 'PENDING' && (
+                                                <>
+                                                    <button
+                                                        className={styles.confirmBtn}
+                                                        onClick={() => handleStatusChange(order.id, 'CONFIRMED')}
+                                                    >
+                                                        Confirmer
+                                                    </button>
+                                                    <button
+                                                        className={styles.cancelBtn}
+                                                        onClick={() => handleStatusChange(order.id, 'CANCELLED')}
+                                                    >
+                                                        Annuler
+                                                    </button>
+                                                </>
+                                            )}
+                                            {order.status === 'CONFIRMED' && (
+                                                <button
+                                                    className={styles.confirmBtn}
+                                                    onClick={() => handleStatusChange(order.id, 'PROCESSING')}
+                                                >
+                                                    Lancer préparation
+                                                </button>
+                                            )}
+                                            {order.status === 'PROCESSING' && (
+                                                <button
+                                                    className={styles.confirmBtn}
+                                                    onClick={() => handleStatusChange(order.id, 'SHIPPED')}
+                                                >
+                                                    Prêt à expédier
+                                                </button>
                                             )}
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
                             ))
+                        ) : (
+                            <div className={styles.emptyState}>
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5">
+                                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                                    <line x1="3" y1="6" x2="21" y2="6" />
+                                </svg>
+                                <p>Aucune vente trouvée</p>
+                            </div>
                         )}
                     </div>
-
-                    {/* Lien vers Analytics */}
-                    <Link href="/dashboard/commercant/analytics" className={styles.analyticsLink}>
-                        <span>📊</span>
-                        <span>Voir les analytics avancées</span>
-                        <span>→</span>
-                    </Link>
                 </div>
             </DashboardLayout>
         </ProtectedRoute>

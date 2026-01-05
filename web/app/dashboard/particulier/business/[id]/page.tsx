@@ -6,6 +6,8 @@ import { DashboardLayout } from '@/components/layout';
 import { getBusinessById } from '@/lib/api/business';
 import { getProducts, Product } from '@/lib/api/products';
 import { Business } from '@/stores/businessStore';
+import WebBusinessHeader from '@/components/business/WebBusinessHeader';
+import WebProductCard from '@/components/cards/WebProductCard';
 import styles from './business-detail.module.css';
 
 interface BusinessDetailPageProps {
@@ -56,23 +58,6 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
         fetchProducts();
     }, [fetchBusiness, fetchProducts]);
 
-    const handleProductClick = (productId: string) => {
-        router.push(`/dashboard/particulier/product/${productId}?businessId=${businessId}`);
-    };
-
-    const renderStars = (rating: number) => {
-        const stars = [];
-        const fullStars = Math.floor(rating);
-        for (let i = 0; i < 5; i++) {
-            stars.push(
-                <span key={i} style={{ color: i < fullStars ? '#f59e0b' : '#d1d5db' }}>
-                    ★
-                </span>
-            );
-        }
-        return stars;
-    };
-
     if (loading) {
         return (
             <DashboardLayout businessType="PARTICULIER">
@@ -104,64 +89,23 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
             <div className={styles.container}>
                 {/* Back button */}
                 <button onClick={() => router.back()} className={styles.backButton}>
-                    ← Retour
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Retour
                 </button>
 
-                {/* Business Header */}
-                <div className={styles.header}>
-                    <div className={styles.coverImage}>
-                        {business.coverImageUrl ? (
-                            <img src={business.coverImageUrl} alt={business.name} />
-                        ) : (
-                            <div className={styles.coverPlaceholder}>
-                                {business.type === 'RESTAURATEUR' ? '🍽️' : '🏪'}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className={styles.businessInfo}>
-                        {business.logoUrl && (
-                            <img
-                                src={business.logoUrl}
-                                alt={business.name}
-                                className={styles.logo}
-                            />
-                        )}
-
-                        <div className={styles.infoContent}>
-                            <h1 className={styles.businessName}>{business.name}</h1>
-
-                            <div className={styles.rating}>
-                                {renderStars(business.averageRating || 0)}
-                                <span className={styles.ratingText}>
-                                    {(business.averageRating || 0).toFixed(1)} ({business.reviewCount || 0} avis)
-                                </span>
-                            </div>
-
-                            {business.description && (
-                                <p className={styles.description}>{business.description}</p>
-                            )}
-
-                            {business.address && (
-                                <div className={styles.address}>
-                                    <span>📍</span>
-                                    <span>{business.address}</span>
-                                </div>
-                            )}
-
-                            {business.phoneNumber && (
-                                <div className={styles.phone}>
-                                    <span>📞</span>
-                                    <a href={`tel:${business.phoneNumber}`}>{business.phoneNumber}</a>
-                                </div>
-                            )}
-
-                            {business.isVerified && (
-                                <span className={styles.verifiedBadge}>✓ Vérifié</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                {/* Unified Header */}
+                <WebBusinessHeader
+                    name={business.name}
+                    type="BUSINESS"
+                    coverImageUrl={business.coverImageUrl}
+                    logoUrl={business.logoUrl}
+                    rating={business.averageRating || 0}
+                    reviewCount={business.reviewCount || 0}
+                    description={business.description}
+                    address={business.address}
+                    phoneNumber={business.phoneNumber}
+                    isVerified={business.isVerified}
+                />
 
                 {/* Products Section */}
                 <section className={styles.productsSection}>
@@ -190,30 +134,17 @@ export default function BusinessDetailPage({ params }: BusinessDetailPageProps) 
                                 const imageUrl = product.imageUrl || firstVariant?.imageUrl;
 
                                 return (
-                                    <div
+                                    <WebProductCard
                                         key={product.id}
-                                        className={styles.productCard}
-                                        onClick={() => handleProductClick(product.id)}
-                                    >
-                                        <div className={styles.productImage}>
-                                            {imageUrl ? (
-                                                <img src={imageUrl} alt={product.name} />
-                                            ) : (
-                                                <div className={styles.imagePlaceholder}>📦</div>
-                                            )}
-                                        </div>
-                                        <div className={styles.productInfo}>
-                                            <h3 className={styles.productName}>{product.name}</h3>
-                                            {product.category && (
-                                                <span className={styles.productCategory}>
-                                                    {product.category.name}
-                                                </span>
-                                            )}
-                                            <span className={styles.productPrice}>
-                                                {price.toLocaleString('fr-FR')} KMF
-                                            </span>
-                                        </div>
-                                    </div>
+                                        id={product.id}
+                                        name={product.name}
+                                        price={price}
+                                        currencyCode="KMF"
+                                        imageUrl={imageUrl || undefined}
+                                        rating={0}
+                                        reviewCount={0}
+                                        onPress={() => router.push(`/dashboard/particulier/product/${product.id}?businessId=${businessId}`)}
+                                    />
                                 );
                             })}
                         </div>

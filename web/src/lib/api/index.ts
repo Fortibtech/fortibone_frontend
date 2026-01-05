@@ -123,5 +123,12 @@ export {
     type GetFavoritesParams
 } from './favorites';
 
+// Currency
+export {
+    getCurrencies,
+    getCurrencySymbolById,
+    type Currency
+} from './currency';
+
 export { default as axiosInstance } from './axiosInstance';
 

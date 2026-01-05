@@ -46,6 +46,29 @@ export interface OrderBusiness {
     description?: string | null;
 }
 
+export interface DeliveryRequestInfo {
+    id: string;
+    status: 'PENDING' | 'ACCEPTED' | 'PICKED_UP' | 'COMPLETED' | 'CANCELLED' | 'REJECTED';
+    pickupAddress: string;
+    deliveryAddress: string;
+    distanceMeters: number;
+    estimatedCost: string;
+    feePayer: 'SENDER' | 'RECEIVER';
+    deliveryCode: string;
+    orderId: string;
+    carrierId: string;
+    senderId: string;
+    createdAt: string;
+    updatedAt: string;
+    assignedVehicleId?: string | null;
+    carrier?: {
+        id: string;
+        name: string;
+        logoUrl?: string | null;
+        phoneNumber?: string | null;
+    };
+}
+
 export interface Order {
     id: string;
     orderNumber: string;
@@ -63,6 +86,15 @@ export interface Order {
     lines: OrderLine[];
     customer: Customer;
     business: OrderBusiness;
+    // Delivery info (populated when delivery is created)
+    deliveryRequest?: DeliveryRequestInfo | null;
+    // Status history
+    statusHistory?: Array<{
+        id: string;
+        status: OrderStatus;
+        notes?: string;
+        timestamp: string;
+    }>;
 }
 
 export interface OrdersPaginatedResponse {

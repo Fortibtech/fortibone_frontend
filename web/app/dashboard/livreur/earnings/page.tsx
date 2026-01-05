@@ -5,6 +5,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
 import { getTariffs, getBusinessVehicles, Tariff, Vehicle, VehicleType } from '@/lib/api/delivery';
+import WebStatisticsView from '@/components/business/WebStatisticsView';
 import styles from './earnings.module.css';
 
 type TabType = 'REVENU' | 'TARIFS';
@@ -105,48 +106,7 @@ export default function LivreurEarningsPage() {
 
                     {activeTab === 'REVENU' ? (
                         /* ========== ONGLET REVENUS ========== */
-                        <div className={styles.revenusContent}>
-                            <div className={styles.inDevelopment}>
-                                <span className={styles.constructionIcon}>🚧</span>
-                                <h2>Page en cours de conception</h2>
-                                <p>
-                                    Cette section des revenus est actuellement en développement.
-                                    Elle sera bientôt disponible avec toutes les statistiques et
-                                    graphiques détaillés.
-                                </p>
-                            </div>
-
-                            {/* Aperçu basique */}
-                            <div className={styles.previewCards}>
-                                <div className={styles.previewCard}>
-                                    <span className={styles.previewIcon}>💰</span>
-                                    <div>
-                                        <span className={styles.previewLabel}>Revenus estimés (mois)</span>
-                                        <span className={styles.previewValue}>
-                                            {estimatedMonthlyRevenue.toLocaleString()} KMF
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className={styles.previewCard}>
-                                    <span className={styles.previewIcon}>🚗</span>
-                                    <div>
-                                        <span className={styles.previewLabel}>Véhicules actifs</span>
-                                        <span className={styles.previewValue}>
-                                            {vehicles.filter(v => v.isActive).length}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className={styles.previewCard}>
-                                    <span className={styles.previewIcon}>📋</span>
-                                    <div>
-                                        <span className={styles.previewLabel}>Tarifs configurés</span>
-                                        <span className={styles.previewValue}>
-                                            {tariffs.length}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <WebStatisticsView businessType="LIVREUR" />
                     ) : (
                         /* ========== ONGLET ZONE ET TARIFS ========== */
                         <div className={styles.tarifsContent}>

@@ -12,13 +12,15 @@ interface DashboardLayoutProps {
     businessType?: 'COMMERCANT' | 'FOURNISSEUR' | 'RESTAURATEUR' | 'LIVREUR' | 'PARTICULIER';
     title?: string;
     customHeaderRender?: (props: { onMenuClick: () => void }) => React.ReactNode;
+    showStandardHeaderOnDesktop?: boolean;
 }
 
 export default function DashboardLayout({
     children,
     businessType = 'PARTICULIER',
     title,
-    customHeaderRender
+    customHeaderRender,
+    showStandardHeaderOnDesktop = false
 }: DashboardLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -53,7 +55,22 @@ export default function DashboardLayout({
             {/* Main Content */}
             <main className={`${styles.main} ${sidebarCollapsed ? styles.collapsed : ''}`}>
                 {customHeaderRender ? (
-                    customHeaderRender({ onMenuClick: () => setSidebarOpen(!sidebarOpen) })
+                    <>
+                        {/* Custom Header (Mobile Only if hybrid mode) */}
+                        <div className={showStandardHeaderOnDesktop ? styles.mobileOnly : ''}>
+                            {customHeaderRender({ onMenuClick: () => setSidebarOpen(!sidebarOpen) })}
+                        </div>
+
+                        {/* Standard Header (Desktop Only if hybrid mode) */}
+                        {showStandardHeaderOnDesktop && (
+                            <div className={styles.desktopOnly}>
+                                <Header
+                                    title={title}
+                                    onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+                                />
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <>
                         {/* Mobile Header with BusinessSelector (hidden on desktop) */}

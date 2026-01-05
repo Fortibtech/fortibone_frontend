@@ -2,16 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { loadStripe } from '@stripe/stripe-js';
+import {
+    Elements,
+    CardElement,
+    useStripe,
+    useElements,
+} from '@stripe/react-stripe-js';
 import { DashboardLayout } from '@/components/layout';
 import { getWallet, createDeposit, type Wallet } from '@/lib/api';
 import styles from './deposit.module.css';
 
+// Clé publique Stripe (identique à mobile)
+const stripePromise = loadStripe('pk_test_51PBf5wRqgxgrSOxzkT3CoAj3wnYQKPSKxZLmtaH9lt8XXO8NoIknakl1nMxj14Mj25f3VC56dchbm7E4ATNXco2200dXM6svtP');
+
 const presets = [10000, 20000, 50000, 100000];
 
-export default function DepositPage() {
+// Composant interne avec accès aux hooks Stripe
+function DepositForm() {
     const router = useRouter();
     const pathname = usePathname();
-    const dashboardType = pathname.split('/')[2] || 'commercant';
+    const dashboardType = pathname.split('/')[2] || 'particulier';
+    const stripe = useStripe();
+    const elements = useElements();
 
     const [method, setMethod] = useState<'STRIPE' | 'KARTAPAY'>('STRIPE');
     const [amount, setAmount] = useState<number>(50000);
@@ -21,6 +34,7 @@ export default function DepositPage() {
     const [wallet, setWallet] = useState<Wallet | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [cardComplete, setCardComplete] = useState(false);
 
     useEffect(() => {
         const fetchWallet = async () => {
@@ -60,27 +74,90 @@ export default function DepositPage() {
             return;
         }
 
+        if (method === 'STRIPE') {
+            if (!stripe || !elements) {
+                setError('Stripe non chargé. Veuillez rafraîchir la page.');
+                return;
+            }
+
+            if (!cardComplete) {
+                setError('Veuillez remplir tous les champs de la carte');
+                return;
+            }
+        }
+
         setLoading(true);
         setError(null);
 
         try {
-            await createDeposit({
-                amount,
-                method,
-                metadata: method === 'KARTAPAY'
-                    ? { phoneNumber, note: 'Dépôt via application web' }
-                    : { note: 'Dépôt via carte bancaire' }
-            });
+            if (method === 'STRIPE') {
+                // Créer un PaymentMethod avec les données de la carte
+                const cardElement = elements!.getElement(CardElement);
+                if (!cardElement) {
+                    setError('Erreur: élément carte non trouvé');
+                    setLoading(false);
+                    return;
+                }
+
+                const { paymentMethod, error: pmError } = await stripe!.createPaymentMethod({
+                    type: 'card',
+                    card: cardElement,
+                });
+
+                if (pmError || !paymentMethod) {
+                    setError(pmError?.message || 'Impossible de lire la carte');
+                    setLoading(false);
+                    return;
+                }
+
+                // Envoyer paymentMethodId au backend (comme sur mobile)
+                await createDeposit({
+                    amount,
+                    method: 'STRIPE',
+                    metadata: {
+                        paymentMethodId: paymentMethod.id,
+                        note: 'Dépôt via carte bancaire (web)',
+                    },
+                });
+            } else {
+                // KARTAPAY
+                await createDeposit({
+                    amount,
+                    method: 'KARTAPAY',
+                    metadata: {
+                        phoneNumber,
+                        note: 'Dépôt via application web',
+                    },
+                });
+            }
 
             setSuccess(`Dépôt de ${amount.toLocaleString('fr-FR')} ${currencySymbol} initié avec succès!`);
             setTimeout(() => {
-                router.push(`/dashboard/${dashboardType}/wallet`);
+                router.push(`/dashboard/${dashboardType}/finance`);
             }, 2000);
         } catch (err: any) {
             setError(err.message || 'Erreur lors du dépôt');
         } finally {
             setLoading(false);
         }
+    };
+
+    const cardElementOptions = {
+        style: {
+            base: {
+                fontSize: '16px',
+                color: '#333',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                '::placeholder': {
+                    color: '#999',
+                },
+            },
+            invalid: {
+                color: '#ef4444',
+                iconColor: '#ef4444',
+            },
+        },
+        hidePostalCode: true,
     };
 
     return (
@@ -112,13 +189,13 @@ export default function DepositPage() {
                                 className={`${styles.tab} ${method === 'STRIPE' ? styles.active : ''}`}
                                 onClick={() => setMethod('STRIPE')}
                             >
-                                Carte bancaire
+                                💳 Carte bancaire
                             </button>
                             <button
                                 className={`${styles.tab} ${method === 'KARTAPAY' ? styles.active : ''}`}
                                 onClick={() => setMethod('KARTAPAY')}
                             >
-                                Mobile Money
+                                📱 Mobile Money
                             </button>
                         </div>
                     </div>
@@ -154,18 +231,30 @@ export default function DepositPage() {
                         </div>
                     </div>
 
-                    {/* Champs spécifiques */}
+                    {/* Carte bancaire Stripe */}
                     {method === 'STRIPE' && (
                         <div className={styles.section}>
-                            <label className={styles.label}>Carte bancaire</label>
-                            <div className={styles.cardInputWrapper}>
-                                <p className={styles.stripeNote}>
-                                    Vous serez redirigé vers une page de paiement sécurisée Stripe.
-                                </p>
+                            <label className={styles.label}>Informations de carte</label>
+                            <div className={styles.stripeCard}>
+                                <CardElement
+                                    options={cardElementOptions}
+                                    onChange={(event) => {
+                                        setCardComplete(event.complete);
+                                        if (event.error) {
+                                            setError(event.error.message);
+                                        } else {
+                                            setError(null);
+                                        }
+                                    }}
+                                />
                             </div>
+                            <p className={styles.stripeNote}>
+                                🔒 Paiement sécurisé par Stripe. Vos données ne sont jamais stockées.
+                            </p>
                         </div>
                     )}
 
+                    {/* Mobile Money */}
                     {method === 'KARTAPAY' && (
                         <div className={styles.section}>
                             <label className={styles.label}>Numéro Mobile Money</label>
@@ -199,12 +288,21 @@ export default function DepositPage() {
                     <button
                         className={styles.confirmButton}
                         onClick={handleDeposit}
-                        disabled={loading || amount < 1000}
+                        disabled={loading || amount < 1000 || (method === 'STRIPE' && !cardComplete)}
                     >
-                        {loading ? 'Traitement...' : method === 'STRIPE' ? 'Payer par carte' : 'Continuer'}
+                        {loading ? '⏳ Traitement...' : method === 'STRIPE' ? '💳 Payer par carte' : '📱 Continuer'}
                     </button>
                 </div>
             </div>
         </DashboardLayout>
+    );
+}
+
+// Composant principal avec StripeProvider
+export default function DepositPage() {
+    return (
+        <Elements stripe={stripePromise}>
+            <DepositForm />
+        </Elements>
     );
 }

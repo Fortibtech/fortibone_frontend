@@ -670,3 +670,143 @@
     background: #9ca3af;
     cursor: not-allowed;
 }
+
+/* ============================================
+   DELIVERY TRACKING SECTION
+   ============================================ */
+
+.deliveryCard {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.deliveryStatus {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    align-self: flex-start;
+}
+
+.carrierInfo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 10px;
+}
+
+.carrierLogo {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    overflow: hidden;
+}
+
+.carrierLogo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.carrierName {
+    font-weight: 600;
+    color: #333;
+    display: block;
+}
+
+.carrierPhone {
+    font-size: 13px;
+    color: #059669;
+    text-decoration: none;
+    display: block;
+    margin-top: 4px;
+}
+
+.carrierPhone:hover {
+    text-decoration: underline;
+}
+
+.deliveryCode {
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border: 2px dashed #16a34a;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
+
+.deliveryCodeLabel {
+    font-size: 13px;
+    color: #666;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.deliveryCodeValue {
+    font-size: 32px;
+    font-weight: 700;
+    color: #16a34a;
+    letter-spacing: 4px;
+    display: block;
+}
+
+.deliveryCodeNote {
+    font-size: 12px;
+    color: #666;
+    margin: 8px 0 0 0;
+    font-style: italic;
+}
+
+.deliveryAddresses {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.addressItem {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.addressIcon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.addressLabel {
+    font-size: 12px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.addressText {
+    font-size: 14px;
+    color: #333;
+    display: block;
+}
+
+.deliveryMeta {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #666;
+}

@@ -12,6 +12,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     const router = useRouter();
     const orderId = params.id;
 
+    const [mounted, setMounted] = useState(false);
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -22,6 +23,11 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     const [phoneNumber, setPhoneNumber] = useState('');
     const [paying, setPaying] = useState(false);
     const [paymentError, setPaymentError] = useState<string | null>(null);
+
+    // Prevent hydration issues
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         fetchOrderDetails();
@@ -103,6 +109,26 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                 return { text: 'Payée', color: '#059669', bg: '#D1FAE5', icon: '💳' };
             case 'REFUNDED':
                 return { text: 'Remboursée', color: '#6B7280', bg: '#E5E7EB', icon: '↩️' };
+            default:
+                return { text: status, color: '#6B7280', bg: '#F3F4F6', icon: '📄' };
+        }
+    };
+
+    // Delivery status styling - matching mobile
+    const getDeliveryStatusStyle = (status: string) => {
+        switch (status) {
+            case 'PENDING':
+                return { text: 'En attente d\'acceptation', color: '#92400E', bg: '#FEF3C7', icon: '⏰' };
+            case 'ACCEPTED':
+                return { text: 'Livreur en route vers le commerçant', color: '#1E40AF', bg: '#DBEAFE', icon: '🚴' };
+            case 'PICKED_UP':
+                return { text: 'Colis récupéré - En route vers vous', color: '#166534', bg: '#DCFCE7', icon: '📦' };
+            case 'COMPLETED':
+                return { text: 'Livraison terminée', color: '#059669', bg: '#D1FAE5', icon: '✅' };
+            case 'CANCELLED':
+                return { text: 'Livraison annulée', color: '#DC2626', bg: '#FECACA', icon: '❌' };
+            case 'REJECTED':
+                return { text: 'Refusée par le livreur', color: '#9CA3AF', bg: '#E5E7EB', icon: '🚫' };
             default:
                 return { text: status, color: '#6B7280', bg: '#F3F4F6', icon: '📄' };
         }
@@ -276,6 +302,84 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                     <div className={styles.section}>
                         <h3>Notes</h3>
                         <p className={styles.notes}>{order.notes}</p>
+                    </div>
+                )}
+
+                {/* DELIVERY TRACKING - New section (only render on client to avoid hydration issues) */}
+                {mounted && order.deliveryRequest && (
+                    <div className={styles.section}>
+                        <h3>Suivi de livraison</h3>
+                        <div className={styles.deliveryCard}>
+                            {/* Delivery Status Badge */}
+                            <div
+                                className={styles.deliveryStatus}
+                                style={{
+                                    backgroundColor: getDeliveryStatusStyle(order.deliveryRequest.status).bg,
+                                    color: getDeliveryStatusStyle(order.deliveryRequest.status).color
+                                }}
+                            >
+                                <span>{getDeliveryStatusStyle(order.deliveryRequest.status).icon}</span>
+                                <span>{getDeliveryStatusStyle(order.deliveryRequest.status).text}</span>
+                            </div>
+
+                            {/* Carrier Info */}
+                            {order.deliveryRequest.carrier && (
+                                <div className={styles.carrierInfo}>
+                                    <div className={styles.carrierLogo}>
+                                        {order.deliveryRequest.carrier.logoUrl ? (
+                                            <img src={order.deliveryRequest.carrier.logoUrl} alt="" />
+                                        ) : (
+                                            <span>🛵</span>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <span className={styles.carrierName}>{order.deliveryRequest.carrier.name}</span>
+                                        {order.deliveryRequest.carrier.phoneNumber && (
+                                            <a href={`tel:${order.deliveryRequest.carrier.phoneNumber}`} className={styles.carrierPhone}>
+                                                📞 {order.deliveryRequest.carrier.phoneNumber}
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Delivery Code */}
+                            {order.deliveryRequest.deliveryCode && (
+                                <div className={styles.deliveryCode}>
+                                    <span className={styles.deliveryCodeLabel}>Code de livraison :</span>
+                                    <span className={styles.deliveryCodeValue}>{order.deliveryRequest.deliveryCode}</span>
+                                    <p className={styles.deliveryCodeNote}>
+                                        Donnez ce code au livreur à la réception de votre colis
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Addresses */}
+                            <div className={styles.deliveryAddresses}>
+                                <div className={styles.addressItem}>
+                                    <span className={styles.addressIcon}>🏪</span>
+                                    <div>
+                                        <span className={styles.addressLabel}>Retrait</span>
+                                        <span className={styles.addressText}>{order.deliveryRequest.pickupAddress}</span>
+                                    </div>
+                                </div>
+                                <div className={styles.addressItem}>
+                                    <span className={styles.addressIcon}>📍</span>
+                                    <div>
+                                        <span className={styles.addressLabel}>Livraison</span>
+                                        <span className={styles.addressText}>{order.deliveryRequest.deliveryAddress}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Cost & Fee Payer */}
+                            <div className={styles.deliveryMeta}>
+                                <span>💰 {parseInt(order.deliveryRequest.estimatedCost).toLocaleString('fr-FR')} KMF</span>
+                                <span>
+                                    {order.deliveryRequest.feePayer === 'RECEIVER' ? '👤 Payé par vous' : '🏪 Payé par le vendeur'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 )}
 

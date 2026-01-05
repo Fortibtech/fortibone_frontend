@@ -1,16 +1,18 @@
+/* Main Container */
 .container {
-    min-height: 100vh;
-    background: #fff;
-    display: flex;
-    flex-direction: column;
+    padding: var(--space-6);
+    max-width: var(--content-max-width);
+    /* 1440px */
+    margin: 0 auto;
+    min-height: 80vh;
 }
 
+/* Header */
 .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid #eee;
+    margin-bottom: 32px;
 }
 
 .backButton {
@@ -19,283 +21,479 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: none;
-    border: none;
-    font-size: 24px;
+    background: transparent;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-full);
+    font-size: 20px;
     cursor: pointer;
+    color: var(--color-gray-600);
+    transition: all 0.2s;
+}
+
+.backButton:hover {
+    background: var(--color-gray-50);
+    color: var(--color-gray-900);
+    border-color: var(--color-gray-300);
 }
 
 .title {
-    font-size: 20px;
+    font-size: 28px;
     font-weight: 700;
-    color: #333;
+    color: var(--color-gray-900);
 }
 
-/* Cart Items */
+/* === CART GRID SYSTEM === */
+.cartLayout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    /* Main Content + Fixed Summary Width */
+    gap: 40px;
+    align-items: start;
+}
+
+/* items list container */
+.itemsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Mobile Wrapper for List (if needed) */
 .itemsList {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
+/* Cart Item - Card Style */
 .cartItem {
     display: flex;
     align-items: center;
     background: #fff;
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    transition: all 0.2s;
+}
+
+.cartItem:hover {
+    border-color: var(--color-gray-300);
+    box-shadow: var(--shadow-sm);
 }
 
 .itemImage {
     width: 80px;
     height: 80px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     object-fit: cover;
-    margin-right: 12px;
+    margin-right: 20px;
+    border: 1px solid var(--color-gray-100);
 }
 
 .itemImagePlaceholder {
     width: 80px;
     height: 80px;
-    border-radius: 8px;
-    background: #f0f0f0;
+    border-radius: var(--radius-md);
+    background: var(--color-gray-50);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 32px;
-    margin-right: 12px;
+    margin-right: 20px;
 }
 
 .itemDetails {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Desktop Row Layout for Item Details */
+@media (min-width: 768px) {
+    .cartItem {
+        padding: 20px;
+    }
+
+    .itemDetails {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .itemInfoCol {
+        flex: 1;
+        padding-right: 20px;
+    }
+
+    .itemActionsCol {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
 }
 
 .itemName {
     display: block;
     font-size: 16px;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 4px;
+    color: var(--color-gray-900);
+    line-height: 1.4;
+}
+
+.itemVariant {
+    color: var(--color-gray-500);
+    font-size: 13px;
+    margin-top: 2px;
 }
 
 .itemPrice {
     display: block;
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-gray-900);
+    min-width: 80px;
+    text-align: right;
 }
 
 .quantityControls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+    padding: 2px;
+    border: 1px solid var(--color-gray-200);
 }
 
 .quantityBtn {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #f0f0f0;
-    border: none;
-    font-size: 18px;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    background: #fff;
+    border: 1px solid transparent;
+    color: var(--color-gray-600);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.quantityBtn:hover:not(:disabled) {
+    border-color: var(--color-gray-300);
+    color: var(--color-primary);
 }
 
 .quantityBtn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    background: transparent;
+    box-shadow: none;
 }
 
 .quantityText {
-    font-size: 16px;
-    font-weight: 600;
-    min-width: 24px;
+    width: 32px;
     text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--color-gray-900);
 }
 
 .removeBtn {
     padding: 8px;
-    background: none;
+    background: transparent;
     border: none;
-    font-size: 20px;
     cursor: pointer;
-}
-
-/* Empty State */
-.empty {
-    flex: 1;
+    color: var(--color-gray-400);
+    transition: color 0.2s;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 16px;
 }
 
-.emptyIcon {
-    font-size: 80px;
-    opacity: 0.5;
+.removeBtn:hover {
+    color: var(--color-error);
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
 }
 
-.emptyText {
+/* Summary Card (Sticky Right) */
+.summaryCard {
+    background: #fff;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    position: sticky;
+    top: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.summaryTitle {
     font-size: 18px;
-    color: #666;
-    font-weight: 500;
+    font-weight: 700;
+    color: var(--color-gray-900);
+    border-bottom: 1px solid var(--color-gray-100);
+    padding-bottom: 16px;
+    margin: 0;
 }
 
-/* Footer */
-.footer {
-    padding: 20px;
-    border-top: 1px solid #eee;
-}
-
-.totalContainer {
+.summaryRow {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 16px;
+    font-size: 15px;
+    color: var(--color-gray-600);
 }
 
-.footerLabel {
-    font-size: 16px;
-    color: #333;
-}
-
-.footerPrice {
+.summaryTotal {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
     font-size: 20px;
-    font-weight: 700;
-    color: #059669;
+    font-weight: 800;
+    color: var(--color-gray-900);
+    border-top: 2px dashed var(--color-gray-100);
+    padding-top: 16px;
+    margin-top: 8px;
+}
+
+.totalValue {
+    color: var(--color-primary);
 }
 
 .buyNowButton {
     width: 100%;
-    padding: 14px;
-    background: #e11d48;
+    padding: 16px;
+    background: var(--color-primary);
     color: white;
     border: none;
-    border-radius: 12px;
-    font-size: 17px;
-    font-weight: 700;
+    border-radius: var(--radius-md);
+    font-size: 16px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
+    margin-top: 8px;
+    box-shadow: var(--shadow-sm);
 }
 
 .buyNowButton:hover:not(:disabled) {
-    background: #be123c;
+    background: var(--color-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
 .buyNowButton:disabled {
-    opacity: 0.6;
+    background: var(--color-gray-300);
     cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
-/* Payment UI */
-.paymentContent {
-    flex: 1;
-    padding: 20px;
+/* Empty State */
+.empty {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 80px 0;
+    background: #fff;
+    border-radius: var(--radius-lg);
+    border: 1px dashed var(--color-gray-300);
+}
+
+.emptyIcon {
+    font-size: 64px;
+    opacity: 0.3;
+}
+
+.emptyText {
+    font-size: 18px;
+    color: var(--color-gray-600);
+    font-weight: 500;
+}
+
+/* === PAYMENT UI (Centered) === */
+.paymentContainer {
+    max-width: 600px;
+    margin: 40px auto;
+    background: #fff;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    border: 1px solid var(--color-gray-200);
 }
 
 .paymentHeader {
+    background: var(--color-primary);
+    padding: 32px 24px;
     text-align: center;
-    padding: 24px 0;
-    margin-bottom: 24px;
+    color: white;
 }
 
 .paymentHeader .paymentIcon {
-    font-size: 60px;
+    font-size: 48px;
+    display: block;
+    margin-bottom: 16px;
 }
 
 .paymentTitle {
     font-size: 24px;
     font-weight: 700;
-    color: #333;
-    margin-top: 12px;
+    color: white;
+    margin: 0;
+}
+
+.paymentBody {
+    padding: 32px;
 }
 
 .totalSection {
-    background: #059669;
-    padding: 20px;
-    border-radius: 12px;
     text-align: center;
-    margin-bottom: 24px;
+    margin-bottom: 32px;
 }
 
 .totalLabel {
     display: block;
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    color: var(--color-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
 }
 
 .totalAmount {
     display: block;
-    font-size: 36px;
+    font-size: 40px;
     font-weight: 800;
-    color: white;
+    color: var(--color-gray-900);
     margin-top: 8px;
 }
 
 .paymentMethodLabel {
     font-size: 16px;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 12px;
+    color: var(--color-gray-900);
+    margin-bottom: 16px;
 }
 
 .paymentOptions {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin-bottom: 20px;
+    margin-bottom: 32px;
 }
 
 .paymentOption {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
+    gap: 16px;
+    padding: 20px;
+    background: #fff;
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
     cursor: pointer;
     transition: all 0.2s;
+    text-align: left;
+}
+
+.paymentOption:hover {
+    border-color: var(--color-gray-300);
+    background: var(--color-gray-50);
 }
 
 .paymentOption.selected {
-    background: #ecfdf5;
-    border-color: #059669;
+    border-color: var(--color-primary);
+    background: var(--color-primary-50);
 }
 
 .paymentOption .paymentIcon {
-    font-size: 28px;
+    font-size: 24px;
 }
 
 .paymentOptionText {
     flex: 1;
     font-size: 16px;
-    color: #333;
+    font-weight: 500;
+    color: var(--color-gray-900);
 }
 
 .paymentOption.selected .paymentOptionText {
-    font-weight: 600;
-    color: #059669;
+    font-weight: 700;
+    color: var(--color-primary-dark);
 }
 
 .payButton {
     width: 100%;
-    padding: 16px;
-    background: #059669;
+    padding: 18px;
+    background: var(--color-gray-900);
+    /* Dark/Black for final action */
     color: white;
     border: none;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     font-size: 18px;
     font-weight: 700;
     cursor: pointer;
-    margin-top: 20px;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-md);
+}
+
+.payButton:hover:not(:disabled) {
+    background: #000;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
 }
 
 .payButton:disabled {
-    opacity: 0.6;
+    background: var(--color-gray-400);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+
+/* === RESPONSIVE === */
+
+/* Tablets & Mobile */
+@media (max-width: 1024px) {
+    .cartLayout {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .summaryCard {
+        position: static;
+        /* No longer sticky on narrow screens */
+        order: -1;
+        /* Show summary first or last? Let's keep it typical flow: items then total, or sticky bottom */
+        order: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+
+    .cartItem {
+        flex-direction: row;
+        /* Keep image left */
+        flex-wrap: wrap;
+        padding: 12px;
+    }
+
+    .itemDetails {
+        flex-direction: column;
+    }
+
+    .itemActionsCol {
+        width: 100%;
+        margin-top: 12px;
+        justify-content: space-between;
+    }
 }

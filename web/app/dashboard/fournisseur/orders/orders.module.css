@@ -182,7 +182,8 @@
 }
 
 .confirmBtn,
-.cancelBtn {
+.cancelBtn,
+.detailBtn {
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-lg);
     font-size: var(--text-sm);
@@ -209,6 +210,15 @@
 .cancelBtn:hover {
     background: #fee2e2;
     color: #ef4444;
+}
+
+.detailBtn {
+    background: #e6f7f2;
+    color: var(--color-primary);
+}
+
+.detailBtn:hover {
+    background: #d1fae5;
 }
 
 /* Loading & Empty States */

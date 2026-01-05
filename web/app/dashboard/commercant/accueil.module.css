@@ -19,6 +19,7 @@
     font-size: 1.25rem;
     font-weight: 700;
     color: #111;
+    margin-bottom: 20px;
 }
 
 .filterBtn {
@@ -184,6 +185,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     border: 1px solid #f0f0f0;
     transition: all 0.2s ease;
+    margin-bottom: 32px;
 }
 
 .carriersLink:hover {

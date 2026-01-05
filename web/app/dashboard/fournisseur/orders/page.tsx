@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
@@ -18,6 +19,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function FournisseurOrdersPage() {
+    const router = useRouter();
     const { selectedBusiness } = useBusinessStore();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -111,9 +113,15 @@ export default function FournisseurOrdersPage() {
                                     </div>
                                     <div className={styles.orderFooter}>
                                         <span className={styles.orderTotal}>
-                                            {parseFloat(order.totalAmount).toLocaleString('fr-FR')} €
+                                            {parseFloat(order.totalAmount).toLocaleString('fr-FR')} KMF
                                         </span>
                                         <div className={styles.orderActions}>
+                                            <button
+                                                className={styles.detailBtn}
+                                                onClick={() => router.push(`/dashboard/fournisseur/orders/${order.id}`)}
+                                            >
+                                                Voir détail
+                                            </button>
                                             {order.status === 'PENDING' && (
                                                 <button
                                                     className={styles.confirmBtn}

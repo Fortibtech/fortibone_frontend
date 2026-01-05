@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getFavorites, deleteFavorite, type UserFavorite } from '@/lib/api';
+import WebProductCard from '@/components/cards/WebProductCard';
 import styles from './favorites.module.css';
 
 export default function FavoritesPage() {
@@ -11,7 +12,6 @@ export default function FavoritesPage() {
     const [favorites, setFavorites] = useState<UserFavorite[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const fetchFavorites = useCallback(async () => {
         try {
@@ -32,22 +32,13 @@ export default function FavoritesPage() {
     }, [fetchFavorites]);
 
     const handleDelete = async (productId: string) => {
-        if (!confirm('Retirer ce produit des favoris ?')) return;
-
         try {
-            setDeletingId(productId);
             await deleteFavorite(productId);
             setFavorites(prev => prev.filter(f => f.id !== productId));
         } catch (err: any) {
             console.error('Erreur suppression:', err);
             alert(err.message || 'Erreur lors de la suppression');
-        } finally {
-            setDeletingId(null);
         }
-    };
-
-    const openDetails = (id: string) => {
-        router.push(`/dashboard/particulier/product/${id}`);
     };
 
     return (
@@ -55,9 +46,14 @@ export default function FavoritesPage() {
             <div className={styles.container}>
                 {/* Header */}
                 <div className={styles.header}>
-                    <button onClick={() => router.back()} className={styles.backButton}>←</button>
-                    <h1 className={styles.title}>Mes favoris ({favorites.length})</h1>
-                    <div style={{ width: 45 }} />
+                    <button onClick={() => router.back()} className={styles.backButton}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        Retour
+                    </button>
+                    <div>
+                        <h1 className={styles.title}>Mes favoris</h1>
+                        <p className={styles.subtitle}>{favorites.length} articles sauvegardés</p>
+                    </div>
                 </div>
 
                 {/* Error state */}
@@ -79,51 +75,29 @@ export default function FavoritesPage() {
                 ) : favorites.length === 0 && !error ? (
                     <div className={styles.empty}>
                         <span className={styles.emptyIcon}>❤️</span>
-                        <p className={styles.emptyTitle}>Aucun favori pour le moment</p>
+                        <p className={styles.emptyTitle}>Votre liste de souhaits est vide</p>
                         <p className={styles.emptySubtitle}>
-                            Vos produits favoris apparaîtront ici
+                            Explorez nos produits et cliquez sur le cœur pour les ajouter ici.
                         </p>
+                        <button onClick={() => router.push('/dashboard/particulier')} className={styles.exploreBtn}>
+                            Explorer la boutique
+                        </button>
                     </div>
                 ) : (
-                    <div className={styles.list}>
+                    <div className={styles.grid}>
                         {favorites.map((item) => (
-                            <div key={item.id} className={styles.item}>
-                                <div
-                                    className={styles.itemContent}
-                                    onClick={() => openDetails(item.id)}
-                                >
-                                    {item.imageUrl ? (
-                                        <img
-                                            src={item.imageUrl}
-                                            alt={item.name}
-                                            className={styles.itemImage}
-                                        />
-                                    ) : (
-                                        <div className={styles.itemImagePlaceholder}>📦</div>
-                                    )}
-                                    <div className={styles.itemInfo}>
-                                        <span className={styles.itemName}>{item.name}</span>
-                                        {item.businessName && (
-                                            <span className={styles.itemBusiness}>{item.businessName}</span>
-                                        )}
-                                        {item.description && (
-                                            <span className={styles.itemDesc}>{item.description}</span>
-                                        )}
-                                        {item.price && (
-                                            <span className={styles.itemPrice}>
-                                                {item.price.toLocaleString('fr-FR')} KMF
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <button
-                                    className={styles.deleteBtn}
-                                    onClick={() => handleDelete(item.id)}
-                                    disabled={deletingId === item.id}
-                                >
-                                    {deletingId === item.id ? '...' : '🗑️'}
-                                </button>
-                            </div>
+                            <WebProductCard
+                                key={item.id}
+                                id={item.id}
+                                name={item.name}
+                                price={item.price || 0}
+                                currencyCode="KMF"
+                                imageUrl={item.imageUrl}
+                                rating={0}
+                                reviewCount={0}
+                                onPress={() => router.push(`/dashboard/particulier/product/${item.id}`)}
+                                onRemove={() => handleDelete(item.id)}
+                            />
                         ))}
                     </div>
                 )}

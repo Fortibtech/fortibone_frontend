@@ -6,6 +6,7 @@ import { useUserStore } from '@/stores/userStore';
 import { useBusinessStore } from '@/stores/businessStore';
 import BusinessSelector from '@/components/business/BusinessSelector';
 import styles from './Sidebar.module.css';
+import { useEffect } from 'react';
 
 // Icons (simple SVG icons)
 const icons = {
@@ -158,6 +159,29 @@ const navigationByType: Record<string, NavItem[]> = {
 export default function Sidebar({ businessType = 'PARTICULIER', collapsed = false, onToggleCollapse }: SidebarProps & { collapsed?: boolean; onToggleCollapse?: () => void }) {
     const pathname = usePathname();
     const { userProfile, logout } = useUserStore();
+
+    // Responsive collapse logic
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 1024 && window.innerWidth >= 640 && !collapsed && onToggleCollapse) {
+                // Auto collapse on tablet if not already collapsed
+                // But we need to be careful not to override user choice if we had one.
+                // For MVP structure fix: Force collapse on tablet range.
+                onToggleCollapse();
+            } else if (window.innerWidth >= 1024 && collapsed && onToggleCollapse) {
+                // Auto expand on desktop if collapsed by default (optional, can leave user choice)
+                // Better UX: Start collapsed on tablet, expanded on desktop.
+            }
+        };
+
+        // Initial check
+        if (window.innerWidth < 1024 && window.innerWidth >= 640 && !collapsed && onToggleCollapse) {
+            onToggleCollapse();
+        }
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []); // Empty dependency array to run only on mount/unmount + manual resize
 
     const navItems = navigationByType[businessType] || navigationByType.PARTICULIER;
 

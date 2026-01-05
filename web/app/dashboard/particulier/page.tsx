@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useCartStore } from '@/stores/cartStore';
 import { searchProducts } from '@/lib/api/products';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import WebProductCard from '@/components/cards/WebProductCard';
 import styles from './home.module.css';
 
 interface Product {
@@ -253,6 +254,8 @@ export default function ParticulierDashboard() {
         <ProtectedRoute requiredProfileType="PARTICULIER">
             <DashboardLayout
                 businessType="PARTICULIER"
+                // Hybrid Header Strategy: Reverting to Custom Header to keep Search/Map functionality
+                showStandardHeaderOnDesktop={false}
                 customHeaderRender={({ onMenuClick }: { onMenuClick: () => void }) => (
                     <div className={styles.header}>
                         <div className={styles.headerTop}>
@@ -332,7 +335,9 @@ export default function ParticulierDashboard() {
 
 
 
-                    {/* PRODUCT GRID (2 columns like mobile) */}
+
+
+                    {/* PRODUCT GRID - Responsive (Fluid) */}
                     {error && (
                         <div style={{
                             padding: '12px',
@@ -362,36 +367,18 @@ export default function ParticulierDashboard() {
                                 );
 
                                 return (
-                                    <div
+                                    <WebProductCard
                                         key={product.id}
-                                        className={styles.productCard}
-                                        onClick={() => handleProductClick(product)}
-                                    >
-                                        <div className={styles.productImage}>
-                                            {product.productImageUrl ? (
-                                                <img src={product.productImageUrl} alt={product.name} />
-                                            ) : (
-                                                <div className={styles.imagePlaceholder}>📦</div>
-                                            )}
-                                        </div>
-                                        <div className={styles.productInfo}>
-                                            <h3 className={styles.productName}>{product.name}</h3>
-                                            <p className={styles.productPrice}>
-                                                {(product.price || 0).toLocaleString('fr-FR')} {product.currencyCode}
-                                            </p>
-                                            <div className={styles.rating}>
-                                                <span className={styles.stars}>
-                                                    {product.averageRating !== undefined && product.averageRating > 0
-                                                        ? renderStars(product.averageRating)
-                                                        : '☆☆☆☆☆'}
-                                                </span>
-                                                <span className={styles.reviewCount}>
-                                                    {(product.reviewCount || 0) > 0 && `(${product.reviewCount})`}
-                                                </span>
-                                            </div>
-                                            <p className={styles.distance}>{distanceText}</p>
-                                        </div>
-                                    </div>
+                                        id={product.productId}
+                                        name={product.name}
+                                        price={product.price}
+                                        currencyCode={product.currencyCode}
+                                        imageUrl={product.productImageUrl}
+                                        rating={product.averageRating}
+                                        reviewCount={product.reviewCount}
+                                        distance={distanceText}
+                                        onPress={() => handleProductClick(product)}
+                                    />
                                 );
                             })}
                         </div>

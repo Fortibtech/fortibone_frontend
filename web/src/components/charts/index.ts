@@ -13,3 +13,6 @@ export type { TopProduct, TopProductsChartProps } from './TopProductsChart';
 
 export { default as RevenueDistributionChart } from './RevenueDistributionChart';
 export type { RevenueData, RevenueDistributionChartProps } from './RevenueDistributionChart';
+
+export { default as CashFlowChart } from './CashFlowChart';
+export type { CashFlowData } from './CashFlowChart';

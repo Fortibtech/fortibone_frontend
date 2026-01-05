@@ -50,7 +50,7 @@ export default function ProfilePage() {
         },
         {
             title: 'Mes Transactions',
-            href: '/dashboard/particulier/finance/transactions',
+            href: '/dashboard/particulier/finance/wallet/transactions',
             icon: '💳'
         },
     ];
@@ -59,7 +59,8 @@ export default function ProfilePage() {
         setLoggingOut(true);
         try {
             logout();
-            router.push('/auth/login');
+            // Force full reload to verify clean state and avoid ProtectedRoute race conditions
+            window.location.href = '/auth/login';
         } catch (error) {
             console.error('Erreur déconnexion:', error);
         } finally {
