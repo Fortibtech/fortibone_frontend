@@ -69,7 +69,7 @@ export default function AnalyticsComponent({
   const [data, setData] = useState<SalesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  console.log("grahp id du bussines en cours", id);
+
   const fetchData = async () => {
     if (!id) return;
     setLoading(true);

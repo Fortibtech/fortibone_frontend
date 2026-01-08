@@ -15,7 +15,7 @@ export const registerUser = async (data: RegisterPayload) => {
 
     throw new Error("Réponse inattendue du serveur.");
   } catch (error: any) {
-    console.log("🔥 Erreur complète de l'API :", error.response || error);
+    // Erreur gérée silencieusement en production
 
     if (error.response?.status === 409) {
       throw new Error("Cet email est déjà utilisé.");
@@ -27,8 +27,7 @@ export const registerUser = async (data: RegisterPayload) => {
 
     // Ici on log avant de renvoyer l'erreur
     throw new Error(
-      `Une erreur est survenue lors de l'inscription. Status: ${
-        error.response?.status || "unknown"
+      `Une erreur est survenue lors de l'inscription. Status: ${error.response?.status || "unknown"
       }`
     );
   }
@@ -42,13 +41,10 @@ export const loginUser = async (email: string, password: string) => {
       password,
     });
 
-    console.log("🚀 ~ loginUser response status:", response);
-
     if (response.status === 201) {
       // ✅ NETTOYER LE CACHE APRÈS UNE CONNEXION RÉUSSIE
       await cacheManager.clearAll();
-      console.log("✅ Cache vidé après connexion");
-      
+
       return {
         success: true,
         token: response.data?.access_token,
@@ -61,7 +57,7 @@ export const loginUser = async (email: string, password: string) => {
     if (
       error.response?.status === 401 &&
       error.response?.data?.message ===
-        "Veuillez d'abord vérifier votre e-mail."
+      "Veuillez d'abord vérifier votre e-mail."
     ) {
       const err = new Error("EMAIL_NOT_VERIFIED");
       (err as any).originalMessage = error.response.data.message;

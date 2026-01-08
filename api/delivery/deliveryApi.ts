@@ -425,12 +425,6 @@ export class DeliveryService {
         tariffs = [];
       }
 
-      console.log(
-        `📦 Tarifs récupérés pour ${businessId}:`,
-        tariffs.length,
-        tariffs
-      );
-
       return tariffs;
     } catch (error: any) {
       console.error("❌ Erreur lors de la récupération des tarifs:", error);
@@ -451,8 +445,6 @@ export class DeliveryService {
       "/delivery/requests",
       payload
     );
-
-    console.log("🚚 Livraison créée :", response.data.id);
 
     return response.data;
   }
@@ -500,9 +492,8 @@ export const acceptDelivery = async (
   vehicleId?: string
 ): Promise<AcceptDeliveryResponse> => {
   try {
-    const url = `/delivery/requests/${id}/accept${
-      vehicleId ? `?vehicleId=${vehicleId}` : ""
-    }`;
+    const url = `/delivery/requests/${id}/accept${vehicleId ? `?vehicleId=${vehicleId}` : ""
+      }`;
     const response = await axiosInstance.patch<AcceptDeliveryResponse>(url);
     return response.data;
   } catch (error: any) {

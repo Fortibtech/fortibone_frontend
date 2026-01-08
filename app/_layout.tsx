@@ -2,10 +2,11 @@ import { useUserStore } from "@/store/userStore";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-// import { StripeProvider } from "@stripe/stripe-react-native";
+import Constants from "expo-constants";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform } from "react-native";
 import Toast from "react-native-toast-message";
+
 // ⚡ Import Stripe uniquement si on est sur mobile
 let StripeProvider: any;
 if (Platform.OS !== "web") {
@@ -18,6 +19,12 @@ if (Platform.OS !== "web") {
     <>{children}</>
   );
 }
+
+// 🔐 Configuration Stripe via variables d'environnement
+const STRIPE_PUBLISHABLE_KEY =
+  Constants.expoConfig?.extra?.stripePublishableKey ||
+  process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  "";
 
 export default function RootLayout() {
   const { hydrateTokenAndProfile } = useUserStore();
@@ -37,9 +44,9 @@ export default function RootLayout() {
 
   return (
     <StripeProvider
-      publishableKey="pk_test_51PBf5wRqgxgrSOxzkT3CoAj3wnYQKPSKxZLmtaH9lt8XXO8NoIknakl1nMxj14Mj25f3VC56dchbm7E4ATNXco2200dXM6svtP"
-      urlScheme="your-app-scheme"
-      merchantIdentifier="merchant.com.your-app"
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
+      urlScheme="komoralink"
+      merchantIdentifier="merchant.com.komoralink"
     >
       <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

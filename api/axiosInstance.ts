@@ -1,9 +1,9 @@
 // src/api/axiosInstance.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-// ✅ Définir la base URL
-// "https://dash.fortibtech.com";
-const API_URL = "https://dash.fortibtech.com";
+
+// ✅ Définir la base URL (utilise variable d'environnement si disponible)
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://dash.fortibtech.com";
 
 // ✅ Créer une instance Axios
 const axiosInstance = axios.create({
@@ -17,7 +17,6 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   async (config: any) => {
     const token = await AsyncStorage.getItem("access_token");
-    console.log("🔑 Token intercepté :", token); // <-- ici tu vois le token
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -31,8 +30,7 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      console.log("⚠️ Token expiré ou invalide");
-      // → ici tu peux rediriger vers le login, ou gérer un refreshToken
+      // Token expiré ou invalide - redirection gérée par l'app
     }
     return Promise.reject(error);
   }

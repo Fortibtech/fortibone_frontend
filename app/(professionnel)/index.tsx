@@ -382,7 +382,6 @@ const HomePage: React.FC = () => {
       </SafeAreaView>
     );
   }
-  console.log("Rendu HomePage pour l'entreprise:", business);
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
@@ -530,8 +529,8 @@ const HomePage: React.FC = () => {
                 style={[
                   styles.periodItem,
                   period === item.value &&
-                    item.value !== "custom" &&
-                    styles.periodItemSelected,
+                  item.value !== "custom" &&
+                  styles.periodItemSelected,
                 ]}
                 onPress={() => selectPeriod(item.value as PeriodType)}
               >
@@ -539,8 +538,8 @@ const HomePage: React.FC = () => {
                   style={[
                     styles.periodText,
                     period === item.value &&
-                      item.value !== "custom" &&
-                      styles.periodTextSelected,
+                    item.value !== "custom" &&
+                    styles.periodTextSelected,
                   ]}
                 >
                   {item.label}

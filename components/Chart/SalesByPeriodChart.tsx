@@ -96,17 +96,34 @@ const SalesByPeriodChart: React.FC<{
     }
   }, [periods, loading, unit]);
 
-  const formatLabel = (p: string) => {
+  // Limite le nombre de labels affichés pour éviter le chevauchement
+  const formatLabel = (p: string, index: number, total: number) => {
+    // Affiche seulement certains labels selon le nombre total
+    const maxLabels = 6; // Maximum de labels à afficher
+    const step = Math.ceil(total / maxLabels);
+
+    // N'affiche que les labels aux intervalles réguliers
+    if (total > maxLabels && index % step !== 0 && index !== total - 1) {
+      return ""; // Masque ce label
+    }
+
     if (unit === "MONTH") return p.slice(5); // 2025-09 → 09
     if (unit === "YEAR") return p;
+    if (unit === "DAY") {
+      // Pour les jours, affiche format court (ex: 08/01)
+      const parts = p.split("-");
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}`;
+      }
+    }
     return p.slice(5);
   };
 
   const chartData = {
-    labels: periods.map((p) => formatLabel(p.period)),
+    labels: periods.map((p, index) => formatLabel(p.period, index, periods.length)),
     datasets: [
       {
-        data: periods.map((p) => p.totalAmount),
+        data: periods.length > 0 ? periods.map((p) => p.totalAmount) : [0],
       },
     ],
   };
@@ -115,7 +132,7 @@ const SalesByPeriodChart: React.FC<{
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
     color: () => "#8B5CF6",
-    strokeWidth: 4, // un peu plus épais pour que le tracé soit plus visible
+    strokeWidth: 4,
     decimalPlaces: 0,
     propsForDots: {
       r: "5",
@@ -123,8 +140,12 @@ const SalesByPeriodChart: React.FC<{
       stroke: "#8B5CF6",
     },
     propsForLabels: {
-      fontSize: 10,
-      translateX: 8,
+      fontSize: 9,
+      rotation: periods.length > 10 ? 45 : 0, // Rotation si beaucoup de labels
+    },
+    propsForVerticalLabels: {
+      fontSize: 8,
+      rotation: periods.length > 8 ? 45 : 0,
     },
   };
 

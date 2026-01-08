@@ -112,7 +112,6 @@ export interface Wallet {
 export const GetWallet = async (): Promise<Wallet | null> => {
   try {
     const response = await axiosInstance.get<Wallet>("/wallet");
-    console.log("💰 Wallet récupéré :", response.data);
     return response.data;
   } catch (error: any) {
     console.error(
@@ -236,8 +235,6 @@ export const createWithdraw = async (
     }
     // Pour STRIPE → on ne touche à rien → pas de metadata du tout
 
-    console.log("Payload envoyé au backend :", cleanPayload); // à garder temporairement pour debug
-
     const response = await axiosInstance.post("/wallet/withdraw", cleanPayload);
 
     return {
@@ -319,7 +316,6 @@ export const transferMoney = async (
     );
 
     // Tout s'est bien passé
-    console.log("Transfert réussi :", response.data);
     return response.data;
   } catch (error: any) {
     // Gestion propre des erreurs fréquentes
@@ -337,7 +333,6 @@ export const transferMoney = async (
     }
 
     // Erreur inconnue
-    console.error("Erreur transfert :", error);
     throw new Error(
       error.response?.data?.message || "Échec du transfert, réessayez"
     );

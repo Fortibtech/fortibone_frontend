@@ -50,7 +50,6 @@ export const updateUserProfile = async (
       "/users/me",
       payload
     );
-    console.log("✅ User mis à jour :", response.data);
 
     return { data: response.data, status: response.status };
   } catch (error: any) {
@@ -100,7 +99,6 @@ export const uploadUserAvatar = async (fileUri: string): Promise<string> => {
       },
     });
 
-    console.log("✅ Avatar uploadé :", response.data);
     // retourne l'URL finale de l'image depuis la réponse du serveur
     return response.data.profileImageUrl || "";
   } catch (error: any) {
@@ -118,7 +116,6 @@ export const getUserBusinesses = async (): Promise<UserBusiness[]> => {
     const response = await axiosInstance.get<UserBusiness[]>(
       "/users/me/businesses"
     );
-    console.log("✅ Entreprises de l'utilisateur :", response.data);
     return response.data;
   } catch (error: any) {
     console.error(
@@ -176,7 +173,6 @@ export const getFavoris = async (
       `/users/me/favorites?${query.toString()}`
     );
 
-    console.log("✅ Favoris récupérés :", response.data);
     return response.data;
   } catch (error: any) {
     console.error(

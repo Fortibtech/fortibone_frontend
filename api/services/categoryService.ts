@@ -22,7 +22,7 @@ export class CategoryService {
       // Mettre en cache avec TTL plus long
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
       
-      console.log("✅ Catégories récupérées:", response.data.length);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des catégories:", error);
@@ -36,7 +36,7 @@ export class CategoryService {
     // Vérifier le cache
     const cachedData = await cacheManager.get<Category>(cacheKey);
     if (cachedData) {
-      console.log("📦 Catégorie récupérée du cache:", cachedData.name);
+      
       return cachedData;
     }
 
@@ -46,7 +46,7 @@ export class CategoryService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
       
-      console.log("✅ Catégorie récupérée:", response.data.name);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération de la catégorie:", error);

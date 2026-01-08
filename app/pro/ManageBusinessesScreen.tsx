@@ -141,7 +141,8 @@ const ManageBusinessesScreen: React.FC = () => {
             {businesses.length} commerce{businesses.length > 1 ? "s" : ""}
           </Text>
         </View>
-        <View style={{ width: 48 }} /> {/* Espace symétrique à droite */}
+        {/* Espace symétrique à droite */}
+        <View style={{ width: 48 }} />
       </View>
 
       <FlatList
