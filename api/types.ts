@@ -1,8 +1,12 @@
 export interface Business {
+  deliveryZones(deliveryZones: any): unknown;
+  longitude: number;
+  latitude: number;
+  sectorId(sectorId: any): unknown;
   id: string;
   name: string;
   description?: string;
-  type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+  type: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR" | "LIVREUR";
   logoUrl?: string;
   coverImageUrl?: string;
   address?: string;
@@ -23,7 +27,11 @@ export interface Business {
 }
 
 export type CommerceType = "PHYSICAL" | "ONLINE" | "HYBRID";
-export type BusinessType = "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+export type BusinessType =
+  | "COMMERCANT"
+  | "FOURNISSEUR"
+  | "RESTAURATEUR"
+  | "LIVREUR";
 export type PriceRange = "ENTRY_LEVEL" | "MID_RANGE" | "PREMIUM" | "LUXURY";
 export type Civility = "MR" | "MME" | "MLLE" | "OTHER";
 
@@ -86,7 +94,7 @@ export interface CreateBusinessData {
 }
 export interface BusinessFilters {
   search?: string;
-  type?: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR";
+  type?: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR" | "LIVREUR";
   page?: number;
   limit?: number;
   latitude?: number;

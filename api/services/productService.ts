@@ -33,7 +33,7 @@ export class ProductService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
       
-      console.log("✅ Produits trouvés:", response.data.data.length);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la recherche de produits:", error);
@@ -49,7 +49,7 @@ export class ProductService {
       await cacheManager.invalidatePattern("products_search");
       await cacheManager.invalidatePattern(`business_products_${businessId}`);
       
-      console.log("✅ Produit créé:", response.data.name);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la création du produit:", error);
@@ -78,7 +78,7 @@ export class ProductService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
       
-      console.log("✅ Produits de l'entreprise récupérés:", response.data.data.length);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des produits de l'entreprise:", error);
@@ -92,7 +92,7 @@ export class ProductService {
     // Vérifier le cache
     const cachedData = await cacheManager.get<Product>(cacheKey);
     if (cachedData) {
-      console.log("📦 Produit récupéré du cache:", cachedData.name);
+      
       return cachedData;
     }
 
@@ -102,7 +102,7 @@ export class ProductService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
       
-      console.log("✅ Produit récupéré:", response.data.name);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération du produit:", error);
@@ -119,7 +119,7 @@ export class ProductService {
       await cacheManager.invalidatePattern("products_search");
       await cacheManager.invalidatePattern(`business_products_${response.data.businessId}`);
       
-      console.log("✅ Produit mis à jour:", response.data.name);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la mise à jour du produit:", error);
@@ -161,7 +161,7 @@ export class ProductService {
       await cacheManager.invalidate(`product_${productId}`);
       await cacheManager.invalidatePattern("products_search");
       
-      console.log("✅ Variante créée:", response.data.sku);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la création de la variante:", error);
@@ -180,7 +180,7 @@ export class ProductService {
       await cacheManager.invalidate(`product_${response.data.productId}`);
       await cacheManager.invalidatePattern("products_search");
       
-      console.log("✅ Variante mise à jour:", response.data.sku);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la mise à jour de la variante:", error);
@@ -279,7 +279,7 @@ export class ProductService {
   static async getVariantById(variantId: string): Promise<ProductVariant> {
     try {
       const response = await axiosInstance.get<ProductVariant>(`/variants/${variantId}`);
-      console.log("✅ Variante récupérée:", response.data.sku);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération de la variante:", error);

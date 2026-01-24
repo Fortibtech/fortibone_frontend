@@ -1,0 +1,255 @@
+.container {
+    padding: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.header {
+    margin-bottom: 32px;
+}
+
+.title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    font-size: 14px;
+    color: #666;
+}
+
+/* Balance Card */
+.balanceCard {
+    background: linear-gradient(135deg, #00BFA5 0%, #00897B 100%);
+    border-radius: 20px;
+    padding: 32px;
+    color: white;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 40px rgba(0, 191, 165, 0.3);
+}
+
+.balanceInfo {
+    margin-bottom: 24px;
+}
+
+.balanceLabel {
+    display: block;
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.balanceAmount {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -1px;
+}
+
+.balanceActions {
+    display: flex;
+    gap: 16px;
+}
+
+.actionButton {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    color: white;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+}
+
+.actionButton:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Quick Actions */
+.quickActions {
+    margin-bottom: 24px;
+}
+
+.quickLink {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 12px;
+    color: #333;
+    text-decoration: none;
+    font-weight: 500;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s ease;
+}
+
+.quickLink:hover {
+    border-color: #00BFA5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.quickLink span {
+    flex: 1;
+}
+
+/* Section */
+.section {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #e0e0e0;
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.sectionTitle {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111;
+}
+
+.seeAll {
+    font-size: 14px;
+    color: #00BFA5;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.seeAll:hover {
+    text-decoration: underline;
+}
+
+/* Transactions */
+.transactionsList {
+    display: flex;
+    flex-direction: column;
+}
+
+.transactionItem {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.transactionItem:last-child {
+    border-bottom: none;
+}
+
+.txIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.txIcon.income {
+    background: #ecfdf5;
+    color: #00af66;
+}
+
+.txIcon.expense {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.txInfo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.txTitle {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111;
+}
+
+.txDate {
+    font-size: 13px;
+    color: #999;
+}
+
+.txAmount {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.txAmount.positive {
+    color: #00af66;
+}
+
+.txAmount.negative {
+    color: #ef4444;
+}
+
+/* Empty State */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 0;
+    color: #999;
+}
+
+.emptyState p {
+    margin-top: 16px;
+    font-size: 15px;
+}
+
+/* Skeleton */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .container {
+        padding: 16px;
+    }
+
+    .balanceCard {
+        padding: 24px;
+    }
+
+    .balanceAmount {
+        font-size: 32px;
+    }
+
+    .actionButton {
+        padding: 12px 8px;
+        font-size: 12px;
+    }
+}

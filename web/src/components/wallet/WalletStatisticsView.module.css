@@ -1,0 +1,128 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+}
+
+.loading {
+    padding: 40px;
+    text-align: center;
+    color: #6B7280;
+    font-size: 14px;
+}
+
+.periodSelector {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.periodBtn {
+    padding: 6px 16px;
+    border-radius: 9999px;
+    border: 1px solid #E5E7EB;
+    background: white;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6B7280;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.periodBtn:hover {
+    background: #F9FAFB;
+}
+
+.periodBtn.active {
+    background: #DCFCE7;
+    color: #1BB874;
+    border-color: #DCFCE7;
+}
+
+.chartCard {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #E5E7EB;
+    padding: 24px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+}
+
+.chartTitle {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 24px;
+}
+
+.chartContainer {
+    width: 100%;
+    min-height: 300px;
+}
+
+.gridRow {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+}
+
+.emptyChart {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: #9CA3AF;
+    font-size: 14px;
+}
+
+.metricsCard {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #E5E7EB;
+    padding: 24px;
+    height: fit-content;
+}
+
+.metricsList {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.metricItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.metricLabel {
+    font-size: 14px;
+    color: #6B7280;
+}
+
+.metricValue {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.metricValue.income {
+    color: #22d989;
+}
+
+.metricValue.expense {
+    color: #EF4444;
+}
+
+.metricDivider {
+    height: 1px;
+    background: #E5E7EB;
+    margin: 4px 0;
+}
+
+@media (max-width: 768px) {
+    .gridRow {
+        grid-template-columns: 1fr;
+    }
+}

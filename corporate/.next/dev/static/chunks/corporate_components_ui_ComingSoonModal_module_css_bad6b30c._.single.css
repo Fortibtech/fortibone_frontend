@@ -1,0 +1,119 @@
+/* [project]/corporate/components/ui/ComingSoonModal.module.css [app-client] (css) */
+.ComingSoonModal-module__l65jha__overlay {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  background: #00000080;
+  justify-content: center;
+  align-items: center;
+  animation: .2s ease-out ComingSoonModal-module__l65jha__fadeIn;
+  display: flex;
+  position: fixed;
+  inset: 0;
+}
+
+.ComingSoonModal-module__l65jha__modal {
+  text-align: center;
+  background: #fff;
+  border: 1px solid #ffffff1a;
+  border-radius: 24px;
+  width: 90%;
+  max-width: 440px;
+  padding: 40px;
+  animation: .3s ease-out ComingSoonModal-module__l65jha__slideUp;
+  position: relative;
+  box-shadow: 0 20px 25px -5px #0000001a, 0 10px 10px -5px #0000000a;
+}
+
+.ComingSoonModal-module__l65jha__closeButton {
+  color: var(--color-gray-400);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  transition: all .2s;
+  display: flex;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.ComingSoonModal-module__l65jha__closeButton:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+}
+
+.ComingSoonModal-module__l65jha__iconWrapper {
+  background: var(--color-primary-50);
+  border-radius: 50%;
+  justify-content: center;
+  align-items: center;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  display: flex;
+}
+
+.ComingSoonModal-module__l65jha__icon {
+  font-size: 40px;
+}
+
+.ComingSoonModal-module__l65jha__title {
+  color: var(--color-gray-900);
+  margin-bottom: 12px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.ComingSoonModal-module__l65jha__description {
+  color: var(--color-gray-600);
+  margin-bottom: 32px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.ComingSoonModal-module__l65jha__button {
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  border-radius: 12px;
+  width: 100%;
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all .2s;
+}
+
+.ComingSoonModal-module__l65jha__button:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
+@keyframes ComingSoonModal-module__l65jha__fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ComingSoonModal-module__l65jha__slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*# sourceMappingURL=corporate_components_ui_ComingSoonModal_module_css_bad6b30c._.single.css.map*/

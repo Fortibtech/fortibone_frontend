@@ -2,17 +2,20 @@ import axiosInstance from "../axiosInstance";
 import { cacheManager } from "../cache";
 import { SelectedBusinessManager } from "../selectedBusinessManager";
 import { Business, BusinessFilters, CreateBusinessData } from "../types";
+export interface CarrierOption {
+  id: string;
+  name: string;
+  type: string;
+}
 
 // Types pour les nouveaux endpoints
 export interface AddMemberData {
   email: string;
   role: "MEMBER" | "ADMIN";
 }
-
 export interface UpdateMemberRoleData {
   role: "MEMBER" | "ADMIN" | "OWNER";
 }
-
 export interface BusinessMember {
   id: string;
   email: string;
@@ -50,10 +53,11 @@ export class BusinessesService {
       await cacheManager.invalidatePattern("businesses_list");
       await cacheManager.invalidatePattern("user_businesses");
 
-      console.log("✅ Entreprise créée:", response.data.name);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la création de l'entreprise:", error);
+      
       throw error;
     }
   }
@@ -66,7 +70,7 @@ export class BusinessesService {
     // Vérifier le cache
     const cachedData = await cacheManager.get<Business[]>(cacheKey);
     if (cachedData) {
-      console.log("📦 Données récupérées du cache:", cacheKey);
+      
       return cachedData;
     }
 
@@ -81,7 +85,7 @@ export class BusinessesService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
 
-      console.log("✅ Entreprises récupérées:", response.data.length);
+      
       return response.data;
     } catch (error) {
       console.error(
@@ -98,7 +102,7 @@ export class BusinessesService {
     // Vérifier le cache
     const cachedData = await cacheManager.get<Business>(cacheKey);
     if (cachedData) {
-      console.log("📦 Entreprise récupérée du cache:", cachedData.name);
+      
       return cachedData;
     }
 
@@ -108,13 +112,41 @@ export class BusinessesService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
 
-      console.log("✅ Entreprise récupérée:", response.data.name);
+      
       return response.data;
     } catch (error) {
       console.error(
         "❌ Erreur lors de la récupération de l'entreprise:",
         error
       );
+      throw error;
+    }
+  }
+
+  static async getCarriers(): Promise<CarrierOption[]> {
+    const cacheKey = "user_carriers_livreur_min";
+
+    const cached = await cacheManager.get<CarrierOption[]>(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await axiosInstance.get<Business[]>(
+        "/users/me/businesses",
+        {
+          params: { type: "LIVREUR" },
+        }
+      );
+
+      const carriers: CarrierOption[] = response.data.map((b) => ({
+        id: b.id,
+        name: b.name,
+        type: b.type,
+      }));
+
+      await cacheManager.set(cacheKey, carriers, this.CACHE_TTL);
+      return carriers;
+    } catch (error) {
+      console.error("❌ Erreur chargement livreurs:", error);
       throw error;
     }
   }
@@ -144,7 +176,7 @@ export class BusinessesService {
         await SelectedBusinessManager.setSelectedBusiness(response.data);
       }
 
-      console.log("✅ Entreprise mise à jour:", response.data.name);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la mise à jour de l'entreprise:", error);
@@ -235,7 +267,7 @@ export class BusinessesService {
       // Invalider le cache des membres
       await cacheManager.invalidate(`business_members_${businessId}`);
 
-      console.log("✅ Membre ajouté:", data.email);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de l'ajout du membre:", error);
@@ -261,7 +293,7 @@ export class BusinessesService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
 
-      console.log("✅ Membres récupérés:", response.data.length);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des membres:", error);
@@ -283,7 +315,7 @@ export class BusinessesService {
       // Invalider le cache des membres
       await cacheManager.invalidate(`business_members_${businessId}`);
 
-      console.log("✅ Rôle du membre mis à jour:", data.role);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la mise à jour du rôle:", error);

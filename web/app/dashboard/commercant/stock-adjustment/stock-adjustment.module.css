@@ -1,0 +1,240 @@
+.container {
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.backBtn {
+    width: 44px;
+    height: 44px;
+    border: 1px solid #e5e7eb;
+    border-radius: 50%;
+    background: white;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.backBtn:hover {
+    background: #f3f4f6;
+}
+
+.title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+}
+
+/* Product Card */
+.productCard {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin-bottom: 24px;
+}
+
+.productImage {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #f3f4f6;
+}
+
+.productInfo {
+    flex: 1;
+}
+
+.productHeader {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.productName {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+}
+
+.statusBadge {
+    background: #22d989;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.productSku {
+    font-size: 13px;
+    color: #9ca3af;
+    margin: 0 0 12px 0;
+}
+
+.productDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.detailRow {
+    display: flex;
+    justify-content: space-between;
+}
+
+.detailLabel {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.detailValue {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.viewProductLink {
+    background: none;
+    border: none;
+    color: #22d989;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 0;
+    cursor: pointer;
+    margin-top: 12px;
+}
+
+/* Form */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.formLabel {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.select,
+.input {
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 15px;
+    color: #374151;
+    background: white;
+    appearance: none;
+}
+
+.select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 20px;
+    padding-right: 40px;
+}
+
+/* Quantity Control */
+.quantityControl {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: white;
+}
+
+.quantityBtn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid #e5e7eb;
+    border-radius: 50%;
+    background: white;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.quantityBtn:hover {
+    background: #f3f4f6;
+}
+
+.quantityValue {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374151;
+    min-width: 40px;
+    text-align: center;
+}
+
+.quantityUnit {
+    font-size: 14px;
+    color: #6b7280;
+    margin-left: auto;
+}
+
+.errorMsg {
+    color: #ef4444;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Actions */
+.formActions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.cancelBtn,
+.submitBtn {
+    flex: 1;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cancelBtn {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.submitBtn {
+    background: #22d989;
+    color: white;
+}
+
+.submitBtn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}

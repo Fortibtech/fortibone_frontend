@@ -1,0 +1,102 @@
+.container {
+    padding: 16px;
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #eef0f4;
+    margin-bottom: 16px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.title {
+    font-size: 18px;
+    color: #000;
+    font-weight: 600;
+    margin: 0;
+}
+
+.seeMore {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    color: #58617b;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.seeMore:hover {
+    color: #00B87C;
+}
+
+.statsRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.statBox {
+    flex: 1;
+    height: 90px;
+    border: 1px solid #eef0f4;
+    border-radius: 16px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.statBoxIn {
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border-color: #d1fae5;
+}
+
+.statBoxOut {
+    background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%);
+    border-color: #fee2e2;
+}
+
+.statLine {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.statLabel {
+    font-size: 13px;
+    color: #58617b;
+    font-weight: 500;
+}
+
+.statAmount {
+    font-size: 18px;
+    font-weight: 700;
+    color: #000;
+}
+
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #f3f4f6;
+    border-top-color: #00B87C;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

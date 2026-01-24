@@ -1,6 +1,5 @@
 // src/api/analytics.ts
 import axiosInstance from "./axiosInstance";
-
 // 📌 Définir le type de la réponse (facultatif mais conseillé avec TS)
 export interface AnalyticsOverview {
   totalSalesAmount: number;
@@ -15,7 +14,6 @@ export interface AnalyticsOverview {
   averageBusinessRating: number;
   totalBusinessReviews: number;
 }
-
 // 📌 Fonction GET /analytics/overview avec dates optionnelles
 export const getAnalyticsOverview = async (
   businessId: string,
@@ -26,7 +24,6 @@ export const getAnalyticsOverview = async (
     const params = new URLSearchParams();
     if (startDate) params.append("startDate", startDate);
     if (endDate) params.append("endDate", endDate);
-
     const response = await axiosInstance.get(
       `/businesses/${businessId}/analytics/overview${
         params.toString() ? `?${params.toString()}` : ""
@@ -101,6 +98,7 @@ export const getSales = async (
     return response.data as SalesResponse;
   } catch (error: any) {
     console.error("❌ Erreur lors du fetch sales analytics :", error.message);
+    console.log("API error:", error?.response?.data);
     throw error;
   }
 };
@@ -303,7 +301,7 @@ export const getPendingOrdersCount = async (
 ): Promise<number> => {
   try {
     const response = await getOrders(businessId, {
-      status: "PENDING",
+      status: "PENDING_PAYMENT",
       type,
       limit: 1, // On ne récupère qu'une seule commande pour avoir le total
     });
@@ -354,5 +352,83 @@ export const getProcessingPurchasesCount = async (
       error.message
     );
     return { count: 0, totalItems: 0 };
+  }
+};
+
+// Types basés sur la réponse de l'endpoint et la doc Swagger
+export interface PopularDish {
+  variantId: string;
+  dishName: string;
+  dishImageUrl?: string;
+  totalQuantityOrdered: number;
+  totalRevenue: string | number; // L'API renvoie une string (ex: "42834")
+}
+
+export interface ReservationByPeriod {
+  period: string; // ex: "2025-01" pour mois, ou "2025-12-22" selon unit
+  totalReservations: number;
+}
+
+export interface RestaurantAnalyticsResponse {
+  totalReservations: number;
+  totalDishOrders: number;
+  popularDishes: PopularDish[];
+  reservationsByPeriod: ReservationByPeriod[];
+  averageTableOccupancy: number;
+}
+
+// Paramètres optionnels de l'endpoint
+export interface GetRestaurantAnalyticsParams {
+  search?: string;
+  page?: number;
+  limit?: number;
+  startDate?: string; // Format YYYY-MM-DD
+  endDate?: string; // Format YYYY-MM-DD
+  unit?: "DAY" | "WEEK" | "MONTH" | "YEAR";
+}
+
+/**
+ * Récupère les statistiques analytiques spécifiques au restaurant
+ * @param businessId - ID de l'entreprise (doit être de type RESTAURATEUR)
+ * @param params - Paramètres optionnels (filtres, dates, pagination, unité)
+ * @returns Les données analytiques du restaurant
+ */
+export const getRestaurantAnalytics = async (
+  businessId: string,
+  params?: GetRestaurantAnalyticsParams
+): Promise<RestaurantAnalyticsResponse> => {
+  try {
+    const response = await axiosInstance.get<RestaurantAnalyticsResponse>(
+      `/businesses/${businessId}/analytics/restaurant`,
+      { params }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    // Gestion spécifique des erreurs courantes de cet endpoint
+    if (error.response) {
+      const status = error.response.status;
+
+      if (status === 400) {
+        throw new Error(
+          "Cette entreprise n'est pas configurée comme un restaurant."
+        );
+      }
+      if (status === 403) {
+        throw new Error(
+          "Accès interdit : vous n'avez pas les privilèges nécessaires."
+        );
+      }
+      if (status === 404) {
+        throw new Error("Entreprise non trouvée.");
+      }
+
+      throw new Error(
+        error.response.data?.message ||
+          `Erreur ${status} lors de la récupération des analytics restaurant`
+      );
+    }
+
+    throw new Error("Erreur réseau ou serveur indisponible.");
   }
 };

@@ -32,7 +32,7 @@ class PaymentService {
         paymentData
       );
 
-      console.log("✅ Intention de paiement créée avec succès:", response.data);
+      
       return response.data;
     } catch (error: any) {
       console.error("❌ Erreur lors de la création de l'intention de paiement:", error);
@@ -87,7 +87,7 @@ class PaymentService {
         refundData
       );
 
-      console.log("✅ Remboursement initié avec succès:", response.data);
+      
       return response.data;
     } catch (error: any) {
       console.error("❌ Erreur lors du remboursement:", error);

@@ -32,6 +32,7 @@ export interface Product {
 export interface InventoryItem {
   id: string;
   sku: string;
+
   barcode: string | null;
   price: string; // Considérer un type `number` si c'est un prix numérique
   purchasePrice: string; // Idem

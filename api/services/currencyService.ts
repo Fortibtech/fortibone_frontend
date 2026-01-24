@@ -21,7 +21,7 @@ export class CurrencyService {
       // Mettre en cache avec TTL plus long
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
       
-      console.log("✅ Devises récupérées:", response.data.length);
+      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des devises:", error);

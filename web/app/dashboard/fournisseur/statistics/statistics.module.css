@@ -1,0 +1,141 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 20px;
+}
+
+.pageTitle {
+    font-size: 24px;
+    font-weight: 700;
+    color: #374151;
+    text-align: center;
+    margin: 0 0 8px 0;
+}
+
+/* Chart Section */
+.chartSection {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.chartHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.chartTitle {
+    font-size: 18px;
+    font-weight: 700;
+    color: #374151;
+    margin: 0;
+}
+
+.chartSubtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 4px 0 0 0;
+}
+
+/* Period Selector */
+.periodSelector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.periodBtn {
+    padding: 10px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 24px;
+    background: white;
+    font-size: 14px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.periodBtn:hover {
+    background: #f9fafb;
+}
+
+.periodBtnActive {
+    background: #22d989;
+    border-color: #22d989;
+    color: white;
+}
+
+/* Chart Wrapper */
+.chartWrapper {
+    width: 100%;
+    margin-top: 16px;
+}
+
+.pieWrapper {
+    width: 100%;
+    margin: 20px 0;
+}
+
+/* Loading & Empty */
+.loadingContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #22d989;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.emptyChart {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #9ca3af;
+}
+
+.emptyIcon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+/* Legend */
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.legendItem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.legendDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}

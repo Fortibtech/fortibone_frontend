@@ -112,7 +112,6 @@ export interface Wallet {
 export const GetWallet = async (): Promise<Wallet | null> => {
   try {
     const response = await axiosInstance.get<Wallet>("/wallet");
-    console.log("💰 Wallet récupéré :", response.data);
     return response.data;
   } catch (error: any) {
     console.error(
@@ -125,7 +124,7 @@ export const GetWallet = async (): Promise<Wallet | null> => {
 
 export interface DepositPayload {
   amount: number;
-  method: "STRIPE" | "MVOLA";
+  method: "STRIPE" | "KARTAPAY";
   metadata: {
     note?: string;
     paymentMethodId?: string; // pour Stripe
@@ -181,5 +180,161 @@ export const createDeposit = async (
     }
 
     throw new Error(msg);
+  }
+};
+
+// api/wallet.ts ou types/wallet.ts
+
+export type WithdrawMethod = "STRIPE" | "KARTAPAY";
+// Tu peux garder "KARTAPAY" si tu veux rester cohérent avec le dépôt, mais je recommande de clarifier
+
+export interface WithdrawPayload {
+  amount: number;
+  method: WithdrawMethod;
+  metadata?: {
+    mobileMoneyNumber?: string;
+    note?: string;
+  };
+}
+
+export interface WithdrawResponse {
+  success: boolean;
+  data?: {
+    id: string;
+    status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED";
+    amount: number;
+    description?: string;
+    createdAt: string;
+  };
+  message?: string;
+  onboardingUrl?: string;
+}
+
+export const createWithdraw = async (
+  payload: WithdrawPayload
+): Promise<WithdrawResponse> => {
+  try {
+    // ON FORCE LE NETTOYAGE : on reconstruit l'objet à la main
+    let cleanPayload: any = {
+      amount: payload.amount,
+      method: payload.method,
+    };
+
+    // On ajoute metadata UNIQUEMENT si c'est KARTAPAY et qu'il existe
+    if (payload.method === "KARTAPAY" && payload.metadata) {
+      cleanPayload.metadata = {
+        ...(payload.metadata.mobileMoneyNumber && {
+          mobileMoneyNumber: payload.metadata.mobileMoneyNumber,
+        }),
+        ...(payload.metadata.note && { note: payload.metadata.note }),
+      };
+      // Si metadata est vide après nettoyage → on le supprime
+      if (Object.keys(cleanPayload.metadata).length === 0) {
+        delete cleanPayload.metadata;
+      }
+    }
+    // Pour STRIPE → on ne touche à rien → pas de metadata du tout
+
+    const response = await axiosInstance.post("/wallet/withdraw", cleanPayload);
+
+    return {
+      success: true,
+      data: response.data.data || response.data,
+      message: response.data.message,
+    };
+  } catch (error: any) {
+    console.error("Erreur createWithdraw :", error.response?.data || error);
+
+    const status = error.response?.status;
+    const serverMessage =
+      error.response?.data?.message || error.message || "Erreur inconnue";
+
+    if (status === 401) {
+      throw new Error("TOKEN_EXPIRED");
+    }
+
+    if (status === 428) {
+      return {
+        success: false,
+        message: Array.isArray(serverMessage)
+          ? serverMessage[0]
+          : serverMessage,
+        onboardingUrl: error.response?.data?.onboardingUrl,
+      };
+    }
+
+    return {
+      success: false,
+      message: Array.isArray(serverMessage) ? serverMessage[0] : serverMessage,
+    };
+  }
+};
+
+// Types basés sur la réponse réelle de l'API (pas sur la doc obsolète)
+export interface TransferResponse {
+  id: string;
+  type: "TRANSFER";
+  amount: string; // vient en string : "-100" ou "+100"
+  status: "COMPLETED" | "PENDING" | "FAILED";
+  description: string;
+  createdAt: string;
+  walletId: string;
+  metadata: any | null;
+  relatedOrderId: string | null;
+  relatedPaymentTransactionId: string | null;
+  transferPeerTransactionId: string; // ID de la transaction chez le destinataire
+}
+
+export interface TransferRequest {
+  amount: number; // tu envoies un nombre positif
+  recipientIdentifier: string; // email ou phone ou username
+}
+
+/**
+ * Transfère de l'argent à un autre utilisateur FortiBone
+ * @param amount Montant à envoyer (doit être > 0)
+ * @param recipientIdentifier Email, téléphone ou identifiant du destinataire
+ * @returns Les détails de la transaction de débit (côté expéditeur)
+ */
+export const transferMoney = async (
+  amount: number,
+  recipientIdentifier: string
+): Promise<TransferResponse> => {
+  if (amount <= 0) {
+    throw new Error("Le montant doit être supérieur à 0");
+  }
+
+  const payload: TransferRequest = {
+    amount, // l'API attend un nombre positif
+    recipientIdentifier: recipientIdentifier.trim(),
+  };
+
+  try {
+    const response = await axiosInstance.post<TransferResponse>(
+      "/wallet/transfer",
+      payload
+    );
+
+    // Tout s'est bien passé
+    return response.data;
+  } catch (error: any) {
+    // Gestion propre des erreurs fréquentes
+    if (error.response?.status === 400) {
+      const msg =
+        error.response.data?.message ||
+        "Solde insuffisant ou destinataire invalide";
+      throw new Error(msg);
+    }
+    if (error.response?.status === 404) {
+      throw new Error("Destinataire non trouvé");
+    }
+    if (error.response?.status === 401) {
+      throw new Error("Session expirée, veuillez vous reconnecter");
+    }
+
+    // Erreur inconnue
+    throw new Error(
+      error.response?.data?.message || "Échec du transfert, réessayez"
+    );
   }
 };

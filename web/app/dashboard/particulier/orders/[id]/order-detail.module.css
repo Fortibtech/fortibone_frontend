@@ -1,0 +1,812 @@
+.container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.backButton {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #f5f5f5;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.backButton:hover {
+    background: #e0e0e0;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+}
+
+/* Loading & Error */
+.loading,
+.error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+    gap: 16px;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #059669;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.errorIcon {
+    font-size: 64px;
+}
+
+.error h2 {
+    margin: 0;
+    color: #333;
+}
+
+.error p {
+    color: #666;
+    margin: 0;
+}
+
+.backBtn {
+    padding: 12px 24px;
+    background: #059669;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 16px;
+}
+
+.backBtn:hover {
+    background: #047857;
+}
+
+/* Status Card */
+.statusCard {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.statusBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 15px;
+    align-self: flex-start;
+}
+
+.statusIcon {
+    font-size: 18px;
+}
+
+.orderDate {
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Timeline */
+.timeline {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.timeline h3 {
+    margin: 0 0 20px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.timelineSteps {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+}
+
+.timelineStep {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+}
+
+.stepDot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 2;
+    transition: all 0.3s;
+}
+
+.timelineStep.completed .stepDot {
+    background: #059669;
+    color: white;
+}
+
+.timelineStep.current .stepDot {
+    background: #059669;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.2);
+}
+
+.stepLabel {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 8px;
+    text-align: center;
+    max-width: 80px;
+}
+
+.timelineStep.completed .stepLabel,
+.timelineStep.current .stepLabel {
+    color: #059669;
+    font-weight: 500;
+}
+
+.stepLine {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: #e5e7eb;
+    z-index: 1;
+}
+
+.timelineStep.completed .stepLine {
+    background: #059669;
+}
+
+/* Section */
+.section {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.section h3 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+/* Business Card */
+.businessCard {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.businessLogo {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    overflow: hidden;
+}
+
+.businessLogo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.businessInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.businessName {
+    font-weight: 600;
+    color: #333;
+}
+
+.businessDesc {
+    font-size: 13px;
+    color: #666;
+}
+
+/* Order Lines */
+.orderLines {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.lineItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.lineImage {
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.lineImage img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lineDetails {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.lineName {
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+}
+
+.lineVariant {
+    font-size: 12px;
+    color: #666;
+}
+
+.lineQuantity {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.linePrice {
+    font-weight: 600;
+    color: #059669;
+    font-size: 14px;
+}
+
+/* Summary */
+.summary {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.summaryRow {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.summaryRow.total {
+    border-top: 1px solid #e5e7eb;
+    margin-top: 8px;
+    padding-top: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+}
+
+.summaryRow.total span:last-child {
+    color: #059669;
+}
+
+/* Notes */
+.notes {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    font-style: italic;
+}
+
+/* Actions */
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.payBtn {
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.payBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.contactBtn {
+    width: 100%;
+    padding: 14px 24px;
+    background: white;
+    color: #333;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.contactBtn:hover {
+    background: #f9fafb;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .container {
+        padding: 16px;
+    }
+
+    .title {
+        font-size: 18px;
+    }
+
+    .timelineSteps {
+        overflow-x: auto;
+        padding-bottom: 8px;
+    }
+
+    .stepLabel {
+        font-size: 10px;
+        max-width: 60px;
+    }
+
+    .lineItem {
+        flex-wrap: wrap;
+    }
+
+    .linePrice {
+        width: 100%;
+        text-align: right;
+        margin-top: 8px;
+    }
+}
+
+/* ============================================
+   PAYMENT MODAL - MATCHING MOBILE
+   ============================================ */
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modalContent {
+    background: white;
+    border-radius: 20px 20px 0 0;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.modalHeader h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+}
+
+.closeBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: #f5f5f5;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.closeBtn:hover {
+    background: #e0e0e0;
+}
+
+/* Payment Method Tabs - MATCHING MOBILE */
+.paymentTabs {
+    display: flex;
+    gap: 8px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.paymentTab {
+    flex: 1;
+    padding: 12px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: white;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.paymentTab:hover {
+    border-color: #059669;
+}
+
+.paymentTab.active {
+    background: #059669;
+    border-color: #059669;
+    color: white;
+}
+
+/* Payment Body */
+.paymentBody {
+    padding: 24px 20px;
+    min-height: 150px;
+}
+
+/* Wallet Info - MATCHING MOBILE */
+.walletInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    padding: 20px;
+}
+
+.walletIcon {
+    font-size: 48px;
+}
+
+.walletInfo p {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+    font-weight: 500;
+}
+
+.walletAmount {
+    font-size: 14px;
+    color: #666;
+}
+
+/* Phone Input - KARTAPAY */
+.inputContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.inputContainer label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.phoneInput {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.phoneInput:focus {
+    border-color: #059669;
+}
+
+/* Payment Error */
+.paymentError {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #fee2e2;
+    border-radius: 8px;
+    color: #dc2626;
+    font-size: 14px;
+}
+
+/* Modal Footer */
+.modalFooter {
+    display: flex;
+    gap: 12px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+}
+
+.cancelPayBtn {
+    flex: 1;
+    padding: 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: white;
+    font-size: 15px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+}
+
+.cancelPayBtn:hover {
+    background: #f5f5f5;
+}
+
+.confirmPayBtn {
+    flex: 2;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: #059669;
+    font-size: 15px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.confirmPayBtn:hover:not(:disabled) {
+    background: #047857;
+}
+
+.confirmPayBtn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   DELIVERY TRACKING SECTION
+   ============================================ */
+
+.deliveryCard {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.deliveryStatus {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    align-self: flex-start;
+}
+
+.carrierInfo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 10px;
+}
+
+.carrierLogo {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    overflow: hidden;
+}
+
+.carrierLogo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.carrierName {
+    font-weight: 600;
+    color: #333;
+    display: block;
+}
+
+.carrierPhone {
+    font-size: 13px;
+    color: #059669;
+    text-decoration: none;
+    display: block;
+    margin-top: 4px;
+}
+
+.carrierPhone:hover {
+    text-decoration: underline;
+}
+
+.deliveryCode {
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border: 2px dashed #16a34a;
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
+
+.deliveryCodeLabel {
+    font-size: 13px;
+    color: #666;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.deliveryCodeValue {
+    font-size: 32px;
+    font-weight: 700;
+    color: #16a34a;
+    letter-spacing: 4px;
+    display: block;
+}
+
+.deliveryCodeNote {
+    font-size: 12px;
+    color: #666;
+    margin: 8px 0 0 0;
+    font-style: italic;
+}
+
+.deliveryAddresses {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.addressItem {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.addressIcon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.addressLabel {
+    font-size: 12px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.addressText {
+    font-size: 14px;
+    color: #333;
+    display: block;
+}
+
+.deliveryMeta {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #666;
+}

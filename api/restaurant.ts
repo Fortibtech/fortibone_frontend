@@ -1,41 +1,6 @@
 // src/api/restaurant.ts
 import axiosInstance from "./axiosInstance";
 
-export interface RestaurantStats {
-  totalReservations: number;
-  totalDishOrders: number;
-  popularDishes: any[];
-  reservationsByPeriod: {
-    period: string;
-    totalReservations: number;
-  }[];
-  averageTableOccupancy: number;
-}
-
-// ✅ Récupérer les stats restaurant d'un business RESTAURATEUR
-export const getStatRestaurant = async (
-  businessId: string
-): Promise<RestaurantStats> => {
-  try {
-    const response = await axiosInstance.get<RestaurantStats>(
-      `/businesses/${businessId}/analytics/restaurant`
-    );
-    return response.data;
-  } catch (error: any) {
-    if (error.response?.status === 400) {
-      console.warn(
-        "⚠️ Cet endpoint n'est disponible que pour les entreprises RESTAURATEUR"
-      );
-      return Promise.reject(error.response.data);
-    }
-    console.error(
-      "❌ Erreur lors de la récupération des stats restaurant :",
-      error.message
-    );
-    throw error;
-  }
-};
-
 // src/types/table.ts
 export interface Table {
   id: string;
@@ -99,107 +64,6 @@ export interface MenuItem {
   variantId: string;
   variant: MenuItemVariant;
 }
-
-export interface Menu {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  isActive: boolean;
-  businessId: string;
-  menuItems: MenuItem[];
-}
-
-export const getMenus = async (businessId: string): Promise<Menu[]> => {
-  const res = await axiosInstance.get(`/restaurants/${businessId}/menus`);
-  return res.data;
-};
-export interface TablePayload {
-  name: string;
-  capacity: number;
-}
-export interface TableResponse {
-  id: string;
-  name: string;
-  capacity: number;
-  isAvailable: boolean;
-  businessId: string;
-}
-export const createRestaurantTable = async (
-  businessId: string,
-  payload: TablePayload
-): Promise<TableResponse> => {
-  try {
-    const { data } = await axiosInstance.post<TableResponse>(
-      `/restaurants/${businessId}/tables`,
-      payload
-    );
-    return data;
-  } catch (error: any) {
-    console.error(
-      "❌ Erreur lors de la création de la table :",
-      error.response?.data || error.message
-    );
-    throw error;
-  }
-};
-
-export interface UpdateTablePayload {
-  name?: string;
-  capacity?: number;
-  isAvailable?: boolean;
-}
-export interface TableResponse {
-  id: string;
-  name: string;
-  capacity: number;
-  isAvailable: boolean;
-  businessId: string;
-}
-export const updateRestaurantTable = async (
-  businessId: string,
-  tableId: string,
-  payload: UpdateTablePayload
-): Promise<TableResponse> => {
-  try {
-    const { data } = await axiosInstance.patch<TableResponse>(
-      `/restaurants/${businessId}/tables/${tableId}`,
-      payload
-    );
-    return data;
-  } catch (error: any) {
-    console.error(
-      "❌ Erreur lors de la mise à jour de la table :",
-      error.response?.data || error.message
-    );
-    throw error;
-  }
-};
-
-
-
-
-export interface DeleteTableResponse {
-  message: string; // "Table supprimée avec succès."
-}
-
-export const deleteRestaurantTable = async (
-  businessId: string,
-  tableId: string
-): Promise<DeleteTableResponse> => {
-  try {
-    const { data } = await axiosInstance.delete<DeleteTableResponse>(
-      `/restaurants/${businessId}/tables/${tableId}`
-    );
-    return data;
-  } catch (error: any) {
-    console.error(
-      "❌ Erreur lors de la suppression de la table :",
-      error.response?.data || error.message
-    );
-    throw error;
-  }
-};
 
 export interface MenuItemInput {
   variantId: string;
@@ -317,28 +181,6 @@ export const createMenu = async ({
     throw error;
   }
 };
-/**
- * 🔹 Supprime un menu spécifique d’un restaurant
- * @param businessId ID du restaurant
- * @param menuId ID du menu à supprimer
- * @returns Message de confirmation
- */
-export const deleteMenu = async (businessId: string, menuId: string) => {
-  try {
-    const res = await axiosInstance.delete(
-      `/restaurants/${businessId}/menus/${menuId}`
-    );
-
-    console.log("✅ Menu supprimé :", res.data);
-    return res.data; // { message: "Menu supprimé avec succès." }
-  } catch (error: any) {
-    console.error(
-      "❌ Erreur deleteMenu :",
-      error.response?.data || error.message
-    );
-    throw error;
-  }
-};
 
 /** ---------- Types ---------- */
 export interface Variant {
@@ -357,59 +199,3 @@ export interface Variant {
     name: string;
   };
 }
-
-export interface UpdatedMenuResponse {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  isActive: boolean;
-  businessId: string;
-  menuItems: MenuItem[];
-}
-
-/** ---------- Fonction principale ---------- */
-/**
- * Met à jour un menu existant
- * @param businessId ID du restaurant
- * @param menuId ID du menu
- * @param data Champs à modifier
- * @throws Error si les paramètres sont invalides ou si la requête échoue
- * @returns Menu mis à jour avec ses variantes
- */
-export const updateMenu = async (
-  businessId: string,
-  menuId: string,
-  data: {
-    name?: string;
-    description?: string;
-    price?: number;
-    isActive?: boolean;
-  }
-): Promise<UpdatedMenuResponse> => {
-  if (!businessId || !menuId) {
-    throw new Error("businessId et menuId sont requis");
-  }
-  if (Object.keys(data).length === 0) {
-    throw new Error("Aucun champ à mettre à jour");
-  }
-
-  try {
-    // Validation du prix si présent
-    if (data.price !== undefined && isNaN(Number(data.price))) {
-      throw new Error("Le prix doit être un nombre valide");
-    }
-
-    const res = await axiosInstance.patch(
-      `/restaurants/${businessId}/menus/${menuId}`,
-      data
-    );
-
-    console.log("✅ Menu mis à jour :", res.data);
-    return res.data as UpdatedMenuResponse;
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message;
-    console.error("❌ Erreur updateMenu :", errorMessage);
-    throw new Error(`Échec de la mise à jour du menu : ${errorMessage}`);
-  }
-};

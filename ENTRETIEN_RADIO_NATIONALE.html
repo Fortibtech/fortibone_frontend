@@ -1,0 +1,380 @@
+<!DOCTYPE html><html><head><title></title><meta charset="utf-8"><style>* {
+	box-sizing: border-box;
+}
+
+html {
+	font-size: 100%;
+}
+
+body {
+	font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+		'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+	line-height: 1.6;
+	font-size: 0.6875em; /* 11 pt */
+	color: #111;
+	margin: 0;
+}
+
+body > :first-child {
+	padding-top: 0;
+	margin-top: 0;
+}
+
+body > :last-child {
+	margin-bottom: 0;
+	padding-bottom: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	margin: 0;
+	padding: 0.5em 0 0.25em;
+}
+
+h5,
+h6 {
+	padding: 0;
+}
+
+h5 {
+	font-size: 1em;
+}
+
+h6 {
+	font-size: 0.875em;
+	text-transform: uppercase;
+}
+
+p {
+	margin: 0.25em 0 1em;
+}
+
+blockquote {
+	margin: 0.5em 0 1em;
+	padding-left: 0.5em;
+	padding-right: 1em;
+	border-left: 4px solid gainsboro;
+	font-style: italic;
+}
+
+ul,
+ol {
+	margin: 0;
+	margin-left: 1em;
+	padding: 0 1.5em 0.5em;
+}
+
+pre {
+	white-space: pre-wrap;
+}
+
+h1 code,
+h2 code,
+h3 code,
+h4 code,
+h5 code,
+h6 code,
+p code,
+li code,
+pre code {
+	background-color: #f8f8f8;
+	padding: 0.1em 0.375em;
+	border: 1px solid #f8f8f8;
+	border-radius: 0.25em;
+	font-family: monospace;
+	font-size: 1.2em;
+}
+
+pre code {
+	display: block;
+	padding: 0.5em;
+}
+
+.page-break {
+	page-break-after: always;
+}
+
+img {
+	max-width: 100%;
+	margin: 1em 0;
+}
+
+table {
+	border-spacing: 0;
+	border-collapse: collapse;
+	display: block;
+	margin: 0 0 1em;
+	width: 100%;
+	overflow: auto;
+}
+
+table th,
+table td {
+	padding: 0.5em 1em;
+	border: 1px solid gainsboro;
+}
+
+table th {
+	font-weight: 600;
+}
+
+table tr {
+	background-color: white;
+	border-top: 1px solid gainsboro;
+}
+
+table tr:nth-child(2n) {
+	background-color: whitesmoke;
+}
+/*# sourceURL=C:\Users\mfoua\AppData\Local\npm-cache\_npx\55158e48eb5c59f7\node_modules\md-to-pdf\markdown.css*/</style><style>pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em
+}
+code.hljs {
+  padding: 3px 5px
+}
+/*!
+  Theme: GitHub
+  Description: Light theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-light
+  Current colors taken from GitHub's CSS
+*/
+.hljs {
+  color: #24292e;
+  background: #ffffff
+}
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  /* prettylights-syntax-keyword */
+  color: #d73a49
+}
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  /* prettylights-syntax-entity */
+  color: #6f42c1
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  /* prettylights-syntax-constant */
+  color: #005cc5
+}
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string {
+  /* prettylights-syntax-string */
+  color: #032f62
+}
+.hljs-built_in,
+.hljs-symbol {
+  /* prettylights-syntax-variable */
+  color: #e36209
+}
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  /* prettylights-syntax-comment */
+  color: #6a737d
+}
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo {
+  /* prettylights-syntax-entity-tag */
+  color: #22863a
+}
+.hljs-subst {
+  /* prettylights-syntax-storage-modifier-import */
+  color: #24292e
+}
+.hljs-section {
+  /* prettylights-syntax-markup-heading */
+  color: #005cc5;
+  font-weight: bold
+}
+.hljs-bullet {
+  /* prettylights-syntax-markup-list */
+  color: #735c0f
+}
+.hljs-emphasis {
+  /* prettylights-syntax-markup-italic */
+  color: #24292e;
+  font-style: italic
+}
+.hljs-strong {
+  /* prettylights-syntax-markup-bold */
+  color: #24292e;
+  font-weight: bold
+}
+.hljs-addition {
+  /* prettylights-syntax-markup-inserted */
+  color: #22863a;
+  background-color: #f0fff4
+}
+.hljs-deletion {
+  /* prettylights-syntax-markup-deleted */
+  color: #b31d28;
+  background-color: #ffeef0
+}
+.hljs-char.escape_,
+.hljs-link,
+.hljs-params,
+.hljs-property,
+.hljs-punctuation,
+.hljs-tag {
+  /* purposely ignored */
+  
+}/*# sourceURL=C:\Users\mfoua\AppData\Local\npm-cache\_npx\55158e48eb5c59f7\node_modules\highlight.js\styles\github.css*/</style></head>
+	<body class="">
+		<h1 id="📻-entretien-radio-nationale---komoralink">📻 Entretien Radio Nationale - KomoraLink</h1>
+<h2 id="durée--10-minutes--format--questions-réponses">Durée : 10 minutes | Format : Questions-Réponses</h2>
+<hr>
+<h2 id="🎯-règles-dor">🎯 Règles d'Or</h2>
+<table>
+<thead>
+<tr>
+<th>✅ À faire</th>
+<th>❌ À éviter</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Parler <strong>lentement</strong> et <strong>clairement</strong></td>
+<td>Jargon technique (API, wallet, backend...)</td>
+</tr>
+<tr>
+<td>Utiliser des <strong>exemples concrets</strong></td>
+<td>Réponses trop longues (max 60 sec)</td>
+</tr>
+<tr>
+<td>Sourire (ça s'entend !)</td>
+<td>Hésitations, "euh..."</td>
+</tr>
+<tr>
+<td>Répéter "<strong>KomoraLink</strong>" régulièrement</td>
+<td>Parler de financement / argent</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="📋-questions-réponses-anticipées">📋 Questions-Réponses Anticipées</h2>
+<h3 id="❓-«-cest-quoi-komoralink--»">❓ « C'est quoi KomoraLink ? »</h3>
+<blockquote>
+<p>« KomoraLink est une application mobile qui permet aux Comoriens d'acheter, vendre, payer et livrer sur une seule plateforme. C'est un écosystème qui connecte les particuliers, les commerçants, les restaurateurs et même la diaspora. L'objectif : moderniser notre économie et la rendre traçable. »</p>
+</blockquote>
+<hr>
+<h3 id="❓-«-à-qui-sadresse-cette-application--»">❓ « À qui s'adresse cette application ? »</h3>
+<blockquote>
+<p>« À tout le monde :</p>
+<ul>
+<li>Le <strong>particulier</strong> qui veut commander un repas ou un produit</li>
+<li>Le <strong>commerçant</strong> qui veut gérer sa boutique et toucher plus de clients</li>
+<li>Le <strong>restaurateur</strong> qui veut prendre des commandes en ligne</li>
+<li>Le <strong>livreur</strong> qui veut être payé de façon sécurisée</li>
+<li>La <strong>diaspora</strong> qui veut soutenir sa famille avec transparence »</li>
+</ul>
+</blockquote>
+<hr>
+<h3 id="❓-«-quel-problème-vous-résolvez-concrètement--»">❓ « Quel problème vous résolvez concrètement ? »</h3>
+<blockquote>
+<p>« Aujourd'hui :</p>
+<ul>
+<li>Un commerçant gère son activité avec un <strong>cahier</strong>. Il perd du temps, fait des erreurs, ne sait pas ce qui se vend bien.</li>
+<li>Un particulier doit se déplacer de boutique en boutique pour <strong>comparer les prix</strong>.</li>
+<li>Quand la diaspora envoie de l'argent, elle <strong>ne sait pas comment il est utilisé</strong>.</li>
+</ul>
+<p>KomoraLink apporte des <strong>données claires</strong>, de la <strong>traçabilité</strong> et de la <strong>confiance</strong>. »</p>
+</blockquote>
+<hr>
+<h3 id="❓-«-comment-ça-fonctionne-pour-un-commerçant--»">❓ « Comment ça fonctionne pour un commerçant ? »</h3>
+<blockquote>
+<p>« Il télécharge l'application, crée son compte <strong>gratuitement</strong>, et ajoute ses produits. Automatiquement, il a un <strong>tableau de bord</strong> qui montre ses ventes, ses revenus, ses stocks. Ses produits sont visibles par tous les utilisateurs. Plus de cahier papier, plus de calculs à la main. »</p>
+</blockquote>
+<hr>
+<h3 id="❓-«-et-pour-un-particulier--»">❓ « Et pour un particulier ? »</h3>
+<blockquote>
+<p>« Il ouvre l'application, cherche un produit ou un restaurant, compare les prix, commande et paie avec son <strong>portefeuille électronique</strong>. Pas besoin de cash. Et s'il veut se faire livrer, tout est suivi jusqu'à la réception. »</p>
+</blockquote>
+<hr>
+<h3 id="❓-«-cest-quoi-lavantage-pour-la-diaspora--»">❓ « C'est quoi l'avantage pour la diaspora ? »</h3>
+<blockquote>
+<p>« Aujourd'hui, quand vous envoyez de l'argent à un proche, vous faites confiance aveuglément. Avec KomoraLink :</p>
+<ul>
+<li>Vous envoyez de l'argent directement sur le <strong>portefeuille de votre famille</strong></li>
+<li>Ou mieux : vous <strong>achetez un produit depuis la France</strong> et le faites livrer aux Comores</li>
+<li>Vous voyez <strong>exactement</strong> ce que vous financez »</li>
+</ul>
+</blockquote>
+<hr>
+<h3 id="❓-«-cest-gratuit--»">❓ « C'est gratuit ? »</h3>
+<blockquote>
+<p>« <strong>L'inscription est gratuite</strong>. Créer un portefeuille, c'est gratuit. Consulter les produits, c'est gratuit. Nous prenons une petite commission uniquement quand une vente se réalise. On ne gagne de l'argent que si nos utilisateurs en gagnent. »</p>
+</blockquote>
+<hr>
+<h3 id="❓-«-pourquoi-avoir-créé-komoralink--»">❓ « Pourquoi avoir créé KomoraLink ? »</h3>
+<blockquote>
+<p>« Parce que je suis Comorien et j'ai vu ces problèmes tous les jours :</p>
+<ul>
+<li>Un cousin qui veut investir depuis la France mais n'a aucun moyen de suivi</li>
+<li>Des commerçants talentueux mais invisibles</li>
+<li>Une économie qui pourrait être bien plus forte si elle était connectée</li>
+</ul>
+<p>KomoraLink, c'est <strong>ma contribution pour moderniser notre pays</strong>. »</p>
+</blockquote>
+<hr>
+<h3 id="❓-«-cest-disponible-maintenant--»">❓ « C'est disponible maintenant ? »</h3>
+<blockquote>
+<p>« <strong>Oui !</strong> L'application est téléchargeable sur Android et iOS. Il suffit de chercher "KomoraLink" et de s'inscrire. C'est gratuit et ça prend 2 minutes. »</p>
+</blockquote>
+<hr>
+<h3 id="❓-«-quest-ce-qui-vous-différencie-des-autres-applications--»">❓ « Qu'est-ce qui vous différencie des autres applications ? »</h3>
+<blockquote>
+<p>« KomoraLink n'est pas une application de plus, c'est un <strong>écosystème complet</strong>. D'autres font soit le paiement, soit la livraison, soit le commerce. Nous, on connecte <strong>tout ensemble</strong> : le commerçant, le client, le livreur, le fournisseur, la diaspora. Tout sur une même plateforme. »</p>
+</blockquote>
+<hr>
+<h3 id="❓-«-cest-sécurisé--»">❓ « C'est sécurisé ? »</h3>
+<blockquote>
+<p>« Absolument. Chaque transaction est <strong>tracée et enregistrée</strong>. Les paiements passent par des solutions sécurisées. Et surtout, contrairement au cash, si vous avez un problème, vous avez un <strong>historique</strong> et une <strong>preuve</strong>. »</p>
+</blockquote>
+<hr>
+<h2 id="🎤-phrase-de-fin-si-on-vous-laisse-conclure">🎤 Phrase de Fin (si on vous laisse conclure)</h2>
+<blockquote>
+<p>« <strong>KomoraLink, c'est le commerce comorien dans votre poche.</strong> Téléchargez, testez, et rejoignez-nous. Ensemble, construisons l'économie de demain. »</p>
+</blockquote>
+<hr>
+<h2 id="📱-informations-à-retenir">📱 Informations à Retenir</h2>
+<ul>
+<li><strong>Nom</strong> : KomoraLink</li>
+<li><strong>Disponible sur</strong> : Android (Google Play) et iOS (App Store)</li>
+<li><strong>Prix</strong> : Gratuit</li>
+<li><strong>Site web</strong> : komoralink.com</li>
+</ul>
+<hr>
+<blockquote>
+<p><em>Document préparé pour l'entretien Radio Nationale - Janvier 2026</em></p>
+</blockquote>
+
+	
+
+</body></html>
