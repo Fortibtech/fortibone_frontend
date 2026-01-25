@@ -688,7 +688,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #22d989;
+    background: #10B981;
     border-radius: 50%;
     transition: all 0.2s ease;
 }
@@ -698,7 +698,7 @@
 }
 
 .detailsBtn:hover {
-    background: #1BB874;
+    background: #059669;
     transform: scale(1.1);
 }
 
@@ -832,7 +832,7 @@
 .recordLossesBtn {
     width: 100%;
     padding: var(--space-4);
-    background: #22d989;
+    background: #10B981;
     color: white;
     border: none;
     border-radius: var(--radius-lg);
@@ -842,7 +842,7 @@
 }
 
 .recordLossesBtn:hover:not(:disabled) {
-    background: #1BB874;
+    background: #059669;
 }
 
 .recordLossesBtn:disabled {

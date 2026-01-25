@@ -7,7 +7,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { getBusinessById } from '@/lib/api/business';
 import { getProducts, type Product } from '@/lib/api/products';
-import { useProCartStore } from '@/stores/achatCartStore';
+import { useProCartStore } from '@/stores/proCartStore';
 import styles from '../achats.module.css';
 
 

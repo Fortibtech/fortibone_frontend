@@ -1,76 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getWalletTransactions, type WalletTransaction, type TransactionType, type TransactionStatus } from '@/lib/api';
 import styles from './transactions.module.css';
 
 type DatePreset = 'all' | 'today' | 'week' | 'month';
-
-// Type for formatted transactions with rawDate for grouping
-interface FormattedTransaction extends WalletTransaction {
-    rawDate: Date;
-    title: string;
-    transactionType: 'income' | 'expense';
-}
-
-// Type for grouped transactions
-interface TransactionGroup {
-    title: string;
-    data: FormattedTransaction[];
-}
-
-// Helper functions for date comparison (like date-fns)
-const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-};
-
-const isYesterday = (date: Date) => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return date.toDateString() === yesterday.toDateString();
-};
-
-const isThisWeek = (date: Date) => {
-    const today = new Date();
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    return date >= weekAgo && date <= today;
-};
-
-const isThisMonth = (date: Date) => {
-    const today = new Date();
-    return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
-};
-
-const startOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
-};
-
-// Group transactions by period like mobile
-function groupTransactionsByPeriod(txs: FormattedTransaction[]): TransactionGroup[] {
-    const today = new Date();
-    const groups: TransactionGroup[] = [];
-
-    const todayTx = txs.filter((t) => isToday(t.rawDate));
-    const yesterdayTx = txs.filter((t) => isYesterday(t.rawDate));
-    const thisWeekTx = txs.filter(
-        (t) => isThisWeek(t.rawDate) && !isToday(t.rawDate) && !isYesterday(t.rawDate)
-    );
-    const thisMonthTx = txs.filter(
-        (t) => isThisMonth(t.rawDate) && !isThisWeek(t.rawDate)
-    );
-    const olderTx = txs.filter((t) => t.rawDate < startOfMonth(today));
-
-    if (todayTx.length) groups.push({ title: "AUJOURD'HUI", data: todayTx });
-    if (yesterdayTx.length) groups.push({ title: 'HIER', data: yesterdayTx });
-    if (thisWeekTx.length) groups.push({ title: 'CETTE SEMAINE', data: thisWeekTx });
-    if (thisMonthTx.length) groups.push({ title: 'CE MOIS-CI', data: thisMonthTx });
-    if (olderTx.length) groups.push({ title: 'PLUS ANCIEN', data: olderTx });
-
-    return groups;
-}
 
 export default function TransactionsPage() {
     const router = useRouter();
@@ -89,27 +25,6 @@ export default function TransactionsPage() {
     const [showFilters, setShowFilters] = useState(false);
 
     const limit = 20;
-
-    // Format transactions for grouping
-    const formattedTransactions = useMemo((): FormattedTransaction[] => {
-        return transactions.map((tx) => {
-            const provider = tx.provider?.toUpperCase() || '';
-            const amount = parseFloat(String(tx.amount)) || 0;
-            const isIncome = amount > 0 || provider === 'DEPOSIT' || provider === 'REFUND';
-
-            return {
-                ...tx,
-                rawDate: new Date(tx.createdAt),
-                title: getTransactionTitle(tx),
-                transactionType: isIncome ? 'income' : 'expense',
-            };
-        });
-    }, [transactions]);
-
-    // Group transactions by period
-    const groupedTransactions = useMemo(() => {
-        return groupTransactionsByPeriod(formattedTransactions);
-    }, [formattedTransactions]);
 
     const loadTransactions = useCallback(async (isRefresh = false) => {
         if (!hasMore && !isRefresh) return;

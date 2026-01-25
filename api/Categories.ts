@@ -23,7 +23,6 @@ export const getCategories = async (): Promise<Category[]> => {
 export const getCategoryById = async (id: string): Promise<Category> => {
   try {
     const response = await axiosInstance.get<Category>(`/categories/${id}`);
-    console.log("✅ Détails de la catégorie :", response.data);
     return response.data;
   } catch (error: any) {
     console.error(
@@ -32,7 +31,7 @@ export const getCategoryById = async (id: string): Promise<Category> => {
     );
     throw new Error(
       error.response?.data?.message ||
-        "Erreur lors de la récupération de la catégorie"
+      "Erreur lors de la récupération de la catégorie"
     );
   }
 };

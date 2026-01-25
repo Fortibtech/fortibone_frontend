@@ -126,7 +126,7 @@
 .statsCard:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    border-color: #1BB874;
+    border-color: #00C851;
 }
 
 .statsIconWrapper {
@@ -156,7 +156,7 @@
 }
 
 .statsArrow {
-    color: #1BB874;
+    color: #00C851;
     font-size: 1.2rem;
     font-weight: bold;
 }
@@ -174,7 +174,7 @@
     width: 40px;
     height: 40px;
     border: 3px solid #f0f0f0;
-    border-top-color: #22d989;
+    border-top-color: #10B981;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 16px;

@@ -207,21 +207,17 @@
     margin-left: var(--sidebar-collapsed-width);
 }
 
-/* Header - Modern SaaS Style (White with Border) */
+/* Header - Green like mobile app */
 .header {
     height: var(--header-height);
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--color-gray-200);
+    background: var(--color-primary);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 var(--space-8);
-    /* Wider padding */
+    padding: 0 var(--space-6);
     position: sticky;
     top: 0;
     z-index: 50;
-    transition: all var(--transition-base);
 }
 
 .headerLeft {
@@ -233,8 +229,8 @@
 .menuButton {
     display: none;
     background: transparent;
-    border: 1px solid var(--color-gray-200);
-    color: var(--color-gray-600);
+    border: none;
+    color: white;
     cursor: pointer;
     padding: var(--space-2);
     border-radius: var(--radius-md);
@@ -242,58 +238,51 @@
 }
 
 .menuButton:hover {
-    background: var(--color-gray-50);
-    color: var(--color-gray-900);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .pageTitle {
     font-size: var(--text-xl);
-    font-weight: 700;
-    color: var(--color-gray-900);
-    letter-spacing: -0.5px;
+    font-weight: 600;
+    color: white;
 }
 
 .headerRight {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-3);
 }
 
 .headerIcon {
     width: 40px;
     height: 40px;
-    border-radius: var(--radius-full);
-    /* Circular icons */
-    background: transparent;
-    border: 1px solid transparent;
-    color: var(--color-gray-500);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 16px;
     transition: all var(--transition-fast);
 }
 
 .headerIcon:hover {
-    background: var(--color-gray-100);
-    color: var(--color-primary);
-    border-color: var(--color-gray-200);
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .userAvatar {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: var(--radius-full);
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-dark) 100%);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: var(--text-sm);
     font-weight: 600;
-    box-shadow: var(--shadow-sm);
-    border: 2px solid white;
 }
 
 /* Content */
@@ -302,9 +291,6 @@
     padding: var(--space-6);
     overflow-y: auto;
     background-color: var(--color-gray-50);
-    width: 100%;
-    max-width: var(--content-max-width);
-    margin: 0 auto;
 }
 
 /* Overlay for mobile */

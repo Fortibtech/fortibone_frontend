@@ -31,8 +31,8 @@
 }
 
 .backButton:hover {
-    border-color: #1BB874;
-    color: #1BB874;
+    border-color: #059669;
+    color: #059669;
     background: #ecfdf5;
 }
 
@@ -79,7 +79,7 @@
 .select:focus,
 .textarea:focus {
     outline: none;
-    border-color: #1BB874;
+    border-color: #059669;
 }
 
 .inputError {
@@ -131,19 +131,19 @@
 }
 
 .radioItem:hover {
-    border-color: #1BB874;
+    border-color: #059669;
 }
 
 .radioItemSelected {
     background: #ecfdf5;
-    border-color: #1BB874;
-    color: #1BB874;
+    border-color: #059669;
+    color: #059669;
 }
 
 .submitButton {
     width: 100%;
     padding: 16px;
-    background: linear-gradient(135deg, #1BB874, #16a465);
+    background: linear-gradient(135deg, #059669, #047857);
     color: #fff;
     border: none;
     border-radius: 12px;
@@ -181,7 +181,7 @@
     width: 40px;
     height: 40px;
     border: 3px solid #f3f4f6;
-    border-top-color: #1BB874;
+    border-top-color: #059669;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }

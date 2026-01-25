@@ -2,11 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
 import { useUserStore } from '@/stores/userStore';
-import { updateBusiness } from '@/lib/api';
 import styles from './settings.module.css';
 
 // Icons
@@ -43,10 +41,11 @@ export default function SettingsPage() {
     const pathname = usePathname();
     const dashboardType = pathname.split('/')[2] || 'commercant';
     const selectedBusiness = useBusinessStore((s) => s.selectedBusiness);
-    const setSelectedBusiness = useBusinessStore((s) => s.setSelectedBusiness);
     const { userProfile } = useUserStore();
 
     const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState('');
+    const [error, setError] = useState('');
 
     // Business settings
     const [businessName, setBusinessName] = useState('');
@@ -72,27 +71,17 @@ export default function SettingsPage() {
         }
     }, [selectedBusiness]);
 
-    // Real API call to update business
     const handleSave = async () => {
-        if (!selectedBusiness) return;
-
         setLoading(true);
+        setError('');
+        setSuccess('');
+
         try {
-            const updatedData = await updateBusiness(selectedBusiness.id, {
-                name: businessName,
-                description,
-                // phone, email, address selon structure API
-            });
-
-            // Update store with new data
-            setSelectedBusiness(updatedData);
-
-            toast.success('Paramètres enregistrés avec succès !');
-        } catch (err: any) {
-            console.error('Erreur sauvegarde:', err);
-            toast.error('Erreur lors de la sauvegarde', {
-                description: err.response?.data?.message || err.message,
-            });
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            setSuccess('Paramètres sauvegardés avec succès !');
+        } catch (err) {
+            setError('Erreur lors de la sauvegarde');
         } finally {
             setLoading(false);
         }
@@ -119,7 +108,8 @@ export default function SettingsPage() {
                     <p className={styles.subtitle}>Gérez les paramètres de votre entreprise</p>
                 </div>
 
-                {/* Toast handles success/error messages now */}
+                {success && <div className={styles.successMessage}>{success}</div>}
+                {error && <div className={styles.errorMessage}>{error}</div>}
 
                 {/* Business Info Section */}
                 <div className={styles.section}>

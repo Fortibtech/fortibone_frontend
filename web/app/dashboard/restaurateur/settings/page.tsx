@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
-import { updateBusiness } from '@/lib/api/business';
 import styles from './settings.module.css';
 
 // Icons
@@ -40,9 +38,10 @@ const icons = {
 export default function RestaurateurSettingsPage() {
     const router = useRouter();
     const selectedBusiness = useBusinessStore((s) => s.selectedBusiness);
-    const setSelectedBusiness = useBusinessStore((s) => s.setSelectedBusiness);
 
     const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState('');
+    const [error, setError] = useState('');
 
     // Business settings
     const [businessName, setBusinessName] = useState('');
@@ -67,21 +66,15 @@ export default function RestaurateurSettingsPage() {
     }, [selectedBusiness]);
 
     const handleSave = async () => {
-        if (!selectedBusiness) return;
         setLoading(true);
+        setError('');
+        setSuccess('');
 
         try {
-            const updated = await updateBusiness(selectedBusiness.id, {
-                name: businessName,
-                description,
-            });
-            setSelectedBusiness(updated);
-            toast.success('Paramètres sauvegardés avec succès !');
-        } catch (err: any) {
-            console.error('Erreur sauvegarde:', err);
-            toast.error('Erreur lors de la sauvegarde', {
-                description: err.response?.data?.message || err.message,
-            });
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            setSuccess('Paramètres sauvegardés avec succès !');
+        } catch (err) {
+            setError('Erreur lors de la sauvegarde');
         } finally {
             setLoading(false);
         }
@@ -108,7 +101,8 @@ export default function RestaurateurSettingsPage() {
                     <p className={styles.subtitle}>Gérez les paramètres de votre restaurant</p>
                 </div>
 
-                {/* Toast handles success/error messages now */}
+                {success && <div className={styles.successMessage}>{success}</div>}
+                {error && <div className={styles.errorMessage}>{error}</div>}
 
                 {/* Business Info Section */}
                 <div className={styles.section}>

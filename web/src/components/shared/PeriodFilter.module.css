@@ -71,7 +71,7 @@
 
 .optionActive {
     background: #ecfdf5;
-    border-color: #22d989;
+    border-color: #10b981;
 }
 
 .optionIcon {
@@ -128,13 +128,13 @@
 
 .dateInput:focus {
     outline: none;
-    border-color: #22d989;
+    border-color: #10b981;
 }
 
 .applyBtn {
     width: 100%;
     padding: 14px;
-    background: #22d989;
+    background: #10b981;
     color: white;
     border: none;
     border-radius: 12px;
@@ -146,7 +146,7 @@
 }
 
 .applyBtn:hover {
-    background: #1BB874;
+    background: #059669;
 }
 
 /* Trigger Button Styles */

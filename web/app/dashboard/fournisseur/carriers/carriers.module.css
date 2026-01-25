@@ -36,7 +36,7 @@
     width: 40px;
     height: 40px;
     border: 3px solid #e5e7eb;
-    border-top-color: #22d989;
+    border-top-color: #10b981;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 16px;
@@ -74,7 +74,7 @@
     font-weight: 500;
     padding: 6px 12px;
     background: #ecfdf5;
-    color: #1BB874;
+    color: #059669;
     border-radius: 20px;
 }
 
@@ -116,7 +116,7 @@
 .priceValue {
     font-size: 18px;
     font-weight: 700;
-    color: #1BB874;
+    color: #059669;
 }
 
 .distanceInfo {

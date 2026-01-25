@@ -1,4 +1,4 @@
-// components/charts/CashFlowChart.tsx
+// components/charts/CashFlowChart.tsx → VERSION FINALE AVEC DEVISE DYNAMIQUE
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -15,7 +15,7 @@ import {
   startOfMonth,
   endOfMonth,
 } from "date-fns";
-import { fr } from "date-fns/locale/fr"; // Import correct (v3 compatible)
+import { fr } from "date-fns/locale/fr";
 
 export type CashFlowData = {
   month: string;
@@ -25,16 +25,19 @@ export type CashFlowData = {
 
 type Props = {
   period?: "6m" | "12m" | "all";
+  currency?: string | null;
 };
 
-const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
+const CashFlowChart: React.FC<Props> = ({
+  period = "6m",
+  currency = "XAF",
+}) => {
   const [data, setData] = useState<CashFlowData[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAllTransactionsInPeriod = async (start: string, end: string) => {
     const allTxs: any[] = [];
     let page = 1;
-
     while (true) {
       const res = await GetWalletTransactions({
         startDate: start,
@@ -43,7 +46,7 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
         limit: 100,
         page,
       });
-      const items = res?.data || [];
+      const items = Array.isArray(res) ? res : res?.data || [];
       allTxs.push(...items);
       if (items.length < 100) break;
       page++;
@@ -76,32 +79,38 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
             format(monthDate, "MMM", { locale: fr }).slice(1);
 
           const monthTxs = transactions.filter(
-            (t: any) => format(new Date(t.createdAt), "yyyy-MM") === monthKey
+            (t: any) =>
+              format(new Date(t.createdAt || t.created_at), "yyyy-MM") ===
+              monthKey
           );
 
-          const revenue = monthTxs
-            .filter((t: any) =>
-              ["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
-            )
-            .reduce(
-              (sum: number, t: any) => sum + Math.abs(Number(t.amount || 0)),
-              0
-            );
+          let revenue = 0;
+          let expense = 0;
 
-          const expense = monthTxs
-            .filter(
-              (t: any) =>
-                !["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
-            )
-            .reduce(
-              (sum: number, t: any) => sum + Math.abs(Number(t.amount || 0)),
-              0
-            );
+          monthTxs.forEach((t: any) => {
+            const amount = Number(t.amount) || 0;
+            const provider = (t.provider || "").toString().toUpperCase();
+            const type = (t.type || "").toString().toUpperCase();
+
+            const isIncome =
+              amount > 0 ||
+              provider === "DEPOSIT" ||
+              provider === "REFUND" ||
+              provider === "ADJUSTMENT" ||
+              type === "DEPOSIT" ||
+              type === "REFUND";
+
+            if (isIncome) {
+              revenue += Math.abs(amount);
+            } else {
+              expense += Math.abs(amount);
+            }
+          });
 
           return {
             month: monthName,
-            revenue: Math.round(revenue / 1000),
-            expense: Math.round(expense / 1000),
+            revenue: Math.round(revenue / 1000), // en milliers
+            expense: Math.round(expense / 1000), // en milliers
           };
         });
 
@@ -123,6 +132,12 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
   );
   const height = 200;
 
+  // Formatage intelligent de l'axe Y : XK + devise
+  const formatAxisLabel = (value: number) => {
+    if (value === 0) return "0";
+    return `${Math.round(value)}K ${currency}`;
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -140,10 +155,18 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
 
       <View style={styles.chart}>
         <View style={styles.yAxis}>
-          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.8)}K</Text>
-          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.6)}K</Text>
-          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.4)}K</Text>
-          <Text style={styles.axisLabel}>{Math.round(maxValue * 0.2)}K</Text>
+          <Text style={styles.axisLabel}>
+            {formatAxisLabel(maxValue * 0.8)}
+          </Text>
+          <Text style={styles.axisLabel}>
+            {formatAxisLabel(maxValue * 0.6)}
+          </Text>
+          <Text style={styles.axisLabel}>
+            {formatAxisLabel(maxValue * 0.4)}
+          </Text>
+          <Text style={styles.axisLabel}>
+            {formatAxisLabel(maxValue * 0.2)}
+          </Text>
           <Text style={styles.axisLabel}>0</Text>
         </View>
 
@@ -172,11 +195,11 @@ const CashFlowChart: React.FC<Props> = ({ period = "6m" }) => {
 
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.dot, { backgroundColor: "#4CAF50" }]} />
+          <View style={[styles.dot, { backgroundColor: "#00af66" }]} />
           <Text style={styles.legendText}>Revenus</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.dot, { backgroundColor: "#F44336" }]} />
+          <View style={[styles.dot, { backgroundColor: "#ef4444" }]} />
           <Text style={styles.legendText}>Dépenses</Text>
         </View>
       </View>
@@ -192,18 +215,21 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 12,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#eef0f4",
   },
   title: {
     fontSize: 17,
     fontWeight: "600",
     marginBottom: 16,
+    color: "#000",
   },
   chart: {
     flexDirection: "row",
     height: 240,
   },
   yAxis: {
-    width: 44,
+    width: 70, // Élargi pour accueillir "XK XAF"
     justifyContent: "space-between",
     paddingVertical: 12,
   },
@@ -235,10 +261,10 @@ const styles = StyleSheet.create({
     minHeight: 4,
   },
   revenueBar: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#00af66",
   },
   expenseBar: {
-    backgroundColor: "#F44336",
+    backgroundColor: "#ef4444",
   },
   monthLabel: {
     fontSize: 11,

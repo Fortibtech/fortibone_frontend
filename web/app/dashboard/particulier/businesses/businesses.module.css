@@ -53,7 +53,7 @@
 
 .searchInput:focus {
     outline: none;
-    border-color: #1BB874;
+    border-color: #059669;
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
@@ -74,7 +74,7 @@
 }
 
 .dropdownBtn:hover {
-    border-color: #1BB874;
+    border-color: #059669;
 }
 
 .dropdownMenu {
@@ -130,13 +130,13 @@
 }
 
 .categoryBtn:hover {
-    border-color: #1BB874;
-    color: #1BB874;
+    border-color: #059669;
+    color: #059669;
 }
 
 .categoryBtn.active {
-    border-color: #1BB874;
-    background: #1BB874;
+    border-color: #059669;
+    background: #059669;
     color: white;
 }
 
@@ -203,7 +203,7 @@
     display: inline-block;
     padding: 4px 10px;
     background: #f0fdf4;
-    color: #1BB874;
+    color: #059669;
     border-radius: 4px;
     font-size: 12px;
     font-weight: 500;
@@ -263,7 +263,7 @@
     width: 48px;
     height: 48px;
     border: 4px solid #e5e7eb;
-    border-top-color: #1BB874;
+    border-top-color: #059669;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin: 0 auto 16px;
@@ -284,7 +284,7 @@
 
 .loadMoreBtn {
     padding: 12px 32px;
-    background: #1BB874;
+    background: #059669;
     color: white;
     border: none;
     border-radius: 8px;
@@ -295,7 +295,7 @@
 }
 
 .loadMoreBtn:hover:not(:disabled) {
-    background: #16a465;
+    background: #047857;
 }
 
 .loadMoreBtn:disabled {

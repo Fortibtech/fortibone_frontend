@@ -5,11 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
-  SafeAreaView,
   ScrollView,
   Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface TransactionDetailsProps {
   type: "retrait" | "depot" | "paiement" | "achat";
@@ -327,6 +327,5 @@ const styles = StyleSheet.create({
 });
 
 // Exemple d'utilisation
-
 
 export default TransactionDetails;

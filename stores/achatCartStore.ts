@@ -1,18 +1,18 @@
-// stores/useProCartStore.ts
+// stores/useProCartStore.ts (ou achatCartStore.ts)
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProductVariant } from "@/api";
 
 export interface ProCartItem {
-  id: string; // clé unique : `${productId}-${variantId}-${supplierBusinessId}`
+  id: string;
   productId: string;
   productName: string;
   variant: ProductVariant;
   quantity: number;
   imageUrl?: string | null;
   addedAt: number;
-  supplierBusinessId: string;
+  supplierBusinessId: string; // Toujours requis
 }
 
 interface ProCartStore {
@@ -24,7 +24,7 @@ interface ProCartStore {
     variant: ProductVariant,
     quantity?: number,
     imageUrl?: string,
-    supplierBusinessId?: string
+    supplierBusinessId: string
   ) => void;
 
   removeItem: (
@@ -32,22 +32,25 @@ interface ProCartStore {
     variantId: string,
     supplierBusinessId: string
   ) => void;
+
   updateQuantity: (
     productId: string,
     variantId: string,
     supplierBusinessId: string,
     quantity: number
   ) => void;
+
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
 }
 
+// ID stable même si supplierBusinessId est vide
 const generateId = (
   productId: string,
   variantId: string,
-  supplierBusinessId?: string
-) => `${productId}-${variantId}-${supplierBusinessId}`;
+  supplierBusinessId: string
+) => `${productId}-${variantId}-${supplierBusinessId || "no-supplier"}`;
 
 export const useProCartStore = create<ProCartStore>()(
   persist(
@@ -62,14 +65,17 @@ export const useProCartStore = create<ProCartStore>()(
         imageUrl,
         supplierBusinessId
       ) => {
-        const id = generateId(productId, variant.id, supplierBusinessId);
+        // Protection : si pas de supplier, on met une valeur par défaut
+        const safeSupplierId = supplierBusinessId || "no-supplier";
+        const variantId = variant.id || "no-variant";
+        const id = generateId(productId, variantId, safeSupplierId);
 
-        set((state: any) => {
-          const existing = state.items.find((i:any) => i.id === id);
+        set((state) => {
+          const existing = state.items.find((i) => i.id === id);
 
           if (existing) {
             return {
-              items: state.items.map((i:any) =>
+              items: state.items.map((i) =>
                 i.id === id ? { ...i, quantity: i.quantity + quantity } : i
               ),
             };
@@ -86,52 +92,58 @@ export const useProCartStore = create<ProCartStore>()(
                 quantity,
                 imageUrl: imageUrl ?? variant.imageUrl ?? null,
                 addedAt: Date.now(),
-                supplierBusinessId,
+                supplierBusinessId: safeSupplierId,
               },
             ],
           };
         });
       },
 
-      removeItem: (productId, variantId, supplierBusinessId) =>
-        set((state) => ({
-          items: state.items.filter(
-            (i) => i.id !== generateId(productId, variantId, supplierBusinessId)
-          ),
-        })),
+      removeItem: (productId, variantId, supplierBusinessId) => {
+        const safeSupplierId = supplierBusinessId || "no-supplier";
+        const id = generateId(productId, variantId, safeSupplierId);
 
-      updateQuantity: (productId, variantId, supplierBusinessId, quantity) =>
+        set((state) => ({
+          items: state.items.filter((i) => i.id !== id),
+        }));
+      },
+
+      updateQuantity: (productId, variantId, supplierBusinessId, quantity) => {
+        const safeSupplierId = supplierBusinessId || "no-supplier";
+        const id = generateId(productId, variantId, safeSupplierId);
+
         set((state) => {
           if (quantity <= 0) {
             return {
-              items: state.items.filter(
-                (i) =>
-                  i.id !== generateId(productId, variantId, supplierBusinessId)
-              ),
+              items: state.items.filter((i) => i.id !== id),
             };
           }
           return {
             items: state.items.map((i) =>
-              i.id === generateId(productId, variantId, supplierBusinessId)
-                ? { ...i, quantity }
-                : i
+              i.id === id ? { ...i, quantity } : i
             ),
           };
-        }),
+        });
+      },
 
       clearCart: () => set({ items: [] }),
 
-      getTotalItems: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
+      getTotalItems: () => {
+        const items = get().items;
+        return items.reduce((sum, i) => sum + i.quantity, 0);
+      },
 
-      getTotalPrice: () =>
-        get().items.reduce((sum, item) => {
+      getTotalPrice: () => {
+        const items = get().items;
+        return items.reduce((sum, item) => {
           const price = Number(item.variant.price) || 0;
           return sum + price * item.quantity;
-        }, 0),
+        }, 0);
+      },
     }),
     {
       name: "pro-cart-storage",
-      storage: createJSONStorage(() => AsyncStorage), // Plus de warning !
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 );

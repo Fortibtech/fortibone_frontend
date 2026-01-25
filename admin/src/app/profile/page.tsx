@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import styles from '../dashboard/dashboard.module.css';
+import styles from '../page.module.css';
 
 interface User {
     id: string;

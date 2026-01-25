@@ -33,31 +33,18 @@ export default function OrdersPage() {
         fetchOrders();
     }, [page]);
 
-    // Status styles exactly aligned with mobile getStatusStyle()
     const getStatusStyle = (status: Order['status']) => {
         switch (status) {
-            case 'PENDING_PAYMENT':
-                return { text: 'En attente de paiement', color: '#F97316', bg: '#FFEDD5' };
-            case 'PENDING':
-                return { text: 'Nouvelle commande', color: '#EA580C', bg: '#FFF7C2' };
-            case 'CONFIRMED':
-                return { text: 'Confirmée', color: '#7C3AED', bg: '#EDE9FE' };
-            case 'PROCESSING':
-                return { text: 'En préparation', color: '#D97706', bg: '#FFFBEB' };
-            case 'SHIPPED':
-                return { text: 'Expédiée', color: '#2563EB', bg: '#DBEAFE' };
-            case 'DELIVERED':
-                return { text: 'Livrée', color: '#16A34A', bg: '#DCFCE7' };
-            case 'COMPLETED':
-                return { text: 'Terminée', color: '#059669', bg: '#D1FAE5' };
-            case 'CANCELLED':
-                return { text: 'Annulée', color: '#EF4444', bg: '#FECACA' };
-            case 'PAID':
-                return { text: 'Payée', color: '#059669', bg: '#D1FAE5' };
-            case 'REFUNDED':
-                return { text: 'Remboursée', color: '#6B7280', bg: '#E5E7EB' };
-            default:
-                return { text: status, color: '#6B7280', bg: '#F3F4F6' };
+            case 'PENDING_PAYMENT': return { text: 'En attente', color: '#B45309', bg: '#FFFBEB' };
+            case 'PENDING': return { text: 'Nouvelle', color: '#B45309', bg: '#FFFBEB' };
+            case 'CONFIRMED': return { text: 'Confirmée', color: '#1D4ED8', bg: '#EFF6FF' };
+            case 'PROCESSING': return { text: 'En préparation', color: '#1D4ED8', bg: '#EFF6FF' };
+            case 'SHIPPED': return { text: 'Expédiée', color: '#7C3AED', bg: '#F5F3FF' };
+            case 'DELIVERED': return { text: 'Livrée', color: '#047857', bg: '#ECFDF5' };
+            case 'COMPLETED': return { text: 'Terminée', color: '#047857', bg: '#ECFDF5' };
+            case 'CANCELLED': return { text: 'Annulée', color: '#B91C1C', bg: '#FEF2F2' };
+            case 'PAID': return { text: 'Payée', color: '#047857', bg: '#ECFDF5' };
+            default: return { text: status, color: '#374151', bg: '#F3F4F6' };
         }
     };
 

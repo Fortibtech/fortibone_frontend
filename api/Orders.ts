@@ -18,8 +18,6 @@ export const createOrder = async (
       "/orders",
       payload
     );
-    // TODO: Remplacer par une bibliothèque de journalisation structurée (ex: winston)
-    console.log("✅ Commande créée:", response.data);
 
     // Validation basique de la réponse
     if (!response.data.id || !response.data.orderNumber) {
@@ -29,17 +27,8 @@ export const createOrder = async (
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<any>;
-    console.log("❌ ERREUR COMPLÈTE :", {
-      message: axiosError.message,
-      status: axiosError.response?.status,
-      data: axiosError.response?.data,
-      config: {
-        url: axiosError.config?.url,
-        method: axiosError.config?.method,
-        data: axiosError.config?.data,
-      },
-    });
-    throw error; // on rejette pour que ça remonte
+    console.error("❌ Erreur createOrder:", axiosError.response?.data || axiosError.message);
+    throw error;
   }
 };
 
@@ -48,14 +37,14 @@ export const getMyOrders = async (params?: {
   page?: number;
   limit?: number;
   status?:
-    | "PENDING"
-    | "CONFIRMED"
-    | "PROCESSING"
-    | "SHIPPED"
-    | "DELIVERED"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "REFUNDED";
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED";
   type?: "SALE" | "PURCHASE" | "RESERVATION";
 }): Promise<MyOrdersResponse> => {
   try {
@@ -69,8 +58,6 @@ export const getMyOrders = async (params?: {
         "Réponse API invalide : données manquantes ou incorrectes"
       );
     }
-    // TODO: Remplacer par une bibliothèque de journalisation structurée (ex: winston)
-    console.log("✅ Commandes récupérées:", response.data);
     return response.data;
   } catch (error: any) {
     // TODO: Remplacer par une bibliothèque de journalisation structurée
@@ -79,8 +66,7 @@ export const getMyOrders = async (params?: {
       error.response?.data || error.message
     );
     throw new Error(
-      `Échec de la récupération des commandes: ${
-        error.response?.data?.message || error.message
+      `Échec de la récupération des commandes: ${error.response?.data?.message || error.message
       }`
     );
   }
@@ -181,14 +167,14 @@ export interface OrderResponse {
   orderNumber: string;
   type: "SALE" | "PURCHASE" | "RESERVATION";
   status:
-    | "PENDING"
-    | "CONFIRMED"
-    | "PROCESSING"
-    | "SHIPPED"
-    | "DELIVERED"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "REFUNDED";
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED";
   totalAmount: string; // ou number si tu veux convertir
   notes: string | null;
   createdAt: string;
@@ -205,14 +191,14 @@ export interface OrderResponse {
 
 export interface UpdateOrderStatusPayload {
   status:
-    | "PENDING"
-    | "CONFIRMED"
-    | "PROCESSING"
-    | "SHIPPED"
-    | "DELIVERED"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "REFUNDED";
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED";
 }
 
 // === Fonctions API ===

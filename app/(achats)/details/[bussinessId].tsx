@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-
 // TODO: À l'avenir, remplace ce fallback par <Ionicons /> réel si tu importes le pack complet
 const IconFallback = ({ name, size = 20, color = "#666" }: any) => {
   const map: any = {

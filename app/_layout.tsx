@@ -2,11 +2,11 @@ import { useUserStore } from "@/store/userStore";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-
 // import { StripeProvider } from "@stripe/stripe-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform } from "react-native";
 import Toast from "react-native-toast-message";
+import { STRIPE_PUBLISHABLE_KEY, STRIPE_MERCHANT_ID, STRIPE_URL_SCHEME } from "@/config/stripe";
 
 // ⚡ Import Stripe uniquement si on est sur mobile
 let StripeProvider: any;
@@ -39,9 +39,9 @@ export default function RootLayout() {
 
   return (
     <StripeProvider
-      publishableKey="pk_test_51PBf5wRqgxgrSOxzkT3CoAj3wnYQKPSKxZLmtaH9lt8XXO8NoIknakl1nMxj14Mj25f3VC56dchbm7E4ATNXco2200dXM6svtP"
-      urlScheme="your-app-scheme"
-      merchantIdentifier="merchant.com.your-app"
+      publishableKey={STRIPE_PUBLISHABLE_KEY}
+      urlScheme={STRIPE_URL_SCHEME}
+      merchantIdentifier={STRIPE_MERCHANT_ID}
     >
       <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import styles from '../../dashboard/dashboard.module.css';
+import styles from '../../page.module.css';
 
 // Shared profile page component
 interface ProfileData {

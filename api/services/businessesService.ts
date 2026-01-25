@@ -27,13 +27,13 @@ export interface BusinessMember {
 
 export interface OpeningHour {
   dayOfWeek:
-    | "MONDAY"
-    | "TUESDAY"
-    | "WEDNESDAY"
-    | "THURSDAY"
-    | "FRIDAY"
-    | "SATURDAY"
-    | "SUNDAY";
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY"
+  | "SATURDAY"
+  | "SUNDAY";
   openTime: string; // Format "HH:mm"
   closeTime: string; // Format "HH:mm"
 }
@@ -53,11 +53,9 @@ export class BusinessesService {
       await cacheManager.invalidatePattern("businesses_list");
       await cacheManager.invalidatePattern("user_businesses");
 
-      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la création de l'entreprise:", error);
-      
       throw error;
     }
   }
@@ -70,7 +68,6 @@ export class BusinessesService {
     // Vérifier le cache
     const cachedData = await cacheManager.get<Business[]>(cacheKey);
     if (cachedData) {
-      
       return cachedData;
     }
 
@@ -85,7 +82,6 @@ export class BusinessesService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
 
-      
       return response.data;
     } catch (error) {
       console.error(
@@ -102,7 +98,6 @@ export class BusinessesService {
     // Vérifier le cache
     const cachedData = await cacheManager.get<Business>(cacheKey);
     if (cachedData) {
-      
       return cachedData;
     }
 
@@ -112,7 +107,6 @@ export class BusinessesService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
 
-      
       return response.data;
     } catch (error) {
       console.error(
@@ -176,7 +170,6 @@ export class BusinessesService {
         await SelectedBusinessManager.setSelectedBusiness(response.data);
       }
 
-      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la mise à jour de l'entreprise:", error);
@@ -199,8 +192,6 @@ export class BusinessesService {
       if (selectedBusiness?.id === id) {
         await SelectedBusinessManager.clearSelectedBusiness();
       }
-
-      console.log("✅ Entreprise supprimée");
     } catch (error) {
       console.error("❌ Erreur lors de la suppression de l'entreprise:", error);
       throw error;
@@ -220,8 +211,6 @@ export class BusinessesService {
 
       // Invalider le cache de l'entreprise
       await cacheManager.invalidate(`business_${id}`);
-
-      console.log("✅ Logo uploadé");
     } catch (error) {
       console.error("❌ Erreur lors de l'upload du logo:", error);
       throw error;
@@ -241,8 +230,6 @@ export class BusinessesService {
 
       // Invalider le cache de l'entreprise
       await cacheManager.invalidate(`business_${id}`);
-
-      console.log("✅ Image de couverture uploadée");
     } catch (error) {
       console.error(
         "❌ Erreur lors de l'upload de l'image de couverture:",
@@ -267,7 +254,6 @@ export class BusinessesService {
       // Invalider le cache des membres
       await cacheManager.invalidate(`business_members_${businessId}`);
 
-      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de l'ajout du membre:", error);
@@ -281,7 +267,6 @@ export class BusinessesService {
     // Vérifier le cache
     const cachedData = await cacheManager.get<BusinessMember[]>(cacheKey);
     if (cachedData) {
-      console.log("📦 Membres récupérés du cache");
       return cachedData;
     }
 
@@ -293,7 +278,6 @@ export class BusinessesService {
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
 
-      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des membres:", error);
@@ -315,7 +299,6 @@ export class BusinessesService {
       // Invalider le cache des membres
       await cacheManager.invalidate(`business_members_${businessId}`);
 
-      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la mise à jour du rôle:", error);
@@ -334,8 +317,6 @@ export class BusinessesService {
 
       // Invalider le cache des membres
       await cacheManager.invalidate(`business_members_${businessId}`);
-
-      console.log("✅ Membre supprimé");
     } catch (error) {
       console.error("❌ Erreur lors de la suppression du membre:", error);
       throw error;
@@ -353,8 +334,6 @@ export class BusinessesService {
 
       // Invalider le cache de l'entreprise
       await cacheManager.invalidate(`business_${businessId}`);
-
-      console.log("✅ Horaires d'ouverture mis à jour");
     } catch (error) {
       console.error("❌ Erreur lors de la mise à jour des horaires:", error);
       throw error;

@@ -7,7 +7,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { getProductByIdDirect, Product, ProductVariant } from '@/lib/api/products';
 import { getBusinessById } from '@/lib/api/business';
-import { useProCartStore } from '@/stores/achatCartStore';
+import { useProCartStore } from '@/stores/proCartStore';
 import styles from './product-detail.module.css';
 
 // Icons

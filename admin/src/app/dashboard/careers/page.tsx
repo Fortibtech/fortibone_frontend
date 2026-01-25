@@ -1,39 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Eye, Briefcase, MapPin, Clock, Users } from 'lucide-react';
-import styles from './careers.module.css';
-
-interface Job {
-    id: string;
-    title: string;
-    department: string;
-    location: string;
-    type: string;
-    description: string;
-    requirements: string;
-    isActive: boolean;
-    createdAt: string;
-    _count?: { applications: number };
-}
-
-const CAREERS_API_URL = process.env.NEXT_PUBLIC_CAREERS_API_URL || 'http://localhost:3002/api';
+import { getJobs, createJob, updateJob, deleteJob, JobPosition } from '@/lib/api/careersApi';
 
 export default function CareersManagementPage() {
-    const [jobs, setJobs] = useState<Job[]>([]);
+    const [jobs, setJobs] = useState<JobPosition[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [editingJob, setEditingJob] = useState<Job | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingJob, setEditingJob] = useState<JobPosition | null>(null);
 
-    // Form state
     const [formData, setFormData] = useState({
         title: '',
-        department: '',
+        department: 'commercial',
         location: '',
         type: 'CDI',
         description: '',
         requirements: '',
-        isActive: true,
+        isActive: true
     });
 
     useEffect(() => {
@@ -41,12 +24,12 @@ export default function CareersManagementPage() {
     }, []);
 
     const fetchJobs = async () => {
+        setIsLoading(true);
         try {
-            const res = await fetch(`${CAREERS_API_URL}/jobs`);
-            const data = await res.json();
+            const data = await getJobs();
             setJobs(data);
         } catch (error) {
-            console.error('Failed to fetch jobs:', error);
+            console.error('Failed to fetch jobs', error);
         } finally {
             setIsLoading(false);
         }
@@ -54,53 +37,33 @@ export default function CareersManagementPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
         try {
-            const url = editingJob
-                ? `${CAREERS_API_URL}/jobs/${editingJob.id}`
-                : `${CAREERS_API_URL}/jobs`;
-
-            const res = await fetch(url, {
-                method: editingJob ? 'PATCH' : 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-
-            if (res.ok) {
-                fetchJobs();
-                closeModal();
+            if (editingJob) {
+                await updateJob(editingJob.id, formData);
+            } else {
+                await createJob(formData);
             }
+            setIsModalOpen(false);
+            setEditingJob(null);
+            resetForm();
+            fetchJobs();
         } catch (error) {
-            console.error('Failed to save job:', error);
+            alert('Erreur lors de l\'enregistrement');
+            console.error(error);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Êtes-vous sûr de vouloir supprimer ce poste ?')) return;
-
+        if (!confirm('Êtes-vous sûr de vouloir supprimer cette offre ?')) return;
         try {
-            await fetch(`${CAREERS_API_URL}/jobs/${id}`, { method: 'DELETE' });
+            await deleteJob(id);
             fetchJobs();
         } catch (error) {
-            console.error('Failed to delete job:', error);
+            alert('Erreur lors de la suppression');
         }
     };
 
-    const openCreateModal = () => {
-        setEditingJob(null);
-        setFormData({
-            title: '',
-            department: '',
-            location: '',
-            type: 'CDI',
-            description: '',
-            requirements: '',
-            isActive: true,
-        });
-        setShowModal(true);
-    };
-
-    const openEditModal = (job: Job) => {
+    const openEdit = (job: JobPosition) => {
         setEditingJob(job);
         setFormData({
             title: job.title,
@@ -108,208 +71,233 @@ export default function CareersManagementPage() {
             location: job.location,
             type: job.type,
             description: job.description,
-            requirements: job.requirements,
-            isActive: job.isActive,
+            // Handle requirements: if it comes as array (legacy?) join it, if string keep it
+            requirements: Array.isArray(job.requirements) ? job.requirements.join('\n') : job.requirements || '',
+            isActive: job.isActive
         });
-        setShowModal(true);
+        setIsModalOpen(true);
     };
 
-    const closeModal = () => {
-        setShowModal(false);
+    const openCreate = () => {
         setEditingJob(null);
+        resetForm();
+        setIsModalOpen(true);
+    };
+
+    const resetForm = () => {
+        setFormData({
+            title: '',
+            department: 'commercial',
+            location: '',
+            type: 'CDI',
+            description: '',
+            requirements: '',
+            isActive: true
+        });
     };
 
     return (
-        <div className={styles.container}>
-            {/* Header */}
-            <div className={styles.header}>
-                <div>
-                    <h1 className={styles.title}>Gestion des Postes</h1>
-                    <p className={styles.subtitle}>Gérez les offres d'emploi publiées sur le site Corporate</p>
+        <div style={{ padding: '40px', background: '#f8fafc', minHeight: '100vh' }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                    <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a' }}>Gestion des Offres</h1>
+                    <button
+                        onClick={openCreate}
+                        style={{
+                            background: '#00c9a7',
+                            color: 'white',
+                            border: 'none',
+                            padding: '12px 24px',
+                            borderRadius: '8px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}
+                    >
+                        + Nouvelle Offre
+                    </button>
                 </div>
-                <button className={styles.addButton} onClick={openCreateModal}>
-                    <Plus size={20} />
-                    Nouveau Poste
-                </button>
-            </div>
 
-            {/* Stats Cards */}
-            <div className={styles.statsGrid}>
-                <div className={styles.statCard}>
-                    <Briefcase size={24} className={styles.statIcon} />
-                    <div>
-                        <p className={styles.statValue}>{jobs.length}</p>
-                        <p className={styles.statLabel}>Postes Total</p>
-                    </div>
-                </div>
-                <div className={styles.statCard}>
-                    <Eye size={24} className={styles.statIcon} />
-                    <div>
-                        <p className={styles.statValue}>{jobs.filter(j => j.isActive).length}</p>
-                        <p className={styles.statLabel}>Postes Actifs</p>
-                    </div>
-                </div>
-                <div className={styles.statCard}>
-                    <Users size={24} className={styles.statIcon} />
-                    <div>
-                        <p className={styles.statValue}>-</p>
-                        <p className={styles.statLabel}>Candidatures</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Jobs Table */}
-            <div className={styles.tableContainer}>
                 {isLoading ? (
-                    <div className={styles.loading}>Chargement...</div>
-                ) : jobs.length === 0 ? (
-                    <div className={styles.empty}>
-                        <Briefcase size={48} />
-                        <p>Aucun poste pour le moment</p>
-                        <button onClick={openCreateModal}>Créer le premier poste</button>
-                    </div>
+                    <div style={{ textAlign: 'center', padding: '40px' }}>Chargement...</div>
                 ) : (
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Poste</th>
-                                <th>Département</th>
-                                <th>Localisation</th>
-                                <th>Type</th>
-                                <th>Statut</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {jobs.map((job) => (
-                                <tr key={job.id}>
-                                    <td className={styles.jobTitle}>{job.title}</td>
-                                    <td>{job.department}</td>
-                                    <td>
-                                        <span className={styles.location}>
-                                            <MapPin size={14} />
-                                            {job.location}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span className={styles.typeBadge}>{job.type}</span>
-                                    </td>
-                                    <td>
-                                        <span className={`${styles.statusBadge} ${job.isActive ? styles.active : styles.inactive}`}>
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                        {jobs.map(job => (
+                            <div key={job.id} style={{
+                                background: 'white',
+                                padding: '24px',
+                                borderRadius: '12px',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                        <h3 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>{job.title}</h3>
+                                        <span style={{
+                                            fontSize: '12px',
+                                            padding: '2px 8px',
+                                            background: job.isActive ? '#dcfce7' : '#f1f5f9',
+                                            color: job.isActive ? '#166534' : '#64748b',
+                                            borderRadius: '20px',
+                                            fontWeight: '600'
+                                        }}>
                                             {job.isActive ? 'Actif' : 'Inactif'}
                                         </span>
-                                    </td>
-                                    <td className={styles.actions}>
-                                        <button onClick={() => openEditModal(job)} title="Modifier">
-                                            <Pencil size={16} />
-                                        </button>
-                                        <button onClick={() => handleDelete(job.id)} title="Supprimer" className={styles.deleteBtn}>
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    </div>
+                                    <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>
+                                        {job.department} • {job.type} • {job.location}
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        onClick={() => openEdit(job)}
+                                        style={{
+                                            padding: '8px 16px',
+                                            border: '1px solid #cbd5e1',
+                                            background: 'white',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontWeight: '500'
+                                        }}
+                                    >
+                                        Modifier
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(job.id)}
+                                        style={{
+                                            padding: '8px 16px',
+                                            border: '1px solid #fee2e2',
+                                            background: '#fef2f2',
+                                            color: '#dc2626',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontWeight: '500'
+                                        }}
+                                    >
+                                        Supprimer
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        {jobs.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>Aucune offre pour le moment.</div>
+                        )}
+                    </div>
                 )}
-            </div>
 
-            {/* Modal */}
-            {showModal && (
-                <div className={styles.modalOverlay} onClick={closeModal}>
-                    <div className={styles.modal} onClick={e => e.stopPropagation()}>
-                        <h2>{editingJob ? 'Modifier le poste' : 'Nouveau poste'}</h2>
-
-                        <form onSubmit={handleSubmit}>
-                            <div className={styles.formGrid}>
-                                <div className={styles.formGroup}>
-                                    <label>Titre du poste *</label>
+                {/* Modal */}
+                {isModalOpen && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                    }}>
+                        <div style={{ background: 'white', borderRadius: '16px', width: '600px', maxHeight: '90vh', overflowY: 'auto', padding: '30px' }}>
+                            <h2 style={{ marginBottom: '24px', fontSize: '24px', fontWeight: '700' }}>
+                                {editingJob ? 'Modifier l\'offre' : 'Nouvelle offre'}
+                            </h2>
+                            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Titre du poste</label>
                                     <input
-                                        type="text"
+                                        required
                                         value={formData.title}
                                         onChange={e => setFormData({ ...formData, title: e.target.value })}
-                                        required
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                     />
                                 </div>
-
-                                <div className={styles.formGroup}>
-                                    <label>Département *</label>
-                                    <input
-                                        type="text"
-                                        value={formData.department}
-                                        onChange={e => setFormData({ ...formData, department: e.target.value })}
-                                        required
-                                    />
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Département</label>
+                                        <select
+                                            value={formData.department}
+                                            onChange={e => setFormData({ ...formData, department: e.target.value })}
+                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                        >
+                                            <option value="commercial">Commercial</option>
+                                            <option value="marketing">Marketing</option>
+                                            <option value="tech">Tech & Produit</option>
+                                            <option value="operations">Opérations</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Contrat</label>
+                                        <select
+                                            value={formData.type}
+                                            onChange={e => setFormData({ ...formData, type: e.target.value })}
+                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                        >
+                                            <option value="CDI">CDI</option>
+                                            <option value="CDD">CDD</option>
+                                            <option value="Freelance">Freelance</option>
+                                            <option value="Stage">Stage</option>
+                                        </select>
+                                    </div>
                                 </div>
-
-                                <div className={styles.formGroup}>
-                                    <label>Localisation *</label>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Localisation</label>
                                     <input
-                                        type="text"
+                                        required
                                         value={formData.location}
                                         onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                        placeholder="ex: Moroni ou Remote"
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Description</label>
+                                    <textarea
                                         required
+                                        rows={4}
+                                        value={formData.description}
+                                        onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                     />
                                 </div>
-
-                                <div className={styles.formGroup}>
-                                    <label>Type de contrat *</label>
-                                    <select
-                                        value={formData.type}
-                                        onChange={e => setFormData({ ...formData, type: e.target.value })}
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Pré-requis (1 par ligne)</label>
+                                    <textarea
+                                        required
+                                        rows={4}
+                                        value={formData.requirements}
+                                        onChange={e => setFormData({ ...formData, requirements: e.target.value })}
+                                        placeholder="Expérience B2B&#10;Anglais courant..."
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.isActive}
+                                            onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
+                                        />
+                                        Offre active (visible sur le site)
+                                    </label>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsModalOpen(false)}
+                                        style={{ padding: '12px 24px', borderRadius: '8px', border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: '600' }}
                                     >
-                                        <option value="CDI">CDI</option>
-                                        <option value="CDD">CDD</option>
-                                        <option value="Stage">Stage</option>
-                                        <option value="Alternance">Alternance</option>
-                                        <option value="Freelance">Freelance</option>
-                                    </select>
+                                        Annuler
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        style={{ padding: '12px 24px', borderRadius: '8px', border: 'none', background: '#0f172a', color: 'white', cursor: 'pointer', fontWeight: '600' }}
+                                    >
+                                        Enregistrer
+                                    </button>
                                 </div>
-                            </div>
-
-                            <div className={styles.formGroup}>
-                                <label>Description *</label>
-                                <textarea
-                                    value={formData.description}
-                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                    rows={4}
-                                    required
-                                />
-                            </div>
-
-                            <div className={styles.formGroup}>
-                                <label>Prérequis *</label>
-                                <textarea
-                                    value={formData.requirements}
-                                    onChange={e => setFormData({ ...formData, requirements: e.target.value })}
-                                    rows={3}
-                                    required
-                                />
-                            </div>
-
-                            <div className={styles.formGroup}>
-                                <label className={styles.checkbox}>
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.isActive}
-                                        onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
-                                    />
-                                    Publier immédiatement
-                                </label>
-                            </div>
-
-                            <div className={styles.modalActions}>
-                                <button type="button" onClick={closeModal} className={styles.cancelBtn}>
-                                    Annuler
-                                </button>
-                                <button type="submit" className={styles.submitBtn}>
-                                    {editingJob ? 'Enregistrer' : 'Créer le poste'}
-                                </button>
-                            </div>
-                        </form>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }

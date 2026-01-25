@@ -140,14 +140,13 @@ export const createProduct = async (
 };
 
 export const updateProduct = async (
-    businessId: string, // Kept for compatibility but unused
+    businessId: string,
     productId: string,
     data: Partial<CreateProductData>
 ): Promise<Product> => {
     try {
-        // Use direct endpoint matches mobile API and getProductByIdDirect
         const response = await axiosInstance.patch(
-            `/products/${productId}`,
+            `/businesses/${businessId}/products/${productId}`,
             data
         );
         return response.data;
@@ -159,8 +158,7 @@ export const updateProduct = async (
 
 export const deleteProduct = async (businessId: string, productId: string): Promise<void> => {
     try {
-        // Use direct endpoint matches mobile API
-        await axiosInstance.delete(`/products/${productId}`);
+        await axiosInstance.delete(`/businesses/${businessId}/products/${productId}`);
     } catch (error: any) {
         console.error('Erreur suppression produit:', error.response?.data || error.message);
         throw error;
@@ -168,13 +166,13 @@ export const deleteProduct = async (businessId: string, productId: string): Prom
 };
 
 export const createVariant = async (
-    businessId: string, // Unused in new path
+    businessId: string,
     productId: string,
     data: CreateVariantData
 ): Promise<ProductVariant> => {
     try {
         const response = await axiosInstance.post(
-            `/products/${productId}/variants`,
+            `/businesses/${businessId}/products/${productId}/variants`,
             data
         );
         return response.data;
@@ -185,14 +183,14 @@ export const createVariant = async (
 };
 
 export const updateVariant = async (
-    businessId: string, // Unused in new path
+    businessId: string,
     productId: string,
     variantId: string,
     data: Partial<CreateVariantData>
 ): Promise<ProductVariant> => {
     try {
         const response = await axiosInstance.patch(
-            `/products/${productId}/variants/${variantId}`,
+            `/businesses/${businessId}/products/${productId}/variants/${variantId}`,
             data
         );
         return response.data;

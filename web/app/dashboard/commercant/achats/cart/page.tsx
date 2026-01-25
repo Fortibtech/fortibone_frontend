@@ -3,10 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
-import { useProCartStore } from '@/stores/achatCartStore';
+import { useProCartStore } from '@/stores/proCartStore';
 import { passMultipleOrders } from '@/lib/api/orders';
 import { useBusinessStore } from '@/stores/businessStore';
 import styles from './cart.module.css';
@@ -48,6 +47,7 @@ const icons = {
 export default function CartPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const { selectedBusiness } = useBusinessStore();
 
     const {
@@ -64,11 +64,12 @@ export default function CartPage() {
 
     const handleCheckout = async () => {
         if (items.length === 0) {
-            toast.info('Votre panier est vide');
+            setError('Votre panier est vide');
             return;
         }
 
         setLoading(true);
+        setError(null);
 
         try {
             const payload = {
@@ -84,13 +85,11 @@ export default function CartPage() {
 
             clearCart();
 
-            toast.success(`${orders.length} commande(s) créée(s) avec succès !`);
-            router.push('/dashboard/commercant/achats/orders');
+            alert(`✅ ${orders.length} commande(s) créée(s) avec succès !`);
+            router.push('/dashboard/commercant/achats');
         } catch (err: any) {
             console.error('Erreur checkout:', err);
-            toast.error('Erreur lors de la commande', {
-                description: err.response?.data?.message || err.message,
-            });
+            setError(err.message || 'Erreur lors de la commande');
         } finally {
             setLoading(false);
         }
@@ -143,7 +142,12 @@ export default function CartPage() {
                         </button>
                     </div>
 
-                    {/* Toast handles error messages now */}
+                    {/* Error Message */}
+                    {error && (
+                        <div className={styles.errorMessage}>
+                            {error}
+                        </div>
+                    )}
 
                     {/* Cart Items grouped by supplier */}
                     <div className={styles.cartContent}>

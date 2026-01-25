@@ -22,18 +22,18 @@ interface UserStore {
   token: string | null;
   otp: string | null;
   userProfile: UserProfile | null;
-  _avatarVersion: number; // <-- pour forcer le refresh d'image
-  // setters
+  _avatarVersion: number; // Timestamp pour forcer le refresh d'image
+
+  // Actions
   setEmail: (email: string) => void;
   setToken: (token: string) => Promise<void>;
   setOtp: (otp: string) => void;
   setUserProfile: (profile: UserProfile) => void;
 
-  // actions
   hydrateTokenAndProfile: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
-  bumpAvatarVersion: () => void; // <-- nouvelle action
+  bumpAvatarVersion: () => void; // Pour forcer le refresh après upload
 }
 
 export const useUserStore = create<UserStore>((set, get) => ({
@@ -41,59 +41,70 @@ export const useUserStore = create<UserStore>((set, get) => ({
   token: null,
   otp: null,
   userProfile: null,
-  _avatarVersion: 0,
+  _avatarVersion: Date.now(), // On démarre avec un timestamp frais
 
   setEmail: (email: string) => set({ email }),
+
   setToken: async (token: string) => {
     set({ token });
     await AsyncStorage.setItem("access_token", token);
   },
+
   setOtp: (otp: string) => set({ otp }),
 
-  // Mise à jour du profil → on incrémente automatiquement la version d'avatar
-
+  // Mise à jour du profil → on force toujours un nouveau timestamp
   setUserProfile: (profile: UserProfile) =>
     set({
       userProfile: profile,
-      _avatarVersion: get()._avatarVersion + 1,
+      _avatarVersion: Date.now(), // Toujours unique
     }),
+
+  // Chargement au démarrage de l'app
   hydrateTokenAndProfile: async () => {
     try {
       const savedToken = await AsyncStorage.getItem("access_token");
-      if (savedToken) {
-        set({ token: savedToken });
-        const response = await fetchProfileFromAPI(); // ← suppose que ça retourne { data: {...} }
+      if (!savedToken) return;
 
-        // TOUJOURS utiliser response.data (ou response selon ton API)
-        const profile = response.data || response; // protection
+      set({ token: savedToken });
 
+      const response = await fetchProfileFromAPI();
+      const profile = response?.data || response; // Protection selon ton API
+
+      if (profile) {
         set({
           userProfile: profile,
-          _avatarVersion: Date.now(), // force refresh au démarrage
+          _avatarVersion: Date.now(), // Force refresh image au login
         });
       }
-    } catch (e) {
-      console.error("Erreur hydratation store :", e);
+    } catch (error) {
+      console.error("Erreur lors de l'hydratation du profil :", error);
+      // En cas d'erreur grave → on déconnecte
       await get().logout();
     }
   },
 
+  // Rafraîchir le profil (ex: après modification)
   refreshProfile: async () => {
     const token = get().token;
     if (!token) return;
+
     try {
       const response = await fetchProfileFromAPI();
-      const profile = response.data || response;
+      const profile = response?.data || response;
 
-      set({
-        userProfile: profile,
-        _avatarVersion: Date.now(),
-      });
-    } catch (e) {
-      console.error("Erreur refreshProfile :", e);
+      if (profile) {
+        set({
+          userProfile: profile,
+          _avatarVersion: Date.now(), // Image toujours à jour
+        });
+      }
+    } catch (error) {
+      console.error("Erreur refreshProfile :", error);
+      // Ne pas déconnecter ici → juste log
     }
   },
 
+  // Déconnexion
   logout: async () => {
     await AsyncStorage.removeItem("access_token");
     set({
@@ -101,11 +112,12 @@ export const useUserStore = create<UserStore>((set, get) => ({
       token: null,
       otp: null,
       userProfile: null,
-      _avatarVersion: 0,
+      _avatarVersion: Date.now(), // Reset propre
     });
   },
 
-  // Permet de forcer un refresh d'avatar sans toucher au profil (utile si besoin)
-  bumpAvatarVersion: () =>
-    set((state) => ({ _avatarVersion: state._avatarVersion + 1 })),
+  // À appeler après un upload d'avatar réussi
+  bumpAvatarVersion: () => {
+    set({ _avatarVersion: Date.now() });
+  },
 }));

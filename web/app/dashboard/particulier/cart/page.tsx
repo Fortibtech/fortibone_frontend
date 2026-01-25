@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout';
 import { useCartStore, type CartItem } from '@/stores/cartStore';
 import { createOrder, passMultipleOrders } from '@/lib/api/orders';
@@ -37,17 +36,23 @@ export default function CartPage() {
     const totalPrice = getTotalPrice().toFixed(2);
     const totalItemsCount = getTotalItems();
 
-    // Show confirmation before checkout (like mobile handleBuyNow)
+    // Show confirmation modal before checkout
     const handleBuyNow = () => {
         if (items.length === 0) {
-            toast.info('Votre panier est vide');
+            setModalConfig({
+                title: 'Panier vide',
+                message: 'Votre panier est vide',
+                type: 'warning',
+                showCancel: false,
+            });
+            setModalOpen(true);
             return;
         }
 
-        // Show confirmation modal (like mobile Alert.alert)
+        // Show confirmation modal
         setModalConfig({
-            title: 'Acheter maintenant',
-            message: `Valider ${totalItemsCount} article(s) pour ${totalPrice} KMF ?\n\nCette action créera automatiquement une ou plusieurs commandes selon les vendeurs.`,
+            title: 'Confirmer la commande',
+            message: `Valider ${totalItemsCount} article(s) pour ${totalPrice} KMF ?`,
             type: 'info',
             showCancel: true,
             onConfirm: executeCheckout,
@@ -55,39 +60,42 @@ export default function CartPage() {
         setModalOpen(true);
     };
 
-    // Execute the actual checkout (aligned with mobile passMultipleOrders)
+    // Execute the actual checkout
     const executeCheckout = async () => {
         setIsLoading(true);
-        setModalOpen(false);
-
         try {
-            // Payload aligned exactly with mobile (only variantId + quantity)
             const payload = {
                 items: items.map(item => ({
                     variantId: item.variantId,
                     quantity: item.quantity
                 })),
-                notes: 'Achat rapide – Acheter maintenant',
-                useWallet: selectedPayment === 'WALLET',
+                notes: `Commande web - Paiement: ${selectedPayment}`,
+                useWallet: false
             };
 
             const orders = await passMultipleOrders(payload);
 
-            // Toast success like mobile Toast.show()
-            toast.success('Achat réussi !', {
-                description: `${orders.length} commande(s) créée(s).`,
+            // Show success modal
+            setModalConfig({
+                title: 'Commande confirmée !',
+                message: `${orders.length} commande(s) créée(s) avec succès.`,
+                type: 'success',
+                showCancel: false,
+                onConfirm: () => {
+                    clearCart();
+                    router.push('/dashboard/particulier/orders');
+                },
             });
-
-            clearCart();
-            router.push('/dashboard/particulier/orders');
+            setModalOpen(true);
         } catch (error: any) {
             console.error('Checkout error:', error);
-            const message = error.response?.data?.message || error.message || 'Impossible de passer la commande';
-
-            // Toast error like mobile Toast.show()
-            toast.error('Échec de l\'achat', {
-                description: Array.isArray(message) ? message.join(', ') : message,
+            setModalConfig({
+                title: 'Erreur',
+                message: error.message || 'Échec de la commande',
+                type: 'error',
+                showCancel: false,
             });
+            setModalOpen(true);
         } finally {
             setIsLoading(false);
         }

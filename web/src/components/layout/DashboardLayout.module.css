@@ -22,47 +22,30 @@
     min-height: 100vh;
     width: 100%;
     transition: margin-left var(--transition-base);
+
+    /* === CENTERED LAYOUT (Desktop) === */
+    /* Instead of margin-left, we use flex behavior, but on very large screens we center content */
     position: relative;
     max-width: 100%;
+    /* Default fluid */
 }
 
-/* === PREMIUM LAYOUT - Full Width Content === */
+/* On Large Desktop, we center the content area if needed, but 'main' usually takes full width
+   Actually, the sidebar is fixed or flex? 
+   If sidebar is fixed: main needs margin.
+   If sidebar is flex: main takes remaining space.
+   Current implementation uses flex (line 2), so main takes remaining.
+*/
+
 .content {
     flex: 1;
     overflow-y: auto;
     width: 100%;
 
-    /* === STRIPE/LINEAR STYLE: Full width, generous padding === */
-    max-width: none;
-    /* Removed 1440px restriction for premium feel */
-    margin: 0;
-    padding: var(--space-8) var(--space-8);
-}
-
-/* === Premium Grid Utilities === */
-.premiumGrid {
-    display: grid;
-    gap: var(--space-6);
-    width: 100%;
-}
-
-/* Stats row - 3 columns on desktop */
-.statsRow {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-6);
-}
-
-/* Dual section - 2/3 + 1/3 split */
-.dualSection {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: var(--space-6);
-}
-
-/* Full width section */
-.fullSection {
-    width: 100%;
+    /* === THE STAGE (Centered Content) === */
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--space-6);
 }
 
 .overlay {
@@ -83,49 +66,7 @@
     }
 }
 
-/* === RESPONSIVE BREAKPOINTS === */
-
-/* Large Desktop (1920px+) */
-@media (min-width: 1920px) {
-    .content {
-        padding: var(--space-10) var(--space-12);
-    }
-}
-
-/* Desktop (1440px+) */
-@media (min-width: 1440px) {
-    .content {
-        padding: var(--space-8) var(--space-10);
-    }
-
-    .statsRow {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
-/* Laptop (1280px - 1439px) */
-@media (max-width: 1439px) and (min-width: 1280px) {
-    .content {
-        padding: var(--space-6) var(--space-8);
-    }
-}
-
-/* Tablet (1024px - 1279px) */
-@media (max-width: 1279px) and (min-width: 1024px) {
-    .sidebarContainer.collapsed {
-        width: var(--sidebar-collapsed-width);
-    }
-
-    .content {
-        padding: var(--space-6);
-    }
-
-    .dualSection {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Tablet and below - Sidebar overlay */
+/* Tablet and below */
 @media (max-width: 1024px) {
     .sidebarContainer {
         position: fixed;
@@ -133,6 +74,7 @@
         transform: translateX(-100%);
         transition: transform var(--transition-base);
         width: var(--sidebar-width);
+        /* Always full width on mobile/tablet opening */
     }
 
     .sidebarContainer.open {
@@ -140,43 +82,29 @@
     }
 
     .sidebarContainer.collapsed {
+        /* No collapse concept on mobile overlay, it's just open or closed */
         width: var(--sidebar-width);
     }
 
     .main {
         margin-left: 0 !important;
+        /* Force no margin */
         padding-bottom: var(--mobile-nav-height);
     }
 
     .main.collapsed {
         margin-left: 0;
     }
-
-    .content {
-        padding: var(--space-4);
-    }
-
-    .statsRow {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .dualSection {
-        grid-template-columns: 1fr;
-    }
 }
 
-/* Mobile (< 640px) */
+/* Mobile */
 @media (max-width: 640px) {
     .content {
-        padding: var(--space-3);
-    }
-
-    .statsRow {
-        grid-template-columns: 1fr;
+        /* padding handled by container */
     }
 }
 
-/* Visibility Utilities */
+/* Visibility Utilities for Hybrid Header */
 .desktopOnly {
     display: block;
 }

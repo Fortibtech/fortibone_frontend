@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useRef, ReactNode } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { User, Heart, ShoppingBasket, ArrowLeftRight, Camera, LogOut, ChevronRight } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout';
 import { useUserStore } from '@/stores/userStore';
 import { uploadUserAvatar } from '@/lib/api/users';
@@ -26,37 +24,34 @@ export default function ProfilePage() {
 
         try {
             await uploadUserAvatar(file);
-            toast.success('Avatar mis à jour');
+            // Reload to update avatar (simple & effective for now)
             window.location.reload();
         } catch (error: any) {
             console.error('Erreur upload avatar:', error);
-            toast.error("Erreur lors de l'upload de l'avatar", {
-                description: error.message || 'Veuillez réessayer',
-            });
+            alert(error.message || "Erreur lors de l'upload de l'avatar");
         }
     };
 
-    // Menu items aligned with mobile (person-outline, heart-outline, basket-outline, swap-horizontal-outline)
-    const menuItems: { title: string; href: string; icon: ReactNode }[] = [
+    const menuItems = [
         {
             title: 'Informations personnelles',
             href: '/dashboard/particulier/personal-info',
-            icon: <User size={22} />
+            icon: '👤'
         },
         {
             title: 'Vos favoris',
             href: '/dashboard/particulier/favorites',
-            icon: <Heart size={22} />
+            icon: '❤️'
         },
         {
             title: 'Vos Commandes en cours',
             href: '/dashboard/particulier/orders',
-            icon: <ShoppingBasket size={22} />
+            icon: '🛒'
         },
         {
             title: 'Mes Transactions',
             href: '/dashboard/particulier/finance/wallet/transactions',
-            icon: <ArrowLeftRight size={22} />
+            icon: '💳'
         },
     ];
 
@@ -129,7 +124,9 @@ export default function ProfilePage() {
                                 <span className={styles.menuIcon}>{item.icon}</span>
                                 <span className={styles.menuText}>{item.title}</span>
                             </div>
-                            <ChevronRight size={20} color="#ccc" />
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
                         </Link>
                     ))}
                 </div>
@@ -140,7 +137,11 @@ export default function ProfilePage() {
                     onClick={handleLogout}
                     disabled={loggingOut}
                 >
-                    <LogOut size={20} color="#FF5722" />
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF5722" strokeWidth="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
                     <span>{loggingOut ? 'Déconnexion...' : 'Se déconnecter'}</span>
                 </button>
             </div>

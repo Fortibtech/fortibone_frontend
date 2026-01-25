@@ -142,7 +142,6 @@ export const updateRestaurantTable = async (
       payload
     );
 
-    console.log("Table mise à jour avec succès :", response.data);
     return response.data;
   } catch (error: any) {
     const errorMessage =

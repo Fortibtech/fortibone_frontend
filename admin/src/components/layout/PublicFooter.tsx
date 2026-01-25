@@ -28,19 +28,16 @@ export default function PublicFooter() {
 
                 {/* Liens Rapides */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <h4 style={{ fontWeight: '600', marginBottom: '8px', color: 'white' }}>Plateforme</h4>
-                    <Link href="/about" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>À Propos</Link>
-                    <Link href="/docs" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>Documentation</Link>
-                    <Link href="/careers" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>Recrutement</Link>
-                    <Link href="/dashboard" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>Connexion Admin</Link>
+                    <h4 style={{ fontWeight: '600', marginBottom: '8px', color: 'white' }}>Carrières</h4>
+                    <Link href="/careers" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>Nos offres</Link>
+                    <a href="mailto:recrutement@komoralink.com" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>Candidature spontanée</a>
                 </div>
 
-                {/* Légal & Support */}
+                {/* Corporate */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <h4 style={{ fontWeight: '600', marginBottom: '8px', color: 'white' }}>Support</h4>
-                    <Link href="/docs/faq" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>FAQ</Link>
-                    <a href="mailto:support@komoralink.com" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>Contact support</a>
+                    <h4 style={{ fontWeight: '600', marginBottom: '8px', color: 'white' }}>Entreprise</h4>
                     <a href="https://fortibtech.com" target="_blank" rel="noopener noreferrer" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>Site Corporate</a>
+                    <a href="mailto:contact@komoralink.com" style={{ color: '#94a3b8', textDecoration: 'none', fontSize: '14px' }}>Nous contacter</a>
                 </div>
 
             </div>

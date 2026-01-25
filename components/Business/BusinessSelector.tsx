@@ -18,6 +18,8 @@ interface BusinessSelectorProps {
   loading?: boolean;
   onAddBusiness: () => void;
   onManageBusiness: () => void;
+  // Nouvelle prop optionnelle pour forcer le remontage
+  refreshKey?: number | string;
 }
 
 const BusinessSelector: React.FC<BusinessSelectorProps> = ({
@@ -27,6 +29,7 @@ const BusinessSelector: React.FC<BusinessSelectorProps> = ({
   loading = false,
   onAddBusiness,
   onManageBusiness,
+
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -40,7 +43,19 @@ const BusinessSelector: React.FC<BusinessSelectorProps> = ({
 
     return (
       <TouchableOpacity
-        style={[styles.businessItem, isSelected? {borderWidth:1, borderColor: '#00C851', borderRadius: 20, margin: 5} : {borderWidth: 0} ]}
+        style={[
+          styles.businessItem,
+          isSelected
+            ? {
+                borderWidth: 1,
+                borderColor: "#00C851",
+                borderRadius: 20,
+                margin: 5,
+                paddingHorizontal: 15,
+                paddingVertical: 10,
+              }
+            : { borderWidth: 0 },
+        ]}
         onPress={() => handleSelect(item)}
         activeOpacity={0.7}
       >
@@ -86,8 +101,6 @@ const BusinessSelector: React.FC<BusinessSelectorProps> = ({
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            {/* <View style={{ width: 70, borderWidth: 2, borderRadius: 5, justifyContent:'center', alignContent:'center', alignItems:'center', margin:10 }} /> */}
-            {/* Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Mes Commerces</Text>
               <TouchableOpacity onPress={() => setIsVisible(false)}>
@@ -95,11 +108,16 @@ const BusinessSelector: React.FC<BusinessSelectorProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Business List */}
             <View style={styles.listContainer}>
               {loading ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color="#00C851" />
+                </View>
+              ) : businesses.length === 0 ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={{ color: "#999", fontSize: 16 }}>
+                    Aucun commerce
+                  </Text>
                 </View>
               ) : (
                 <FlatList
@@ -111,7 +129,6 @@ const BusinessSelector: React.FC<BusinessSelectorProps> = ({
               )}
             </View>
 
-            {/* Bottom Buttons */}
             <View style={styles.bottomButtons}>
               <TouchableOpacity
                 style={styles.addButton}
@@ -189,8 +206,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 20,
-    // borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
   },
   modalTitle: {
     fontSize: 20,
@@ -203,14 +218,13 @@ const styles = StyleSheet.create({
   loadingContainer: {
     padding: 40,
     alignItems: "center",
+    justifyContent: "center",
   },
   businessItem: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 20,
-    // borderBottomWidth: 1,
-    // borderBottomColor: "#F5F5F5",
   },
   businessIcon: {
     width: 40,
@@ -239,8 +253,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 15,
     gap: 10,
-    // borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
   },
   addButton: {
     flex: 1,

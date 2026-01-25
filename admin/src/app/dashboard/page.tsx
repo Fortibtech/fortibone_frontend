@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import styles from './dashboard.module.css';
+import styles from '../page.module.css';
 import { getAllBusinesses, getBusinessCountByType, getGlobalStats, type BusinessType } from '../../lib/api/adminApi';
 
 // Helper functions
@@ -160,178 +160,167 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      <div className={styles.dashboardContent}>
-
-        {/* TOP ACTIONS BAR */}
-        <div className={styles.actionsBar}>
-          <button className={styles.actionBtn}>
-            <span>🗓️</span> {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-          </button>
-          <button className={styles.actionBtn}>
-            <span>📢</span> Nouvelle Notification
-          </button>
-          <button className={styles.actionBtn}>
-            <span>📄</span> Exporter Rapport
-          </button>
+      {/* KPI Cards */}
+      <div className={styles.kpiGrid}>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiHeader}>
+            <div className={`${styles.kpiIcon} ${styles.users}`}>👥</div>
+            <span className={`${styles.kpiTrend} ${styles.positive}`}>Live</span>
+          </div>
+          <div className={styles.kpiValue}>{formatNumber(kpis.totalUsers)}</div>
+          <div className={styles.kpiLabel}>Utilisateurs estimés</div>
         </div>
 
-        {/* 1. KPI CARDS */}
-        <div className={styles.kpiGrid}>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiHeader}>
-              <div className={styles.kpiIcon}>👥</div>
-              <span className={`${styles.kpiTrend} ${styles.positive}`}>Live</span>
-            </div>
-            <div className={styles.kpiValue}>{formatNumber(kpis.totalUsers)}</div>
-            <div className={styles.kpiLabel}>Utilisateurs actifs</div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiHeader}>
+            <div className={`${styles.kpiIcon} ${styles.business}`}>🏢</div>
+            <span className={`${styles.kpiTrend} ${styles.positive}`}>API</span>
           </div>
-
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiHeader}>
-              <div className={styles.kpiIcon}>🏢</div>
-              <span className={`${styles.kpiTrend} ${styles.positive}`}>API</span>
-            </div>
-            <div className={styles.kpiValue}>{formatNumber(kpis.totalBusinesses)}</div>
-            <div className={styles.kpiLabel}>Entreprises</div>
-          </div>
-
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiHeader}>
-              <div className={styles.kpiIcon}>💰</div>
-              <span className={`${styles.kpiTrend} ${styles.positive}`}>--</span>
-            </div>
-            <div className={styles.kpiValue}>{formatCurrency(kpis.totalVolume)}</div>
-            <div className={styles.kpiLabel}>Volume d'affaires</div>
-          </div>
-
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiHeader}>
-              <div className={styles.kpiIcon}>📊</div>
-              <span className={`${styles.kpiTrend} ${styles.positive}`}>--</span>
-            </div>
-            <div className={styles.kpiValue}>{formatNumber(kpis.totalTransactions)}</div>
-            <div className={styles.kpiLabel}>Transactions</div>
-          </div>
+          <div className={styles.kpiValue}>{formatNumber(kpis.totalBusinesses)}</div>
+          <div className={styles.kpiLabel}>Entreprises</div>
         </div>
 
-        {/* 2. CHARTS SECTION */}
-        <div className={styles.chartsGrid}>
-          <div className={styles.chartCard}>
-            <div className={styles.chartHeader}>
-              <h3 className={styles.chartTitle}>📈 Croissance Utilisateurs</h3>
-              <div className={styles.chartPeriod}>
-                <button className={`${styles.periodBtn} ${styles.active}`}>30J</button>
-                <button className={styles.periodBtn}>7J</button>
-                <button className={styles.periodBtn}>24H</button>
-              </div>
-            </div>
-            <div className={styles.chartContent}>
-              <div className={styles.chartPlaceholder}>
-                <span>📊</span>
-                <p>Graphique d'acquisition</p>
-              </div>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiHeader}>
+            <div className={`${styles.kpiIcon} ${styles.revenue}`}>💰</div>
+            <span className={`${styles.kpiTrend} ${styles.positive}`}>--</span>
+          </div>
+          <div className={styles.kpiValue}>{formatCurrency(kpis.totalVolume)}</div>
+          <div className={styles.kpiLabel}>Volume transactionnel</div>
+        </div>
+
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiHeader}>
+            <div className={`${styles.kpiIcon} ${styles.transactions}`}>📊</div>
+            <span className={`${styles.kpiTrend} ${styles.positive}`}>--</span>
+          </div>
+          <div className={styles.kpiValue}>{formatNumber(kpis.totalTransactions)}</div>
+          <div className={styles.kpiLabel}>Transactions</div>
+        </div>
+      </div>
+
+      {/* Charts Section */}
+      <div className={styles.chartsGrid}>
+        <div className={styles.chartCard}>
+          <div className={styles.chartHeader}>
+            <h3 className={styles.chartTitle}>📈 Évolution des utilisateurs</h3>
+            <div className={styles.chartPeriod}>
+              <button className={`${styles.periodBtn} ${styles.active}`}>Mois</button>
+              <button className={styles.periodBtn}>Semaine</button>
+              <button className={styles.periodBtn}>Jour</button>
             </div>
           </div>
-
-          <div className={styles.chartCard}>
-            <div className={styles.chartHeader}>
-              <h3 className={styles.chartTitle}>🥧 Répartition</h3>
-            </div>
-            <div className={styles.chartContent}>
-              <div className={styles.chartPlaceholder}>
-                <span>🎯</span>
-                <p>Mix Professionnels</p>
-              </div>
+          <div className={styles.chartContent}>
+            <div className={styles.chartPlaceholder}>
+              <span>📊</span>
+              <p>Graphique Recharts à intégrer</p>
+              <p style={{ fontSize: '12px', color: 'var(--color-gray-400)' }}>
+                Données en temps réel depuis l'API
+              </p>
             </div>
           </div>
         </div>
 
-        {/* 3. ALERTS & ACTIVITY (Full Width Grid) */}
-        <div className={styles.alertsGrid}>
-          <div className={styles.alertsCard}>
-            <div className={styles.chartHeader}>
-              <h3 className={styles.chartTitle}>🔔 Alertes Système</h3>
+        {/* Recruitment Management Card */}
+        <div className={styles.chartCard}>
+          <div className={styles.chartHeader}>
+            <h3 className={styles.chartTitle}>💼 Recrutement</h3>
+          </div>
+          <div className={styles.chartContent} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            <p style={{ marginBottom: '16px', color: '#64748b' }}>Gérez les offres d'emploi visible sur le site public.</p>
+            <Link href="/dashboard/careers" style={{
+              background: '#0f172a',
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontWeight: '600'
+            }}>
+              Gérer les offres →
+            </Link>
+          </div>
+        </div>
+
+        <div className={styles.chartCard}>
+          <div className={styles.chartHeader}>
+            <h3 className={styles.chartTitle}>🥧 Répartition</h3>
+          </div>
+          <div className={styles.chartContent}>
+            <div className={styles.chartPlaceholder}>
+              <span>🎯</span>
+              <p>Professionnels: {totalProfiles}</p>
+              <p style={{ fontSize: '12px', color: 'var(--color-gray-400)' }}>
+                Particuliers (estimés): {particuliersCount}
+              </p>
             </div>
-            <div className={styles.alertsList}>
-              {alerts.length === 0 ? (
-                <div className={styles.alertItem}>
-                  <div className={`${styles.alertIcon} ${styles.success}`}>✅</div>
-                  <div className={styles.alertContent}>
-                    <div className={styles.alertTitle}>Système opérationnel</div>
-                    <div className={styles.alertDescription}>Aucune anomalie détectée</div>
-                  </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Alerts Section */}
+      <div className={styles.alertsCard}>
+        <div className={styles.chartHeader}>
+          <h3 className={styles.chartTitle}>🔔 Alertes système</h3>
+        </div>
+        <div className={styles.alertsList}>
+          {alerts.length === 0 ? (
+            <div className={styles.alertItem}>
+              <div className={`${styles.alertIcon} ${styles.success}`}>✅</div>
+              <div className={styles.alertContent}>
+                <div className={styles.alertTitle}>Aucune alerte</div>
+                <div className={styles.alertDescription}>Tout fonctionne normalement</div>
+              </div>
+            </div>
+          ) : (
+            alerts.map((alert) => (
+              <div key={alert.id} className={styles.alertItem}>
+                <div className={`${styles.alertIcon} ${styles[alert.type]}`}>
+                  {alert.type === 'critical' ? '🔴' : alert.type === 'warning' ? '🟠' : '🟢'}
                 </div>
-              ) : (
-                alerts.map((alert) => (
-                  <div key={alert.id} className={styles.alertItem}>
-                    <div className={`${styles.alertIcon} ${styles[alert.type]}`}>
-                      {alert.type === 'critical' ? '🔴' : alert.type === 'warning' ? '⚠️' : '✅'}
-                    </div>
-                    <div className={styles.alertContent}>
-                      <div className={styles.alertTitle}>{alert.title}</div>
-                      <div className={styles.alertDescription}>{alert.description}</div>
-                      <div className={styles.alertTime}>{alert.time}</div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className={styles.alertsCard}>
-            <div className={styles.chartHeader}>
-              <h3 className={styles.chartTitle}>⚡ Activité Récente</h3>
-            </div>
-            <div className={styles.alertsList}>
-              <div className={styles.alertItem}>
-                <div className={`${styles.alertIcon} ${styles.success}`}>💰</div>
                 <div className={styles.alertContent}>
-                  <div className={styles.alertTitle}>Paiement Reçu</div>
-                  <div className={styles.alertDescription}>Commande #8829 - 45.00€</div>
-                  <div className={styles.alertTime}>Il y a 2 min</div>
+                  <div className={styles.alertTitle}>{alert.title}</div>
+                  <div className={styles.alertDescription}>{alert.description}</div>
                 </div>
+                <div className={styles.alertTime}>{alert.time}</div>
               </div>
-              <div className={styles.alertItem}>
-                <div className={`${styles.alertIcon} ${styles.warning}`}>👤</div>
-                <div className={styles.alertContent}>
-                  <div className={styles.alertTitle}>Nouveau Commerçant</div>
-                  <div className={styles.alertDescription}>Validation Kbis requise</div>
-                  <div className={styles.alertTime}>Il y a 15 min</div>
-                </div>
-              </div>
-            </div>
-          </div>
+            ))
+          )}
         </div>
+      </div>
 
-        {/* 4. PROFILES STATS */}
+      {/* Profile Stats Grid */}
+      <div className={styles.chartCard}>
+        <div className={styles.chartHeader}>
+          <h3 className={styles.chartTitle}>👥 Répartition par profil</h3>
+          <span style={{ fontSize: '12px', color: 'var(--color-primary)' }}>Données API en temps réel</span>
+        </div>
         <div className={styles.profileStatsGrid}>
           <Link href="/profils/particuliers" className={styles.profileStatCard}>
             <div className={styles.profileIcon}>👤</div>
-            <div className={styles.profileCount}>{formatNumber(particuliersCount)}</div>
             <div className={styles.profileName}>Particuliers</div>
+            <div className={styles.profileCount}>{formatNumber(particuliersCount)}</div>
           </Link>
           <Link href="/profils/commercants" className={styles.profileStatCard}>
             <div className={styles.profileIcon}>🏪</div>
-            <div className={styles.profileCount}>{formatNumber(businessCounts.COMMERCANT)}</div>
             <div className={styles.profileName}>Commerçants</div>
+            <div className={styles.profileCount}>{formatNumber(businessCounts.COMMERCANT)}</div>
           </Link>
           <Link href="/profils/fournisseurs" className={styles.profileStatCard}>
             <div className={styles.profileIcon}>📦</div>
-            <div className={styles.profileCount}>{formatNumber(businessCounts.FOURNISSEUR)}</div>
             <div className={styles.profileName}>Fournisseurs</div>
+            <div className={styles.profileCount}>{formatNumber(businessCounts.FOURNISSEUR)}</div>
           </Link>
           <Link href="/profils/restaurateurs" className={styles.profileStatCard}>
             <div className={styles.profileIcon}>🍽️</div>
-            <div className={styles.profileCount}>{formatNumber(businessCounts.RESTAURATEUR)}</div>
             <div className={styles.profileName}>Restaurateurs</div>
+            <div className={styles.profileCount}>{formatNumber(businessCounts.RESTAURATEUR)}</div>
           </Link>
           <Link href="/profils/livreurs" className={styles.profileStatCard}>
             <div className={styles.profileIcon}>🚴</div>
-            <div className={styles.profileCount}>{formatNumber(businessCounts.LIVREUR)}</div>
             <div className={styles.profileName}>Livreurs</div>
+            <div className={styles.profileCount}>{formatNumber(businessCounts.LIVREUR)}</div>
           </Link>
         </div>
-
       </div>
     </div>
   );

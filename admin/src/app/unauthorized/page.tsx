@@ -15,53 +15,59 @@ export default function UnauthorizedPage() {
             background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
         }}>
             <div style={{
-                width: '80px',
-                height: '80px',
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05))',
                 borderRadius: '50%',
-                background: 'var(--color-primary-50)',
+                width: '120px',
+                height: '120px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 24px',
-                fontSize: '32px'
-            }}>
-                🔒
-            </div>
-            <h1 style={{
-                fontSize: '24px',
-                fontWeight: '700',
-                color: 'var(--color-gray-900)',
-                marginBottom: '12px'
-            }}>Accès Refusé</h1>
-            <p style={{
-                color: 'var(--color-gray-600)',
                 marginBottom: '32px',
-                lineHeight: '1.5'
+                fontSize: '48px'
             }}>
-                Vous n'avez pas les permissions nécessaires pour accéder à cette page.<br />
-                Veuillez vous connecter avec un compte administrateur.
+                🚫
+            </div>
+
+            <h1 style={{
+                fontSize: '48px',
+                fontWeight: '700',
+                color: '#111',
+                marginBottom: '16px'
+            }}>
+                Accès Non Autorisé
+            </h1>
+
+            <p style={{
+                fontSize: '18px',
+                color: '#666',
+                maxWidth: '500px',
+                lineHeight: '1.6',
+                marginBottom: '32px'
+            }}>
+                Vous n'avez pas les permissions nécessaires pour accéder au dashboard administrateur.
             </p>
 
-            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <Link
-                    href="/"
+                    href="/about"
                     style={{
-                        padding: '12px 24px',
+                        background: 'linear-gradient(135deg, #00c9a7, #00a389)',
+                        color: 'white',
+                        padding: '14px 28px',
                         borderRadius: '12px',
                         textDecoration: 'none',
                         fontWeight: '600',
-                        fontSize: '14px',
-                        background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))',
-                        color: 'white',
-                        boxShadow: '0 4px 12px rgba(27, 184, 116, 0.2)'
+                        fontSize: '16px',
                     }}
                 >
-                    Retour à l'accueil
+                    Découvrir KomoraLink
                 </Link>
                 <Link
                     href="/login"
                     style={{
                         background: 'white',
+                        color: '#00c9a7',
+                        padding: '14px 28px',
                         borderRadius: '12px',
                         textDecoration: 'none',
                         fontWeight: '600',

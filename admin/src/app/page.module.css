@@ -1,0 +1,354 @@
+/* Dashboard Page - Light Theme */
+
+.dashboard {
+  animation: fadeIn 0.3s ease;
+}
+
+/* KPI Grid */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.kpiCard {
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpiHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.kpiIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.kpiIcon.users {
+  background: var(--color-primary-50);
+}
+
+.kpiIcon.business {
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.kpiIcon.revenue {
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.kpiIcon.transactions {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.kpiTrend {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.kpiTrend.positive {
+  background: var(--color-primary-50);
+  color: var(--color-primary-dark);
+}
+
+.kpiTrend.negative {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-error);
+}
+
+.kpiValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+}
+
+.kpiLabel {
+  font-size: 14px;
+  color: var(--color-gray-500);
+}
+
+/* Charts Grid */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.chartCard {
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.chartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.chartTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-gray-900);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chartPeriod {
+  display: flex;
+  gap: 4px;
+  background-color: var(--color-gray-100);
+  padding: 4px;
+  border-radius: var(--radius-md);
+}
+
+.periodBtn {
+  padding: 6px 14px;
+  border: none;
+  background-color: transparent;
+  color: var(--color-gray-500);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.periodBtn:hover {
+  color: var(--color-gray-700);
+}
+
+.periodBtn.active {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.chartContent {
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-gray-400);
+  font-size: 14px;
+  background: var(--color-gray-50);
+  border-radius: var(--radius-lg);
+}
+
+.chartPlaceholder {
+  text-align: center;
+}
+
+.chartPlaceholder span {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+/* Alerts Card */
+.alertsCard {
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.alertsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alertItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-gray-50);
+  border: 1px solid var(--color-gray-100);
+  transition: all var(--transition-fast);
+}
+
+.alertItem:hover {
+  background-color: var(--color-gray-100);
+}
+
+.alertIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.alertIcon.critical {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.alertIcon.warning {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.alertIcon.success {
+  background: var(--color-primary-50);
+}
+
+.alertContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.alertTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-gray-900);
+  margin-bottom: 2px;
+}
+
+.alertDescription {
+  font-size: 13px;
+  color: var(--color-gray-500);
+}
+
+.alertTime {
+  font-size: 12px;
+  color: var(--color-gray-400);
+  white-space: nowrap;
+}
+
+/* Profile Stats Grid */
+.profileStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+
+.profileStatCard {
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.profileStatCard:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.profileIcon {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.profileName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-gray-900);
+  margin-bottom: 8px;
+}
+
+.profileCount {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+}
+
+/* Loading State */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  color: var(--color-gray-500);
+  font-size: 16px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-gray-200);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 12px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chartsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .profileStatsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .profileStatsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .kpiValue {
+    font-size: 26px;
+  }
+
+  .profileCount {
+    font-size: 22px;
+  }
+}

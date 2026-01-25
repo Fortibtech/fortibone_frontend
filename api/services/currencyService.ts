@@ -7,21 +7,19 @@ export class CurrencyService {
 
   static async getCurrencies(): Promise<Currency[]> {
     const cacheKey = "currencies_list";
-    
+
     // Vérifier le cache
     const cachedData = await cacheManager.get<Currency[]>(cacheKey);
     if (cachedData) {
-      console.log("📦 Devises récupérées du cache");
       return cachedData;
     }
 
     try {
       const response = await axiosInstance.get<Currency[]>("/currencies");
-      
+
       // Mettre en cache avec TTL plus long
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des devises:", error);

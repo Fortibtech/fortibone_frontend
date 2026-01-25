@@ -11,7 +11,7 @@ const Index = () => {
   const [selectedType, setSelectedType] = useState<string | null>(null);
 
   const handleProTypeSelect = (
-    proType: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR"
+    proType: "COMMERCANT" | "FOURNISSEUR" | "RESTAURATEUR" | "LIVREUR"
   ) => {
     setSelectedType(proType);
   };
@@ -31,6 +31,9 @@ const Index = () => {
       case "RESTAURATEUR":
         router.push("/createBusinessRestaurateur");
         break;
+      case "LIVREUR":
+        router.push("/createBusinessLivreur"); // ← Ajouter ton écran livreur ici
+        break;
     }
   };
 
@@ -43,12 +46,17 @@ const Index = () => {
     {
       id: "FOURNISSEUR",
       title: "Je suis FOURNISSEUR",
-      icon: "briefcase-outline", // ← Icône changée ici (anciennement truck-outline)
+      icon: "briefcase-outline",
     },
     {
       id: "RESTAURATEUR",
       title: "Je suis RESTAURATEUR",
       icon: "restaurant-outline",
+    },
+    {
+      id: "LIVREUR",
+      title: "Je suis LIVREUR",
+      icon: "bicycle-outline", // ou "cube-outline" si tu préfères
     },
   ];
 
@@ -59,9 +67,7 @@ const Index = () => {
           <View style={styles.backButton}>
             <BackButtonAdmin />
           </View>
-          <Text style={styles.question}>
-            Que souhaitez-vous faire sur FortibOne ?
-          </Text>
+          <Text style={styles.question}>Qui êtes-vous ?</Text>
         </View>
 
         {proTypes.map((type) => (
@@ -75,17 +81,14 @@ const Index = () => {
             activeOpacity={0.85}
           >
             <View style={styles.cardContent}>
-              {/* Icône à gauche */}
               <Ionicons
                 name={type.icon as any}
                 size={36}
                 color={selectedType === type.id ? "#059669" : "#94a3b8"}
               />
 
-              {/* Texte */}
               <Text style={styles.accountTypeTitle}>{type.title}</Text>
 
-              {/* Checkmark quand sélectionné */}
               {selectedType === type.id && (
                 <View style={styles.checkmarkBadge}>
                   <Ionicons name="checkmark" size={16} color="#fff" />
@@ -118,16 +121,13 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "relative",
-
-    right: 25,
+    left: 10,
   },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 40,
-
-    gap: 16,
+    marginBottom: 90,
+    gap: 20,
   },
   content: {
     flex: 1,
@@ -136,14 +136,11 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   question: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
-    textAlign: "center",
     color: "#111",
-
     lineHeight: 30,
   },
-
   accountTypeCard: {
     backgroundColor: "#f8f9fa",
     borderRadius: 16,
@@ -164,20 +161,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     elevation: 8,
   },
-
   cardContent: {
     flexDirection: "row",
     alignItems: "center",
   },
-
   accountTypeTitle: {
     fontSize: 17,
     fontWeight: "600",
     color: "#111",
     marginLeft: 16,
-    flex: 1, // permet au texte de prendre tout l'espace disponible
+    flex: 1,
   },
-
   checkmarkBadge: {
     position: "absolute",
     top: -8,

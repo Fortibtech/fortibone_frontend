@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
+import { useBusinessStore } from "@/store/businessStore";
 import {
   View,
   Text,
@@ -16,6 +17,9 @@ import { router, useFocusEffect } from "expo-router";
 import BackButtonAdmin from "@/components/Admin/BackButton"; // ← ton composant
 const ManageBusinessesScreen: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
+  const business = useBusinessStore((state) => state.business);
+  const { bumpVersion } = useBusinessStore();
+  const setBusiness = useBusinessStore((state) => state.setBusiness);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,24 +52,24 @@ const ManageBusinessesScreen: React.FC = () => {
       loadBusinesses();
     }, [loadBusinesses])
   );
+
   const confirmDelete = async () => {
     if (!businessToDelete) return;
 
     try {
       await BusinessesService.deleteBusiness(businessToDelete.id);
-      Alert.alert(
-        "Supprimé !",
-        `"${businessToDelete.name}" a été supprimé avec succès.`
-      );
-      loadBusinesses(); // recharge la liste
+      // Mise à jour locale de la liste
+      setBusinesses((prev) => prev.filter((b) => b.id !== businessToDelete.id));
+      // Si le business supprimé est celui sélectionné, on le supprime du store
+      if (business?.id === businessToDelete.id) {
+        setBusiness(null);
+      }
+      // Force le re-render des composants qui utilisent refreshKey={version}
+      bumpVersion();
     } catch (error) {
       Alert.alert("Erreur", "Impossible de supprimer ce commerce.");
-    } finally {
-      setDeleteModalVisible(false);
-      setBusinessToDelete(null);
     }
   };
-
   const openEdit = (business: Business) => {
     router.push({
       pathname: "/(update-business)/[businessid]",
@@ -84,10 +88,7 @@ const ManageBusinessesScreen: React.FC = () => {
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.businessName}>{item.name}</Text>
-          <Text style={styles.businessType}>
-            {item.type === "COMMERCANT" ? "Commerçant" : "Fournisseur"} •{" "}
-            {item.type}
-          </Text>
+          <Text style={styles.businessType}>{item.type}</Text>
           {item.address && (
             <Text style={styles.businessAddress} numberOfLines={1}>
               {item.address}

@@ -30,7 +30,7 @@
     justify-content: center;
     gap: 10px;
     padding: 16px;
-    background: linear-gradient(135deg, #22d989 0%, #1BB874 100%);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     border-radius: 12px;
     color: white;
     font-size: 16px;
@@ -63,7 +63,7 @@
     width: 40px;
     height: 40px;
     border: 3px solid #e5e7eb;
-    border-top-color: #22d989;
+    border-top-color: #10b981;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 16px;
@@ -106,7 +106,7 @@
 .createButton {
     display: inline-flex;
     padding: 14px 28px;
-    background: #22d989;
+    background: #10b981;
     color: white;
     border-radius: 12px;
     font-size: 15px;
@@ -115,7 +115,7 @@
 }
 
 .createButton:hover {
-    background: #1BB874;
+    background: #059669;
 }
 
 /* Business List */
@@ -189,7 +189,7 @@
 
 .selectBtn {
     padding: 10px 20px;
-    background: #22d989;
+    background: #10b981;
     color: white;
     border: none;
     border-radius: 10px;
@@ -200,7 +200,7 @@
 }
 
 .selectBtn:hover {
-    background: #1BB874;
+    background: #059669;
 }
 
 .editBtn {

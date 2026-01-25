@@ -99,7 +99,6 @@ export const uploadUserAvatar = async (fileUri: string): Promise<string> => {
       },
     });
 
-    // retourne l'URL finale de l'image depuis la réponse du serveur
     return response.data.profileImageUrl || "";
   } catch (error: any) {
     console.error(

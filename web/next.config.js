@@ -32,6 +32,9 @@ const nextConfig = {
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://dash.fortibtech.com',
     },
 
+    // Turbopack config (required when using webpack config in Next.js 16+)
+    turbopack: {},
+
     // Webpack configuration
     webpack: (config) => {
         config.resolve.alias = {

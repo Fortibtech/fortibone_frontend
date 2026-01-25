@@ -98,7 +98,7 @@
 
 .faqIcon {
     font-size: 24px;
-    color: #1BB874;
+    color: #059669;
     font-weight: 400;
     flex-shrink: 0;
     margin-left: 16px;
@@ -144,7 +144,7 @@
 .formGroup input:focus,
 .formGroup textarea:focus {
     outline: none;
-    border-color: #1BB874;
+    border-color: #059669;
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
@@ -160,7 +160,7 @@
 
 .submitButton {
     padding: 14px 24px;
-    background: #1BB874;
+    background: #059669;
     color: white;
     border: none;
     border-radius: 8px;
@@ -171,7 +171,7 @@
 }
 
 .submitButton:hover:not(:disabled) {
-    background: #16a465;
+    background: #047857;
 }
 
 .submitButton:disabled {
@@ -201,7 +201,7 @@
 
 .contactLink {
     font-size: 15px;
-    color: #1BB874;
+    color: #059669;
     text-decoration: none;
     font-weight: 500;
 }

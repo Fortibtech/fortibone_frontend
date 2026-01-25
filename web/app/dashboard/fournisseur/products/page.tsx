@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { toast } from 'sonner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
@@ -72,11 +71,8 @@ export default function FournisseurProductsPage() {
             });
             setProducts(data.data || []);
             setTotalPages(data.totalPages || 1);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error loading products:', error);
-            toast.error('Erreur chargement produits', {
-                description: error.message,
-            });
         } finally {
             setLoading(false);
         }
@@ -131,37 +127,28 @@ export default function FournisseurProductsPage() {
         setSubmittingLosses(true);
         try {
             const response = await recordExpiredLosses(selectedBusiness.id);
-            toast.success(`${response.lossesRecorded} perte(s) enregistrée(s)`, {
-                description: 'Les stocks ont été mis à jour',
-            });
+            alert(`✅ ${response.lossesRecorded} perte(s) enregistrée(s).`);
             setInventory([]);
             setInventoryPage(1);
             loadInventory();
             loadExpiringCount();
             loadExpiringProducts();
             setExpiringModalOpen(false);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error recording losses:', error);
-            toast.error('Impossible d\'enregistrer les pertes', {
-                description: error.message,
-            });
+            alert('❌ Impossible d\'enregistrer les pertes');
         } finally {
             setSubmittingLosses(false);
         }
     };
 
     const handleDelete = async (productId: string) => {
-        if (!selectedBusiness) return;
-        if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
+        if (!selectedBusiness || !confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
         try {
             await deleteProduct(selectedBusiness.id, productId);
             setProducts(products.filter(p => p.id !== productId));
-            toast.success('Produit supprimé');
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error deleting product:', error);
-            toast.error('Erreur lors de la suppression', {
-                description: error.response?.data?.message || error.message,
-            });
         }
     };
 

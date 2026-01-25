@@ -1,9 +1,9 @@
 // src/api/axiosInstance.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-
-// ✅ Définir la base URL (utilise variable d'environnement si disponible)
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://dash.fortibtech.com";
+// ✅ Définir la base URL
+// "https://dash.fortibtech.com";
+const API_URL = "https://dash.fortibtech.com";
 
 // ✅ Créer une instance Axios
 const axiosInstance = axios.create({
@@ -30,7 +30,7 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      // Token expiré ou invalide - redirection gérée par l'app
+      // Token expiré ou invalide - rediriger vers login si nécessaire
     }
     return Promise.reject(error);
   }

@@ -39,17 +39,14 @@ export async function createOrder(
   payload: CreateOrderPayload
 ): Promise<CreateOrderResponse> {
   try {
-    console.log("📦 Payload envoyé :", payload);
-
     const response = await axiosInstance.post<CreateOrderResponse>(
       "/orders",
       payload
     );
 
-    console.log("✅ Order créée :", response.data);
     return response.data;
   } catch (error: any) {
-    console.log("❌ Erreur createOrder :", error.response?.data || error);
+    console.error("❌ Erreur createOrder:", error.response?.data || error.message);
     throw error;
   }
 }
@@ -100,7 +97,6 @@ export const passMultipleOrders = async (
       payload
     );
 
-    console.log("✅ Checkout multi-vendeurs réussi :", response.data);
     return response.data;
   } catch (error: any) {
     console.error(

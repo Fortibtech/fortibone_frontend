@@ -1,963 +1,1159 @@
-import {
-  MenuItem,
-  Table,
-  TablePayload,
-  UpdateTablePayload,
-  createMenu,
-  createRestaurantTable,
-  deleteMenu,
-  deleteRestaurantTable,
-  getMenus,
-  getTables,
-  getVariants,
-  updateMenu, // Ajout de l'import pour updateMenu
-  updateRestaurantTable,
-} from "@/api/restaurant";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
+  Animated,
+  Image,
   Modal,
   Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View
+  View,
+  FlatList,
+  Pressable,
 } from "react-native";
-import Animated, { FadeInUp, Layout } from "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { Business, BusinessesService } from "@/api";
+import BusinessSelector from "@/components/Business/BusinessSelector";
+import { AnalyticsOverview, getAnalyticsOverview } from "@/api/analytics";
+import { getOrdersByRestaurant, Order } from "@/api/menu/ordersApi";
+import { useBusinessStore } from "@/store/businessStore";
+import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
+import PopularDishesChart from "@/components/Chart/PopularDishesChart";
+import ReservationsByPeriodChart from "@/components/Chart/ReservationsByPeriodChart";
+import SalesByPeriodChart from "@/components/Chart/SalesByPeriodChart";
+import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
+import InventoryLossesChart from "@/components/Chart/InventoryLossesChart";
 
-// Interface pour les éléments de données dans les sections
-interface SectionData {
-  id: string;
-  label: string;
-  value: string;
-  icon: string;
-  actions?: { label: string; onPress: () => void; color: string }[];
+type PeriodType = "day" | "week" | "month" | "year" | "all" | "custom";
+
+interface RestaurantSpecificStats {
+  pendingOrders?: number;
+  inPreparationOrders?: number;
+  readyOrders?: number;
 }
 
-// Interface pour les sections
-interface Section {
-  title: string;
-  icon: string;
-  action: () => void;
-  actionIcon: string;
-  actionLabel: string;
-  data: SectionData[];
-}
-
-// Update Menu interface to match UpdatedMenuResponse
-interface Menu {
-  id: string;
-  name: string;
-  description: string;
-  price: string; // Changed to string to match API response
-  isActive: boolean;
-  businessId: string;
-  menuItems: MenuItem[];
-}
-
-const AdminRestaurantDashboard = () => {
-  const { id: businessId } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
-  const [tables, setTables] = useState<Table[]>([]);
-  const [menus, setMenus] = useState<Menu[]>([]);
+const RestaurantHome: React.FC = () => {
+  const business = useBusinessStore((state) => state.business);
+  const { version } = useBusinessStore();
+  const setBusiness = useBusinessStore((state) => state.setBusiness);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const { uri } = useUserAvatar();
+
+  // Stats générales (CA, etc.)
+  const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
+  // Stats spécifiques restaurant
+  const [restaurantStats, setRestaurantStats] =
+    useState<RestaurantSpecificStats | null>(null);
+
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [ordersModalVisible, setOrdersModalVisible] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [showStatsChart, setShowStatsChart] = useState(false);
+
+  // Filtre de période
+  const [period, setPeriod] = useState<PeriodType>("all");
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+  const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
+
+  // Modale filtre
   const [modalVisible, setModalVisible] = useState(false);
-  const [menuModalVisible, setMenuModalVisible] = useState(false);
-  const [editingTable, setEditingTable] = useState<Table | null>(null);
-  const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
-  const [tableName, setTableName] = useState("");
-  const [tableCapacity, setTableCapacity] = useState("");
-  const [tableAvailable, setTableAvailable] = useState(true);
-  const [menuName, setMenuName] = useState("");
-  const [menuDescription, setMenuDescription] = useState("");
-  const [menuPrice, setMenuPrice] = useState("");
-  const [menuVariantId, setMenuVariantId] = useState("");
-  const [menuActive, setMenuActive] = useState(true);
-  const [variants, setVariants] = useState<
-    { variantId: string; name: string }[]
-  >([]);
-  const [loadingVariants, setLoadingVariants] = useState(false);
+  const slideAnim = useRef(new Animated.Value(400)).current;
 
-  const loadData = async () => {
-    if (!businessId) {
-      setError("ID du restaurant manquant");
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
+  // Date pickers
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const triggerRefresh = useCallback(() => {
+    setRefreshKey((prev) => prev + 1);
+  }, []);
+  // --------------------------- INIT ---------------------------
+  const loadInitialData = async () => {
     try {
-      const [tablesData, menusData] = await Promise.all([
-        getTables(businessId),
-        getMenus(businessId),
-      ]);
-      setTables(tablesData);
-      setMenus(
-        menusData.map((menu) => ({ ...menu, price: String(menu.price) }))
-      );
-    } catch (error) {
-      console.error("❌ Erreur chargement données:", error);
-      setError("Échec du chargement des données. Veuillez réessayer.");
-    } finally {
-      setLoading(false);
-    }
-  };
+      setLoading(true);
+      const all = await BusinessesService.getBusinesses();
+      setBusinesses(all);
 
-  useEffect(() => {
-    loadData();
-  }, [businessId]);
-
-  const openCreateModal = () => {
-    setEditingTable(null);
-    setTableName("");
-    setTableCapacity("");
-    setTableAvailable(true);
-    setModalVisible(true);
-  };
-
-  const openCreateMenuModal = async () => {
-    setEditingMenu(null);
-    setMenuName("");
-    setMenuDescription("");
-    setMenuPrice("");
-    setMenuVariantId("");
-    setMenuActive(true);
-    setMenuModalVisible(true);
-    setLoadingVariants(true);
-    try {
-      const variantsData = await getVariants(businessId!);
-      setVariants(variantsData);
-    } catch (error) {
-      Alert.alert("Erreur", "Impossible de charger les variantes");
-    } finally {
-      setLoadingVariants(false);
-    }
-  };
-
-  const openEditMenuModal = async (menu: Menu) => {
-    setEditingMenu(menu);
-    setMenuName(menu.name);
-    setMenuDescription(menu.description || "");
-    setMenuPrice(String(menu.price));
-    setMenuVariantId(menu.menuItems[0]?.variantId || "");
-    setMenuActive(menu.isActive);
-    setMenuModalVisible(true);
-    setLoadingVariants(true);
-    try {
-      const variantsData = await getVariants(businessId!);
-      setVariants(variantsData);
-    } catch (error) {
-      Alert.alert("Erreur", "Impossible de charger les variantes");
-    } finally {
-      setLoadingVariants(false);
-    }
-  };
-
-  const openEditTableModal = (table: Table) => {
-    setEditingTable(table);
-    setTableName(table.name);
-    setTableCapacity(String(table.capacity));
-    setTableAvailable(table.isAvailable);
-    setModalVisible(true);
-  };
-
-  const handleSaveTable = async () => {
-    if (!tableName || !tableCapacity) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs");
-      return;
-    }
-    try {
-      if (editingTable) {
-        const payload: UpdateTablePayload = {
-          name: tableName,
-          capacity: Number(tableCapacity),
-          isAvailable: tableAvailable,
-        };
-        const updated = await updateRestaurantTable(
-          businessId!,
-          editingTable.id,
-          payload
-        );
-        setTables((prev) =>
-          prev.map((t) => (t.id === updated.id ? updated : t))
-        );
-        Alert.alert("Succès", `Table "${updated.name}" mise à jour !`);
-      } else {
-        const payload: TablePayload = {
-          name: tableName,
-          capacity: Number(tableCapacity),
-        };
-        const created = await createRestaurantTable(businessId!, payload);
-        setTables((prev) => [...prev, created]);
-        Alert.alert("Succès", `Table "${created.name}" créée !`);
+      if (!business && all.length > 0) {
+        const firstLivreur =
+          all.find((b) => b.type === "RESTAURATEUR") || all[0];
+        setBusiness(firstLivreur);
+        await BusinessesService.selectBusiness(firstLivreur);
       }
-      setModalVisible(false);
-    } catch (error) {
-      Alert.alert("Erreur", "Impossible de sauvegarder la table");
+    } catch (e) {
+      console.log(e);
+      // Alert.alert("Erreur", "Impossible de charger vos données livreur.");
+    } finally {
+      setLoading(false);
     }
   };
+  useEffect(() => {
+    loadInitialData();
+  }, []);
 
-  const handleCreateMenu = async () => {
-    if (!menuName || !menuPrice || !menuVariantId) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-    const price = Number(menuPrice);
-    if (isNaN(price) || price <= 0) {
-      Alert.alert("Erreur", "Le prix doit être un nombre positif");
-      return;
-    }
-    try {
-      const newMenu = await createMenu({
-        name: menuName,
-        description: menuDescription,
-        price,
-        variantId: menuVariantId,
-        businessId: businessId!,
-      });
-      setMenus((prev) => [
-        ...prev,
-        { ...newMenu, price: String(newMenu.price) },
-      ]);
-      Alert.alert("Succès", `Menu "${newMenu.name}" créé !`);
-      setMenuModalVisible(false);
-    } catch (error) {
-      Alert.alert("Erreur", "Impossible de créer le menu");
-    }
+  const hasRedirectedRef = useRef(false);
+  useEffect(() => {
+    if (!business?.type) return;
+    if (hasRedirectedRef.current) return;
+
+    const routes: Record<string, string> = {
+      COMMERCANT: "/(professionnel)",
+      RESTAURATEUR: "/(restaurants)",
+      FOURNISSEUR: "/(fournisseur)",
+      LIVREUR: "/(delivery)",
+    };
+
+    const targetRoute = routes[business.type];
+    if (!targetRoute) return;
+
+    hasRedirectedRef.current = true;
+    setTimeout(() => {
+      router.replace(targetRoute);
+    }, 0);
+  }, [business?.type]);
+
+  // --------------------------- FILTRE PÉRIODE ---------------------------
+  const formatDateFR = (date: Date): string => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long", // vendredi
+      day: "numeric", // 24
+      month: "long", // décembre
+      year: "numeric", // 2025
+    };
+
+    let formatted = new Intl.DateTimeFormat("fr-FR", options).format(date);
+
+    // Met la première lettre en majuscule → "Vendredi 24 décembre 2025"
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
-  const handleUpdateMenu = async () => {
-    if (!editingMenu) {
-      Alert.alert("Erreur", "Aucun menu en édition");
+  const getPeriodLabel = useCallback(() => {
+    if (period === "custom" && customStartDate && customEndDate) {
+      return `du ${formatDateFR(customStartDate)} au ${formatDateFR(
+        customEndDate
+      )}`;
+    }
+    switch (period) {
+      case "day":
+        return "du jour";
+      case "week":
+        return "de la semaine";
+      case "month":
+        return "du mois";
+      case "year":
+        return "de l'année";
+      case "all":
+        return "Global";
+      default:
+        return "Global";
+    }
+  }, [period, customStartDate, customEndDate]);
+
+  const getPeriodDates = useCallback(() => {
+    if (period === "custom" && customStartDate && customEndDate) {
+      return {
+        startDate: customStartDate.toISOString().split("T")[0],
+        endDate: customEndDate.toISOString().split("T")[0],
+      };
+    }
+
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    let startDate: string | undefined;
+    let endDate: string | undefined = today;
+
+    if (period === "day") {
+      startDate = today;
+    } else if (period === "week") {
+      const startOfWeek = new Date(now);
+      const dayOfWeek = now.getDay();
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startDate = startOfWeek.toISOString().split("T")[0];
+    } else if (period === "month") {
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      startDate = `${year}-${month}-01`;
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
+    } else if (period === "year") {
+      const year = now.getFullYear();
+      startDate = `${year}-01-01`;
+      endDate = `${year}-12-31`;
+    }
+
+    return { startDate, endDate };
+  }, [period, customStartDate, customEndDate]);
+
+  const openModal = () => {
+    setModalVisible(true);
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 350,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeModal = () => {
+    Animated.timing(slideAnim, {
+      toValue: 400,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setModalVisible(false));
+  };
+
+  const selectPeriod = (newPeriod: PeriodType) => {
+    if (newPeriod === "custom") {
+      setShowStartPicker(true);
+      closeModal();
       return;
     }
-    if (!menuName || !menuPrice) {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs obligatoires");
-      return;
-    }
-    const price = Number(menuPrice);
-    if (isNaN(price) || price <= 0) {
-      Alert.alert("Erreur", "Le prix doit être un nombre positif");
-      return;
-    }
+    setPeriod(newPeriod);
+    setCustomStartDate(null);
+    setCustomEndDate(null);
+    closeModal();
+  };
+
+  // --------------------------- CHARGEMENT STATS ---------------------------
+  const loadStats = async (businessId: string) => {
+    if (statsLoading || !businessId) return;
+
     try {
-      // Préparation des données pour updateMenu (seulement les champs modifiables)
-      const data = {
-        name: menuName,
-        description: menuDescription || undefined, // Optionnel, envoi seulement si non vide
-        price, // Envoi comme number pour cohérence
-        isActive: menuActive,
+      setStatsLoading(true);
+
+      const { startDate, endDate } = getPeriodDates();
+
+      // 1. Stats générales (CA, etc.)
+      const overviewData = await getAnalyticsOverview(
+        businessId,
+        period === "all" ? undefined : startDate,
+        period === "all" ? undefined : endDate
+      );
+
+      // 2. Stats spécifiques restaurant (en attente, préparation, prêtes)
+      let restaurantSpecific: RestaurantSpecificStats = {
+        pendingOrders: 0,
+        inPreparationOrders: 0,
+        readyOrders: 0,
       };
 
-      // Note: Le variant n'est pas mis à jour ici car updateMenu ne le supporte pas.
-      // Si besoin, ajoutez une logique séparée ou étendez l'API.
+      try {
+        const response = await fetch(
+          `https://dash.fortibtech.com/businesses/${businessId}/analytics/restaurant`,
+          {
+            headers: {
+              Authorization: "Bearer " + /* ton token si besoin */ "",
+            },
+          }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          restaurantSpecific = {
+            pendingOrders: data.pendingOrders || 0,
+            inPreparationOrders: data.inPreparationOrders || 0,
+            readyOrders: data.readyOrders || 0,
+          };
+        }
+      } catch (e) {
+        console.warn("Endpoint /analytics/restaurant non disponible :", e);
+      }
 
-      const updatedMenu = await updateMenu(businessId!, editingMenu.id, data);
-
-      // Mise à jour de l'état local (conversion price en string pour cohérence)
-      setMenus((prev) =>
-        prev.map((m) =>
-          m.id === updatedMenu.id
-            ? { ...updatedMenu, price: String(updatedMenu.price) }
-            : m
-        )
-      );
-
-      console.log("✅ Menu mis à jour :", updatedMenu);
-      Alert.alert("Succès", `Menu "${updatedMenu.name}" mis à jour !`);
-      setMenuModalVisible(false);
-    } catch (error: any) {
-      console.error("❌ Erreur mise à jour menu :", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Impossible de mettre à jour le menu";
-      Alert.alert("Erreur", errorMessage);
+      setOverview(overviewData);
+      setRestaurantStats(restaurantSpecific);
+    } catch (e) {
+      console.error("Erreur chargement stats :", e);
+    } finally {
+      setStatsLoading(false);
     }
   };
 
-  const handleDeleteTable = (tableId: string, tableName: string) => {
-    Alert.alert(
-      "Confirmer la suppression",
-      `Voulez-vous vraiment supprimer la table "${tableName}" ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteRestaurantTable(businessId!, tableId);
-              setTables(tables.filter((t) => t.id !== tableId));
-              Alert.alert("Succès", `Table "${tableName}" supprimée !`);
-            } catch (error) {
-              Alert.alert("Erreur", "Impossible de supprimer la table");
-            }
-          },
-        },
-      ]
+  useFocusEffect(
+    useCallback(() => {
+      if (business?.id) {
+        loadStats(business.id);
+      }
+    }, [business?.id, period, customStartDate, customEndDate])
+  );
+
+  const handleBusinessSelect = async (selected: Business) => {
+    try {
+      await BusinessesService.selectBusiness(selected);
+      setBusiness(selected);
+      setPeriod("all");
+      setCustomStartDate(null);
+      setCustomEndDate(null);
+      Alert.alert("Succès", `"${selected.name}" sélectionné`);
+
+      setTimeout(() => {
+        const routes: Record<string, string> = {
+          COMMERCANT: "/(professionnel)",
+          RESTAURATEUR: "/(restaurants)",
+          FOURNISSEUR: "/(fournisseur)",
+          LIVREUR: "/(delivery)",
+        };
+        const target = routes[selected.type];
+        if (target) router.replace(target);
+      }, 100);
+    } catch (error) {
+      Alert.alert("Erreur", "Impossible de changer d'entreprise");
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadInitialData();
+    if (business?.id) {
+      await loadStats(business.id);
+      triggerRefresh(); // 👈 AJOUTER CETTE LIGNE
+    }
+    setRefreshing(false);
+  };
+
+  const loadOrders = async () => {
+    if (!business?.id) return;
+    try {
+      setOrdersLoading(true);
+      const res = await getOrdersByRestaurant(business.id);
+      setOrders(res.data || []);
+    } catch {
+      Alert.alert("Erreur", "Impossible de charger les commandes");
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const openOrdersModal = async () => {
+    await loadOrders();
+    setOrdersModalVisible(true);
+  };
+
+  const getStatusStyle = (status: Order["status"]) => {
+    switch (status) {
+      case "PENDING_PAYMENT":
+        return { text: "Paiement en attente", color: "#F97316", bg: "#FFEDD5" };
+      case "PENDING":
+        return { text: "Nouvelle", color: "#EA580C", bg: "#FFF7C2" };
+      case "CONFIRMED":
+        return { text: "Confirmée", color: "#7C3AED", bg: "#EDE9FE" };
+      case "PROCESSING":
+        return { text: "En préparation", color: "#D97706", bg: "#FFFBEB" };
+      case "DELIVERED":
+        return { text: "Livrée", color: "#16A34A", bg: "#DCFCE7" };
+      case "COMPLETED":
+        return { text: "Terminée", color: "#059669", bg: "#D1FAE5" };
+      case "CANCELLED":
+        return { text: "Annulée", color: "#EF4444", bg: "#FECACA" };
+      default:
+        return { text: status, color: "#6B7280", bg: "#F3F4F6" };
+    }
+  };
+
+  const formatNumber = (n: number) => new Intl.NumberFormat("fr-FR").format(n);
+
+  // --------------------------- UI ---------------------------
+  const pendingOrders = restaurantStats?.pendingOrders || 0;
+  const inPreparation = restaurantStats?.inPreparationOrders || 0;
+  const readyOrders = restaurantStats?.readyOrders || 0;
+  const totalAlerts = pendingOrders + inPreparation;
+
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <BusinessSelector
+        businesses={businesses}
+        selectedBusiness={business}
+        onBusinessSelect={handleBusinessSelect}
+        loading={loading}
+        onAddBusiness={() => router.push("/(create-business)/")}
+        onManageBusiness={() => router.push("/pro/ManageBusinessesScreen")}
+        refreshKey={version}
+      />
+
+      <View style={styles.headerRight}>
+        {totalAlerts > 0 && (
+          <View style={styles.notificationBadge}>
+            <Text style={styles.badgeText}>
+              {totalAlerts > 99 ? "99+" : totalAlerts}
+            </Text>
+          </View>
+        )}
+
+        <TouchableOpacity style={styles.iconButton}>
+          <Ionicons name="notifications-outline" size={24} color="#000" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.avatarContainer}
+          onPress={() => router.push("/fournisseurSetting")}
+        >
+          {uri ? (
+            <Image key={uri} source={{ uri }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.placeholder]}>
+              <Ionicons name="person" size={40} color="#aaa" />
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  const renderOverview = () => {
+    if (!business) return null;
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Vue d&apos;ensemble</Text>
+          <TouchableOpacity onPress={openModal} style={styles.filterIcon}>
+            <Ionicons name="calendar-outline" size={24} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Ligne du haut : CA + colonne droite (En attente + En préparation) */}
+        <View style={styles.cardsRow}>
+          {/* Carte CA principale */}
+          <View style={[styles.card, styles.cardYellow]}>
+            <View style={styles.cardIcon}>
+              <Image
+                source={require("../../assets/images/wallet-money.png")}
+                style={styles.emoji}
+              />
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardLabel}>CA {getPeriodLabel()}</Text>
+              <Text
+                style={styles.cardValue}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                {formatNumber(overview?.totalSalesAmount || 0)}{" "}
+                <Text style={styles.unit}>KMF</Text>
+              </Text>
+            </View>
+          </View>
+
+          {/* Colonne droite : deux petites cartes */}
+          <View style={styles.rightColumn}>
+            <View style={[styles.card, styles.cardPurple, styles.smallCard]}>
+              <View style={styles.cardIcon}>
+                <Image
+                  source={require("../../assets/images/logo/bag-2.png")}
+                  style={styles.emojiSmall}
+                />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={styles.cardLabel}>En attente</Text>
+                <Text style={styles.cardValue} numberOfLines={1}>
+                  {pendingOrders}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.card, styles.cardOrange, styles.smallCard]}>
+              <View style={styles.cardIcon}>
+                <Image
+                  source={require("../../assets/images/logo/cooking-pot.png")}
+                  style={styles.emojiSmall}
+                />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={styles.cardLabel}>En préparation</Text>
+                <Text style={styles.cardValue} numberOfLines={1}>
+                  {inPreparation}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Carte pleine largeur : Prêtes à servir */}
+        <View style={[styles.card, styles.cardGreen, { marginTop: 16 }]}>
+          <View style={styles.cardIcon}>
+            <Image
+              source={require("../../assets/images/logo/food-tray.png.png")}
+              style={styles.emoji}
+            />
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardLabel}>Prêtes à servir</Text>
+            <Text style={styles.cardValue} numberOfLines={1}>
+              {readyOrders} commande{readyOrders > 1 ? "s" : ""}
+            </Text>
+          </View>
+        </View>
+
+        {/* Boutons */}
+        <TouchableOpacity style={styles.ordersButton} onPress={openOrdersModal}>
+          <Ionicons name="receipt" size={20} color="#7C3AED" />
+          <Text style={styles.ordersButtonText}>
+            Voir les {totalAlerts > 0 ? `${totalAlerts} ` : ""}commandes en
+            cours
+          </Text>
+          <Ionicons name="chevron-forward" size={20} color="#7C3AED" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.statsButton}
+          onPress={() => router.push("/(carriers)/")}
+        >
+          <Ionicons name="pricetag" size={20} color="#6366F1" />
+          <Text style={styles.statsButtonText}>Tarifs des livreurs</Text>
+          <Ionicons name="chevron-forward" size={20} color="#6366F1" />
+        </TouchableOpacity>
+      </View>
     );
   };
 
-  const handleDeleteMenu = async (menuId: string, menuName: string) => {
-    Alert.alert(
-      "Confirmer la suppression",
-      `Voulez-vous vraiment supprimer le menu "${menuName}" ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteMenu(businessId!, menuId);
-              setMenus(menus.filter((m) => m.id !== menuId));
-              Alert.alert("Succès", `Menu "${menuName}" supprimé !`);
-            } catch (error: any) {
-              const errorMessage =
-                error.message === "Menu non trouvé"
-                  ? "Le menu spécifié n'existe pas"
-                  : "Impossible de supprimer le menu";
-              Alert.alert("Erreur", errorMessage);
-            }
-          },
-        },
-      ]
-    );
-  };
+  const renderQuickActions = () => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Accès rapide</Text>
+
+      <View style={styles.quickRow}>
+        <TouchableOpacity style={styles.quickCard} onPress={openOrdersModal}>
+          <View style={[styles.quickIcon, { backgroundColor: "#FFF4E5" }]}>
+            <Ionicons name="receipt-outline" size={32} color="#FF9500" />
+          </View>
+          <Text style={styles.quickTitle}>Commandes</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.quickCard}
+          onPress={() => router.push("/(restaurants)/menus")}
+        >
+          <View style={[styles.quickIcon, { backgroundColor: "#E5F9FF" }]}>
+            <Ionicons name="restaurant-outline" size={32} color="#00A8E8" />
+          </View>
+          <Text style={styles.quickTitle}>Menu</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.quickRow}>
+        <TouchableOpacity
+          style={styles.quickCard}
+          onPress={() => router.push("/(restaurants)/tables")}
+        >
+          <View style={[styles.quickIcon, { backgroundColor: "#F0E5FF" }]}>
+            <Ionicons name="grid-outline" size={32} color="#7C3AED" />
+          </View>
+          <Text style={styles.quickTitle}>Tables</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text style={styles.loadingText}>Chargement des données...</Text>
-      </View>
+      <SafeAreaView style={styles.container}>
+        <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+        <View style={styles.fullLoading}>
+          <ActivityIndicator size="large" color="#00C851" />
+          <Text style={styles.fullLoadingText}>
+            Chargement du restaurant...
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
-
-  if (error) {
-    return (
-      <View style={styles.center}>
-        <Ionicons name="sad-outline" size={40} color="#6b7280" />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={loadData}
-          accessibilityLabel="Réessayer de charger les données"
-          accessibilityRole="button"
-        >
-          <Text style={styles.retryButtonText}>Réessayer</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const sections: Section[] = [
-    {
-      title: "Tables",
-      icon: "cafe-outline",
-      action: openCreateModal,
-      actionIcon: "add-circle-outline",
-      actionLabel: "Ajouter une table",
-      data:
-        tables.length === 0
-          ? [
-              {
-                id: "empty",
-                label: "Aucune table",
-                value: "Aucune table trouvée",
-                icon: "alert-circle-outline",
-              },
-            ]
-          : tables.map((table) => ({
-              id: table.id,
-              label: table.name,
-              value: `Capacité: ${table.capacity} | Disponible: ${
-                table.isAvailable ? "✅ Oui" : "❌ Non"
-              }`,
-              icon: table.isAvailable
-                ? "checkmark-circle-outline"
-                : "close-circle-outline",
-              actions: [
-                {
-                  label: "Modifier",
-                  onPress: () => openEditTableModal(table),
-                  color: "#059669",
-                },
-                {
-                  label: "Supprimer",
-                  onPress: () => handleDeleteTable(table.id, table.name),
-                  color: "#dc2626",
-                },
-              ],
-            })),
-    },
-    {
-      title: "Menus",
-      icon: "restaurant-outline",
-      action: openCreateMenuModal,
-      actionIcon: "add-circle-outline",
-      actionLabel: "Ajouter un menu",
-      data:
-        menus.length === 0
-          ? [
-              {
-                id: "empty",
-                label: "Aucun menu",
-                value: "Aucun menu trouvé",
-                icon: "alert-circle-outline",
-              },
-            ]
-          : menus.map((menu) => ({
-              id: menu.id,
-              label: menu.name,
-              value: `${
-                menu.description || "Pas de description"
-              } | Prix: ${Number(menu.price).toFixed(2)} EURO | Produit: ${
-                menu.menuItems[0]?.variant?.product?.name || "Inconnu"
-              } | Actif: ${menu.isActive ? "✅ Oui" : "❌ Non"}`,
-              icon: "fast-food-outline",
-              actions: [
-                {
-                  label: "Modifier",
-                  onPress: () => openEditMenuModal(menu),
-                  color: "#059669",
-                },
-                {
-                  label: "Supprimer",
-                  onPress: () => handleDeleteMenu(menu.id, menu.name),
-                  color: "#dc2626",
-                },
-              ],
-            })),
-    },
-  ];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          accessibilityLabel="Retour à la page précédente"
-          accessibilityRole="button"
-        >
-          <Ionicons name="arrow-back" size={24} color="#1f2937" />
-        </TouchableOpacity>
-        <Ionicons
-          name="restaurant-outline"
-          size={28}
-          color="#3b82f6"
-          style={styles.headerIcon}
-        />
-        <Text style={styles.header} numberOfLines={1} ellipsizeMode="tail">
-          Gestion du restaurant
-        </Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={loadData}
-          accessibilityLabel="Rafraîchir les données"
-          accessibilityRole="button"
-        >
-          <Ionicons name="refresh" size={24} color="#3b82f6" />
-        </TouchableOpacity>
-      </View>
-      <FlatList
-        data={sections}
-        keyExtractor={(item) => item.title}
-        renderItem={({ item, index }) => (
-          <Animated.View
-            entering={FadeInUp.delay(index * 100).springify()}
-            layout={Layout.springify()}
-            style={styles.sectionCard}
-          >
-            <LinearGradient
-              colors={["#ffffff", "#f8fafc"]}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderLeft}>
-                <Ionicons
-                  name={item.icon}
-                  size={20}
-                  color="#3b82f6"
-                  style={styles.sectionIcon}
-                />
-                <Text style={styles.sectionTitle}>{item.title}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={item.action}
-                style={styles.addButton}
-                accessibilityLabel={item.actionLabel}
-                accessibilityRole="button"
-              >
-                <Ionicons name={item.actionIcon} size={20} color="#3b82f6" />
-                <Text style={styles.addButtonText}>{item.actionLabel}</Text>
-              </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
+      {renderHeader()}
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#00C851"]}
+          />
+        }
+      >
+        {business ? (
+          <>
+            {renderOverview()}
+            <View style={styles.section}>
+              <PopularDishesChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+                refreshKey={refreshKey} 
+              />
+              <ReservationsByPeriodChart
+                businessId={business.id}
+                refreshKey={refreshKey} 
+              />
+              <SalesByPeriodChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+                refreshKey={refreshKey} // 👈 AJOUTER
+              />
+              <ExpenseDistributionChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+                refreshKey={refreshKey} // 👈 AJOUTER
+              />
+              <RevenueDistributionChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+                refreshKey={refreshKey} // 👈 AJOUTER
+              />
+              <InventoryLossesChart
+                businessId={business.id}
+                currencyId={business.currencyId}
+                refreshKey={refreshKey} // 👈 AJOUTER
+              />
             </View>
-            {item.data.map((dataItem) => (
-              <View key={dataItem.id} style={styles.dataRow}>
-                <Ionicons
-                  name={dataItem.icon}
-                  size={16}
-                  color="#3b82f6"
-                  style={styles.dataIcon}
-                />
-                <View style={styles.dataContent}>
-                  <Text style={styles.dataLabel}>{dataItem.label}</Text>
-                  <Text style={styles.dataValue}>{dataItem.value}</Text>
-                  {dataItem.actions && (
-                    <View style={styles.actionsRow}>
-                      {dataItem.actions.map((action, actionIndex) => (
-                        <TouchableOpacity
-                          key={actionIndex}
-                          style={[
-                            styles.actionButton,
-                            { backgroundColor: action.color },
-                          ]}
-                          onPress={action.onPress}
-                          accessibilityLabel={action.label}
-                          accessibilityRole="button"
-                        >
-                          <Text style={styles.actionButtonText}>
-                            {action.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
+            {/* {renderQuickActions()} */}
+          </>
+        ) : (
+          <View style={styles.noBusiness}>
+            <Ionicons name="restaurant-outline" size={90} color="#E0E0E0" />
+            <Text style={styles.noBusinessTitle}>
+              Aucun restaurant sélectionné
+            </Text>
+            <Text style={styles.noBusinessText}>
+              Sélectionnez ou créez un restaurant pour commencer
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* MODAL COMMANDES */}
+      <Modal visible={ordersModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <SafeAreaView style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setOrdersModalVisible(false)}>
+                <Ionicons name="close" size={28} color="#000" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Commandes en cours</Text>
+              <View style={{ width: 28 }} />
+            </View>
+
+            {ordersLoading ? (
+              <View style={styles.center}>
+                <ActivityIndicator size="large" color="#7C3AED" />
               </View>
+            ) : orders.length === 0 ? (
+              <View style={styles.emptyOrders}>
+                <Ionicons name="receipt-outline" size={80} color="#E0E0E0" />
+                <Text style={styles.emptyTitle}>Aucune commande active</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={orders}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ padding: 16 }}
+                ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+                renderItem={({ item }) => {
+                  const status = getStatusStyle(item.status);
+                  return (
+                    <Pressable
+                      style={styles.orderCard}
+                      onPress={() => {
+                        setOrdersModalVisible(false);
+                        router.push({
+                          pathname: "/pro-order-details/[id]",
+                          params: { id: item.id },
+                        });
+                      }}
+                    >
+                      <View style={styles.orderCardHeader}>
+                        <Text style={styles.orderCardNumber}>
+                          #{item.orderNumber}
+                        </Text>
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: status.bg },
+                          ]}
+                        >
+                          <Text
+                            style={[styles.statusText, { color: status.color }]}
+                          >
+                            {status.text}
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                }}
+              />
+            )}
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* MODAL STATS GRAPHIQUES */}
+      <Modal visible={showStatsChart} animationType="slide" transparent={false}>
+        <SafeAreaView style={{ flex: 1 }}>
+          <TouchableOpacity
+            style={styles.closeChart}
+            onPress={() => setShowStatsChart(false)}
+          >
+            <Ionicons name="close" size={28} color="#000" />
+          </TouchableOpacity>
+          {business && (
+            <RevenueDistributionChart
+              businessId={business.id}
+              currencyId={business.currencyId}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
+
+      {/* MODALE FILTRE PÉRIODE - CORRIGÉE POUR ÊTRE COLLÉE AU BAS */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalOverlayFull}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            onPress={closeModal}
+            activeOpacity={1}
+          />
+          <Animated.View
+            style={[
+              styles.modalContentBottom,
+              { transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Période des statistiques</Text>
+            {[
+              { label: "Aujourd'hui", value: "day" },
+              { label: "Cette semaine", value: "week" },
+              { label: "Ce mois", value: "month" },
+              { label: "Cette année", value: "year" },
+              { label: "Tout le temps", value: "all" },
+              { label: "Période personnalisée", value: "custom" },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.value}
+                style={[
+                  styles.periodItem,
+                  period === item.value &&
+                    item.value !== "custom" &&
+                    styles.periodItemSelected,
+                ]}
+                onPress={() => selectPeriod(item.value as PeriodType)}
+              >
+                <Text
+                  style={[
+                    styles.periodText,
+                    period === item.value &&
+                      item.value !== "custom" &&
+                      styles.periodTextSelected,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+                {period === item.value && item.value !== "custom" && (
+                  <Ionicons name="checkmark" size={22} color="#7C3AED" />
+                )}
+                {item.value === "custom" && (
+                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                )}
+              </TouchableOpacity>
             ))}
           </Animated.View>
-        )}
-        contentContainerStyle={styles.listContent}
-      />
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <Animated.View
-            entering={FadeInUp.springify()}
-            style={styles.modalContent}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingTable ? "Modifier Table" : "Nouvelle Table"}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-                accessibilityLabel="Fermer la fenêtre"
-                accessibilityRole="button"
-              >
-                <Ionicons name="close" size={24} color="#1f2937" />
-              </TouchableOpacity>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Nom de la table"
-              value={tableName}
-              onChangeText={setTableName}
-              accessibilityLabel="Nom de la table"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Capacité"
-              keyboardType="numeric"
-              value={tableCapacity}
-              onChangeText={setTableCapacity}
-              accessibilityLabel="Capacité de la table"
-            />
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>Disponible</Text>
-              <TouchableOpacity
-                style={[
-                  styles.toggle,
-                  { backgroundColor: tableAvailable ? "#059669" : "#6b7280" },
-                ]}
-                onPress={() => setTableAvailable(!tableAvailable)}
-                accessibilityLabel={
-                  tableAvailable
-                    ? "Désactiver la disponibilité"
-                    : "Activer la disponibilité"
-                }
-                accessibilityRole="button"
-              >
-                <Text style={styles.toggleText}>
-                  {tableAvailable ? "Oui" : "Non"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#3b82f6" }]}
-                onPress={handleSaveTable}
-                accessibilityLabel={
-                  editingTable ? "Sauvegarder la table" : "Créer la table"
-                }
-                accessibilityRole="button"
-              >
-                <Text style={styles.modalButtonText}>
-                  {editingTable ? "Sauvegarder" : "Créer"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#dc2626" }]}
-                onPress={() => setModalVisible(false)}
-                accessibilityLabel="Annuler"
-                accessibilityRole="button"
-              >
-                <Text style={styles.modalButtonText}>Annuler</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
         </View>
       </Modal>
-      <Modal visible={menuModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <Animated.View
-            entering={FadeInUp.springify()}
-            style={styles.modalContent}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingMenu ? "Modifier Menu" : "Nouveau Menu"}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setMenuModalVisible(false)}
-                accessibilityLabel="Fermer la fenêtre"
-                accessibilityRole="button"
-              >
-                <Ionicons name="close" size={24} color="#1f2937" />
-              </TouchableOpacity>
-            </View>
-            {loadingVariants ? (
-              <ActivityIndicator size="large" color="#3b82f6" />
-            ) : (
-              <>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nom du menu"
-                  value={menuName}
-                  onChangeText={setMenuName}
-                  accessibilityLabel="Nom du menu"
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Description (optionnel)"
-                  value={menuDescription}
-                  onChangeText={setMenuDescription}
-                  accessibilityLabel="Description du menu"
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Prix (FCFA)"
-                  keyboardType="numeric"
-                  value={menuPrice}
-                  onChangeText={setMenuPrice}
-                  accessibilityLabel="Prix du menu"
-                />
-                <View style={styles.input}>
-                  <Text style={styles.toggleLabel}>
-                    Sélectionner une variante
-                  </Text>
-                  <FlatList
-                    data={variants}
-                    keyExtractor={(item) => item.variantId}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={[
-                          styles.toggle,
-                          {
-                            backgroundColor:
-                              menuVariantId === item.variantId
-                                ? "#059669"
-                                : "#6b7280",
-                          },
-                        ]}
-                        onPress={() => setMenuVariantId(item.variantId)}
-                        accessibilityLabel={`Sélectionner la variante ${item.name}`}
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.toggleText}>{item.name}</Text>
-                      </TouchableOpacity>
-                    )}
-                    ListEmptyComponent={
-                      <Text style={styles.errorText}>
-                        Aucune variante disponible
-                      </Text>
-                    }
-                  />
-                </View>
-                <View style={styles.toggleRow}>
-                  <Text style={styles.toggleLabel}>Actif</Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.toggle,
-                      { backgroundColor: menuActive ? "#059669" : "#6b7280" },
-                    ]}
-                    onPress={() => setMenuActive(!menuActive)}
-                    accessibilityLabel={
-                      menuActive ? "Désactiver le menu" : "Activer le menu"
-                    }
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.toggleText}>
-                      {menuActive ? "Oui" : "Non"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={[styles.modalButton, { backgroundColor: "#3b82f6" }]}
-                    onPress={editingMenu ? handleUpdateMenu : handleCreateMenu}
-                    accessibilityLabel={
-                      editingMenu ? "Sauvegarder le menu" : "Créer le menu"
-                    }
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.modalButtonText}>
-                      {editingMenu ? "Sauvegarder" : "Créer"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalButton, { backgroundColor: "#dc2626" }]}
-                    onPress={() => setMenuModalVisible(false)}
-                    accessibilityLabel="Annuler"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.modalButtonText}>Annuler</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </Animated.View>
-        </View>
-      </Modal>
-    </View>
+
+      {/* DATE PICKERS */}
+      {showStartPicker && (
+        <DateTimePicker
+          value={customStartDate || new Date()}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(event, date) => {
+            setShowStartPicker(false);
+            if (date) {
+              setCustomStartDate(date);
+              setShowEndPicker(true);
+            }
+          }}
+        />
+      )}
+      {showEndPicker && (
+        <DateTimePicker
+          value={customEndDate || new Date()}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          minimumDate={customStartDate || undefined}
+          onChange={(event, date) => {
+            setShowEndPicker(false);
+            if (date) {
+              setCustomEndDate(date);
+              setPeriod("custom");
+            }
+          }}
+        />
+      )}
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f3f4f6",
+  cardsRow: {
+    flexDirection: "row",
+    gap: 16,
+    marginBottom: 16,
   },
-  headerContainer: {
+
+  rightColumn: {
+    flex: 1,
+    gap: 16,
+    minWidth: 0, // crucial pour le shrink
+  },
+
+  card: {
+    borderRadius: 20,
+    padding: 20,
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    paddingTop: Platform.OS === "ios" ? 50 : 40,
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    elevation: 4,
+    gap: 16, // remplace justifyContent: "space-between"
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  backButton: {
-    padding: 12,
-    marginRight: 12,
+
+  smallCard: {
+    minHeight: 100,
   },
-  headerIcon: {
-    marginRight: 8,
+
+  cardIcon: {
+    // plus de marginRight, on utilise gap dans card
+  },
+
+  cardContent: {
+    flex: 1, // prend tout l'espace restant
+    minWidth: 0, // autorise le rétrécissement
+  },
+
+  emoji: {
+    width: 48,
+    height: 48,
+  },
+
+  emojiSmall: {
+    width: 36, // un peu réduit pour gagner de la place
+    height: 36,
+  },
+
+  cardLabel: {
+    fontSize: 14, // augmenté un peu pour lisibilité (était 9 → trop petit !)
+    color: "#6B7280",
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+
+  cardValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#111827",
+    flexShrink: 1,
+  },
+
+  unit: {
+    fontSize: 18,
+    color: "#6B7280",
+    fontWeight: "600",
+  },
+
+  cardYellow: {
+    flex: 1.1, // la carte CA prend plus de place (équilibre visuel)
+    borderWidth: 1,
+    borderColor: "#FCD34D20",
+    backgroundColor: "#FEF3C7",
+  },
+
+  cardPurple: {
+    borderWidth: 1,
+    borderColor: "#A78BFA20",
+    backgroundColor: "#F9FAFB",
+  },
+
+  cardOrange: {
+    borderWidth: 1,
+    borderColor: "#FDBA7420",
+    backgroundColor: "#FEF3C7",
+  },
+
+  cardGreen: {
+    borderWidth: 1,
+    borderColor: "#10B98120",
+    backgroundColor: "#F0FDF4",
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "#FAFAFB",
+    paddingBottom: 60,
   },
   header: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1f2937",
-    flex: 1,
-  },
-  refreshButton: {
-    padding: 12,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  sectionCard: {
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-    elevation: 3,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F4F7",
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
+  iconButton: { padding: 8, position: "relative" },
+  notificationBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    backgroundColor: "#FF3B30",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  badgeText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
+  avatarContainer: {
+    borderRadius: 30,
+    overflow: "hidden",
+    width: 36,
+    height: 36,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 4,
+  },
+  placeholder: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#E8E8E8",
+  },
+  avatar: {
+    width: "100%",
+    height: "100%",
+  },
+  section: { padding: 20 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-  },
-  sectionHeaderLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  sectionIcon: {
-    marginRight: 8,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  filterIcon: { padding: 8 },
+
+  ordersButton: {
+    marginTop: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3E8FF",
+    paddingVertical: 18,
+    borderRadius: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#EDE9FE",
+  },
+  ordersButtonText: { fontSize: 16, fontWeight: "600", color: "#7C3AED" },
+  statsButton: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statsButtonText: {
+    fontSize: 16,
     fontWeight: "600",
-    color: "#1f2937",
+    color: "#6366F1",
   },
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 8,
-  },
-  addButtonText: {
-    fontSize: 14,
-    color: "#3b82f6",
-    marginLeft: 4,
-  },
-  dataRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    paddingHorizontal: 16,
-  },
-  dataIcon: {
-    marginRight: 8,
-  },
-  dataContent: {
+  quickRow: { flexDirection: "row", gap: 16, marginBottom: 16 },
+  quickCard: {
     flex: 1,
-  },
-  dataLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#1f2937",
-  },
-  dataValue: {
-    fontSize: 14,
-    color: "#4b5563",
-    marginBottom: 8,
-  },
-  actionsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    padding: 8,
-    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
     alignItems: "center",
+    minHeight: 140,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  actionButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  center: {
-    flex: 1,
+  quickIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f3f4f6",
-  },
-  loadingText: {
-    marginTop: 8,
-    fontSize: 16,
-    color: "#1f2937",
-  },
-  errorText: {
-    fontSize: 16,
-    color: "#dc2626",
-    textAlign: "center",
     marginBottom: 16,
-    marginTop: 8,
   },
-  retryButton: {
-    backgroundColor: "#3b82f6",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: "white",
+  quickTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
+    color: "#111827",
   },
-  modalOverlay: {
+  noBusiness: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
+    padding: 40,
   },
-  modalContent: {
-    width: "90%",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
+  noBusinessTitle: {
+    fontSize: 22,
+    fontWeight: "600",
+    marginTop: 20,
+    marginBottom: 8,
+    color: "#111827",
   },
+  noBusinessText: { fontSize: 15, color: "#6B7280", textAlign: "center" },
+  fullLoading: { flex: 1, justifyContent: "center", alignItems: "center" },
+  fullLoadingText: { marginTop: 16, fontSize: 16, color: "#6B7280" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  modalOverlayFull: { flex: 1, justifyContent: "flex-end" },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  modalContainer: { flex: 1, backgroundColor: "#fff" },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    fontSize: 16,
-    color: "#1f2937",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  toggleLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#1f2937",
-  },
-  toggle: {
-    paddingVertical: 8,
-    marginVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  toggleText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  modalActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  modalButton: {
+  modalTitle: { fontSize: 20, fontWeight: "700", color: "#000" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyOrders: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
+    justifyContent: "center",
     alignItems: "center",
+    padding: 40,
   },
-  modalButtonText: {
-    color: "#fff",
+  emptyTitle: { marginTop: 16, fontSize: 18, color: "#6B7280" },
+  orderCard: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  orderCardHeader: { flex: 1 },
+  orderCardNumber: { fontSize: 18, fontWeight: "800", color: "#111827" },
+  statusBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    marginTop: 4,
+  },
+  statusText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.5 },
+  closeChart: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    zIndex: 1000,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 20,
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  // MODALE FILTRE CORRIGÉE
+  modalContentBottom: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 34, // Safe area bas d'écran
+    width: "100%",
+  },
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "#DDD",
+    borderRadius: 3,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  periodItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#F8F9FA",
+    marginBottom: 10,
+  },
+  periodItemSelected: {
+    backgroundColor: "#F3E8FF",
+    borderWidth: 1,
+    borderColor: "#7C3AED",
+  },
+  periodText: {
     fontSize: 16,
+    color: "#333",
+  },
+  periodTextSelected: {
     fontWeight: "600",
+    color: "#7C3AED",
   },
 });
 
-export default AdminRestaurantDashboard;
+export default RestaurantHome;

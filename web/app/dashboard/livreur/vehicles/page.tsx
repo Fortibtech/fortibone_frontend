@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { toast } from 'sonner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
@@ -52,12 +51,9 @@ export default function LivreurVehiclesPage() {
             setError(false);
             const data = await getBusinessVehicles(selectedBusiness.id);
             setVehicles(data || []);
-        } catch (err: any) {
+        } catch (err) {
             console.error('Erreur chargement véhicules:', err);
             setError(true);
-            toast.error('Erreur chargement des véhicules', {
-                description: err.message,
-            });
         } finally {
             setLoading(false);
         }
@@ -84,7 +80,7 @@ export default function LivreurVehiclesPage() {
         if (!selectedBusiness?.id) return;
 
         if (!addForm.brand.trim() || !addForm.model.trim() || !addForm.licensePlate.trim()) {
-            toast.info('Marque, modèle et plaque sont requis.');
+            alert('Marque, modèle et plaque sont requis.');
             return;
         }
 
@@ -93,14 +89,12 @@ export default function LivreurVehiclesPage() {
         try {
             const newVehicle = await createVehicle(selectedBusiness.id, addForm);
             setVehicles([newVehicle, ...vehicles]);
-            toast.success('Véhicule ajouté !');
+            alert('✅ Véhicule ajouté !');
             setAddModalVisible(false);
             resetAddForm();
-        } catch (err: any) {
+        } catch (err) {
             console.error('Erreur création:', err);
-            toast.error('Impossible d\'ajouter le véhicule', {
-                description: err.response?.data?.message || err.message,
-            });
+            alert('Impossible d\'ajouter le véhicule');
         } finally {
             setCreating(false);
         }
@@ -144,13 +138,11 @@ export default function LivreurVehiclesPage() {
         try {
             const updated = await updateVehicle(currentVehicle.id, updates);
             setVehicles(vehicles.map(v => v.id === currentVehicle.id ? updated : v));
-            toast.success('Véhicule mis à jour !');
+            alert('✅ Véhicule mis à jour !');
             setEditModalVisible(false);
-        } catch (err: any) {
+        } catch (err) {
             console.error('Erreur mise à jour:', err);
-            toast.error('Impossible de modifier le véhicule', {
-                description: err.response?.data?.message || err.message,
-            });
+            alert('Impossible de modifier le véhicule');
         } finally {
             setEditing(false);
         }
@@ -165,12 +157,10 @@ export default function LivreurVehiclesPage() {
 
         try {
             await deleteVehicle(vehicle.id);
-            toast.success('Véhicule supprimé');
-        } catch (err: any) {
+            alert('✅ Véhicule supprimé');
+        } catch (err) {
             setVehicles(previousVehicles);
-            toast.error('Impossible de supprimer le véhicule', {
-                description: err.response?.data?.message || err.message,
-            });
+            alert('Impossible de supprimer le véhicule');
         }
     };
 

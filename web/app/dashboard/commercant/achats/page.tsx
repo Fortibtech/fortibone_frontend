@@ -5,7 +5,7 @@ import Link from 'next/link';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { getBusinesses, type PaginatedResponse } from '@/lib/api/business';
-import { useProCartStore } from '@/stores/achatCartStore';
+import { useProCartStore } from '@/stores/proCartStore';
 import styles from './achats.module.css';
 
 interface Supplier {

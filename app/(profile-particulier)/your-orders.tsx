@@ -27,7 +27,6 @@ const YourOrders = () => {
   const MAX_RETRIES = 2;
   const LIMIT = 10;
 
-  // Récupérer les commandes
   const fetchOrders = async (
     newPage: number = 1,
     isRefresh: boolean = false
@@ -68,34 +67,25 @@ const YourOrders = () => {
         type: "error",
         text1: "Erreur",
         text2: err.message.includes("Transaction already closed")
-          ? "Le serveur est surchargé. Veuillez réessayer plus tard ou contacter le support."
+          ? "Le serveur est surchargé. Veuillez réessayer plus tard."
           : err.response?.data?.message?.join?.(", ") || err.message,
       });
-      console.error("🛑 Erreur lors de la récupération des commandes:", err);
     } finally {
       setIsLoading(false);
       if (isRefresh) setIsRefreshing(false);
     }
   };
 
-  // Charger les commandes au montage
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  // Gérer le défilement pour charger plus de commandes
   const handleLoadMore = () => {
-    if (page < totalPages) {
-      fetchOrders(page + 1);
-    }
+    if (page < totalPages) fetchOrders(page + 1);
   };
 
-  // Gérer l'actualisation
-  const handleRefresh = () => {
-    fetchOrders(1, true);
-  };
+  const handleRefresh = () => fetchOrders(1, true);
 
-  // Naviguer vers les détails d'une commande
   const handleOrderPress = (order: MyOrder) => {
     router.push({
       pathname: "/order-details/[id]",
@@ -103,66 +93,91 @@ const YourOrders = () => {
     });
   };
 
-  // Déterminer le style du statut
+  // Statuts parfaitement clairs pour le client
   const getStatusStyle = (status: MyOrder["status"]) => {
     switch (status) {
-      case "PENDING":
-        return { backgroundColor: "#F97316", text: "En cours" };
-      case "COMPLETED":
-        return { backgroundColor: "#059669", text: "Terminée" };
-      case "CANCELLED":
-      case "REFUNDED":
+      case "PENDING_PAYMENT":
         return {
-          backgroundColor: "#FF3B30",
-          text: status === "CANCELLED" ? "Annulée" : "Remboursée",
+          text: "En attente de paiement",
+          color: "#F97316",
+          bg: "#FFEDD5",
         };
+      case "PENDING":
+        return { text: "Nouvelle commande", color: "#EA580C", bg: "#FFF7C2" };
+      case "CONFIRMED":
+        return { text: "Confirmée", color: "#7C3AED", bg: "#EDE9FE" };
+      case "PROCESSING":
+        return { text: "En préparation", color: "#D97706", bg: "#FFFBEB" };
+      case "SHIPPED":
+        return { text: "Expédiée", color: "#2563EB", bg: "#DBEAFE" };
+      case "DELIVERED":
+        return { text: "Livrée", color: "#16A34A", bg: "#DCFCE7" };
+      case "COMPLETED":
+        return { text: "Terminée", color: "#059669", bg: "#D1FAE5" };
+      case "CANCELLED":
+        return { text: "Annulée", color: "#EF4444", bg: "#FECACA" };
+      case "PAID":
+        return { text: "Payée", color: "#059669", bg: "#D1FAE5" };
+      case "REFUNDED":
+        return { text: "Remboursée", color: "#6B7280", bg: "#E5E7EB" };
       default:
-        return { backgroundColor: "#6B7280", text: status };
+        return { text: status, color: "#6B7280", bg: "#F3F4F6" };
     }
   };
 
-  // Rendre un élément de commande
-  const renderOrderItem = ({ item }: { item: MyOrder }) => (
-    <Animated.View
-      entering={FadeInUp.delay(100 * orders.indexOf(item)).duration(300)}
-      layout={Layout.springify()}
-    >
-      <TouchableOpacity
-        style={styles.orderItem}
-        onPress={() => handleOrderPress(item)}
-        accessibilityLabel={`Voir les détails de la commande ${item.orderNumber}`}
+  const renderOrderItem = ({ item }: { item: MyOrder }) => {
+    const status = getStatusStyle(item.status);
+
+    return (
+      <Animated.View
+        entering={FadeInUp.delay(80).duration(400)}
+        layout={Layout.springify()}
       >
-        <View style={styles.orderDetails}>
-          <Text style={styles.orderNumber}>Commande #{item.orderNumber}</Text>
-          <View style={styles.orderInfoContainer}>
-            <Text style={styles.orderInfo}>Type: {item.type}</Text>
-            <View
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor: getStatusStyle(item.status).backgroundColor,
-                },
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {getStatusStyle(item.status).text}
+        <TouchableOpacity
+          style={styles.orderItem}
+          onPress={() => handleOrderPress(item)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.orderDetails}>
+            <Text style={styles.orderNumber}>Commande #{item.orderNumber}</Text>
+
+            <View style={styles.rowBetween}>
+              <Text style={styles.orderInfo}>
+                Total :{" "}
+                {parseFloat(item.totalAmount).toFixed(2).replace(".", ",")} KMF
               </Text>
+
+              {/* Badge qui ressort clairement */}
+              <View
+                style={[styles.statusBadge, { backgroundColor: status.bg }]}
+              >
+                <Text style={[styles.statusText, { color: status.color }]}>
+                  {status.text}
+                </Text>
+              </View>
             </View>
+
+            <Text style={styles.orderDate}>
+              {new Date(item.createdAt).toLocaleDateString("fr-FR", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </Text>
+
+            {item.notes && (
+              <Text style={styles.orderNotes} numberOfLines={2}>
+                Note : {item.notes}
+              </Text>
+            )}
           </View>
-          <Text style={styles.orderInfo}>
-            Total: {parseFloat(item.totalAmount).toFixed(2)} €
-          </Text>
-          <Text style={styles.orderInfo}>
-            Date: {new Date(item.createdAt).toLocaleDateString("fr-FR")}
-          </Text>
-          {item.notes && (
-            <Text style={styles.orderNotes}>Notes: {item.notes}</Text>
-          )}
-        </View>
-        <Ionicons name="chevron-forward" size={24} color="#333" />
-      </TouchableOpacity>
-    </Animated.View>
-  );
+
+          <Ionicons name="chevron-forward" size={26} color="#aaa" />
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -170,12 +185,16 @@ const YourOrders = () => {
         <View style={styles.backButtonContainer}>
           <BackButton />
         </View>
-        <Text style={styles.headerTitle}>Vos Commandes</Text>
+        <Text style={styles.headerTitle}>Vos commandes</Text>
       </View>
+
       {orders.length === 0 && !isLoading ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="cart-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>Aucune commande trouvée</Text>
+          <Ionicons name="cart-outline" size={90} color="#ddd" />
+          <Text style={styles.emptyTitle}>Aucune commande pour le moment</Text>
+          <Text style={styles.emptySubtitle}>
+            Elles apparaîtront ici dès que vous en passerez une
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -184,15 +203,15 @@ const YourOrders = () => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
+          onEndReachedThreshold={0.6}
           refreshing={isRefreshing}
           onRefresh={handleRefresh}
           ListFooterComponent={
-            isLoading && !isRefreshing ? (
+            isLoading && page > 1 ? (
               <ActivityIndicator
                 size="large"
-                color="#059669"
-                style={styles.loader}
+                color="#00A36C"
+                style={{ marginVertical: 20 }}
               />
             ) : null
           }
@@ -203,98 +222,104 @@ const YourOrders = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-  },
+  container: { flex: 1, backgroundColor: "#f9f9f9" },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
     position: "relative",
   },
-  backButtonContainer: {
-    position: "absolute",
-    left: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#333",
-    textAlign: "center",
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-    paddingTop: 20, // Espacement entre le header et la liste
-  },
+  backButtonContainer: { position: "absolute", left: 16, zIndex: 10 },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#1f2937" },
+
+  listContent: { padding: 16 },
+
   orderItem: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 16,
-    padding: 16,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
   },
-  orderDetails: {
-    flex: 1,
-  },
+
+  orderDetails: { flex: 1 },
+
   orderNumber: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 6,
-  },
-  orderInfoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  orderInfo: {
-    fontSize: 14,
-    color: "#4B5563",
+    fontWeight: "700",
+    color: "#111",
     marginBottom: 4,
   },
-  statusBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+    flexWrap: "wrap", // s’adapte aux petits écrans
+    gap: 6,
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#fff",
+
+  orderInfo: {
+    fontSize: 15,
+    color: "#374151",
+    fontWeight: "600",
+    flexShrink: 1, // évite que le texte pousse le badge hors écran
   },
+
+  orderDate: { fontSize: 13, color: "#6b7280" },
+
   orderNotes: {
-    fontSize: 14,
-    color: "#4B5563",
-    marginTop: 4,
+    fontSize: 13,
+    color: "#6b7280",
+    marginTop: 6,
     fontStyle: "italic",
   },
+
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignSelf: "flex-start",
+  },
+
+  statusText: {
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 16,
+    paddingHorizontal: 40,
   },
-  emptyText: {
-    fontSize: 18,
-    color: "#4B5563",
-    fontWeight: "500",
+
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#4b5563",
+    marginTop: 16,
   },
-  loader: {
-    marginVertical: 20,
+
+  emptySubtitle: {
+    fontSize: 15,
+    color: "#9ca3af",
+    textAlign: "center",
+    marginTop: 8,
   },
 });
 

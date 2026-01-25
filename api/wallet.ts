@@ -315,7 +315,6 @@ export const transferMoney = async (
       payload
     );
 
-    // Tout s'est bien passé
     return response.data;
   } catch (error: any) {
     // Gestion propre des erreurs fréquentes
@@ -333,6 +332,7 @@ export const transferMoney = async (
     }
 
     // Erreur inconnue
+    console.error("Erreur transfert :", error);
     throw new Error(
       error.response?.data?.message || "Échec du transfert, réessayez"
     );

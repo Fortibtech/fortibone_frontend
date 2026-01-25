@@ -2,8 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { Heart, ArrowLeft, AlertCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout';
 import { getFavorites, deleteFavorite, type UserFavorite } from '@/lib/api';
 import WebProductCard from '@/components/cards/WebProductCard';
@@ -33,17 +31,13 @@ export default function FavoritesPage() {
         fetchFavorites();
     }, [fetchFavorites]);
 
-    // Delete handler with toast like mobile Toast.show()
     const handleDelete = async (productId: string) => {
         try {
             await deleteFavorite(productId);
             setFavorites(prev => prev.filter(f => f.id !== productId));
-            toast.success('Produit retiré des favoris');
         } catch (err: any) {
             console.error('Erreur suppression:', err);
-            toast.error('Erreur lors de la suppression', {
-                description: err.message || 'Veuillez réessayer',
-            });
+            alert(err.message || 'Erreur lors de la suppression');
         }
     };
 

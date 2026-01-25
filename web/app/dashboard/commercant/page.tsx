@@ -3,31 +3,17 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
-import {
-    getAnalyticsOverview,
-    getPendingOrdersCount,
-    getProcessingPurchasesCount,
-    getSales,
-    getInventory,
-    AnalyticsOverview,
-    SalesResponse,
-    InventoryResponse,
-} from '@/lib/api/analytics';
+import { getAnalyticsOverview, getPendingOrdersCount, getProcessingPurchasesCount, getSales, AnalyticsOverview, SalesResponse } from '@/lib/api/analytics';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { PeriodFilter, getPeriodLabel, PeriodType, PeriodDates } from '@/components/shared';
-import {
-    Sales30DaysChart,
-    TopProductsChart,
-    SalesByPeriodChart,
-    ExpenseDistributionChart,
-    InventoryLossesChart,
-} from '@/components/charts';
+import { PeriodFilter, getPeriodDates, getPeriodLabel, PeriodType, PeriodDates } from '@/components/shared';
+import { SalesByPeriodChart, ExpenseDistributionChart, RevenueDistributionChart, InventoryLossesChart, CashFlowChart } from '@/components/charts';
 import styles from './accueil.module.css';
 
 export default function CommercantDashboard() {
     const { selectedBusiness } = useBusinessStore();
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     // Period filter state
     const [period, setPeriod] = useState<PeriodType>('all');
@@ -36,21 +22,8 @@ export default function CommercantDashboard() {
     // Analytics data from API
     const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
     const [pendingOrders, setPendingOrders] = useState(0);
+    const [processingPurchases, setProcessingPurchases] = useState({ count: 0, totalItems: 0 });
     const [salesData, setSalesData] = useState<SalesResponse | null>(null);
-    const [sales30Days, setSales30Days] = useState<SalesResponse | null>(null);
-    const [inventory, setInventory] = useState<InventoryResponse | null>(null);
-    const [salesUnit, setSalesUnit] = useState<'DAY' | 'WEEK' | 'MONTH' | 'YEAR'>('MONTH');
-    const [chartsLoading, setChartsLoading] = useState(true);
-
-    // Helper to get last 30 days date range
-    const getLast30DaysDates = () => {
-        const now = new Date();
-        const endDate = now.toISOString().split('T')[0];
-        const start = new Date(now);
-        start.setDate(start.getDate() - 30);
-        const startDate = start.toISOString().split('T')[0];
-        return { startDate, endDate };
-    };
 
     const fetchData = useCallback(async () => {
         if (!selectedBusiness) {
@@ -60,19 +33,27 @@ export default function CommercantDashboard() {
 
         try {
             setLoading(true);
+            setError(null);
 
-            const [analyticsData, pendingCount] = await Promise.all([
+            // Fetch data with period dates
+            const [analyticsData, pendingCount, purchasesData, salesResult] = await Promise.all([
                 getAnalyticsOverview(
                     selectedBusiness.id,
                     periodDates.startDate || undefined,
                     periodDates.endDate || undefined
-                ).catch(() => null),
+                ).catch((err) => {
+                    console.error('Analytics error:', err);
+                    return null;
+                }),
                 getPendingOrdersCount(selectedBusiness.id, 'SALE').catch(() => 0),
+                getProcessingPurchasesCount(selectedBusiness.id).catch(() => ({ count: 0, totalItems: 0 })),
+                getSales(selectedBusiness.id).catch(() => null),
             ]);
 
             if (analyticsData) {
                 setAnalytics(analyticsData);
             } else {
+                // Use default values if API fails
                 setAnalytics({
                     totalSalesAmount: 0,
                     totalSalesOrders: 0,
@@ -88,52 +69,23 @@ export default function CommercantDashboard() {
                 });
             }
             setPendingOrders(pendingCount);
-        } catch (err) {
+            setProcessingPurchases(purchasesData);
+            setSalesData(salesResult);
+        } catch (err: any) {
             console.error('Error fetching data:', err);
+            setError('Impossible de charger les statistiques. Vérifiez votre connexion.');
         } finally {
             setLoading(false);
         }
     }, [selectedBusiness, periodDates]);
 
-    // Fetch charts data
-    const fetchChartsData = useCallback(async () => {
-        if (!selectedBusiness) return;
-
-        try {
-            setChartsLoading(true);
-            const { startDate, endDate } = getLast30DaysDates();
-
-            const [sales30, salesPeriod, inventoryData] = await Promise.all([
-                getSales(selectedBusiness.id, { startDate, endDate, unit: 'DAY' }).catch(() => null),
-                getSales(selectedBusiness.id, { unit: salesUnit }).catch(() => null),
-                getInventory(selectedBusiness.id).catch(() => null),
-            ]);
-
-            setSales30Days(sales30);
-            setSalesData(salesPeriod);
-            setInventory(inventoryData);
-        } catch (error) {
-            console.error('Error fetching charts data:', error);
-        } finally {
-            setChartsLoading(false);
-        }
-    }, [selectedBusiness, salesUnit]);
-
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
-    useEffect(() => {
-        fetchChartsData();
-    }, [fetchChartsData]);
-
     const handlePeriodChange = (newPeriod: PeriodType, dates: PeriodDates) => {
         setPeriod(newPeriod);
         setPeriodDates(dates);
-    };
-
-    const handleSalesUnitChange = (unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR') => {
-        setSalesUnit(unit);
     };
 
     const formatNumber = (num: number | undefined): string => {
@@ -143,25 +95,11 @@ export default function CommercantDashboard() {
 
     const currencySymbol = 'KMF';
 
-    // Transform inventory losses for chart
-    const inventoryLosses = inventory?.lossesByMovementType?.map(item => ({
-        movementType: item.movementType,
-        totalQuantity: item.totalQuantity,
-        totalValue: parseFloat(String(item.totalValue).replace(',', '')) || 0,
-    })) || [];
-
-    // Transform sales by category for expense chart
-    const expenseCategories = salesData?.salesByProductCategory?.map(cat => ({
-        category: cat.categoryName,
-        amount: cat.totalRevenue,
-        percentage: 0,
-    })) || [];
-
     return (
         <ProtectedRoute requiredProfileType="PRO">
             <DashboardLayout businessType="COMMERCANT" title="Accueil">
                 <div className={styles.dashboard}>
-                    {/* Section Vue d'Ensemble */}
+                    {/* Section Vue d'Ensemble - Fidèle au Mobile */}
                     <section className={styles.section}>
                         <div className={styles.sectionHeader}>
                             <h2>Vue d&apos;Ensemble</h2>
@@ -178,7 +116,7 @@ export default function CommercantDashboard() {
                             </div>
                         ) : (
                             <div className={styles.overviewGrid}>
-                                {/* Carte CA Global */}
+                                {/* Carte CA Global - Grande carte à gauche */}
                                 <div className={`${styles.overviewCard} ${styles.cardYellow} ${styles.cardLarge}`}>
                                     <div className={styles.cardIcon}>💰</div>
                                     <div className={styles.cardContent}>
@@ -193,6 +131,7 @@ export default function CommercantDashboard() {
 
                                 {/* Colonne droite avec 2 petites cartes */}
                                 <div className={styles.rightColumn}>
+                                    {/* Commandes en attente */}
                                     <div className={`${styles.overviewCard} ${styles.cardPurple}`}>
                                         <div className={styles.cardIcon}>🛒</div>
                                         <div className={styles.cardContent}>
@@ -203,6 +142,7 @@ export default function CommercantDashboard() {
                                         </div>
                                     </div>
 
+                                    {/* Articles vendus */}
                                     <div className={`${styles.overviewCard} ${styles.cardGreen}`}>
                                         <div className={styles.cardIcon}>💵</div>
                                         <div className={styles.cardContent}>
@@ -217,11 +157,11 @@ export default function CommercantDashboard() {
                         )}
                     </section>
 
-                    {/* Section Analytics */}
+                    {/* Section Analytics - Comme le mobile */}
                     <section className={styles.section}>
                         <h2>Analytics</h2>
                         <div className={styles.analyticsGrid}>
-                            <Link href="/dashboard/commercant/analytics?tab=ventes" className={styles.analyticsCard}>
+                            <Link href="/dashboard/commercant/analytics-ventes" className={styles.analyticsCard}>
                                 <div className={styles.analyticsIcon}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -231,7 +171,7 @@ export default function CommercantDashboard() {
                                 <span className={styles.analyticsLabel}>Ventes</span>
                                 <span className={styles.analyticsArrow}>›</span>
                             </Link>
-                            <Link href="/dashboard/commercant/analytics?tab=achats" className={styles.analyticsCard}>
+                            <Link href="/dashboard/commercant/analytics-purchases" className={styles.analyticsCard}>
                                 <div className={styles.analyticsIcon}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
@@ -242,7 +182,7 @@ export default function CommercantDashboard() {
                                 <span className={styles.analyticsLabel}>Achats</span>
                                 <span className={styles.analyticsArrow}>›</span>
                             </Link>
-                            <Link href="/dashboard/commercant/analytics?tab=stock" className={styles.analyticsCard}>
+                            <Link href="/dashboard/commercant/stock-tracking" className={styles.analyticsCard}>
                                 <div className={styles.analyticsIcon}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
@@ -257,53 +197,50 @@ export default function CommercantDashboard() {
                         </div>
                     </section>
 
-                    {/* Lien Tarifs Livreurs */}
+                    {/* Lien Tarifs Livreurs - Comme le mobile */}
                     <Link href="/dashboard/commercant/carriers" className={styles.carriersLink}>
                         <span className={styles.carrierIcon}>👤</span>
                         <span className={styles.carrierText}>Tarifs des livreurs</span>
                         <span className={styles.carrierArrow}>›</span>
                     </Link>
 
-                    {/* Section Charts - Comme le mobile */}
+                    {/* Section Statistiques avec Charts - Comme le mobile AnalyticsCard */}
                     <section className={styles.section}>
                         <h2>Statistiques</h2>
-
-                        {/* CA 30 jours - Bar Chart */}
-                        <Sales30DaysChart
-                            data={sales30Days?.salesByPeriod || []}
-                            loading={chartsLoading}
-                            currencySymbol={currencySymbol}
-                        />
-
-                        {/* Top Produits - Donut */}
-                        <TopProductsChart
-                            data={salesData?.topSellingProducts || []}
-                            loading={chartsLoading}
-                            currencySymbol={currencySymbol}
-                            title="Top 5 Produits"
-                        />
-
-                        {/* Évolution Ventes - Line Chart */}
                         <SalesByPeriodChart
-                            data={salesData?.salesByPeriod || []}
-                            loading={chartsLoading}
+                            data={salesData?.salesByPeriod?.map(item => ({
+                                period: item.period,
+                                totalAmount: item.totalAmount,
+                                totalItems: item.totalItems,
+                            })) || []}
+                            loading={loading}
                             currencySymbol={currencySymbol}
-                            onUnitChange={handleSalesUnitChange}
                         />
-
-                        {/* Répartition par catégorie */}
                         <ExpenseDistributionChart
-                            data={expenseCategories}
-                            loading={chartsLoading}
+                            data={salesData?.salesByProductCategory?.map(item => ({
+                                category: item.categoryName,
+                                amount: item.totalRevenue,
+                            })) || []}
+                            loading={loading}
                             currencySymbol={currencySymbol}
                             title="Répartition par catégorie"
                         />
-
-                        {/* Pertes d'inventaire */}
-                        <InventoryLossesChart
-                            data={inventoryLosses}
-                            loading={chartsLoading}
+                        <RevenueDistributionChart
+                            data={salesData?.salesByPeriod?.map(item => ({
+                                period: item.period,
+                                revenue: item.totalAmount,
+                            })) || []}
+                            loading={loading}
                             currencySymbol={currencySymbol}
+                        />
+                        <InventoryLossesChart
+                            data={[]}
+                            loading={loading}
+                            currencySymbol={currencySymbol}
+                        />
+                        <CashFlowChart
+                            period="6m"
+                            currency={currencySymbol}
                         />
                     </section>
                 </div>

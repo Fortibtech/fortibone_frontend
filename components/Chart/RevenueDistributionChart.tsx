@@ -4,12 +4,13 @@ import {
   Text,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  ScrollView,
 } from "react-native";
-import { PieChart } from "react-native-chart-kit";
+import { ProgressChart } from "react-native-chart-kit";
 import { getSales } from "@/api/analytics";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
+import { formatMoney } from "./InventoryLossesChart";
 
 const { width } = Dimensions.get("window");
 
@@ -22,191 +23,197 @@ interface TopSellingProduct {
   totalRevenue: number;
 }
 
-interface PieDataItem {
-  name: string;
-  amount: number;
-  color: string;
-  legendFontColor?: string;
-  legendFontSize?: number;
-}
-
 const COLORS = [
-  "#00D09C",
-  "#4ECDC4",
-  "#45B7D1",
-  "#96CEB4",
-  "#FECA57",
-  "#FF6B6B",
-  "#DDA0DD",
+  "#00D09C", // #1
+  "#4ECDC4", // #2
+  "#45B7D1", // #3
+  "#96CEB4", // #4
+  "#FECA57", // #5
+  "#FF6B6B", // #6
+  "#DDA0DD", // #7
+  "#B0BEC5", // #8
 ];
 
-const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
-  businessId,
-}) => {
-  const [revenuFilter, setRevenuFilter] = useState<"Jan" | "Mensuel">(
-    "Mensuel"
-  );
+const RevenueDistributionChart: React.FC<{
+  businessId: string;
+  currencyId: string;
+  refreshKey?: number;
+}> = ({ businessId, currencyId, refreshKey = 0 }) => {
   const [loading, setLoading] = useState(true);
-  const [pieData, setPieData] = useState<PieDataItem[]>([]);
+  const [topProducts, setTopProducts] = useState<TopSellingProduct[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [symbol, setSymbol] = useState<string | undefined>(undefined);
 
-  const fetchRevenueData = async () => {
+  const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await getSales(businessId);
-      const topProducts: TopSellingProduct[] = data.topSellingProducts || [];
+      const symbol: any = await getCurrencySymbolById(currencyId);
 
-      // Calcul du total
-      const total = topProducts.reduce((sum, p) => sum + p.totalRevenue, 0);
-      setTotalRevenue(total);
+      const products: TopSellingProduct[] = data.topSellingProducts || [];
 
-      // Préparer les données pour PieChart (max 6 produits pour lisibilité)
-      const sorted = topProducts.sort(
-        (a, b) => b.totalRevenue - a.totalRevenue
-      );
-      const top6 = sorted.slice(0, 6);
-
-      const chartData: PieDataItem[] = top6.map((item, index) => ({
-        name:
-          item.productName.length > 15
-            ? item.productName.slice(0, 12) + "..."
-            : item.productName,
-        amount: item.totalRevenue,
-        color: COLORS[index % COLORS.length],
-        legendFontColor: "#333",
-        legendFontSize: 14,
-      }));
-
-      // Ajouter "Autres" si plus de 6 produits
-      if (sorted.length > 6) {
-        const othersAmount = sorted
-          .slice(6)
-          .reduce((sum, p) => sum + p.totalRevenue, 0);
-        chartData.push({
-          name: "Autres",
-          amount: othersAmount,
-          color: "#CCCCCC",
-          legendFontColor: "#666",
-          legendFontSize: 14,
-        });
+      if (products.length === 0) {
+        setTopProducts([]);
+        setTotalRevenue(0);
+        setSymbol(symbol);
+        return;
       }
 
-      setPieData(chartData);
+      const sorted = [...products].sort(
+        (a, b) => b.totalRevenue - a.totalRevenue
+      );
+      const top = sorted.slice(0, 8);
+      const total = top.reduce((sum, p) => sum + p.totalRevenue, 0);
+
+      setTotalRevenue(total);
+      setTopProducts(top);
+      setSymbol(symbol);
     } catch (err: any) {
-      setError("Impossible de charger la répartition des revenus");
-      Alert.alert("Erreur", err.message || "Une erreur est survenue");
+      console.log("API error:", err?.response?.data);
+      setError("Impossible de charger les données");
     } finally {
       setLoading(false);
     }
   };
 
+  // Recharger quand businessId, currencyId OU refreshKey change
   useEffect(() => {
-    fetchRevenueData();
-  }, [businessId, revenuFilter]);
+    fetchData();
+  }, [businessId, currencyId, refreshKey]); // 👈 Ajouter refreshKey
 
   const chartConfig = {
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
-    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    color: (opacity = 1, index = 0) =>
+      COLORS[index % COLORS.length] +
+      Math.round(opacity * 255)
+        .toString(16)
+        .padStart(2, "0"),
+    strokeWidth: 1,
+    decimalPlaces: 0,
+    propsForLabels: {
+      fontSize: 11,
+      fontWeight: "700",
+    },
+  };
+
+  const progressChartData = {
+    labels: topProducts.map((p) =>
+      p.productName.length > 10
+        ? p.productName.slice(0, 1) + "..."
+        : p.productName
+    ),
+    data: topProducts.map((p) =>
+      totalRevenue > 0 ? p.totalRevenue / totalRevenue : 0
+    ),
+    colors: topProducts.map((_, index) => COLORS[index % COLORS.length]),
   };
 
   return (
     <View style={styles.chartCard}>
       <View style={styles.chartHeader}>
-        <Text style={styles.chartTitle}>Répartition des Revenus</Text>
-        <View style={styles.filterButtons}>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              revenuFilter === "Jan" && styles.filterBtnActive,
-            ]}
-            onPress={() => setRevenuFilter("Jan")}
-          >
-            <Text
-              style={[
-                styles.filterBtnText,
-                revenuFilter === "Jan" && styles.filterBtnTextActive,
-              ]}
-            >
-              Jan
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              revenuFilter === "Mensuel" && styles.filterBtnActive,
-            ]}
-            onPress={() => setRevenuFilter("Mensuel")}
-          >
-            <Text
-              style={[
-                styles.filterBtnText,
-                revenuFilter === "Mensuel" && styles.filterBtnTextActive,
-              ]}
-            >
-              Mensuel
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.chartTitle}>
+          Répartition des revenus par produit
+        </Text>
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#00D09C" />
-          <Text style={styles.loadingText}>Chargement...</Text>
+          <ActivityIndicator size="large" color="#00D09C" />
+          <Text style={styles.loadingText}>Chargement des données...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
-      ) : pieData.length === 0 ? (
-        <Text style={styles.noDataText}>Aucune vente enregistrée</Text>
+      ) : topProducts.length === 0 ? (
+        <View style={styles.noDataContainer}>
+          <Text style={styles.noDataText}>Aucune vente enregistrée</Text>
+        </View>
       ) : (
         <>
-          <View style={styles.donutContainer}>
-            <PieChart
-              data={pieData}
-              width={width - 48}
-              height={200}
+          {/* Donut Chart SANS légende à droite */}
+          <View style={styles.chartContainer}>
+            <ProgressChart
+              data={progressChartData}
+              width={width - 64}
+              height={270}
+              strokeWidth={10}
+              radius={40}
               chartConfig={chartConfig}
-              accessor="amount"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              absolute={false}
-              hasLegend={false}
+              hideLegend={true}
+              style={styles.chart}
             />
-            <View style={styles.donutCenter}>
-              <Text style={styles.donutCenterLabel}>CA Général</Text>
-              <Text style={styles.donutCenterValue}>
-                {totalRevenue.toLocaleString("fr-FR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Text>
-              <Text style={styles.donutCenterCurrency}>XAF</Text>
-            </View>
           </View>
 
-          <View style={styles.revenusLegend}>
-            {pieData.map((item, index) => (
-              <View key={index} style={styles.revenuLegendItem}>
-                <View style={styles.revenuLegendLeft}>
-                  <View
-                    style={[styles.legendDot, { backgroundColor: item.color }]}
-                  />
-                  <Text style={styles.revenuLegendText}>{item.name}</Text>
-                </View>
-                <Text style={styles.revenuLegendAmount}>
-                  {item.amount.toLocaleString("fr-FR", {
-                    minimumFractionDigits: 2,
-                  })}{" "}
-                  kmf
-                </Text>
-              </View>
-            ))}
+          {/* Total des revenus juste en dessous du cercle */}
+          <View style={styles.totalContainer}>
+            <Text style={styles.totalLabel}>Total des revenus :</Text>
+            <Text style={styles.totalValue}>
+              {formatMoney(totalRevenue, symbol)}
+            </Text>
           </View>
+
+          {/* Liste détaillée et lisible en bas */}
+          <ScrollView style={styles.productList} nestedScrollEnabled>
+            <Text style={styles.gridTitle}>Top produits vendus</Text>
+            {topProducts.map((item, index) => {
+              const percentage =
+                totalRevenue > 0 ? (item.totalRevenue / totalRevenue) * 100 : 0;
+              const productColor = COLORS[index % COLORS.length];
+
+              return (
+                <View key={index} style={styles.productItem}>
+                  <View style={styles.productLeft}>
+                    <View
+                      style={[
+                        styles.rankBadge,
+                        { backgroundColor: productColor },
+                      ]}
+                    >
+                      <Text style={styles.rankText}>#{index + 1}</Text>
+                    </View>
+                    <View style={styles.productInfo}>
+                      <Text style={styles.productName} numberOfLines={2}>
+                        {item.productName}
+                      </Text>
+                      <View style={styles.progressBarBackground}>
+                        <View
+                          style={[
+                            styles.progressBarFill,
+                            {
+                              width: `${percentage}%`,
+                              backgroundColor: productColor,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.productRight}>
+                    <Text style={styles.productRevenue}>
+                      {item.totalRevenue.toLocaleString("fr-FR")} {symbol}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.productPercentage,
+                        { color: productColor },
+                      ]}
+                    >
+                      {percentage.toFixed(1)}%
+                    </Text>
+                    <Text style={styles.productQuantity}>
+                      {item.totalQuantitySold} unité
+                      {item.totalQuantitySold > 1 ? "s" : ""}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
         </>
       )}
     </View>
@@ -216,135 +223,157 @@ const RevenueDistributionChart: React.FC<{ businessId: string }> = ({
 const styles = StyleSheet.create({
   chartCard: {
     backgroundColor: "#fff",
-    marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: "#00D09C",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    elevation: 3,
+    shadowColor: "#00D09C",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
   chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
+    gap: 6,
   },
   chartTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-  },
-  filterButtons: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  filterBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#F5F5F5",
-  },
-  filterBtnActive: {
-    backgroundColor: "#E8FFF6",
-  },
-  filterBtnText: {
-    fontSize: 12,
-    color: "#666",
-    fontWeight: "500",
-  },
-  filterBtnTextActive: {
-    color: "#00D09C",
-    fontWeight: "600",
-  },
-  donutContainer: {
-    position: "relative",
-    alignItems: "center",
-    marginVertical: 16,
-  },
-  donutCenter: {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: [{ translateX: -75 }, { translateY: -40 }],
-    alignItems: "center",
-    width: 150,
-  },
-  donutCenterLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 4,
-  },
-  donutCenterValue: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
-    color: "#000",
-    textAlign: "center",
+    color: "#1a1a1a",
   },
-  donutCenterCurrency: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
+  chartContainer: {
+    alignItems: "center",
+    marginVertical: 20,
   },
-  revenusLegend: {
-    marginTop: 16,
-    gap: 12,
+  chart: {
+    borderRadius: 12,
   },
-  revenuLegendItem: {
+  totalContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+    paddingVertical: 14,
+    backgroundColor: "#f0fffa",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#b0ffdd",
+  },
+  totalLabel: {
+    fontSize: 15,
+    color: "#006644",
+    fontWeight: "600",
+  },
+  totalValue: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#00a06a",
+    marginTop: 4,
+  },
+  productList: {
+    marginTop: 10,
+    maxHeight: 500,
+  },
+  gridTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    marginBottom: 12,
+    marginLeft: 8,
+  },
+  productItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
   },
-  revenuLegendLeft: {
+  productLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
     flex: 1,
   },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  rankBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  revenuLegendText: {
-    fontSize: 14,
-    color: "#333",
-    flexShrink: 1,
-  },
-  revenuLegendAmount: {
+  rankText: {
+    color: "#fff",
     fontSize: 13,
+    fontWeight: "800",
+  },
+  productInfo: {
+    flex: 1,
+    gap: 8,
+  },
+  productName: {
+    fontSize: 15,
     fontWeight: "600",
-    color: "#000",
+    color: "#333",
+  },
+  progressBarBackground: {
+    height: 6,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  productRight: {
+    alignItems: "flex-end",
+  },
+  productRevenue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#333",
+  },
+  productPercentage: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  productQuantity: {
+    fontSize: 12,
+    color: "#888",
+    marginTop: 4,
   },
   loadingContainer: {
-    height: 200,
+    height: 260,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 8,
+    marginTop: 12,
     color: "#666",
     fontSize: 14,
   },
   errorContainer: {
-    height: 200,
+    height: 260,
     justifyContent: "center",
     alignItems: "center",
   },
   errorText: {
     color: "#FF6B6B",
-    fontSize: 14,
-    textAlign: "center",
+    fontSize: 15,
+  },
+  noDataContainer: {
+    height: 260,
+    justifyContent: "center",
+    alignItems: "center",
   },
   noDataText: {
-    textAlign: "center",
     color: "#999",
-    fontSize: 14,
-    marginVertical: 20,
+    fontSize: 15,
+    fontStyle: "italic",
   },
 });
 

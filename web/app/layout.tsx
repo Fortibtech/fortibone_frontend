@@ -1,6 +1,5 @@
 import '@/styles/globals.css';
 import AuthProvider from '@/components/providers/AuthProvider';
-import ToastProvider from '@/components/ui/ToastProvider';
 
 export const metadata = {
     title: 'KomoraLink',
@@ -24,10 +23,7 @@ export default function RootLayout({
                 />
             </head>
             <body>
-                <AuthProvider>
-                    {children}
-                    <ToastProvider />
-                </AuthProvider>
+                <AuthProvider>{children}</AuthProvider>
             </body>
         </html>
     );

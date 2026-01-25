@@ -171,7 +171,6 @@ export const createMenu = async ({
       body
     );
 
-    console.log("✅ Menu créé avec succès :", res.data);
     return res.data;
   } catch (error: any) {
     console.error(

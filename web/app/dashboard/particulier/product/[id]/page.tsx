@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getProductByIdDirect, getProductReviews, type ProductReview } from '@/lib/api/products';
 import { useCartStore } from '@/stores/cartStore';
@@ -10,8 +10,9 @@ import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import styles from './product.module.css';
 import Link from 'next/link';
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
-    const productId = params.id;
+export default function ProductDetailPage() {
+    const params = useParams();
+    const productId = params?.id as string;
     const router = useRouter();
     const searchParams = useSearchParams();
     const businessIdQuery = searchParams.get('businessId');

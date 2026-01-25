@@ -9,14 +9,14 @@ export interface OrderLinePayload {
 
 export interface CreateOrderPayload {
   type:
-    | "SALE"
-    | "PENDING"
-    | "CONFIRMED"
-    | "SHIPPED"
-    | "DELIVERED"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "REFUNDED";
+  | "SALE"
+  | "PENDING"
+  | "CONFIRMED"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED";
   businessId: string;
   supplierBusinessId?: string;
   notes?: string;
@@ -117,14 +117,16 @@ export interface MyOrder {
   orderNumber: string;
   type: "SALE" | "PURCHASE" | "RESERVATION";
   status:
-    | "PENDING"
-    | "CONFIRMED"
-    | "PROCESSING"
-    | "SHIPPED"
-    | "DELIVERED"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "REFUNDED";
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED"
+  | "PAID"
+  | "PENDING_PAYMENT";
   totalAmount: string;
   notes: string | null;
   createdAt: string;
@@ -208,18 +210,19 @@ export interface Business {
 
 export interface OrderResponse {
   id: string;
-  profileImageUrl: string | null;
   orderNumber: string;
   type: "SALE" | "PURCHASE" | "RESERVATION";
   status:
-    | "PENDING"
-    | "CONFIRMED"
-    | "PROCESSING"
-    | "SHIPPED"
-    | "DELIVERED"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "REFUNDED";
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED"
+  | "PAID"
+  | "PENDING_PAYMENT";
   totalAmount: string;
   notes: string | null;
   createdAt: string;
@@ -232,6 +235,15 @@ export interface OrderResponse {
   lines: OrderLine[];
   customer: Customer;
   business: Business;
+  deliveryRequest?: {
+    id: string;
+    status: "PENDING" | "ACCEPTED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED";
+    deliveryCode: string;
+    carrier: {
+      id: string;
+      name: string;
+    };
+  } | null;
 }
 // ----------------------
 // Params disponibles
@@ -241,14 +253,14 @@ export interface GetBusinessOrdersParams {
   limit?: number;
   search?: string;
   status?:
-    | "PENDING"
-    | "CONFIRMED"
-    | "PROCESSING"
-    | "SHIPPED"
-    | "DELIVERED"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "REFUNDED";
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED";
   type?: "SALE" | "PURCHASE" | "RESERVATION";
 }
 // ----------------------
@@ -256,12 +268,12 @@ export interface GetBusinessOrdersParams {
 // ----------------------
 export interface UpdateOrderStatusPayload {
   status:
-    | "PENDING"
-    | "CONFIRMED"
-    | "PROCESSING"
-    | "SHIPPED"
-    | "DELIVERED"
-    | "COMPLETED"
-    | "CANCELLED"
-    | "REFUNDED";
+  | "PENDING"
+  | "CONFIRMED"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "REFUNDED";
 }

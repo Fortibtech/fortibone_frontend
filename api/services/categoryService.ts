@@ -9,11 +9,10 @@ export class CategoryService {
 
   static async getCategories(): Promise<Category[]> {
     const cacheKey = "categories_list";
-    
+
     // Vérifier le cache
     const cachedData = await cacheManager.get<Category[]>(cacheKey);
     if (cachedData) {
-      console.log("📦 Catégories récupérées du cache");
       return cachedData;
     }
 
@@ -21,8 +20,7 @@ export class CategoryService {
       const response = await axiosInstance.get<Category[]>("/categories");
       // Mettre en cache avec TTL plus long
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des catégories:", error);
@@ -32,21 +30,19 @@ export class CategoryService {
 
   static async getCategoryById(id: string): Promise<Category> {
     const cacheKey = `category_${id}`;
-    
+
     // Vérifier le cache
     const cachedData = await cacheManager.get<Category>(cacheKey);
     if (cachedData) {
-      
       return cachedData;
     }
 
     try {
       const response = await axiosInstance.get<Category>(`/categories/${id}`);
-      
+
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération de la catégorie:", error);
@@ -57,7 +53,7 @@ export class CategoryService {
   static async getCategoryByName(name: string): Promise<Category | null> {
     try {
       const categories = await this.getCategories();
-      return categories.find(category => 
+      return categories.find(category =>
         category.name.toLowerCase().includes(name.toLowerCase())
       ) || null;
     } catch (error) {
@@ -70,8 +66,8 @@ export class CategoryService {
     try {
       const categories = await this.getCategories();
       if (!searchTerm.trim()) return categories;
-      
-      return categories.filter(category => 
+
+      return categories.filter(category =>
         category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
       );
@@ -85,7 +81,7 @@ export class CategoryService {
     try {
       // Invalider le cache
       await cacheManager.invalidate("categories_list");
-      
+
       // Recharger depuis l'API
       return await this.getCategories();
     } catch (error) {
@@ -111,14 +107,14 @@ export class CategoryService {
    * Valide les attributs requis pour une catégorie
    */
   static validateCategoryAttributes(
-    category: Category, 
+    category: Category,
     attributeValues: Record<string, string>
   ): { isValid: boolean; errors: Record<string, string> } {
     const errors: Record<string, string> = {};
 
     category.attributes.forEach(attribute => {
       const value = attributeValues[attribute.id];
-      
+
       if (attribute.required && (!value || !value.trim())) {
         errors[attribute.id] = `${attribute.name} est requis`;
       }

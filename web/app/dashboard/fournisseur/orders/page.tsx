@@ -2,16 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
 import { getBusinessOrders, updateOrderStatus } from '@/lib/api/orders';
 import styles from './orders.module.css';
 
-// All 10 statuses matching mobile exactly
 const statusLabels: Record<string, string> = {
-    PENDING_PAYMENT: 'En attente de paiement',
     PENDING: 'En attente',
     CONFIRMED: 'Confirmée',
     PROCESSING: 'En traitement',
@@ -19,21 +16,6 @@ const statusLabels: Record<string, string> = {
     DELIVERED: 'Livrée',
     COMPLETED: 'Terminée',
     CANCELLED: 'Annulée',
-    PAID: 'Payée',
-    REFUNDED: 'Remboursée',
-};
-
-const statusColors: Record<string, { color: string; bg: string }> = {
-    PENDING_PAYMENT: { color: '#F97316', bg: '#FFEDD5' },
-    PENDING: { color: '#EA580C', bg: '#FFF7C2' },
-    CONFIRMED: { color: '#7C3AED', bg: '#EDE9FE' },
-    PROCESSING: { color: '#D97706', bg: '#FFFBEB' },
-    SHIPPED: { color: '#2563EB', bg: '#DBEAFE' },
-    DELIVERED: { color: '#16A34A', bg: '#DCFCE7' },
-    COMPLETED: { color: '#059669', bg: '#D1FAE5' },
-    CANCELLED: { color: '#EF4444', bg: '#FECACA' },
-    PAID: { color: '#059669', bg: '#D1FAE5' },
-    REFUNDED: { color: '#6B7280', bg: '#E5E7EB' },
 };
 
 export default function FournisseurOrdersPage() {
@@ -52,11 +34,8 @@ export default function FournisseurOrdersPage() {
         try {
             const data = await getBusinessOrders(selectedBusiness.id, { limit: 50 });
             setOrders(data.data || []);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error loading orders:', error);
-            toast.error('Erreur chargement des commandes', {
-                description: error.message,
-            });
         } finally {
             setLoading(false);
         }
@@ -66,12 +45,8 @@ export default function FournisseurOrdersPage() {
         try {
             await updateOrderStatus(orderId, newStatus as any);
             setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-            toast.success(`Commande ${statusLabels[newStatus] || newStatus}`);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error updating order:', error);
-            toast.error('Erreur changement statut', {
-                description: error.response?.data?.message || error.message,
-            });
         }
     };
 
@@ -161,22 +136,6 @@ export default function FournisseurOrdersPage() {
                                                     onClick={() => handleStatusChange(order.id, 'PROCESSING')}
                                                 >
                                                     Préparer
-                                                </button>
-                                            )}
-                                            {order.status === 'PROCESSING' && (
-                                                <button
-                                                    className={styles.confirmBtn}
-                                                    onClick={() => handleStatusChange(order.id, 'SHIPPED')}
-                                                >
-                                                    Expédier
-                                                </button>
-                                            )}
-                                            {order.status === 'SHIPPED' && (
-                                                <button
-                                                    className={styles.confirmBtn}
-                                                    onClick={() => handleStatusChange(order.id, 'DELIVERED')}
-                                                >
-                                                    Marquer livré
                                                 </button>
                                             )}
                                         </div>

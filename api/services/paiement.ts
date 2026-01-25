@@ -25,18 +25,15 @@ class PaymentService {
     paymentData: CreatePaymentIntentRequest
   ): Promise<PaymentIntentResponse> {
     try {
-      console.log(`💳 Création d'une intention de paiement pour la commande ${orderId}`);
-      
       const response = await axiosInstance.post<PaymentIntentResponse>(
         `/orders/${orderId}/pay`,
         paymentData
       );
 
-      
       return response.data;
     } catch (error: any) {
       console.error("❌ Erreur lors de la création de l'intention de paiement:", error);
-      
+
       if (error.response) {
         // Erreurs du serveur (400, 403, 500, etc.)
         const apiError: ApiError = {
@@ -79,15 +76,11 @@ class PaymentService {
     refundData: RefundRequest
   ): Promise<OrderResponse> {
     try {
-      console.log(`🔄 Initiation d'un remboursement pour la commande ${orderId}`);
-      console.log(`💰 Montant du remboursement: ${refundData.amount}`);
-
       const response = await axiosInstance.post<OrderResponse>(
         `/orders/${orderId}/refund`,
         refundData
       );
 
-      
       return response.data;
     } catch (error: any) {
       console.error("❌ Erreur lors du remboursement:", error);

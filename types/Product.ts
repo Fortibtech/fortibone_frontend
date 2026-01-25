@@ -39,6 +39,9 @@ export interface Category {
 export interface Products {
   id: string;
   name: string;
+  productId: string;
+  price: string;
+  productImageUrl: string;
   description: string;
   salesUnit: string;
   imageUrl: string;
@@ -48,6 +51,8 @@ export interface Products {
   categoryId: string;
   category: Category;
   variants: Variant[];
+  latitude: number;
+  longitude: number;
 }
 
 export interface Product {

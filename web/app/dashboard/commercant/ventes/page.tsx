@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
@@ -50,11 +49,8 @@ export default function VentesPage() {
         try {
             const data = await getBusinessOrders(selectedBusiness.id, { limit: 50 });
             setOrders(data.data || []);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error loading orders:', error);
-            toast.error('Erreur chargement des ventes', {
-                description: error.message || 'Veuillez réessayer',
-            });
         } finally {
             setLoading(false);
         }
@@ -67,12 +63,8 @@ export default function VentesPage() {
                 o.id === orderId ? { ...o, status: newStatus } : o
             ));
             setSelectedOrder(null);
-            toast.success(`Commande ${statusLabels[newStatus] || newStatus}`);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error updating order status:', error);
-            toast.error('Erreur changement statut', {
-                description: error.response?.data?.message || error.message,
-            });
         }
     };
 

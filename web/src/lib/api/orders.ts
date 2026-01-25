@@ -1,8 +1,8 @@
 import axiosInstance from './axiosInstance';
 
-// Types - Extension des statuts mobile + statuts additionnels web (PENDING_PAYMENT, PAID)
+// Types
 export type OrderStatus =
-    | 'PENDING_PAYMENT'  // Web only - en attente de paiement
+    | 'PENDING_PAYMENT'
     | 'PENDING'
     | 'CONFIRMED'
     | 'PROCESSING'
@@ -10,7 +10,7 @@ export type OrderStatus =
     | 'DELIVERED'
     | 'COMPLETED'
     | 'CANCELLED'
-    | 'PAID'             // Web only - commande payée
+    | 'PAID'
     | 'REFUNDED';
 
 export type OrderType = 'SALE' | 'PURCHASE' | 'RESERVATION';

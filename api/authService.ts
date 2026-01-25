@@ -15,8 +15,6 @@ export const registerUser = async (data: RegisterPayload) => {
 
     throw new Error("Réponse inattendue du serveur.");
   } catch (error: any) {
-    // Erreur gérée silencieusement en production
-
     if (error.response?.status === 409) {
       throw new Error("Cet email est déjà utilisé.");
     }
@@ -42,7 +40,7 @@ export const loginUser = async (email: string, password: string) => {
     });
 
     if (response.status === 201) {
-      // ✅ NETTOYER LE CACHE APRÈS UNE CONNEXION RÉUSSIE
+      // Nettoyer le cache après une connexion réussie
       await cacheManager.clearAll();
 
       return {

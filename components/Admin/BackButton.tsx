@@ -1,11 +1,67 @@
+// components/BackButtonAdmin.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { StyleSheet, TouchableOpacity } from "react-native";
+import {
+  StyleSheet,
+  TouchableOpacity,
+  TouchableOpacityProps,
+} from "react-native";
+import React from "react";
 
-const BackButtonAdmin = () => {
+interface BackButtonAdminProps extends TouchableOpacityProps {
+  /**
+   * Route personnalisée vers laquelle naviguer
+   * - Si fournie → remplace router.back()
+   * - Si non fournie → comportement par défaut : router.back()
+   */
+  fallbackRoute?: string;
+
+  /**
+   * Couleur de fond du bouton
+   */
+  backgroundColor?: string;
+
+  /**
+   * Couleur de l'icône
+   */
+  iconColor?: string;
+
+  /**
+   * Taille de l'icône
+   */
+  iconSize?: number;
+}
+
+const BackButtonAdmin: React.FC<BackButtonAdminProps> = ({
+  fallbackRoute,
+  backgroundColor,
+  iconColor = "#000",
+  iconSize = 24,
+  style,
+  ...restProps
+}) => {
+  const handlePress = () => {
+    if (fallbackRoute) {
+      router.push(fallbackRoute as any); // ou router.replace(fallbackRoute) si tu ne veux pas ajouter à l'historique
+    } else {
+      router.back();
+    }
+  };
+
   return (
-    <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
-      <Ionicons name="arrow-back-outline" size={24} color="#000" />
+    <TouchableOpacity
+      style={[
+        styles.iconButton,
+        backgroundColor
+          ? { backgroundColor }
+          : { backgroundColor: "transparent" },
+        style,
+      ]}
+      onPress={handlePress}
+      activeOpacity={0.7}
+      {...restProps}
+    >
+      <Ionicons name="arrow-back-outline" size={iconSize} color={iconColor} />
     </TouchableOpacity>
   );
 };

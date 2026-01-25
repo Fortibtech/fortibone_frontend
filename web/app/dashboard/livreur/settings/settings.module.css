@@ -20,7 +20,7 @@
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #22d989 0%, #1BB874 100%);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -58,7 +58,7 @@
 
 .businessName {
     font-size: 13px;
-    color: #22d989;
+    color: #10b981;
     font-weight: 500;
     margin: 0;
 }

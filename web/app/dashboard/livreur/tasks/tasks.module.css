@@ -35,12 +35,12 @@
 }
 
 .tabActive {
-    background: #22d989;
+    background: #10B981;
     color: white;
 }
 
 .tabActive:hover {
-    background: #1BB874;
+    background: #059669;
 }
 
 /* Refresh */
@@ -58,8 +58,8 @@
 }
 
 .refreshBtn:hover:not(:disabled) {
-    border-color: #22d989;
-    color: #22d989;
+    border-color: #10B981;
+    color: #10B981;
 }
 
 .refreshBtn:disabled {
@@ -211,7 +211,7 @@
 .acceptBtn {
     flex: 1;
     padding: var(--space-3);
-    background: #22d989;
+    background: #10B981;
     color: white;
     border: none;
     border-radius: var(--radius-lg);
@@ -221,7 +221,7 @@
 }
 
 .acceptBtn:hover:not(:disabled) {
-    background: #1BB874;
+    background: #059669;
 }
 
 .pickupBtn {
@@ -244,7 +244,7 @@
 .completeBtn {
     width: 100%;
     padding: var(--space-4);
-    background: #22d989;
+    background: #10B981;
     color: white;
     border: none;
     border-radius: var(--radius-lg);
@@ -255,7 +255,7 @@
 }
 
 .completeBtn:hover {
-    background: #1BB874;
+    background: #059669;
 }
 
 /* Empty State */
@@ -297,7 +297,7 @@
     width: 40px;
     height: 40px;
     border: 4px solid var(--color-gray-200);
-    border-top-color: #22d989;
+    border-top-color: #10B981;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -387,11 +387,11 @@
 }
 
 .vehicleOption:hover {
-    border-color: #22d989;
+    border-color: #10B981;
 }
 
 .vehicleSelected {
-    border-color: #22d989;
+    border-color: #10B981;
     background: #ECFDF5;
 }
 
@@ -411,7 +411,7 @@
 
 .codeInput:focus {
     outline: none;
-    border-color: #22d989;
+    border-color: #10B981;
 }
 
 .modalActions {
@@ -435,7 +435,7 @@
 .confirmBtn {
     flex: 1;
     padding: var(--space-3);
-    background: #22d989;
+    background: #10B981;
     color: white;
     border: none;
     border-radius: var(--radius-lg);

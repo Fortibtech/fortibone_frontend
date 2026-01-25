@@ -64,8 +64,8 @@
 }
 
 .periodBtnActive {
-    background: #22d989;
-    border-color: #22d989;
+    background: #10b981;
+    border-color: #10b981;
     color: white;
 }
 
@@ -92,7 +92,7 @@
     width: 40px;
     height: 40px;
     border: 3px solid #e5e7eb;
-    border-top-color: #22d989;
+    border-top-color: #10b981;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }

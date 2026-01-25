@@ -26,7 +26,7 @@
 
 .refreshBtn {
     padding: 10px 20px;
-    background: #1BB874;
+    background: #059669;
     color: white;
     border: none;
     border-radius: 8px;
@@ -37,7 +37,7 @@
 }
 
 .refreshBtn:hover:not(:disabled) {
-    background: #16a465;
+    background: #047857;
 }
 
 .refreshBtn:disabled {
@@ -67,12 +67,12 @@
 }
 
 .tab:hover {
-    color: #1BB874;
+    color: #059669;
 }
 
 .tabActive {
-    color: #1BB874;
-    border-bottom-color: #1BB874;
+    color: #059669;
+    border-bottom-color: #059669;
     font-weight: 600;
 }
 
@@ -217,12 +217,12 @@
 }
 
 .acceptBtn {
-    background: #1BB874;
+    background: #059669;
     color: white;
 }
 
 .acceptBtn:hover:not(:disabled) {
-    background: #16a465;
+    background: #047857;
 }
 
 .pickupBtn {
@@ -236,13 +236,13 @@
 }
 
 .completeBtn {
-    background: #1BB874;
+    background: #059669;
     color: white;
     margin-top: 16px;
 }
 
 .completeBtn:hover:not(:disabled) {
-    background: #16a465;
+    background: #047857;
 }
 
 /* Empty State */
@@ -283,7 +283,7 @@
     width: 48px;
     height: 48px;
     border: 4px solid #e5e7eb;
-    border-top-color: #1BB874;
+    border-top-color: #059669;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
@@ -380,7 +380,7 @@
 
 .codeInput:focus {
     outline: none;
-    border-color: #1BB874;
+    border-color: #059669;
 }
 
 .vehicleOption {
@@ -396,18 +396,18 @@
 }
 
 .vehicleOption:hover {
-    border-color: #1BB874;
+    border-color: #059669;
     background: #f0fdf4;
 }
 
 .vehicleOption.selected {
-    border-color: #1BB874;
+    border-color: #059669;
     background: #dcfce7;
 }
 
 .radio {
     font-size: 20px;
-    color: #1BB874;
+    color: #059669;
 }
 
 .detailSection {
@@ -463,7 +463,7 @@
     flex: 1;
     padding: 12px 20px;
     border: none;
-    background: #1BB874;
+    background: #059669;
     color: white;
     border-radius: 8px;
     font-size: 15px;
@@ -473,7 +473,7 @@
 }
 
 .confirmBtn:hover:not(:disabled) {
-    background: #16a465;
+    background: #047857;
 }
 
 .confirmBtn:disabled {

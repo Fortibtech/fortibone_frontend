@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from './login.module.css';
 
-function LoginForm() {
+export default function LoginPage() {
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const redirectUrl = searchParams.get('redirectUrl') || '/docs'; // Default to docs for users
-
+    const [isLogin, setIsLogin] = useState(true); // Toggle state
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -19,92 +19,42 @@ function LoginForm() {
         setError('');
         setIsLoading(true);
 
-        // --- ADMIN BYPASS (Hidden) ---
-        if (email === 'admin@komoralink.com') {
-            setTimeout(() => {
-                const mockUser = {
-                    email: email,
-                    firstName: 'Admin',
-                    lastName: 'Komora',
-                    id: 'mock_admin_id',
-                    role: 'admin'
-                };
-                localStorage.setItem('access_token', 'mock_token_admin_123');
-                localStorage.setItem('user', JSON.stringify(mockUser));
-                router.push('/dashboard');
-                setIsLoading(false);
-            }, 800);
-            return;
-        }
-        // -----------------------------
+        const endpoint = isLogin ? '/api-proxy/auth/login' : '/api-proxy/auth/register';
+
+        const payload = isLogin
+            ? { email, password }
+            : { email, password, firstName, lastName, profileType: 'PRO' };
 
         try {
-            // 1. LOGIN Request
-            const loginRes = await fetch('/api-proxy/auth/login', {
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify(payload),
             });
 
-            if (!loginRes.ok) {
-                const errData = await loginRes.json();
-                throw new Error(errData.message || 'Identifiants incorrects');
-            }
-
-            const loginData = await loginRes.json();
-            const token = loginData.access_token || loginData.token; // Handle variants admin vs user
-
-            if (!token) {
-                throw new Error('Erreur: Token non reçu.');
-            }
-
-            localStorage.setItem('access_token', token);
-
-            // 2. GET PROFILE Request (Required because login doesn't usually return full user)
-            // Try /auth/profile first, then /users/me as fallback
-            let profileData;
-
-            const profileRes = await fetch('/api-proxy/auth/profile', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+            if (!response.ok) {
+                let errorMessage = 'Erreur inconnue';
+                try {
+                    const data = await response.json();
+                    errorMessage = data.message || (isLogin ? 'Identifiants incorrects' : 'Erreur inscription');
+                } catch (e) {
+                    errorMessage = `Erreur serveur (${response.statusText || response.status})`;
                 }
-            });
-
-            if (profileRes.ok) {
-                profileData = await profileRes.json();
-            } else {
-                // Try fallback endpoint 
-                const profileResFallback = await fetch('/api-proxy/users/me', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (!profileResFallback.ok) {
-                    throw new Error('Impossible de récupérer le profil utilisateur. Code: ' + profileResFallback.status);
-                }
-                profileData = await profileResFallback.json();
+                throw new Error(errorMessage);
             }
 
-            localStorage.setItem('user', JSON.stringify(profileData));
+            const data = await response.json();
 
-            // 3. REDIRECT
-            // If they came from a specific page (e.g. docs), go back there.
-            // Otherwise default to /docs.
-            router.push(redirectUrl);
+            // Store token
+            localStorage.setItem('access_token', data.access_token);
+            // localStorage.setItem('user', JSON.stringify(data.user)); // Optional if backend sends user
 
+            // Redirect to dashboard
+            router.push('/dashboard');
         } catch (err: any) {
-            console.error('Login error:', err);
             setError(err.message || 'Erreur de connexion');
-            localStorage.removeItem('access_token'); // Clean up partial login
         } finally {
-            if (email !== 'admin@komoralink.com') {
-                setIsLoading(false);
-            }
+            setIsLoading(false);
         }
     };
 
@@ -112,8 +62,10 @@ function LoginForm() {
         <div className={styles.container}>
             <div className={styles.loginBox}>
                 <div className={styles.logo}>K</div>
-                <h1 className={styles.title}>Connexion</h1>
-                <p className={styles.subtitle}>Accédez à votre espace KomoraLink</p>
+                <h1 className={styles.title}>KomoraLink Admin</h1>
+                <p className={styles.subtitle}>
+                    {isLogin ? 'Connectez-vous pour accéder au dashboard' : 'Créer un compte Administrateur'}
+                </p>
 
                 {error && (
                     <div className={styles.error}>
@@ -122,6 +74,33 @@ function LoginForm() {
                 )}
 
                 <form onSubmit={handleSubmit} className={styles.form}>
+                    {!isLogin && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div className={styles.inputGroup}>
+                                <label className={styles.label}>Prénom</label>
+                                <input
+                                    type="text"
+                                    value={firstName}
+                                    onChange={(e) => setFirstName(e.target.value)}
+                                    className={styles.input}
+                                    placeholder="Admin"
+                                    required={!isLogin}
+                                />
+                            </div>
+                            <div className={styles.inputGroup}>
+                                <label className={styles.label}>Nom</label>
+                                <input
+                                    type="text"
+                                    value={lastName}
+                                    onChange={(e) => setLastName(e.target.value)}
+                                    className={styles.input}
+                                    placeholder="Komora"
+                                    required={!isLogin}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <div className={styles.inputGroup}>
                         <label className={styles.label}>Email</label>
                         <input
@@ -129,7 +108,7 @@ function LoginForm() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className={styles.input}
-                            placeholder="votre@email.com"
+                            placeholder="admin@komoralink.com"
                             required
                         />
                     </div>
@@ -150,23 +129,36 @@ function LoginForm() {
                         type="submit"
                         className={styles.button}
                         disabled={isLoading}
+                        style={{
+                            background: isLogin ? '#0f172a' : '#00c9a7' // Different color for register
+                        }}
                     >
-                        {isLoading ? 'Connexion en cours...' : 'Se connecter'}
+                        {isLoading ? 'Chargement...' : (isLogin ? 'Se connecter' : 'Créer le compte')}
                     </button>
                 </form>
 
+                {/* 
+                <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                    <button
+                        onClick={() => setIsLogin(!isLogin)}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#64748b',
+                            textDecoration: 'underline',
+                            cursor: 'pointer',
+                            fontSize: '14px'
+                        }}
+                    >
+                        {isLogin ? 'Pas de compte ? Créer un accès Admin' : 'Déjà un compte ? Se connecter'}
+                    </button>
+                </div>
+                */}
+
                 <p className={styles.footer}>
-                    Cette section utilise vos identifiants KomoraLink habituels (Mobile/Web).
+                    © 2026 KomoraLink - FORTIBTECH
                 </p>
             </div>
         </div>
-    );
-}
-
-export default function LoginPage() {
-    return (
-        <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>Chargement...</div>}>
-            <LoginForm />
-        </Suspense>
     );
 }

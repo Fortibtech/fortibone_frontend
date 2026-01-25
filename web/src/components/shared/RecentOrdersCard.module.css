@@ -28,7 +28,7 @@
 .viewAllLink {
     font-size: 14px;
     font-weight: 500;
-    color: #1BB874;
+    color: #059669;
     text-decoration: none;
 }
 
@@ -123,7 +123,7 @@
 .orderAmount {
     font-size: 14px;
     font-weight: 600;
-    color: #1BB874;
+    color: #059669;
 }
 
 .emptyState {
@@ -154,7 +154,7 @@
     width: 32px;
     height: 32px;
     border: 3px solid #e5e7eb;
-    border-top-color: #1BB874;
+    border-top-color: #059669;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }

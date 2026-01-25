@@ -88,7 +88,7 @@
 .confirmBtn {
     flex: 1;
     padding: 12px 24px;
-    background: #1BB874;
+    background: #059669;
     color: white;
     border: none;
     border-radius: 10px;
@@ -105,11 +105,11 @@
 
 /* Type-specific styling */
 .confirmBtnSuccess {
-    background: #1BB874;
+    background: #059669;
 }
 
 .confirmBtnSuccess:hover {
-    background: #16a465;
+    background: #047857;
 }
 
 .confirmBtnError {
@@ -138,7 +138,7 @@
 
 /* Modal type borders */
 .success {
-    border-top: 4px solid #1BB874;
+    border-top: 4px solid #059669;
 }
 
 .error {

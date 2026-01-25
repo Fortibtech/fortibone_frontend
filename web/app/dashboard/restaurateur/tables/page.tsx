@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { toast } from 'sonner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
 import { useBusinessStore } from '@/stores/businessStore';
@@ -36,11 +35,8 @@ export default function TablesPage() {
             setLoading(true);
             const data = await getTables(selectedBusiness.id);
             setTables(data || []);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Erreur chargement tables:', error);
-            toast.error('Erreur chargement des tables', {
-                description: error.message,
-            });
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -74,13 +70,13 @@ export default function TablesPage() {
 
     const saveTable = async () => {
         if (!tableName.trim()) {
-            toast.info('Le nom de la table est obligatoire');
+            alert('Le nom de la table est obligatoire');
             return;
         }
 
         const capacityNum = parseInt(capacity, 10);
         if (isNaN(capacityNum) || capacityNum <= 0) {
-            toast.info('Le nombre de places doit être un nombre positif');
+            alert('Le nombre de places doit être un nombre positif');
             return;
         }
 
@@ -102,7 +98,7 @@ export default function TablesPage() {
 
                 const updated = await updateRestaurantTable(selectedBusiness.id, editingTable.id, payload);
                 setTables(tables.map(t => t.id === updated.id ? updated : t));
-                toast.success('Table modifiée !');
+                alert('✅ Table modifiée !');
             } else {
                 // Création
                 const newTable = await createRestaurantTable(selectedBusiness.id, {
@@ -111,15 +107,13 @@ export default function TablesPage() {
                     isAvailable,
                 });
                 setTables([...tables, newTable]);
-                toast.success(`Table "${newTable.name}" créée !`);
+                alert(`✅ Table "${newTable.name}" créée !`);
             }
 
             setShowModal(false);
         } catch (error: any) {
             console.error('Erreur sauvegarde:', error);
-            toast.error('Erreur lors de la sauvegarde', {
-                description: error.response?.data?.message || error.message,
-            });
+            alert(error.message || 'Erreur lors de la sauvegarde');
         } finally {
             setSaving(false);
         }
@@ -134,12 +128,10 @@ export default function TablesPage() {
 
         try {
             await deleteRestaurantTable(selectedBusiness.id, tableId);
-            toast.success('Table supprimée');
+            alert('✅ Table supprimée');
         } catch (error: any) {
             setTables(previousTables);
-            toast.error('Impossible de supprimer la table', {
-                description: error.response?.data?.message || error.message,
-            });
+            alert(error.message || 'Impossible de supprimer la table');
         } finally {
             setDeletingId(null);
         }

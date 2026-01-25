@@ -324,29 +324,13 @@ export default function ParticulierDashboard() {
             >
                 {/* Content area with promo banner + products */}
                 <div className={styles.content}>
-                    {/* PROMO BANNER - Aligned with mobile */}
+                    {/* PROMO BANNER */}
                     <div className={styles.promoBanner}>
-                        <div className={styles.bannerBackground} />
-                        <svg
-                            className={styles.bannerSvg}
-                            viewBox="10 0 100 80"
-                            preserveAspectRatio="none"
-                        >
-                            <polygon points="0,0 100,0 65,90 0,90" fill="#FFF9CD" />
-                        </svg>
-                        <div className={styles.bannerContentWrapper}>
-                            <div className={styles.bannerContent}>
-                                <h2 className={styles.bannerTitle}>Ne ratez pas ça !</h2>
-                                <p className={styles.bannerSubtitle}>Jusqu&apos;à 50 % de réduction</p>
-                            </div>
-                            <div className={styles.bannerImageContainer}>
-                                <img
-                                    src="/images/promo-banner.png"
-                                    alt="Promotion"
-                                    className={styles.bannerImage}
-                                />
-                            </div>
+                        <div className={styles.bannerContent}>
+                            <h2 className={styles.bannerTitle}>Ne ratez pas ça !</h2>
+                            <p className={styles.bannerSubtitle}>Jusqu'à 50 % de réduction</p>
                         </div>
+                        <div className={styles.bannerImage}>📦</div>
                     </div>
 
 

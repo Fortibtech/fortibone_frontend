@@ -17,11 +17,10 @@ export class ProductService {
 
   static async searchProducts(filters: ProductSearchFilters = {}): Promise<PaginatedResponse<Product>> {
     const cacheKey = `products_search_${JSON.stringify(filters)}`;
-    
+
     // Vérifier le cache
     const cachedData = await cacheManager.get<PaginatedResponse<Product>>(cacheKey);
     if (cachedData) {
-      console.log("📦 Résultats de recherche récupérés du cache");
       return cachedData;
     }
 
@@ -29,11 +28,10 @@ export class ProductService {
       const response = await axiosInstance.get<PaginatedResponse<Product>>("/products/search", {
         params: filters
       });
-      
+
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la recherche de produits:", error);
@@ -44,12 +42,11 @@ export class ProductService {
   static async createProduct(businessId: string, data: CreateProductData): Promise<Product> {
     try {
       const response = await axiosInstance.post<Product>(`/businesses/${businessId}/products`, data);
-      
+
       // Invalider les caches liés
       await cacheManager.invalidatePattern("products_search");
       await cacheManager.invalidatePattern(`business_products_${businessId}`);
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la création du produit:", error);
@@ -58,15 +55,14 @@ export class ProductService {
   }
 
   static async getBusinessProducts(
-    businessId: string, 
+    businessId: string,
     filters: { search?: string; page?: number; limit?: number; categoryId?: string } = {}
   ): Promise<PaginatedResponse<Product>> {
     const cacheKey = `business_products_${businessId}_${JSON.stringify(filters)}`;
-    
+
     // Vérifier le cache
     const cachedData = await cacheManager.get<PaginatedResponse<Product>>(cacheKey);
     if (cachedData) {
-      console.log("📦 Produits de l'entreprise récupérés du cache");
       return cachedData;
     }
 
@@ -74,11 +70,10 @@ export class ProductService {
       const response = await axiosInstance.get<PaginatedResponse<Product>>(`/businesses/${businessId}/products`, {
         params: filters
       });
-      
+
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des produits de l'entreprise:", error);
@@ -88,21 +83,19 @@ export class ProductService {
 
   static async getProductById(id: string): Promise<Product> {
     const cacheKey = `product_${id}`;
-    
+
     // Vérifier le cache
     const cachedData = await cacheManager.get<Product>(cacheKey);
     if (cachedData) {
-      
       return cachedData;
     }
 
     try {
       const response = await axiosInstance.get<Product>(`/products/${id}`);
-      
+
       // Mettre en cache
       await cacheManager.set(cacheKey, response.data, this.CACHE_TTL);
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération du produit:", error);
@@ -113,13 +106,12 @@ export class ProductService {
   static async updateProduct(id: string, data: Partial<CreateProductData>): Promise<Product> {
     try {
       const response = await axiosInstance.patch<Product>(`/products/${id}`, data);
-      
+
       // Invalider les caches
       await cacheManager.invalidate(`product_${id}`);
       await cacheManager.invalidatePattern("products_search");
       await cacheManager.invalidatePattern(`business_products_${response.data.businessId}`);
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la mise à jour du produit:", error);
@@ -131,17 +123,15 @@ export class ProductService {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       await axiosInstance.post(`/products/${id}/image`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
+
       // Invalider le cache du produit
       await cacheManager.invalidate(`product_${id}`);
-      
-      console.log("✅ Image du produit uploadée");
     } catch (error) {
       console.error("❌ Erreur lors de l'upload de l'image du produit:", error);
       throw error;
@@ -156,12 +146,11 @@ export class ProductService {
   static async createVariant(productId: string, data: CreateVariantData): Promise<ProductVariant> {
     try {
       const response = await axiosInstance.post<ProductVariant>(`/products/${productId}/variants`, data);
-      
+
       // Invalider les caches liés au produit
       await cacheManager.invalidate(`product_${productId}`);
       await cacheManager.invalidatePattern("products_search");
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la création de la variante:", error);
@@ -175,12 +164,11 @@ export class ProductService {
   static async updateVariant(variantId: string, data: UpdateVariantData): Promise<ProductVariant> {
     try {
       const response = await axiosInstance.patch<ProductVariant>(`/variants/${variantId}`, data);
-      
+
       // Invalider les caches liés au produit
       await cacheManager.invalidate(`product_${response.data.productId}`);
       await cacheManager.invalidatePattern("products_search");
-      
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la mise à jour de la variante:", error);
@@ -198,12 +186,10 @@ export class ProductService {
       const productId = variant.data.productId;
 
       await axiosInstance.delete(`/variants/${variantId}`);
-      
+
       // Invalider les caches liés au produit
       await cacheManager.invalidate(`product_${productId}`);
       await cacheManager.invalidatePattern("products_search");
-      
-      console.log("✅ Variante supprimée");
     } catch (error) {
       console.error("❌ Erreur lors de la suppression de la variante:", error);
       throw error;
@@ -220,13 +206,11 @@ export class ProductService {
       const businessId = product.data.businessId;
 
       await axiosInstance.delete(`/products/${productId}`);
-      
+
       // Invalider tous les caches liés
       await cacheManager.invalidate(`product_${productId}`);
       await cacheManager.invalidatePattern("products_search");
       await cacheManager.invalidatePattern(`business_products_${businessId}`);
-      
-      console.log("✅ Produit et ses variantes supprimés");
     } catch (error) {
       console.error("❌ Erreur lors de la suppression du produit:", error);
       throw error;
@@ -240,18 +224,16 @@ export class ProductService {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       await axiosInstance.post(`/variants/${variantId}/image`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
+
       // Récupérer l'info de la variante pour invalider le cache du produit
       const variant = await axiosInstance.get<ProductVariant>(`/variants/${variantId}`);
       await cacheManager.invalidate(`product_${variant.data.productId}`);
-      
-      console.log("✅ Image de la variante uploadée");
     } catch (error) {
       console.error("❌ Erreur lors de l'upload de l'image de la variante:", error);
       throw error;
@@ -279,7 +261,6 @@ export class ProductService {
   static async getVariantById(variantId: string): Promise<ProductVariant> {
     try {
       const response = await axiosInstance.get<ProductVariant>(`/variants/${variantId}`);
-      
       return response.data;
     } catch (error) {
       console.error("❌ Erreur lors de la récupération de la variante:", error);
@@ -299,7 +280,7 @@ export class ProductService {
    */
   static getCheapestVariant(product: Product): ProductVariant | null {
     if (!product.variants.length) return null;
-    
+
     return product.variants.reduce((cheapest, current) => {
       return parseFloat(current.price) < parseFloat(cheapest.price) ? current : cheapest;
     });
@@ -310,7 +291,7 @@ export class ProductService {
    */
   static getMostExpensiveVariant(product: Product): ProductVariant | null {
     if (!product.variants.length) return null;
-    
+
     return product.variants.reduce((expensive, current) => {
       return parseFloat(current.price) > parseFloat(expensive.price) ? current : expensive;
     });

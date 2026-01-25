@@ -37,7 +37,7 @@
 
 .periodBtn.active {
     background: #DCFCE7;
-    color: #1BB874;
+    color: #059669;
     border-color: #DCFCE7;
 }
 
@@ -108,7 +108,7 @@
 }
 
 .metricValue.income {
-    color: #22d989;
+    color: #10B981;
 }
 
 .metricValue.expense {

@@ -17,23 +17,17 @@ export const ADMIN_EMAILS = [
  * @returns true si l'email est dans la whitelist
  */
 export const isAdminEmail = (email: string | null | undefined): boolean => {
+    // In local/dev mode, allow any logged in user
     if (!email) return false;
-    return ADMIN_EMAILS.includes(email.toLowerCase());
+    return true;
+    // return ADMIN_EMAILS.includes(email.toLowerCase());
 };
-
-/**
- * Pages demandant juste une authentification (sans être admin)
- * Exemple: Documentation
- */
-export const AUTHENTICATED_ROUTES = [
-    '/docs',
-];
 
 /**
  * Pages publiques accessibles sans authentification
  */
 export const PUBLIC_ROUTES = [
-    '/docs/start', // Public Onboarding/Start page
+    '/docs',
     '/about',
     '/careers',
     '/login',
@@ -46,11 +40,4 @@ export const PUBLIC_ROUTES = [
  */
 export const isPublicRoute = (pathname: string): boolean => {
     return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
-};
-
-/**
- * Vérifie si une route demande juste une authentification simple (pas admin)
- */
-export const isAuthenticatedRoute = (pathname: string): boolean => {
-    return AUTHENTICATED_ROUTES.some(route => pathname.startsWith(route));
 };

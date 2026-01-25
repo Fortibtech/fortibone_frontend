@@ -68,7 +68,16 @@ export const useLocalSearchParams = () => {
     const searchParams = useSearchParams();
     const params = useParams(); // Get path params
 
-    const combined: Record<string, string | string[]> = { ...params };
+    // Filter out undefined values from params (Next.js 16+ uses ParamValue which can be undefined)
+    const combined: Record<string, string | string[]> = {};
+
+    if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== undefined) {
+                combined[key] = value;
+            }
+        });
+    }
 
     if (searchParams) {
         searchParams.forEach((value, key) => {

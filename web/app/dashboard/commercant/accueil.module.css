@@ -143,8 +143,8 @@
 
 .analyticsCard:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(27, 184, 116, 0.15);
-    border-color: #1BB874;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-color: #00C851;
 }
 
 .analyticsIcon {
@@ -168,7 +168,7 @@
     position: absolute;
     bottom: 12px;
     right: 12px;
-    color: #1BB874;
+    color: #00C851;
     font-size: 1.2rem;
     font-weight: bold;
 }

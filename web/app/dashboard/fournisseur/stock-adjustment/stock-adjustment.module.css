@@ -73,7 +73,7 @@
 }
 
 .statusBadge {
-    background: #22d989;
+    background: #10b981;
     color: white;
     padding: 2px 8px;
     border-radius: 12px;
@@ -112,7 +112,7 @@
 .viewProductLink {
     background: none;
     border: none;
-    color: #22d989;
+    color: #10b981;
     font-size: 14px;
     font-weight: 500;
     padding: 0;
@@ -230,7 +230,7 @@
 }
 
 .submitBtn {
-    background: #22d989;
+    background: #10b981;
     color: white;
 }
 

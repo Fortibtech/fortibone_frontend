@@ -123,11 +123,11 @@
 }
 
 .toggleActive {
-    background: #1BB874;
+    background: #059669;
 }
 
 .toggleActive:hover {
-    background: #16a465;
+    background: #047857;
 }
 
 .toggleThumb {
@@ -185,7 +185,7 @@
 
 .timeInput input[type="time"]:focus {
     outline: none;
-    border-color: #1BB874;
+    border-color: #059669;
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
@@ -208,7 +208,7 @@
 
 .saveButton {
     padding: 14px 24px;
-    background: #1BB874;
+    background: #059669;
     color: white;
     border: none;
     border-radius: 8px;
@@ -219,7 +219,7 @@
 }
 
 .saveButton:hover:not(:disabled) {
-    background: #16a465;
+    background: #047857;
 }
 
 .saveButton:disabled {

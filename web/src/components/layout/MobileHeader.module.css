@@ -29,7 +29,7 @@
 .logoIcon {
     width: 32px;
     height: 32px;
-    background: linear-gradient(135deg, #1BB874 0%, #00A040 100%);
+    background: linear-gradient(135deg, #00C851 0%, #00A040 100%);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -69,7 +69,7 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    color: #1BB874;
+    color: #00C851;
     font-weight: 600;
     font-size: 14px;
 }
@@ -83,4 +83,3 @@
 .selectorWrapper {
     padding: 0 16px 12px;
 }
-

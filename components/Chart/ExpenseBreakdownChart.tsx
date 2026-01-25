@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { GetWalletTransactions } from "@/api/wallet";
 import { format, subMonths, eachMonthOfInterval } from "date-fns";
-import { fr } from "date-fns/locale/fr"; // Import correct v3
+import { fr } from "date-fns/locale/fr";
 
 type ExpenseCategory =
   | "withdraw"
@@ -43,7 +43,9 @@ const categoryLabels = {
   other: "Autres",
 };
 
-const ExpenseBreakdownChart: React.FC = () => {
+const ExpenseBreakdownChart: React.FC<{ currency?: string | null }> = ({
+  currency,
+}) => {
   const [data, setData] = useState<MonthlyExpense[]>([]);
   const [totals, setTotals] = useState<Record<ExpenseCategory, number>>({
     withdraw: 0,
@@ -148,12 +150,22 @@ const ExpenseBreakdownChart: React.FC = () => {
       }
     };
     load();
-  }, []);
+  }, [currency]); // Ajout de currency dans les dépendances au cas où elle change
 
   const maxValue = Math.max(
-    ...data.flatMap(Object.values).filter((v) => typeof v === "number"),
+    ...data.flatMap((item) =>
+      Object.values(item).filter((v) => typeof v === "number")
+    ),
     1000
   );
+
+  // Fonction pour formater les montants avec K si > 1000
+  const formatAmount = (value: number): string => {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(0)}K ${currency}`;
+    }
+    return `${value.toLocaleString()} ${currency}`;
+  };
 
   if (loading) {
     return (
@@ -231,7 +243,7 @@ const ExpenseBreakdownChart: React.FC = () => {
                 style={[styles.dot, { backgroundColor: categoryColors[c] }]}
               />
               <Text style={styles.legendText}>{categoryLabels[c]}</Text>
-              <Text style={styles.value}>{total.toLocaleString()} KMF</Text>
+              <Text style={styles.value}>{formatAmount(total)}</Text>
             </View>
           );
         })}

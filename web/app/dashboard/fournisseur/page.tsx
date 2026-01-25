@@ -8,22 +8,13 @@ import {
     getPendingOrdersCount,
     getInventory,
     getOrders,
-    getSales,
     AnalyticsOverview,
     InventoryResponse,
     Order,
-    SalesResponse,
 } from '@/lib/api/analytics';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { PeriodFilter, getPeriodLabel, PeriodType, PeriodDates, AlertsCard, RecentOrdersCard } from '@/components/shared';
-import {
-    Sales30DaysChart,
-    TopProductsChart,
-    SalesByPeriodChart,
-    ExpenseDistributionChart,
-    InventoryLossesChart,
-} from '@/components/charts';
+import { PeriodFilter, getPeriodDates, getPeriodLabel, PeriodType, PeriodDates, AlertsCard, RecentOrdersCard } from '@/components/shared';
 import styles from './accueil.module.css';
 
 export default function FournisseurDashboard() {
@@ -39,22 +30,6 @@ export default function FournisseurDashboard() {
     const [pendingOrders, setPendingOrders] = useState(0);
     const [inventory, setInventory] = useState<InventoryResponse | null>(null);
     const [recentOrders, setRecentOrders] = useState<Order[]>([]);
-
-    // Charts data
-    const [sales30Days, setSales30Days] = useState<SalesResponse | null>(null);
-    const [salesByPeriod, setSalesByPeriod] = useState<SalesResponse | null>(null);
-    const [salesUnit, setSalesUnit] = useState<'DAY' | 'WEEK' | 'MONTH' | 'YEAR'>('MONTH');
-    const [chartsLoading, setChartsLoading] = useState(true);
-
-    // Helper to get last 30 days date range
-    const getLast30DaysDates = () => {
-        const now = new Date();
-        const endDate = now.toISOString().split('T')[0];
-        const start = new Date(now);
-        start.setDate(start.getDate() - 30);
-        const startDate = start.toISOString().split('T')[0];
-        return { startDate, endDate };
-    };
 
     const fetchData = useCallback(async () => {
         if (!selectedBusiness) {
@@ -87,43 +62,13 @@ export default function FournisseurDashboard() {
         }
     }, [selectedBusiness, periodDates]);
 
-    // Fetch charts data
-    const fetchChartsData = useCallback(async () => {
-        if (!selectedBusiness) return;
-
-        try {
-            setChartsLoading(true);
-            const { startDate, endDate } = getLast30DaysDates();
-
-            const [sales30, salesPeriod] = await Promise.all([
-                getSales(selectedBusiness.id, { startDate, endDate, unit: 'DAY' }),
-                getSales(selectedBusiness.id, { unit: salesUnit }),
-            ]);
-
-            setSales30Days(sales30);
-            setSalesByPeriod(salesPeriod);
-        } catch (error) {
-            console.error('Error fetching charts data:', error);
-        } finally {
-            setChartsLoading(false);
-        }
-    }, [selectedBusiness, salesUnit]);
-
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
-    useEffect(() => {
-        fetchChartsData();
-    }, [fetchChartsData]);
-
     const handlePeriodChange = (newPeriod: PeriodType, dates: PeriodDates) => {
         setPeriod(newPeriod);
         setPeriodDates(dates);
-    };
-
-    const handleSalesUnitChange = (unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR') => {
-        setSalesUnit(unit);
     };
 
     const formatNumber = (num: number | undefined): string => {
@@ -134,25 +79,11 @@ export default function FournisseurDashboard() {
     const currencySymbol = 'KMF';
     const lowStockCount = inventory?.productsLowStock?.length || 0;
 
-    // Transform inventory losses for chart
-    const inventoryLosses = inventory?.lossesByMovementType?.map(item => ({
-        movementType: item.movementType,
-        totalQuantity: item.totalQuantity,
-        totalValue: parseFloat(String(item.totalValue).replace(',', '')) || 0,
-    })) || [];
-
-    // Transform sales by category for expense chart
-    const expenseCategories = salesByPeriod?.salesByProductCategory?.map(cat => ({
-        category: cat.categoryName,
-        amount: cat.totalRevenue,
-        percentage: 0,
-    })) || [];
-
     return (
         <ProtectedRoute requiredProfileType="PRO">
             <DashboardLayout businessType="FOURNISSEUR" title="Accueil">
                 <div className={styles.dashboard}>
-                    {/* Section Résumé Rapide */}
+                    {/* Section Résumé Rapide - Fidèle au Mobile Fournisseur */}
                     <section className={styles.section}>
                         <div className={styles.sectionHeader}>
                             <h2>Résumé Rapide</h2>
@@ -169,7 +100,7 @@ export default function FournisseurDashboard() {
                             </div>
                         ) : (
                             <>
-                                {/* 3 cartes en ligne comme sur mobile */}
+                                {/* 3 cartes en ligne comme sur mobile Fournisseur */}
                                 <div className={styles.summaryGrid}>
                                     <div className={styles.summaryCard}>
                                         <span className={styles.summaryValue} style={{ color: '#FBBF24' }}>
@@ -191,7 +122,7 @@ export default function FournisseurDashboard() {
                                     </div>
                                 </div>
 
-                                {/* Alertes */}
+                                {/* Priority Alerts Section - NEW (matching mobile) */}
                                 {inventory && (
                                     <AlertsCard
                                         expiringProducts={inventory.expiringProducts}
@@ -200,7 +131,14 @@ export default function FournisseurDashboard() {
                                     />
                                 )}
 
-                                {/* Liens rapides */}
+                                {/* Analytics Avancées */}
+                                <Link href="/dashboard/fournisseur/analytics" className={styles.analyticsButton}>
+                                    <span className={styles.analyticsIcon}>📊</span>
+                                    <span className={styles.analyticsText}>Analytics Avancées</span>
+                                    <span className={styles.analyticsArrow}>›</span>
+                                </Link>
+
+                                {/* Tarifs des livreurs */}
                                 <Link href="/dashboard/fournisseur/carriers" className={styles.analyticsButton}>
                                     <span className={styles.analyticsIcon}>👤</span>
                                     <span className={styles.analyticsText}>Voir les tarifs des livreurs</span>
@@ -210,11 +148,22 @@ export default function FournisseurDashboard() {
                         )}
                     </section>
 
+                    {/* Recent Orders Section - NEW (matching mobile) */}
+                    {!loading && (
+                        <RecentOrdersCard
+                            orders={recentOrders}
+                            loading={loading}
+                            title="Commandes récentes"
+                            viewAllLink="/dashboard/fournisseur/orders"
+                            currencySymbol={currencySymbol}
+                        />
+                    )}
+
                     {/* Section Statistiques - Comme mobile */}
                     <section className={styles.section}>
                         <h2>Statistiques</h2>
                         <div className={styles.statsGrid}>
-                            <Link href="/dashboard/fournisseur/analytics?tab=ventes" className={styles.statsCard}>
+                            <Link href="/dashboard/fournisseur/analytics-ventes" className={styles.statsCard}>
                                 <div className={styles.statsIconWrapper}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -226,7 +175,7 @@ export default function FournisseurDashboard() {
                                     <span className={styles.statsArrow}>›</span>
                                 </div>
                             </Link>
-                            <Link href="/dashboard/fournisseur/analytics?tab=achats" className={styles.statsCard}>
+                            <Link href="/dashboard/fournisseur/analytics-purchases" className={styles.statsCard}>
                                 <div className={styles.statsIconWrapper}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
@@ -239,7 +188,7 @@ export default function FournisseurDashboard() {
                                     <span className={styles.statsArrow}>›</span>
                                 </div>
                             </Link>
-                            <Link href="/dashboard/fournisseur/analytics?tab=stock" className={styles.statsCard}>
+                            <Link href="/dashboard/fournisseur/stock-tracking" className={styles.statsCard}>
                                 <div className={styles.statsIconWrapper}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
@@ -254,60 +203,6 @@ export default function FournisseurDashboard() {
                                 </div>
                             </Link>
                         </div>
-                    </section>
-
-                    {/* Commandes récentes */}
-                    {!loading && (
-                        <RecentOrdersCard
-                            orders={recentOrders}
-                            loading={loading}
-                            title="Commandes récentes"
-                            viewAllLink="/dashboard/fournisseur/orders"
-                            currencySymbol={currencySymbol}
-                        />
-                    )}
-
-                    {/* Section Charts - Comme Mobile */}
-                    <section className={styles.section}>
-                        <h2>Analytics</h2>
-
-                        {/* CA 30 jours - Bar Chart */}
-                        <Sales30DaysChart
-                            data={sales30Days?.salesByPeriod || []}
-                            loading={chartsLoading}
-                            currencySymbol={currencySymbol}
-                        />
-
-                        {/* Top Produits - Donut */}
-                        <TopProductsChart
-                            data={salesByPeriod?.topSellingProducts || []}
-                            loading={chartsLoading}
-                            currencySymbol={currencySymbol}
-                            title="Top 5 Produits"
-                        />
-
-                        {/* Évolution Ventes - Line Chart */}
-                        <SalesByPeriodChart
-                            data={salesByPeriod?.salesByPeriod || []}
-                            loading={chartsLoading}
-                            currencySymbol={currencySymbol}
-                            onUnitChange={handleSalesUnitChange}
-                        />
-
-                        {/* Répartition par catégorie */}
-                        <ExpenseDistributionChart
-                            data={expenseCategories}
-                            loading={chartsLoading}
-                            currencySymbol={currencySymbol}
-                            title="Répartition par catégorie"
-                        />
-
-                        {/* Pertes d'inventaire */}
-                        <InventoryLossesChart
-                            data={inventoryLosses}
-                            loading={chartsLoading}
-                            currencySymbol={currencySymbol}
-                        />
                     </section>
                 </div>
             </DashboardLayout>

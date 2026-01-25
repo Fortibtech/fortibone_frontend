@@ -2,12 +2,14 @@
 
 /* ===== CSS Variables ===== */
 :root {
-  /* Primary Colors - ALIGNED WITH MOBILE #1BB874 */
-  --color-primary: #1BB874;
-  --color-primary-light: #22d989;
-  --color-primary-dark: #16a465;
-  --color-primary-50: #e6f9f1;
-  --color-primary-100: #d1fae5;
+  /* Primary Colors - Komora Teal (Mobile Source of Truth) */
+  --color-primary: #00BFA5;
+  --color-primary-light: #5DF2D6;
+  /* Adjusted for #00BFA5 */
+  --color-primary-dark: #008F7A;
+  /* Adjusted for #00BFA5 */
+  --color-primary-50: #E0F7FA;
+  --color-primary-100: #B2EBF2;
 
   /* Secondary Colors */
   --color-secondary: #0ea5e9;
@@ -59,12 +61,16 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  /* Border Radius */
+  /* Border Radius - Unified to 12px Standard */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
+  /* 8px */
   --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
+  /* 12px - NEW STANDARD */
+  --radius-xl: 0.75rem;
+  /* Forced to 12px for consistency if previous was 16px */
+  --radius-2xl: 1rem;
+  /* 16px */
   --radius-full: 9999px;
 
   /* Shadows */
@@ -83,6 +89,8 @@
   --sidebar-collapsed-width: 80px;
   --header-height: 64px;
   --mobile-nav-height: 72px;
+  --content-max-width: 1440px;
+  /* New Shell Standard */
 
   /* Responsive Breakpoints */
   --bp-mobile: 640px;
@@ -115,7 +123,7 @@ body {
   font-size: var(--text-base);
   line-height: 1.5;
   color: var(--color-gray-900);
-  background-color: var(--color-gray-50);
+  background-color: #FAFAFA;
   min-height: 100vh;
 }
 
@@ -275,7 +283,8 @@ input::placeholder {
 /* ===== Cards (Mobile Match) ===== */
 .card {
   background-color: var(--color-white);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
+  /* 12px */
   box-shadow: var(--shadow-sm);
   border: 1px solid transparent;
   /* Cleaner look */

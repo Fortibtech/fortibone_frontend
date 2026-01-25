@@ -9,7 +9,6 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-
 import {
   Alert,
   Image,
@@ -22,6 +21,7 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // === TYPES ===
@@ -167,54 +167,58 @@ const GenderSelectionModal: React.FC<GenderSelectionModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Sélectionnez le sexe</Text>
-          <View style={styles.genderOptions}>
-            {["Masculin", "Féminin"].map((gender) => (
-              <TouchableOpacity
-                key={gender}
-                style={[
-                  styles.genderOption,
-                  tempSelectedGender === gender && styles.selectedOption,
-                ]}
-                onPress={() => setTempSelectedGender(gender)}
-              >
-                <Text
-                  style={[
-                    styles.genderText,
-                    tempSelectedGender === gender && styles.selectedText,
-                  ]}
-                >
-                  {gender}
-                </Text>
-                <View
-                  style={[
-                    styles.radioButton,
-                    tempSelectedGender === gender && styles.radioButtonSelected,
-                  ]}
-                >
-                  {tempSelectedGender === gender && (
-                    <Ionicons name="checkmark" size={16} color="#fff" />
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.modalButtonContainer}>
-            <CustomButton
-              title="Enregistrer"
-              onPress={handleSave}
-              backgroundColor={tempSelectedGender ? "#00C851" : "#E0E0E0"}
-              textColor={tempSelectedGender ? "#fff" : "#999"}
-              width="100%"
-              height={40}
-              borderRadius={20}
-              fontSize={14}
-            />
-          </View>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Sélectionnez le sexe</Text>
+              <View style={styles.genderOptions}>
+                {["Masculin", "Féminin"].map((gender) => (
+                  <TouchableOpacity
+                    key={gender}
+                    style={[
+                      styles.genderOption,
+                      tempSelectedGender === gender && styles.selectedOption,
+                    ]}
+                    onPress={() => setTempSelectedGender(gender)}
+                  >
+                    <Text
+                      style={[
+                        styles.genderText,
+                        tempSelectedGender === gender && styles.selectedText,
+                      ]}
+                    >
+                      {gender}
+                    </Text>
+                    <View
+                      style={[
+                        styles.radioButton,
+                        tempSelectedGender === gender && styles.radioButtonSelected,
+                      ]}
+                    >
+                      {tempSelectedGender === gender && (
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.modalButtonContainer}>
+                <CustomButton
+                  title="Enregistrer"
+                  onPress={handleSave}
+                  backgroundColor={tempSelectedGender ? "#00C851" : "#E0E0E0"}
+                  textColor={tempSelectedGender ? "#fff" : "#999"}
+                  width="100%"
+                  height={40}
+                  borderRadius={20}
+                  fontSize={14}
+                />
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };
@@ -434,6 +438,7 @@ const validatePhoneNumber = (
     "+39": 9, // Italie
     "+32": 9, // Belgique
     "+41": 9, // Suisse
+    "+269": 7, // Comores
   };
 
   const expected = rules[code] || 9;
@@ -521,6 +526,21 @@ const Register: React.FC = () => {
     }
     return phoneValid;
   }, [formData, validateEmail, validatePassword, selectedCountry]);
+
+  const isPasswordValid = useMemo(() => {
+    return validatePassword(formData.motDePasse);
+  }, [formData.motDePasse, validatePassword]);
+
+  const formValid = useMemo(() => {
+    const baseValid =
+      Object.values(formData).every((v) => v.trim() !== "") &&
+      validateEmail(formData.email) &&
+      isPasswordValid; // Use memoized value
+
+    if (!baseValid) return false;
+
+    return validatePhoneNumber(formData.phoneNumber, selectedCountry);
+  }, [formData, validateEmail, isPasswordValid, selectedCountry]);
 
   const getPhoneCode = (country: Country): string => {
     return country.idd.root + country.idd.suffixes[0];
@@ -840,24 +860,20 @@ const Register: React.FC = () => {
               <Text
                 style={[
                   styles.passwordInfo,
-                  formData.motDePasse &&
-                    !validatePassword(formData.motDePasse) &&
-                    styles.errorText,
+                  formData.motDePasse && !isPasswordValid && styles.errorText,
                 ]}
               >
                 Le mot de passe doit comporter au moins 8 caractères et inclure
                 des lettres majuscules, minuscules et chiffres
-                {formData.motDePasse &&
-                  !validatePassword(formData.motDePasse) &&
-                  " - Insuffisant"}
+                {formData.motDePasse && !isPasswordValid && " - Insuffisant"}
               </Text>
 
               <View style={styles.createButtonContainer}>
                 <CustomButton
                   title="Créer un compte"
                   onPress={handleCreateAccount}
-                  backgroundColor={isFormValid() ? "#00C851" : "#E0E0E0"}
-                  textColor={isFormValid() ? "#fff" : "#999"}
+                  backgroundColor={formValid ? "#00C851" : "#E0E0E0"}
+                  textColor={formValid ? "#fff" : "#999"}
                   width="100%"
                   height={50}
                   borderRadius={25}
@@ -955,13 +971,18 @@ const styles = StyleSheet.create({
 
     justifyContent: "flex-end",
     alignItems: "center",
+    
+    backgroundColor: "rgba(0,0,0,0.4)",
+    // paddingBottom: 30,
   },
   modalContainer: {
     backgroundColor: "#fff",
-    borderRadius: 15,
+    // borderRadius: 15,
+    borderTopRightRadius: 15,
+    borderTopLeftRadius: 15,
     padding: 20,
-    width: "90%",
-    maxWidth: 350,
+    width: "100%",
+    // maxWidth: 350,
     elevation: 5,
   },
   modalTitle: {

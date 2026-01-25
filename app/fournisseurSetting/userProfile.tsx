@@ -1,5 +1,4 @@
 "use client";
-
 import type React from "react";
 import { useEffect, useState } from "react";
 import {
@@ -14,21 +13,39 @@ import {
 } from "react-native";
 import MaterialIcon from "react-native-vector-icons/MaterialIcons";
 import { useUserStore } from "@/store/userStore";
-import { router, useLocalSearchParams, usePathname } from "expo-router";
+import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { uploadUserAvatar } from "@/api/Users";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { Ionicons } from "@expo/vector-icons";
 
 const UserProfileScreen: React.FC = () => {
-  // CORRIGÉ : on utilise le sélecteur réactif de Zustan
-  const pathname = usePathname();
-  const params = useLocalSearchParams();
-
   const user = useUserStore((state) => state.userProfile);
   const { uri } = useUserAvatar();
+
   const [loading, setLoading] = useState(false);
-  // AJOUTE ÇA : log pour debug + protection
-  console.log("USER DANS UserProfileScreen :", user);
+  const [isRefreshing, setIsRefreshing] = useState(true); // ← NOUVEAU : pendant refreshProfile
+
+  // Debug (tu peux laisser ou supprimer plus tard)
+  console.log("UserProfileScreen → user:", user);
+  console.log("UserProfileScreen → uri:", uri);
+
+  // Recharge le profil frais à l'arrivée sur cette page
+  useEffect(() => {
+    const refresh = async () => {
+      setIsRefreshing(true);
+      try {
+        await useUserStore.getState().refreshProfile();
+      } catch (err) {
+        console.error("Erreur lors du refreshProfile dans UserProfile", err);
+      } finally {
+        setIsRefreshing(false);
+      }
+    };
+
+    refresh();
+  }, []); // ← une seule fois au montage
+
   const handleEditProfile = () => {
     router.push("/fournisseurSetting/editProfile");
   };
@@ -55,24 +72,26 @@ const UserProfileScreen: React.FC = () => {
       const uploadedUrl = await uploadUserAvatar(result.assets[0].uri);
 
       if (uploadedUrl) {
-        // Mise à jour via setUserProfile → déclenche _avatarVersion automatiquement
+        // Mise à jour du store → déclenche automatiquement _avatarVersion + 1
         useUserStore.getState().setUserProfile({
-          ...useUserStore.getState().userProfile!,
+          ...(useUserStore.getState().userProfile || user)!,
           profileImageUrl: uploadedUrl,
         });
 
-        Alert.alert("Succès", "Photo mise à jour !");
+        Alert.alert("Succès", "Photo de profil mise à jour !");
       }
     } catch (err: any) {
-      Alert.alert("Erreur", err.message || "Échec de la mise à jour");
+      Alert.alert(
+        "Erreur",
+        err.message || "Échec de la mise à jour de l'avatar"
+      );
     } finally {
       setLoading(false);
     }
   };
-  useEffect(() => {
-    useUserStore.getState().refreshProfile();
-  }, [pathname, params]);
-  if (!user) {
+
+  // Pendant le refresh initial ou si pas de user
+  if (!user || isRefreshing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#1BB874" />
@@ -100,21 +119,41 @@ const UserProfileScreen: React.FC = () => {
       {/* Avatar + Nom */}
       <View style={styles.profileSection}>
         <View style={styles.avatarContainer}>
-          <Image
-            key={user.profileImageUrl} // CLÉ MAGIQUE : force le refresh complet de l'image
-            source={
-              user?.profileImageUrl
-                ? user.profileImageUrl
-                : require("@/assets/images/icon.png")
-            }
-            style={styles.avatar}
-            resizeMode="cover"
-          />
           <TouchableOpacity
-            style={styles.editAvatarButton}
             onPress={handleChangeAvatar}
+            disabled={loading}
+            activeOpacity={0.8}
+            style={styles.fullAvatarTouchable}
           >
-            <MaterialIcon name="edit" size={16} color="#FFF" />
+            {isRefreshing ? (
+              <View style={[styles.avatar, styles.placeholderLoading]}>
+                <ActivityIndicator size="small" color="#999" />
+              </View>
+            ) : uri ? (
+              <Image
+                key={uri} // Force refresh
+                source={{ uri }}
+                style={styles.avatar}
+                resizeMode="cover"
+                onError={() => console.warn("Avatar failed to load")}
+              />
+            ) : (
+              <View style={[styles.avatar, styles.placeholder]}>
+                <Ionicons name="person" size={50} color="#ccc" />
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.editAvatarButton, loading && { opacity: 0.7 }]}
+            onPress={handleChangeAvatar}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size={16} color="#FFF" />
+            ) : (
+              <MaterialIcon name="edit" size={16} color="#FFF" />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -144,7 +183,6 @@ const UserProfileScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* CORRIGÉ : protection contre undefined */}
         <View style={styles.infoRow}>
           <View style={styles.iconContainer}>
             <MaterialIcon name="location-on" size={20} color="#1BB874" />
@@ -164,7 +202,18 @@ const UserProfileScreen: React.FC = () => {
     </ScrollView>
   );
 };
+
 const styles = StyleSheet.create({
+  placeholder: {
+    backgroundColor: "#E8E8E8",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  placeholderLoading: {
+    backgroundColor: "#E8E8E8",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
@@ -203,6 +252,12 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: "relative",
     marginBottom: 20,
+    alignSelf: "center", // important pour le centrage
+  },
+  fullAvatarTouchable: {
+    // Rend toute la zone de l'image cliquable
+    borderRadius: 50,
+    overflow: "hidden", // important pour que l'image reste ronde
   },
   avatar: {
     width: 100,
@@ -222,7 +277,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 3,
     borderColor: "#FFFFFF",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
+
   userName: {
     fontSize: 20,
     fontWeight: "700",

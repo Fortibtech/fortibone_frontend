@@ -29,7 +29,6 @@ export interface ResetPasswordPayload {
 // Auth Service Functions
 export const registerUser = async (data: RegisterPayload) => {
     try {
-        console.log('Registration payload:', JSON.stringify(data, null, 2));
         const response = await axiosInstance.post('/auth/register', data);
         if (response.status === 201) {
             return {

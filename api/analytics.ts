@@ -25,8 +25,7 @@ export const getAnalyticsOverview = async (
     if (startDate) params.append("startDate", startDate);
     if (endDate) params.append("endDate", endDate);
     const response = await axiosInstance.get(
-      `/businesses/${businessId}/analytics/overview${
-        params.toString() ? `?${params.toString()}` : ""
+      `/businesses/${businessId}/analytics/overview${params.toString() ? `?${params.toString()}` : ""
       }`
     );
     return response.data as AnalyticsOverview;
@@ -91,14 +90,12 @@ export const getSales = async (
     if (params?.unit) queryParams.append("unit", params.unit);
 
     const response = await axiosInstance.get(
-      `/businesses/${businessId}/analytics/sales${
-        queryParams.toString() ? `?${queryParams.toString()}` : ""
+      `/businesses/${businessId}/analytics/sales${queryParams.toString() ? `?${queryParams.toString()}` : ""
       }`
     );
     return response.data as SalesResponse;
   } catch (error: any) {
     console.error("❌ Erreur lors du fetch sales analytics :", error.message);
-    console.log("API error:", error?.response?.data);
     throw error;
   }
 };
@@ -283,8 +280,7 @@ export const getOrders = async (
       queryParams.append("maxAmount", params.maxAmount.toString());
 
     const response = await axiosInstance.get(
-      `/businesses/${businessId}/orders${
-        queryParams.toString() ? `?${queryParams.toString()}` : ""
+      `/businesses/${businessId}/orders${queryParams.toString() ? `?${queryParams.toString()}` : ""
       }`
     );
     return response.data as OrdersResponse;
@@ -425,7 +421,7 @@ export const getRestaurantAnalytics = async (
 
       throw new Error(
         error.response.data?.message ||
-          `Erreur ${status} lors de la récupération des analytics restaurant`
+        `Erreur ${status} lors de la récupération des analytics restaurant`
       );
     }
 

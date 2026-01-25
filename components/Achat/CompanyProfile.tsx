@@ -6,12 +6,10 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Business, BusinessesService } from "@/api";
-import { router } from "expo-router";
 
 interface Props {
   onSearch: (text: string) => void;
@@ -27,7 +25,6 @@ export default function CompanyProfile({
   const [business, setBusiness] = useState<Business | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const loadBusiness = useCallback(async () => {
     if (!businessId) return;
     try {
@@ -97,7 +94,7 @@ export default function CompanyProfile({
   return (
     <View style={styles.container}>
       {/* HEADER ENTREPRISE */}
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <View style={styles.logoContainer}>
           {business.logoUrl ? (
             <Image
@@ -158,7 +155,7 @@ export default function CompanyProfile({
         >
           <Feather name="chevron-right" size={24} color="#666" />
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       <View style={styles.searchContainer}>
         <Feather

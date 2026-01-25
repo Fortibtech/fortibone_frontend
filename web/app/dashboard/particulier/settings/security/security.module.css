@@ -58,12 +58,12 @@
 }
 
 .tab:hover {
-    color: #1BB874;
+    color: #059669;
 }
 
 .tabActive {
-    color: #1BB874;
-    border-bottom-color: #1BB874;
+    color: #059669;
+    border-bottom-color: #059669;
     font-weight: 600;
 }
 
@@ -122,7 +122,7 @@
 
 .input:focus {
     outline: none;
-    border-color: #1BB874;
+    border-color: #059669;
     box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
 }
 
@@ -133,7 +133,7 @@
 
 .submitButton {
     padding: 14px 24px;
-    background: #1BB874;
+    background: #059669;
     color: white;
     border: none;
     border-radius: 8px;
@@ -145,7 +145,7 @@
 }
 
 .submitButton:hover:not(:disabled) {
-    background: #16a465;
+    background: #047857;
 }
 
 .submitButton:disabled {

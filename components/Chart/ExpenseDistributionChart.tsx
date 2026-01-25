@@ -4,14 +4,23 @@ import {
   Text,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  ScrollView,
 } from "react-native";
-import { BarChart } from "react-native-chart-kit";
+import { ProgressChart } from "react-native-chart-kit";
 import { getSales } from "@/api/analytics";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 const { width } = Dimensions.get("window");
+
+type UnitType = "DAY" | "WEEK" | "MONTH" | "YEAR";
+
+const UNITS: { key: UnitType; label: string }[] = [
+  { key: "DAY", label: "Jour" },
+  { key: "WEEK", label: "Semaine" },
+  { key: "MONTH", label: "Mois" },
+  { key: "YEAR", label: "Année" },
+];
 
 interface SalesByCategory {
   categoryId: string;
@@ -20,180 +29,173 @@ interface SalesByCategory {
   totalItemsSold: number;
 }
 
-interface BarData {
-  labels: string[];
-  datasets: [{ data: number[] }];
+interface CategoryData {
+  name: string;
+  revenue: number;
+  percentage: number;
+  color: string;
+  items: number;
 }
 
-const COLORS = ["#FF6B6B", "#FF8E8E", "#FF5252", "#FF3B3B", "#D32F2F"];
+const COLORS = [
+  "#8B5CF6",
+  "#A78BFA",
+  "#C4B5FD",
+  "#6366F1",
+  "#818CF8",
+  "#A5B4FC",
+  "#EC4899",
+  "#F472B6",
+];
 
-const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
-  businessId,
-}) => {
-  const [depenseFilter, setDepenseFilter] = useState<"Jan" | "Mensuel">(
-    "Mensuel"
-  );
+const ExpenseDistributionChart: React.FC<{
+  businessId: string;
+  currencyId: string;
+  refreshKey?: number;
+}> = ({ businessId, currencyId, refreshKey = 0 }) => {
+  const [unit, setUnit] = useState<UnitType>("MONTH");
   const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState<BarData | null>(null);
-  const [legendData, setLegendData] = useState<
-    Array<{ name: string; amount: number; color: string }>
-  >([]);
+  const [categories, setCategories] = useState<CategoryData[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [symbol, setSymbol] = useState<string | null>(null);
 
-  const fetchExpenseData = async () => {
+  const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getSales(businessId);
-      const categories: SalesByCategory[] = data.salesByProductCategory || [];
+      const data = await getSales(businessId, { unit });
+      const symbol = await getCurrencySymbolById(currencyId);
 
-      // Trier par revenu décroissant
-      const sorted = categories.sort((a, b) => b.totalRevenue - a.totalRevenue);
+      const cats: SalesByCategory[] = data.salesByProductCategory || [];
 
-      // Limiter à 5 catégories max pour lisibilité
-      const top5 = sorted.slice(0, 5);
-
-      const labels = top5.map((cat) =>
-        cat.categoryName.length > 12
-          ? cat.categoryName.slice(0, 9) + "..."
-          : cat.categoryName
-      );
-
-      const amounts = top5.map((cat) => cat.totalRevenue);
-
-      const legend = top5.map((cat, index) => ({
-        name: cat.categoryName,
-        amount: Math.round(cat.totalRevenue),
-        color: COLORS[index % COLORS.length],
-      }));
-
-      // Si plus de 5, ajouter "Autres"
-      if (sorted.length > 5) {
-        const othersAmount = sorted
-          .slice(5)
-          .reduce((sum, cat) => sum + cat.totalRevenue, 0);
-        labels.push("Autres");
-        amounts.push(othersAmount);
-        legend.push({
-          name: "Autres",
-          amount: Math.round(othersAmount),
-          color: "#B0BEC5",
-        });
+      if (cats.length === 0) {
+        setCategories([]);
+        return;
       }
 
-      setChartData({
-        labels,
-        datasets: [{ data: amounts }],
-      });
+      const sorted = [...cats].sort((a, b) => b.totalRevenue - a.totalRevenue);
+      const top = sorted.slice(0, 8);
+      const total = top.reduce((sum, cat) => sum + cat.totalRevenue, 0);
 
-      setLegendData(legend);
+      setSymbol(symbol);
+      const processed: CategoryData[] = top.map((cat, i) => ({
+        name: cat.categoryName,
+        revenue: cat.totalRevenue,
+        percentage: total > 0 ? (cat.totalRevenue / total) * 100 : 0,
+        color: COLORS[i % COLORS.length],
+        items: cat.totalItemsSold,
+      }));
+
+      setCategories(processed);
     } catch (err: any) {
-      setError("Impossible de charger la répartition des dépenses");
-      Alert.alert("Erreur", err.message || "Une erreur est survenue");
+      console.log("API error:", err?.response?.data);
+      setError("Impossible de charger les données");
     } finally {
       setLoading(false);
     }
   };
 
+  // Recharger quand businessId, unit OU refreshKey change
   useEffect(() => {
-    fetchExpenseData();
-  }, [businessId, depenseFilter]);
+    fetchData();
+  }, [businessId, unit, refreshKey]); // 👈 Ajouter refreshKey
 
   const chartConfig = {
     backgroundGradientFrom: "#fff",
     backgroundGradientTo: "#fff",
-    decimalPlaces: 0,
-    color: () => "#FF6B6B",
-    labelColor: () => "#666",
-    style: { borderRadius: 16 },
-    propsForBackgroundLines: { stroke: "#E5E5E5" },
-    propsForLabels: { fontSize: 11, fontWeight: "500" },
+    color: (opacity = 1, index = 0) => {
+      const colors = COLORS;
+      return colors[index % colors.length];
+    },
+    strokeWidth: 2,
+  };
+
+  const chartData = {
+    labels: categories.map((cat) =>
+      cat.name.length > 8 ? cat.name.substring(0, 6) + "." : cat.name
+    ),
+    data: categories.map((cat) => cat.percentage / 100),
+    colors: categories.map((cat) => cat.color),
   };
 
   return (
     <View style={styles.chartCard}>
       <View style={styles.chartHeader}>
-        <Text style={styles.chartTitle}> dépenses et revenus</Text>
-        <View style={styles.filterButtons}>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              depenseFilter === "Jan" && styles.filterBtnActive,
-            ]}
-            onPress={() => setDepenseFilter("Jan")}
-          >
-            <Text
-              style={[
-                styles.filterBtnText,
-                depenseFilter === "Jan" && styles.filterBtnTextActive,
-              ]}
-            >
-              Jan
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.filterBtn,
-              depenseFilter === "Mensuel" && styles.filterBtnActive,
-            ]}
-            onPress={() => setDepenseFilter("Mensuel")}
-          >
-            <Text
-              style={[
-                styles.filterBtnText,
-                depenseFilter === "Mensuel" && styles.filterBtnTextActive,
-              ]}
-            >
-              Mensuel
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.chartTitle}>Répartition par catégorie</Text>
       </View>
-
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#FF6B6B" />
-          <Text style={styles.loadingText}>Chargement...</Text>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+          <Text style={styles.loadingText}>Chargement des données...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
-      ) : !chartData || chartData.datasets[0].data.length === 0 ? (
-        <Text style={styles.noDataText}>
-          Aucune donnée de vente par catégorie
-        </Text>
+      ) : categories.length === 0 ? (
+        <View style={styles.noDataContainer}>
+          <Text style={styles.noDataText}>Aucune donnée disponible</Text>
+        </View>
       ) : (
         <>
-          <BarChart
-            data={chartData}
-            width={width - 48}
-            height={220}
-            yAxisLabel="kmf"
-            yAxisSuffix=""
-            chartConfig={chartConfig}
-            style={styles.chart}
-            withInnerLines={true}
-            showBarTops={false}
-            fromZero={true}
-            segments={4}
-          />
+          {/* Progress Chart */}
+          <View style={styles.chartContainer}>
+            <ProgressChart
+              data={chartData}
+              width={width - 64}
+              height={280} // ← Augmenté un peu la hauteur pour plus d'espace
+              strokeWidth={20} // ← Épaisseur des arcs (plus épais = plus visible)
+              radius={44} // ← Taille des cercles : beaucoup plus gros qu'avant (32 → 44)
+              chartConfig={chartConfig}
+              hideLegend={false}
+              style={styles.chart}
+            />
+          </View>
 
-          <View style={styles.depensesLegend}>
-            {legendData.map((item, index) => (
-              <View key={index} style={styles.depenseLegendItem}>
-                <View style={styles.depenseLegendLeft}>
+          {/* Liste détaillée */}
+          <ScrollView style={styles.categoryList} nestedScrollEnabled>
+            {categories.map((category, index) => (
+              <View key={index} style={styles.categoryItem}>
+                <View style={styles.categoryLeft}>
                   <View
-                    style={[styles.legendDot, { backgroundColor: item.color }]}
+                    style={[
+                      styles.categoryIndicator,
+                      { backgroundColor: category.color },
+                    ]}
                   />
-                  <Text style={styles.depenseLegendText}>{item.name}</Text>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryName} numberOfLines={1}>
+                      {category.name}
+                    </Text>
+                    <View style={styles.progressBarBackground}>
+                      <View
+                        style={[
+                          styles.progressBarFill,
+                          {
+                            width: `${category.percentage}%`,
+                            backgroundColor: category.color,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
                 </View>
-                <Text style={styles.depenseLegendAmount}>
-                  {item.amount.toLocaleString("fr-FR")} XAF
-                </Text>
+                <View style={styles.categoryRight}>
+                  <Text style={styles.categoryValue}>
+                    {category.revenue.toLocaleString("fr-FR")} {symbol}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.categoryPercentage,
+                      { color: category.color },
+                    ]}
+                  >
+                    {category.percentage.toFixed(1)}%
+                  </Text>
+                </View>
               </View>
             ))}
-          </View>
+          </ScrollView>
         </>
       )}
     </View>
@@ -203,110 +205,173 @@ const ExpenseDistributionChart: React.FC<{ businessId: string }> = ({
 const styles = StyleSheet.create({
   chartCard: {
     backgroundColor: "#fff",
-    marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#FF6B6B",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    borderColor: "#8B5CF6",
+    elevation: 3,
+    shadowColor: "#8B5CF6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
   },
   chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
+    gap: 6,
   },
   chartTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  subtitle: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
   },
   filterButtons: {
     flexDirection: "row",
+    gap: 8,
+    marginTop: 10,
+    flexWrap: "wrap",
+    justifyContent: "center",
   },
   filterBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#F5F5F5",
-    marginLeft: 8, // ← Ajoute cette ligne
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: "#F5F3FF",
+    borderWidth: 1,
+    borderColor: "#EDE9FE",
   },
   filterBtnActive: {
-    backgroundColor: "#FFEBEE",
+    backgroundColor: "#EDE9FE",
+    borderColor: "#8B5CF6",
   },
   filterBtnText: {
     fontSize: 12,
     color: "#666",
-    fontWeight: "500",
-  },
-  filterBtnTextActive: {
-    color: "#FF6B6B",
     fontWeight: "600",
   },
+  filterBtnTextActive: {
+    color: "#8B5CF6",
+    fontWeight: "700",
+  },
+  totalCard: {
+    backgroundColor: "#EDE9FE",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#8B5CF6",
+  },
+  totalLabel: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  totalValue: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#8B5CF6",
+  },
+  chartContainer: {
+    alignItems: "center",
+    marginVertical: 10,
+  },
   chart: {
-    marginVertical: 8,
     borderRadius: 16,
   },
-  depensesLegend: {
-    marginTop: 16,
-    gap: 12,
+  categoryList: {
+    marginTop: 20,
+    maxHeight: 400,
   },
-  depenseLegendItem: {
+  categoryItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
   },
-  depenseLegendLeft: {
+  categoryLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
     flex: 1,
   },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  categoryIndicator: {
+    width: 8,
+    height: 40,
+    borderRadius: 4,
   },
-  depenseLegendText: {
+  categoryInfo: {
+    flex: 1,
+    gap: 6,
+  },
+  categoryName: {
     fontSize: 14,
-    color: "#333",
-    flexShrink: 1,
-  },
-  depenseLegendAmount: {
-    fontSize: 13,
     fontWeight: "600",
-    color: "#000",
+    color: "#333",
+  },
+  progressBarBackground: {
+    width: "100%",
+    height: 6,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  categoryRight: {
+    alignItems: "flex-end",
+    marginLeft: 12,
+  },
+  categoryValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#333",
+  },
+  categoryPercentage: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 2,
   },
   loadingContainer: {
-    height: 220,
+    height: 240,
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
-    marginTop: 8,
+    marginTop: 12,
     color: "#666",
     fontSize: 14,
   },
   errorContainer: {
-    height: 220,
+    height: 240,
     justifyContent: "center",
     alignItems: "center",
   },
   errorText: {
-    color: "#FF6B6B",
-    fontSize: 14,
-    textAlign: "center",
+    color: "#8B5CF6",
+    fontSize: 15,
+  },
+  noDataContainer: {
+    height: 240,
+    justifyContent: "center",
+    alignItems: "center",
   },
   noDataText: {
-    textAlign: "center",
     color: "#999",
-    fontSize: 14,
-    marginVertical: 20,
+    fontSize: 15,
+    fontStyle: "italic",
   },
 });
 
