@@ -234,9 +234,15 @@ export const getMyBusinesses = async (): Promise<Business[]> => {
 export const getJobApplications = async (jobId: string): Promise<any[]> => {
     try {
         let baseUrl = process.env.NEXT_PUBLIC_CAREERS_API_URL;
-        if (!baseUrl) {
-            const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-            baseUrl = isDev ? 'http://localhost:8081/api' : 'https://api.komoralink.fr/careers';
+        if (!baseUrl && typeof window !== 'undefined') {
+            if (window.location.hostname === 'localhost') {
+                baseUrl = 'http://localhost:8081/api';
+            } else if (window.location.hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
+                // IP address access, assume backend on same IP port 8081
+                baseUrl = `${window.location.protocol}//${window.location.hostname}:8081/api`;
+            } else {
+                baseUrl = 'https://api.komoralink.fr/careers';
+            }
         }
 
         // Use direct axios call
@@ -254,9 +260,15 @@ export const getJobApplications = async (jobId: string): Promise<any[]> => {
 export const getAllApplications = async (): Promise<any[]> => {
     try {
         let baseUrl = process.env.NEXT_PUBLIC_CAREERS_API_URL;
-        if (!baseUrl) {
-            const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-            baseUrl = isDev ? 'http://localhost:8081/api' : 'https://api.komoralink.fr/careers';
+        if (!baseUrl && typeof window !== 'undefined') {
+            if (window.location.hostname === 'localhost') {
+                baseUrl = 'http://localhost:8081/api';
+            } else if (window.location.hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
+                // IP address access
+                baseUrl = `${window.location.protocol}//${window.location.hostname}:8081/api`;
+            } else {
+                baseUrl = 'https://api.komoralink.fr/careers';
+            }
         }
 
         const response = await axiosInstance.get('/jobs/admin/applications', { baseURL: baseUrl });
@@ -265,4 +277,4 @@ export const getAllApplications = async (): Promise<any[]> => {
         console.error('❌ Erreur fetch all applications:', error.message);
         return [];
     }
-
+};

@@ -1,6 +1,14 @@
 import axios from 'axios';
 
-const CAREERS_API_URL = process.env.NEXT_PUBLIC_CAREERS_API_URL || 'http://localhost:8081/api';
+let CAREERS_API_URL = process.env.NEXT_PUBLIC_CAREERS_API_URL || 'http://localhost:8081/api';
+
+if (typeof window !== 'undefined') {
+    if (window.location.hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
+        CAREERS_API_URL = `${window.location.protocol}//${window.location.hostname}:8081/api`;
+    } else if (window.location.hostname !== 'localhost' && !process.env.NEXT_PUBLIC_CAREERS_API_URL) {
+        CAREERS_API_URL = 'https://api.komoralink.fr/careers';
+    }
+}
 
 export const careersApi = axios.create({
     baseURL: CAREERS_API_URL,
