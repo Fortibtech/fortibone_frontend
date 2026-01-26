@@ -6,7 +6,14 @@ async function bootstrap() {
 
     app.setGlobalPrefix('api');
     app.enableCors({
-        origin: ['https://komoralink.fr', 'https://www.komoralink.fr', 'http://localhost:3000', 'http://localhost:3011'],
+        origin: [
+            'https://komoralink.fr',
+            'https://www.komoralink.fr',
+            'https://dash.fortibtech.com',
+            'https://admin.komoralink.fr',
+            'http://localhost:3000',
+            'http://localhost:3011'
+        ],
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
         credentials: true,
     });
