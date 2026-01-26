@@ -92,7 +92,7 @@ export default function JobApplicationsPage({ params }: { params: { jobId: strin
                                 <div>
                                     {app.cvLink && (
                                         <a
-                                            href={app.cvLink}
+                                            href={(app.cvLink.startsWith('/') ? (process.env.NEXT_PUBLIC_CAREERS_API_URL || 'https://api.komoralink.fr/careers') : '') + app.cvLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             style={{
