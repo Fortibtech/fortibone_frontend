@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const CAREERS_SERVICE_URL = 'http://localhost:8081/api';
 
-async function handler(req: NextRequest, { params }: { params: { path: string[] } }) {
-    const path = params.path.join('/');
+async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+    const { path: pathArray } = await params;
+    const path = pathArray.join('/');
     const url = `${CAREERS_SERVICE_URL}/${path}${req.nextUrl.search}`;
 
     try {
