@@ -9,18 +9,37 @@ import styles from '@/app/page.module.css'; // Global dashboard styles
 export default function JobApplicationsPage({ params }: { params: { jobId: string } }) {
     const [applications, setApplications] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [debugError, setDebugError] = useState<string | null>(null); // New debug state
     const router = useRouter();
 
     useEffect(() => {
         const fetchApplications = async () => {
             setIsLoading(true);
-            const data = await getJobApplications(params.jobId);
-            setApplications(data);
+            setDebugError(null);
+            try {
+                // We access the API directly here to catch the specific error
+                // adminApi catches errors and returns [], masking the real issue
+                // So we'll try-catch the service call or modify how we call it.
+                // For now, let's assume the service returns [] on error, which is hard to debug.
+                // Let's rely on the service but if it's empty, we might not know why.
+                // Better: Let's call the proxy directly for debugging purposes if needed, 
+                // but let's first see what the service returns.
+                const data = await getJobApplications(params.jobId);
+                setApplications(data);
+                if (data.length === 0) {
+                    // Check if it was actually an error masked as empty array?
+                    // hard to tell without modifying getJobApplications. 
+                    // Let's rely on adding a visual indicator for "0 items found".
+                }
+            } catch (err: any) {
+                setDebugError(err.message || 'Unknown error');
+            }
             setIsLoading(false);
         };
         fetchApplications();
     }, [params.jobId]);
 
+    // ... (formatDate function)
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('fr-FR', {
             day: '2-digit',
@@ -49,6 +68,14 @@ export default function JobApplicationsPage({ params }: { params: { jobId: strin
                     <p className={styles.kpiLabel}>
                         {applications.length} candidat(s) ont postulé à cette offre
                     </p>
+                    <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '5px' }}>
+                        Job ID: {params.jobId}
+                    </p>
+                    {debugError && (
+                        <div style={{ padding: '10px', background: '#fee2e2', color: '#dc2626', borderRadius: '8px', marginTop: '10px' }}>
+                            <strong>Erreur Debug:</strong> {debugError}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -58,6 +85,12 @@ export default function JobApplicationsPage({ params }: { params: { jobId: strin
                         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📭</div>
                         <h3>Aucune candidature pour le moment</h3>
                         <p style={{ color: '#64748b' }}>Les candidatures apparaîtront ici dès qu'un visiteur postulera.</p>
+                        <div style={{ marginTop: '20px', padding: '15px', background: '#f1f5f9', borderRadius: '8px', fontSize: '12px', textAlign: 'left', color: '#475569' }}>
+                            <strong>Debug Info:</strong><br />
+                            - URL appelée: /api/careers/jobs/{params.jobId}/applications<br />
+                            - Vérifiez que le Job ID correspond bien à l'offre postulée.<br />
+                            - Vérifiez la console (F12) pour voir les erreurs réseau (404, 500, etc.).
+                        </div>
                     </div>
                 ) : (
                     <div style={{ display: 'grid', gap: '16px' }}>
