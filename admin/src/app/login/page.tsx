@@ -19,7 +19,8 @@ export default function LoginPage() {
         setError('');
         setIsLoading(true);
 
-        const endpoint = isLogin ? '/api-proxy/auth/login' : '/api-proxy/auth/register';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const endpoint = `${apiUrl}/auth/${isLogin ? 'login' : 'register'}`;
 
         const payload = isLogin
             ? { email, password }
