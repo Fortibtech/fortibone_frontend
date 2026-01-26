@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { getJobs, createJob, updateJob, deleteJob, JobPosition } from '@/lib/api/careersApi';
 
 export default function CareersManagementPage() {
@@ -152,7 +153,21 @@ export default function CareersManagementPage() {
                                         {job.department} • {job.type} • {job.location}
                                     </p>
                                 </div>
-                                <div style={{ display: 'flex', gap: '10px' }}>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <Link href={`/dashboard/careers/applications/${job.id}`} style={{
+                                        textDecoration: 'none',
+                                        padding: '8px 16px',
+                                        background: '#0f172a',
+                                        color: 'white',
+                                        borderRadius: '6px',
+                                        fontWeight: '500',
+                                        fontSize: '14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}>
+                                        👥 Candidats
+                                    </Link>
                                     <button
                                         onClick={() => openEdit(job)}
                                         style={{

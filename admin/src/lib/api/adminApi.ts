@@ -227,3 +227,30 @@ export const getMyBusinesses = async (): Promise<Business[]> => {
         return [];
     }
 };
+
+/**
+ * Get applications for a specific job
+ */
+export const getJobApplications = async (jobId: string): Promise<any[]> => {
+    try {
+        const response = await axiosInstance.get(`/jobs/${jobId}/applications`);
+        return response.data;
+    } catch (error: any) {
+        console.error('❌ Erreur fetch job applications:', error.message);
+        return [];
+    }
+};
+
+/**
+ * Get all applications (global view)
+ */
+export const getAllApplications = async (): Promise<any[]> => {
+    try {
+        const response = await axiosInstance.get('/jobs/admin/applications');
+        return response.data;
+    } catch (error: any) {
+        console.error('❌ Erreur fetch all applications:', error.message);
+        return [];
+    }
+};
+
