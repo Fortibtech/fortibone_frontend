@@ -111,6 +111,27 @@ export default function CareersPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // VALIDATION
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email) && !emailRegex.test(localStorage.getItem('candidate_email') || '')) {
+            alert('Veuillez entrer une adresse email valide.');
+            return;
+        }
+
+        // Comorian Phone Validation: 
+        // Accepts: +2693... | 002693... | 3... | 4...
+        // 7 digits if local (3xxxxxx or 4xxxxxx)
+        // 10 digits if +269 (2693xxxxxx)
+        // Normalized check: remove spaces/dashes, check if ends with 7 digits starting with 3 or 4.
+        const cleanPhone = formData.phone.replace(/[\s\-\+\(\)]/g, '');
+        const isComorian = /^(269|00269)?(3|4)\d{6}$/.test(cleanPhone);
+
+        if (!isComorian) {
+            alert('Veuillez entrer un numéro de téléphone comorien valide (ex: 334... ou 4xx...).');
+            return;
+        }
+
         try {
             if (selectedJob) {
                 const submissionData = new FormData();
