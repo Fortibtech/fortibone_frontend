@@ -90,7 +90,14 @@ export const getAllBusinesses = async (params?: {
         return response.data;
     } catch (error: any) {
         console.error('❌ Erreur fetch businesses:', error.message);
-        throw error;
+        // Fallback for limited backend
+        return {
+            data: [],
+            total: 0,
+            page: params?.page || 1,
+            limit: params?.limit || 10,
+            totalPages: 0
+        };
     }
 };
 
@@ -178,7 +185,20 @@ export const getGlobalStats = async (): Promise<GlobalStats> => {
         };
     } catch (error: any) {
         console.error('❌ Erreur fetch global stats:', error.message);
-        throw error;
+        // Fallback for limited backend (Careers only)
+        return {
+            totalUsers: 0,
+            totalBusinesses: 0,
+            totalTransactions: 0,
+            totalVolume: 0,
+            usersByType: {
+                particuliers: 0,
+                commercants: 0,
+                fournisseurs: 0,
+                restaurateurs: 0,
+                livreurs: 0,
+            },
+        };
     }
 };
 
