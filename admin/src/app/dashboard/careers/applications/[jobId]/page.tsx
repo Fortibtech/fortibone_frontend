@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { startTransition, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getJobApplications } from '../../../../lib/api/adminApi';
+import { getJobApplications } from '@/lib/api/adminApi';
 import styles from '../../page.module.css'; // Reuse careers styles
 
 export default function JobApplicationsPage({ params }: { params: { jobId: string } }) {
