@@ -4,7 +4,7 @@ import { startTransition, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getJobApplications } from '@/lib/api/adminApi';
-import styles from '../../page.module.css'; // Reuse careers styles
+import styles from '../../../../../page.module.css'; // Global dashboard styles
 
 export default function JobApplicationsPage({ params }: { params: { jobId: string } }) {
     const [applications, setApplications] = useState<any[]>([]);
@@ -32,24 +32,27 @@ export default function JobApplicationsPage({ params }: { params: { jobId: strin
     };
 
     if (isLoading) {
-        return <div style={{ padding: '40px', textAlign: 'center' }}>Chargement des candidatures...</div>;
+        return <div className={styles.loading}>
+            <div className={styles.spinner}></div>
+            Chargement des candidatures...
+        </div>;
     }
 
     return (
-        <div className={styles.container}>
-            <div className={styles.header}>
+        <div style={{ padding: '40px', background: '#f8fafc', minHeight: '100vh' }}>
+            <div className={styles.chartHeader}>
                 <div>
                     <Link href="/dashboard/careers" style={{ textDecoration: 'none', color: '#64748b', fontSize: '14px' }}>
                         ← Retour aux offres
                     </Link>
-                    <h1 className={styles.title} style={{ marginTop: '10px' }}>Candidatures reçues</h1>
-                    <p className={styles.subtitle}>
+                    <h1 className={styles.chartTitle} style={{ marginTop: '10px', fontSize: '24px' }}>Candidatures reçues</h1>
+                    <p className={styles.kpiLabel}>
                         {applications.length} candidat(s) ont postulé à cette offre
                     </p>
                 </div>
             </div>
 
-            <div className={styles.content}>
+            <div className={styles.chartsGrid} style={{ display: 'block' }}>
                 {applications.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                         <div style={{ fontSize: '48px', marginBottom: '16px' }}>📭</div>
