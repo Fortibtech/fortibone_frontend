@@ -22,17 +22,19 @@ export const login = async (email: string, pass: string) => {
     const res = await careersApi.post('/auth/login', { email, password: pass });
     if (res.data.access_token) {
         localStorage.setItem('candidate_token', res.data.access_token);
+        localStorage.setItem('candidate_email', email);
     }
     return res.data;
 };
 
 export const register = async (email: string, pass: string) => {
     const res = await careersApi.post('/auth/register', { email, password: pass });
-    return res.data;
+    return res.data; // Register usually requires login afterwards or returns token depending on implementation
 };
 
 export const logout = () => {
     localStorage.removeItem('candidate_token');
+    localStorage.removeItem('candidate_email');
 };
 
 export interface JobPosition {

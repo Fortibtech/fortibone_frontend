@@ -13,11 +13,14 @@ export default function PublicHeader({ variant = 'solid' }: PublicHeaderProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [userEmail, setUserEmail] = useState('');
 
     useEffect(() => {
         const checkAuth = () => {
             const token = localStorage.getItem('candidate_token');
+            const email = localStorage.getItem('candidate_email');
             setIsLoggedIn(!!token);
+            if (email) setUserEmail(email);
         };
         checkAuth();
         window.addEventListener('auth-change', checkAuth);
@@ -26,7 +29,9 @@ export default function PublicHeader({ variant = 'solid' }: PublicHeaderProps) {
 
     const handleLogout = () => {
         localStorage.removeItem('candidate_token');
+        localStorage.removeItem('candidate_email');
         setIsLoggedIn(false);
+        setUserEmail('');
         setShowProfileMenu(false);
         window.dispatchEvent(new Event('auth-change'));
     };
@@ -134,7 +139,7 @@ export default function PublicHeader({ variant = 'solid' }: PublicHeaderProps) {
                                 }}>
                                     <div style={{ padding: '10px', fontSize: '14px', fontWeight: '600', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
                                         Mon Profil <br />
-                                        {/* Ideally we decode token to show email */}
+                                        <span style={{ fontSize: '12px', fontWeight: '400' }}>{userEmail}</span>
                                     </div>
                                     <button
                                         onClick={handleLogout}

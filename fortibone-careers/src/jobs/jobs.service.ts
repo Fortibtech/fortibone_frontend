@@ -11,6 +11,18 @@ export class JobsService {
     }
 
     async apply(jobId: string, data: any) {
+        // Prevent duplicate application
+        const existingApp = await this.prisma.application.findFirst({
+            where: {
+                jobId,
+                email: data.email
+            }
+        });
+
+        if (existingApp) {
+            throw new Error('Vous avez déjà postulé à cette offre.');
+        }
+
         return this.prisma.application.create({
             data: {
                 jobId,
