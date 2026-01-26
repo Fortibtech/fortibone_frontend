@@ -48,7 +48,7 @@ export default function LoginPage() {
 
             // Store token
             localStorage.setItem('access_token', data.access_token);
-            // localStorage.setItem('user', JSON.stringify(data.user)); // Optional if backend sends user
+            localStorage.setItem('user', JSON.stringify(data.user)); // Required for layout auth check
 
             // Redirect to dashboard
             router.push('/dashboard');
