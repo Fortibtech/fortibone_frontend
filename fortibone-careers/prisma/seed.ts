@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -29,7 +30,19 @@ async function main() {
         },
     });
 
-    console.log({ job1, job2 });
+    // Create default Admin User
+    const password = await bcrypt.hash('admin123', 10);
+    const admin = await prisma.user.upsert({
+        where: { email: 'admin@komoralink.com' },
+        update: {},
+        create: {
+            email: 'admin@komoralink.com',
+            password: password,
+            role: 'ADMIN',
+        },
+    });
+
+    console.log({ job1, job2, admin });
 }
 
 main()
