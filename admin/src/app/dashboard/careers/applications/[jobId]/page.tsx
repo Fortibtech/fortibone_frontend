@@ -4,7 +4,7 @@ import { startTransition, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getJobApplications } from '@/lib/api/adminApi';
-import styles from '../../../../../page.module.css'; // Global dashboard styles
+import styles from '@/app/page.module.css'; // Global dashboard styles
 
 export default function JobApplicationsPage({ params }: { params: { jobId: string } }) {
     const [applications, setApplications] = useState<any[]>([]);
