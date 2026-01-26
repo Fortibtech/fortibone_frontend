@@ -1,14 +1,11 @@
 import axios from 'axios';
 
-let CAREERS_API_URL = process.env.NEXT_PUBLIC_CAREERS_API_URL || 'http://localhost:8081/api';
+const CAREERS_API_URL = '/api/careers';
 
-if (typeof window !== 'undefined') {
-    if (window.location.hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
-        CAREERS_API_URL = `${window.location.protocol}//${window.location.hostname}:8081/api`;
-    } else if (window.location.hostname !== 'localhost' && !process.env.NEXT_PUBLIC_CAREERS_API_URL) {
-        CAREERS_API_URL = 'https://api.komoralink.fr/careers';
-    }
-}
+/*
+ * Note: We now use a Next.js API Route Proxy (/api/careers) to forward requests 
+ * to the backend (localhost:8081). This avoids CORS issues and simplifies configuration.
+ */
 
 export const careersApi = axios.create({
     baseURL: CAREERS_API_URL,
@@ -51,6 +48,7 @@ export interface JobPosition {
     type: string;
     description: string;
     requirements: string | string[]; // Accessing compiled backend, type might vary
+    targetProfile?: string;
     targetCandidates?: number;
     isActive: boolean;
     createdAt: string;

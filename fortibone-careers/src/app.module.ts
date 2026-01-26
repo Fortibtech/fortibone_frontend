@@ -12,7 +12,7 @@ import { AuthModule } from './auth/auth.module';
         AuthModule,
         ServeStaticModule.forRoot({
             rootPath: join(__dirname, '..', 'uploads'),
-            serveRoot: '/uploads',
+            serveRoot: '/api/uploads',
         }),
     ],
 })

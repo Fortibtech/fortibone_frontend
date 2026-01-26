@@ -233,17 +233,8 @@ export const getMyBusinesses = async (): Promise<Business[]> => {
  */
 export const getJobApplications = async (jobId: string): Promise<any[]> => {
     try {
-        let baseUrl = process.env.NEXT_PUBLIC_CAREERS_API_URL;
-        if (!baseUrl && typeof window !== 'undefined') {
-            if (window.location.hostname === 'localhost') {
-                baseUrl = 'http://localhost:8081/api';
-            } else if (window.location.hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
-                // IP address access, assume backend on same IP port 8081
-                baseUrl = `${window.location.protocol}//${window.location.hostname}:8081/api`;
-            } else {
-                baseUrl = 'https://api.komoralink.fr/careers';
-            }
-        }
+        // Use local proxy which forwards to localhost:8081/api
+        const baseUrl = '/api/careers';
 
         // Use direct axios call
         const response = await axiosInstance.get(`/jobs/${jobId}/applications`, { baseURL: baseUrl });
@@ -259,18 +250,8 @@ export const getJobApplications = async (jobId: string): Promise<any[]> => {
  */
 export const getAllApplications = async (): Promise<any[]> => {
     try {
-        let baseUrl = process.env.NEXT_PUBLIC_CAREERS_API_URL;
-        if (!baseUrl && typeof window !== 'undefined') {
-            if (window.location.hostname === 'localhost') {
-                baseUrl = 'http://localhost:8081/api';
-            } else if (window.location.hostname.match(/\d+\.\d+\.\d+\.\d+/)) {
-                // IP address access
-                baseUrl = `${window.location.protocol}//${window.location.hostname}:8081/api`;
-            } else {
-                baseUrl = 'https://api.komoralink.fr/careers';
-            }
-        }
-
+        // Use local proxy which forwards to localhost:8081/api
+        const baseUrl = '/api/careers';
         const response = await axiosInstance.get('/jobs/admin/applications', { baseURL: baseUrl });
         return response.data;
     } catch (error: any) {

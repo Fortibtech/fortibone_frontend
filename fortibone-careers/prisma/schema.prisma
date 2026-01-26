@@ -15,6 +15,7 @@ model Job {
   type         String
   description  String
   requirements String   // Stored as text, split by newline in frontend
+  targetProfile String? // Profil recherché (text description)
   targetCandidates Int     @default(1)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())

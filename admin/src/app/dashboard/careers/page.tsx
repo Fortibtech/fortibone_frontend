@@ -17,6 +17,7 @@ export default function CareersManagementPage() {
         type: 'CDI',
         description: '',
         requirements: '',
+        targetProfile: '',
         targetCandidates: 1,
         isActive: true
     });
@@ -75,6 +76,7 @@ export default function CareersManagementPage() {
             description: job.description,
             // Handle requirements: if it comes as array (legacy?) join it, if string keep it
             requirements: Array.isArray(job.requirements) ? job.requirements.join('\n') : job.requirements || '',
+            targetProfile: job.targetProfile || '',
             targetCandidates: job.targetCandidates || 1,
             isActive: job.isActive
         });
@@ -95,6 +97,7 @@ export default function CareersManagementPage() {
             type: 'CDI',
             description: '',
             requirements: '',
+            targetProfile: '',
             targetCandidates: 1,
             isActive: true
         });
@@ -286,7 +289,17 @@ export default function CareersManagementPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Pré-requis (1 par ligne)</label>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Profil recherché / Soft Skills</label>
+                                    <textarea
+                                        rows={4}
+                                        value={formData.targetProfile}
+                                        onChange={e => setFormData({ ...formData, targetProfile: e.target.value })}
+                                        placeholder="Passionné, autonome, esprit d'équipe..."
+                                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Pré-requis (Hard Skills - 1 par ligne)</label>
                                     <textarea
                                         required
                                         rows={4}

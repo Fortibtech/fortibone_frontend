@@ -295,6 +295,13 @@ export default function CareersPage() {
                                     {job.description}
                                 </p>
 
+                                {job.targetProfile && (
+                                    <div style={{ marginBottom: '20px' }}>
+                                        <p style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px', color: '#0f172a' }}>Profil recherché :</p>
+                                        <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>{job.targetProfile}</p>
+                                    </div>
+                                )}
+
                                 <div style={{ marginBottom: '24px' }}>
                                     <p style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#0f172a' }}>Pré-requis :</p>
                                     <ul style={{ margin: 0, paddingLeft: '20px', color: '#64748b', fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
