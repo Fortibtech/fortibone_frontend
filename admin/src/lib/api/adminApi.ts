@@ -231,44 +231,38 @@ export const getMyBusinesses = async (): Promise<Business[]> => {
 /**
  * Get applications for a specific job
  */
-/**
- * Get applications for a specific job
- */
 export const getJobApplications = async (jobId: string): Promise<any[]> => {
     try {
-        // Must use Careers API, not Main API
-        const CAREERS_API_URL = process.env.NEXT_PUBLIC_CAREERS_API_URL || 'https://api.komoralink.fr/careers'; // Fallback to likely prod URL
-        // Temporary: Using direct axios to avoid interceptor conflict
-        const response = await axiosInstance.get(`${CAREERS_API_URL}/jobs/${jobId}/applications`);
+        let baseUrl = process.env.NEXT_PUBLIC_CAREERS_API_URL;
+        if (!baseUrl) {
+            const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+            baseUrl = isDev ? 'http://localhost:8081/api' : 'https://api.komoralink.fr/careers';
+        }
+
+        // Use direct axios call
+        const response = await axiosInstance.get(`/jobs/${jobId}/applications`, { baseURL: baseUrl });
         return response.data;
     } catch (error: any) {
-        // Fallback for dev if needed or try relative
-        try {
-            const response = await axiosInstance.get(`/jobs/${jobId}/applications`, {
-                baseURL: process.env.NEXT_PUBLIC_CAREERS_API_URL || 'http://localhost:8081/api'
-            });
-            return response.data;
-        } catch (e) {
-            console.error('❌ Erreur fetch job applications:', error.message);
-            return [];
-        }
+        console.error('❌ Erreur fetch job applications:', error.message);
+        return [];
     }
 };
 
 /**
  * Get all applications (global view)
  */
-/**
- * Get all applications (global view)
- */
 export const getAllApplications = async (): Promise<any[]> => {
     try {
-        const CAREERS_API_URL = process.env.NEXT_PUBLIC_CAREERS_API_URL || 'http://localhost:8081/api';
-        const response = await axiosInstance.get('/jobs/admin/applications', { baseURL: CAREERS_API_URL });
+        let baseUrl = process.env.NEXT_PUBLIC_CAREERS_API_URL;
+        if (!baseUrl) {
+            const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+            baseUrl = isDev ? 'http://localhost:8081/api' : 'https://api.komoralink.fr/careers';
+        }
+
+        const response = await axiosInstance.get('/jobs/admin/applications', { baseURL: baseUrl });
         return response.data;
     } catch (error: any) {
         console.error('❌ Erreur fetch all applications:', error.message);
         return [];
     }
-};
 
