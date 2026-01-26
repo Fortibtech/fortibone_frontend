@@ -17,6 +17,7 @@ export default function CareersManagementPage() {
         type: 'CDI',
         description: '',
         requirements: '',
+        targetCandidates: 1,
         isActive: true
     });
 
@@ -74,6 +75,7 @@ export default function CareersManagementPage() {
             description: job.description,
             // Handle requirements: if it comes as array (legacy?) join it, if string keep it
             requirements: Array.isArray(job.requirements) ? job.requirements.join('\n') : job.requirements || '',
+            targetCandidates: job.targetCandidates || 1,
             isActive: job.isActive
         });
         setIsModalOpen(true);
@@ -93,6 +95,7 @@ export default function CareersManagementPage() {
             type: 'CDI',
             description: '',
             requirements: '',
+            targetCandidates: 1,
             isActive: true
         });
     };
@@ -250,6 +253,16 @@ export default function CareersManagementPage() {
                                             <option value="Freelance">Freelance</option>
                                             <option value="Stage">Stage</option>
                                         </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Candidats recherchés</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={formData.targetCandidates}
+                                            onChange={e => setFormData({ ...formData, targetCandidates: parseInt(e.target.value) })}
+                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                        />
                                     </div>
                                 </div>
                                 <div>

@@ -45,6 +45,7 @@ export interface JobPosition {
     type: string;
     description: string;
     requirements: string | string[]; // Accessing compiled backend, type might vary
+    targetCandidates?: number;
     isActive: boolean;
     createdAt: string;
 }
