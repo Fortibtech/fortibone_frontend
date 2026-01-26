@@ -42,7 +42,19 @@ async function main() {
         },
     });
 
-    console.log({ job1, job2, admin });
+    // Create second Admin User (contact)
+    const passwordContact = await bcrypt.hash('26bara', 10);
+    const adminContact = await prisma.user.upsert({
+        where: { email: 'contact@komoralink.info' },
+        update: {},
+        create: {
+            email: 'contact@komoralink.info',
+            password: passwordContact,
+            role: 'ADMIN',
+        },
+    });
+
+    console.log({ job1, job2, admin, adminContact });
 }
 
 main()
