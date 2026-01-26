@@ -6,7 +6,7 @@ async function bootstrap() {
 
     app.setGlobalPrefix('api');
     app.enableCors({
-        origin: '*', // Allow all for dev, or specify http://localhost:3000
+        origin: ['https://komoralink.fr', 'https://www.komoralink.fr', 'http://localhost:3000', 'http://localhost:3011'],
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
         credentials: true,
     });
