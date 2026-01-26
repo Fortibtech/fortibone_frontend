@@ -44,4 +44,19 @@ export class JobsService {
     async remove(id: string) {
         return this.prisma.job.delete({ where: { id } });
     }
+
+    // New methods for Admin
+    async getJobApplications(jobId: string) {
+        return this.prisma.application.findMany({
+            where: { jobId },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async getAllApplications() {
+        return this.prisma.application.findMany({
+            include: { job: true },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
 }

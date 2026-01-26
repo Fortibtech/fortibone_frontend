@@ -37,4 +37,15 @@ export class JobsController {
     remove(@Param('id') id: string) {
         return this.jobsService.remove(id);
     }
+
+    // Admin Endpoints
+    @Get(':id/applications')
+    getJobApplications(@Param('id') id: string) {
+        return this.jobsService.getJobApplications(id);
+    }
+
+    @Get('admin/applications') // Specific path to avoid conflict with :id
+    getAllApplications() {
+        return this.jobsService.getAllApplications();
+    }
 }
