@@ -113,12 +113,25 @@ export default function CareersPage() {
         e.preventDefault();
         try {
             if (selectedJob) {
-                await applyToJob(selectedJob.id, formData);
+                const submissionData = new FormData();
+                submissionData.append('name', formData.name);
+                // Ensure we use the logged-in user's email if available, or stored one.
+                const userEmail = localStorage.getItem('candidate_email') || formData.email;
+                submissionData.append('email', userEmail);
+                submissionData.append('phone', formData.phone);
+                submissionData.append('message', formData.message);
+                if (formData.cvLink) submissionData.append('cvLink', formData.cvLink);
+                // @ts-ignore
+                if (formData.file) submissionData.append('cv', formData.file);
+
+                await applyToJob(selectedJob.id, submissionData);
                 setIsSubmitted(true);
-                setFormData({ name: '', email: '', phone: '', cvLink: '', message: '' });
+                // @ts-ignore
+                setFormData({ name: '', email: userEmail, phone: '', cvLink: '', message: '', file: null });
             }
-        } catch (err) {
-            alert('Une erreur est survenue lors de l\'envoi.');
+        } catch (err: any) {
+            const msg = err.response?.data?.message || 'Une erreur est survenue lors de l\'envoi.';
+            alert(msg);
         }
     };
 
@@ -418,17 +431,7 @@ export default function CareersPage() {
                                     />
                                 </div>
 
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '8px' }}>Email</label>
-                                    <input
-                                        type="email"
-                                        required
-                                        placeholder="votre@email.com"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '16px' }}
-                                    />
-                                </div>
+                                {/* Email removed as it's taken from logged in user */}
 
                                 <div>
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '8px' }}>Téléphone</label>
@@ -443,10 +446,24 @@ export default function CareersPage() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '8px' }}>Lien LinkedIn ou Portfolio (CV non requis)</label>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '8px' }}>CV (PDF ou Word)</label>
+                                    <input
+                                        type="file"
+                                        required
+                                        accept=".pdf,.doc,.docx"
+                                        onChange={(e) => {
+                                            const file = e.target.files ? e.target.files[0] : null;
+                                            // @ts-ignore
+                                            setFormData({ ...formData, file: file });
+                                        }}
+                                        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '16px' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '8px' }}>Lien LinkedIn ou Portfolio (Optionnel)</label>
                                     <input
                                         type="url"
-                                        required
                                         placeholder="https://..."
                                         value={formData.cvLink}
                                         onChange={(e) => setFormData({ ...formData, cvLink: e.target.value })}

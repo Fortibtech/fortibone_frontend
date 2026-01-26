@@ -4,9 +4,7 @@ const CAREERS_API_URL = process.env.NEXT_PUBLIC_CAREERS_API_URL || 'http://local
 
 export const careersApi = axios.create({
     baseURL: CAREERS_API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    // headers: { 'Content-Type': 'application/json' }, // Let axios handle content-type
 });
 
 // Add interceptor to include token
@@ -61,6 +59,7 @@ export const getJobs = async (): Promise<JobPosition[]> => {
 };
 
 export const applyToJob = async (jobId: string, candidate: any) => {
+    // If candidate is FormData, axios handles headers automatically
     return await careersApi.post(`/jobs/${jobId}/apply`, candidate);
 };
 

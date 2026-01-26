@@ -10,7 +10,7 @@ export class JobsService {
         return this.prisma.job.create({ data });
     }
 
-    async apply(jobId: string, data: any) {
+    async apply(jobId: string, data: any, file?: Express.Multer.File) {
         // Prevent duplicate application
         const existingApp = await this.prisma.application.findFirst({
             where: {
@@ -23,13 +23,15 @@ export class JobsService {
             throw new Error('Vous avez déjà postulé à cette offre.');
         }
 
+        const cvPath = file ? `/uploads/cv/${file.filename}` : data.cvLink; // Use uploaded file or fallback (though we want upload)
+
         return this.prisma.application.create({
             data: {
                 jobId,
                 name: data.name,
                 email: data.email,
                 phone: data.phone,
-                cvLink: data.cvLink,
+                cvLink: cvPath,
                 message: data.message,
             },
         });
