@@ -1,12 +1,13 @@
 'use client';
 
-import { startTransition, useState, useEffect } from 'react';
+import { startTransition, useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getJobApplications } from '@/lib/api/adminApi';
 import styles from '@/app/page.module.css'; // Global dashboard styles
 
-export default function JobApplicationsPage({ params }: { params: { jobId: string } }) {
+export default function JobApplicationsPage({ params }: { params: Promise<{ jobId: string }> }) {
+    const { jobId } = use(params); // Unwrap the params Promise
     const [applications, setApplications] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [debugError, setDebugError] = useState<string | null>(null); // New debug state
@@ -24,7 +25,7 @@ export default function JobApplicationsPage({ params }: { params: { jobId: strin
                 // Let's rely on the service but if it's empty, we might not know why.
                 // Better: Let's call the proxy directly for debugging purposes if needed, 
                 // but let's first see what the service returns.
-                const data = await getJobApplications(params.jobId);
+                const data = await getJobApplications(jobId);
                 setApplications(data);
                 if (data.length === 0) {
                     // Check if it was actually an error masked as empty array?
@@ -37,7 +38,7 @@ export default function JobApplicationsPage({ params }: { params: { jobId: strin
             setIsLoading(false);
         };
         fetchApplications();
-    }, [params.jobId]);
+    }, [jobId]);
 
     // ... (formatDate function)
     const formatDate = (dateString: string) => {
@@ -69,7 +70,7 @@ export default function JobApplicationsPage({ params }: { params: { jobId: strin
                         {applications.length} candidat(s) ont postulé à cette offre
                     </p>
                     <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '5px' }}>
-                        Job ID: {params.jobId}
+                        Job ID: {jobId}
                     </p>
                     {debugError && (
                         <div style={{ padding: '10px', background: '#fee2e2', color: '#dc2626', borderRadius: '8px', marginTop: '10px' }}>
@@ -87,7 +88,7 @@ export default function JobApplicationsPage({ params }: { params: { jobId: strin
                         <p style={{ color: '#64748b' }}>Les candidatures apparaîtront ici dès qu'un visiteur postulera.</p>
                         <div style={{ marginTop: '20px', padding: '15px', background: '#f1f5f9', borderRadius: '8px', fontSize: '12px', textAlign: 'left', color: '#475569' }}>
                             <strong>Debug Info:</strong><br />
-                            - URL appelée: /api/careers/jobs/{params.jobId}/applications<br />
+                            - URL appelée: /api/careers/jobs/{jobId}/applications<br />
                             - Vérifiez que le Job ID correspond bien à l'offre postulée.<br />
                             - Vérifiez la console (F12) pour voir les erreurs réseau (404, 500, etc.).
                         </div>

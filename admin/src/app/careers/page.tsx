@@ -475,11 +475,10 @@ export default function CareersPage() {
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '8px' }}>Téléphone</label>
                                     <input
                                         type="tel"
-                                        required
-                                        placeholder="06..."
+                                        placeholder="Ex: +269 334 56 78"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '16px' }}
+                                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
                                     />
                                 </div>
 
