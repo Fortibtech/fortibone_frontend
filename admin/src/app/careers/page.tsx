@@ -87,6 +87,16 @@ export default function CareersPage() {
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // VALIDATION
+        if (authMode === 'register') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(authData.email)) {
+                alert('Veuillez entrer une adresse email valide pour l\'inscription.');
+                return;
+            }
+        }
+
         try {
             if (authMode === 'login') {
                 await login(authData.email, authData.password);
