@@ -11,7 +11,7 @@ import { AuthModule } from './auth/auth.module';
         JobsModule,
         AuthModule,
         ServeStaticModule.forRoot({
-            rootPath: join(__dirname, '..', 'uploads'),
+            rootPath: join(process.cwd(), 'uploads'),
             serveRoot: '/api/uploads',
         }),
     ],
