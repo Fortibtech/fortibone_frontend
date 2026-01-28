@@ -1,23 +1,22 @@
 import axios from 'axios';
 
-// Use proxy path in development to bypass CORS
-const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
-const API_BASE_URL = isDev ? '/api-proxy' : (process.env.NEXT_PUBLIC_API_URL || 'https://dash.fortibtech.com');
+// ✅ Définir la base URL (aligné sur Mobile / .env)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dash.fortibtech.com';
 
 const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor - add auth token
+// ✅ Intercepteur pour ajouter le token (Source de vérité Mobile adaptée au Web avec localStorage)
 axiosInstance.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('access_token');
-      if (token) {
+      if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
@@ -26,15 +25,16 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - handle errors
+// ✅ Intercepteur pour gérer les erreurs
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
+      // Token expiré ou invalide
       if (typeof window !== 'undefined') {
         localStorage.removeItem('access_token');
-        window.location.href = '/auth/login';
+        // Optionnel: redirection vers login si nécessaire
+        // window.location.href = '/auth/login';
       }
     }
     return Promise.reject(error);
