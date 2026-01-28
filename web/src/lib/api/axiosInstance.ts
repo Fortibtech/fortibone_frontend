@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// ✅ Définir la base URL (aligné sur Mobile / .env)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://dash.fortibtech.com';
+// ✅ Toujours utiliser le proxy Next.js pour éviter les problèmes CORS
+const API_URL = '/api-proxy';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
