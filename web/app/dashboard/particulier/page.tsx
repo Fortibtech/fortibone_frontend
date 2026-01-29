@@ -334,164 +334,165 @@ export default function ParticulierDashboard() {
                     <div className={styles.balanceCard}>
                         <div className={styles.balanceInfo}>
                             <span className={styles.balanceLabel}>Solde disponible</span>
-                            {wallet ? parseFloat(wallet.balance).toLocaleString('fr-FR') : '---'} <small style={{ fontSize: '0.6em' }}>KMF</small>
-                        </span>
-                    </div>
-                    <div className={styles.balanceActions}>
-                        <Link href="/dashboard/particulier/finance/wallet/deposit" className={styles.actionButton}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="12" y1="19" x2="12" y2="5" />
-                                <polyline points="5 12 12 5 19 12" />
-                            </svg>
-                            <span>Dépôt</span>
-                        </Link>
-                        <Link href="/dashboard/particulier/finance/wallet/transfer" className={styles.actionButton}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="5" y1="12" x2="19" y2="12" />
-                                <polyline points="12 5 19 12 12 19" />
-                            </svg>
-                            <span>Envoyer</span>
-                        </Link>
-                        <Link href="/dashboard/particulier/finance/wallet" className={styles.actionButton}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-                                <line x1="1" y1="10" x2="23" y2="10" />
-                            </svg>
-                            <span>Wallet</span>
-                        </Link>
-                    </div>
-                </div>
-
-                {/* === QUICK CATEGORIES === */}
-                <div className={styles.quickActionsGrid}>
-                    <button className={styles.quickActionItem} onClick={() => router.push('/dashboard/particulier/businesses?type=RESTAURATEUR')}>
-                        <div className={styles.quickActionIcon} style={{ color: '#F59E0B' }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z" />
-                                <path d="M16 21V11" />
-                                <path d="M8 21V11" />
-                                <path d="M12 7V3" />
-                                <path d="M8 3v4" />
-                                <path d="M16 3v4" />
-                            </svg>
+                            <span className={styles.balanceAmount}>
+                                {wallet ? parseFloat(wallet.balance).toLocaleString('fr-FR') : '---'} <small style={{ fontSize: '0.6em' }}>KMF</small>
+                            </span>
                         </div>
-                        <span className={styles.quickActionLabel}>Restos</span>
-                    </button>
-                    <button className={styles.quickActionItem} onClick={() => router.push('/dashboard/particulier/businesses?type=COMMERCANT')}>
-                        <div className={styles.quickActionIcon} style={{ color: '#10B981' }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="9" cy="21" r="1" />
-                                <circle cx="20" cy="21" r="1" />
-                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                            </svg>
-                        </div>
-                        <span className={styles.quickActionLabel}>Boutiques</span>
-                    </button>
-                    <button className={styles.quickActionItem} onClick={() => router.push('/dashboard/particulier/orders')}>
-                        <div className={styles.quickActionIcon} style={{ color: '#3B82F6' }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                                <line x1="3" y1="6" x2="21" y2="6" />
-                                <path d="M16 10a4 4 0 0 1-8 0" />
-                            </svg>
-                        </div>
-                        <span className={styles.quickActionLabel}>Commandes</span>
-                    </button>
-                    <button className={styles.quickActionItem} onClick={() => router.push('/dashboard/particulier/finance')}>
-                        <div className={styles.quickActionIcon} style={{ color: '#8B5CF6' }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="2" y="5" width="20" height="14" rx="2" />
-                                <line x1="2" y1="10" x2="22" y2="10" />
-                            </svg>
-                        </div>
-                        <span className={styles.quickActionLabel}>Finance</span>
-                    </button>
-                </div>
-
-                {/* PROMO BANNER - Aligned with mobile */}
-                <div className={styles.promoBanner}>
-                    <div className={styles.bannerBackground} />
-                    <svg
-                        className={styles.bannerSvg}
-                        viewBox="10 0 100 80"
-                        preserveAspectRatio="none"
-                    >
-                        <polygon points="0,0 100,0 65,90 0,90" fill="#FFF9CD" />
-                    </svg>
-                    <div className={styles.bannerContentWrapper}>
-                        <div className={styles.bannerContent}>
-                            <h2 className={styles.bannerTitle}>Ne ratez pas ça !</h2>
-                            <p className={styles.bannerSubtitle}>Jusqu&apos;à 50 % de réduction</p>
-                        </div>
-                        <div className={styles.bannerImageContainer}>
-                            <img
-                                src="/images/promo-banner.png"
-                                alt="Promotion"
-                                className={styles.bannerImage}
-                            />
+                        <div className={styles.balanceActions}>
+                            <Link href="/dashboard/particulier/finance/wallet/deposit" className={styles.actionButton}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <line x1="12" y1="19" x2="12" y2="5" />
+                                    <polyline points="5 12 12 5 19 12" />
+                                </svg>
+                                <span>Dépôt</span>
+                            </Link>
+                            <Link href="/dashboard/particulier/finance/wallet/transfer" className={styles.actionButton}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                    <polyline points="12 5 19 12 12 19" />
+                                </svg>
+                                <span>Envoyer</span>
+                            </Link>
+                            <Link href="/dashboard/particulier/finance/wallet" className={styles.actionButton}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                                    <line x1="1" y1="10" x2="23" y2="10" />
+                                </svg>
+                                <span>Wallet</span>
+                            </Link>
                         </div>
                     </div>
-                </div>
 
-
-
-
-
-                {/* PRODUCT GRID - Responsive (Fluid) */}
-                {error && (
-                    <div style={{
-                        padding: '12px',
-                        background: '#fee2e2',
-                        color: '#b91c1c',
-                        borderRadius: '8px',
-                        marginBottom: '16px',
-                        textAlign: 'center',
-                        fontWeight: 'bold'
-                    }}>
-                        ❌ {error}
+                    {/* === QUICK CATEGORIES === */}
+                    <div className={styles.quickActionsGrid}>
+                        <button className={styles.quickActionItem} onClick={() => router.push('/dashboard/particulier/businesses?type=RESTAURATEUR')}>
+                            <div className={styles.quickActionIcon} style={{ color: '#F59E0B' }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z" />
+                                    <path d="M16 21V11" />
+                                    <path d="M8 21V11" />
+                                    <path d="M12 7V3" />
+                                    <path d="M8 3v4" />
+                                    <path d="M16 3v4" />
+                                </svg>
+                            </div>
+                            <span className={styles.quickActionLabel}>Restos</span>
+                        </button>
+                        <button className={styles.quickActionItem} onClick={() => router.push('/dashboard/particulier/businesses?type=COMMERCANT')}>
+                            <div className={styles.quickActionIcon} style={{ color: '#10B981' }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="9" cy="21" r="1" />
+                                    <circle cx="20" cy="21" r="1" />
+                                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                                </svg>
+                            </div>
+                            <span className={styles.quickActionLabel}>Boutiques</span>
+                        </button>
+                        <button className={styles.quickActionItem} onClick={() => router.push('/dashboard/particulier/orders')}>
+                            <div className={styles.quickActionIcon} style={{ color: '#3B82F6' }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                                    <line x1="3" y1="6" x2="21" y2="6" />
+                                    <path d="M16 10a4 4 0 0 1-8 0" />
+                                </svg>
+                            </div>
+                            <span className={styles.quickActionLabel}>Commandes</span>
+                        </button>
+                        <button className={styles.quickActionItem} onClick={() => router.push('/dashboard/particulier/finance')}>
+                            <div className={styles.quickActionIcon} style={{ color: '#8B5CF6' }}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                                    <line x1="2" y1="10" x2="22" y2="10" />
+                                </svg>
+                            </div>
+                            <span className={styles.quickActionLabel}>Finance</span>
+                        </button>
                     </div>
-                )}
-                {loading ? (
-                    <div className={styles.loading}>
-                        <div className={styles.spinner} />
-                        <p>Chargement des produits...</p>
-                    </div>
-                ) : (
-                    <div className={styles.grid}>
-                        {products.map((product) => {
-                            const distanceText = calculateDistance(
-                                userLocation?.lat || null,
-                                userLocation?.lng || null,
-                                product.latitude,
-                                product.longitude
-                            );
 
-                            return (
-                                <WebProductCard
-                                    key={product.id}
-                                    id={product.productId}
-                                    name={product.name}
-                                    price={product.price}
-                                    currencyCode={product.currencyCode}
-                                    imageUrl={product.productImageUrl}
-                                    rating={product.averageRating}
-                                    reviewCount={product.reviewCount}
-                                    distance={distanceText}
-                                    onPress={() => handleProductClick(product)}
+                    {/* PROMO BANNER - Aligned with mobile */}
+                    <div className={styles.promoBanner}>
+                        <div className={styles.bannerBackground} />
+                        <svg
+                            className={styles.bannerSvg}
+                            viewBox="10 0 100 80"
+                            preserveAspectRatio="none"
+                        >
+                            <polygon points="0,0 100,0 65,90 0,90" fill="#FFF9CD" />
+                        </svg>
+                        <div className={styles.bannerContentWrapper}>
+                            <div className={styles.bannerContent}>
+                                <h2 className={styles.bannerTitle}>Ne ratez pas ça !</h2>
+                                <p className={styles.bannerSubtitle}>Jusqu&apos;à 50 % de réduction</p>
+                            </div>
+                            <div className={styles.bannerImageContainer}>
+                                <img
+                                    src="/images/promo-banner.png"
+                                    alt="Promotion"
+                                    className={styles.bannerImage}
                                 />
-                            );
-                        })}
+                            </div>
+                        </div>
                     </div>
-                )}
 
-                {!loading && products.length === 0 && (
-                    <div className={styles.empty}>
-                        <span className={styles.emptyIcon}>🛒</span>
-                        <p>Aucun produit disponible pour le moment</p>
-                    </div>
-                )}
-            </div>
-        </DashboardLayout>
+
+
+
+
+                    {/* PRODUCT GRID - Responsive (Fluid) */}
+                    {error && (
+                        <div style={{
+                            padding: '12px',
+                            background: '#fee2e2',
+                            color: '#b91c1c',
+                            borderRadius: '8px',
+                            marginBottom: '16px',
+                            textAlign: 'center',
+                            fontWeight: 'bold'
+                        }}>
+                            ❌ {error}
+                        </div>
+                    )}
+                    {loading ? (
+                        <div className={styles.loading}>
+                            <div className={styles.spinner} />
+                            <p>Chargement des produits...</p>
+                        </div>
+                    ) : (
+                        <div className={styles.grid}>
+                            {products.map((product) => {
+                                const distanceText = calculateDistance(
+                                    userLocation?.lat || null,
+                                    userLocation?.lng || null,
+                                    product.latitude,
+                                    product.longitude
+                                );
+
+                                return (
+                                    <WebProductCard
+                                        key={product.id}
+                                        id={product.productId}
+                                        name={product.name}
+                                        price={product.price}
+                                        currencyCode={product.currencyCode}
+                                        imageUrl={product.productImageUrl}
+                                        rating={product.averageRating}
+                                        reviewCount={product.reviewCount}
+                                        distance={distanceText}
+                                        onPress={() => handleProductClick(product)}
+                                    />
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {!loading && products.length === 0 && (
+                        <div className={styles.empty}>
+                            <span className={styles.emptyIcon}>🛒</span>
+                            <p>Aucun produit disponible pour le moment</p>
+                        </div>
+                    )}
+                </div>
+            </DashboardLayout>
         </ProtectedRoute >
     );
 }
