@@ -15,15 +15,13 @@ import {
 } from '@/lib/api/analytics';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { PeriodFilter, getPeriodLabel, PeriodType, PeriodDates } from '@/components/shared';
+import { PeriodType, PeriodDates } from '@/components/shared';
 import {
-    Sales30DaysChart,
-    TopProductsChart,
-    SalesByPeriodChart,
+    SalesByCategoryChart,
     ExpenseDistributionChart,
-    InventoryLossesChart,
+    RevenueDistributionChart,
 } from '@/components/charts';
-import styles from './accueil.module.css';
+import styles from './page.module.css';
 
 export default function CommercantDashboard() {
     const { selectedBusiness } = useBusinessStore();
@@ -31,24 +29,24 @@ export default function CommercantDashboard() {
 
     // Period filter state
     const [period, setPeriod] = useState<PeriodType>('all');
-    const [periodDates, setPeriodDates] = useState<PeriodDates>({ startDate: '', endDate: '' });
 
     // Analytics data from API
     const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
     const [pendingOrders, setPendingOrders] = useState(0);
+    const [processingPurchases, setProcessingPurchases] = useState<{ count: number; totalItems: number } | null>(null);
+
     const [salesData, setSalesData] = useState<SalesResponse | null>(null);
-    const [sales30Days, setSales30Days] = useState<SalesResponse | null>(null);
-    const [inventory, setInventory] = useState<InventoryResponse | null>(null);
-    const [salesUnit, setSalesUnit] = useState<'DAY' | 'WEEK' | 'MONTH' | 'YEAR'>('MONTH');
+    // const [inventory, setInventory] = useState<InventoryResponse | null>(null);
     const [chartsLoading, setChartsLoading] = useState(true);
 
-    // Helper to get last 30 days date range
-    const getLast30DaysDates = () => {
+    // Helper to get CURRENT MONTH dates (Mobile Logic)
+    const getCurrentMonthDates = () => {
         const now = new Date();
-        const endDate = now.toISOString().split('T')[0];
-        const start = new Date(now);
-        start.setDate(start.getDate() - 30);
-        const startDate = start.toISOString().split('T')[0];
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const startDate = `${year}-${month}-01`;
+        const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+        const endDate = `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
         return { startDate, endDate };
     };
 
@@ -60,40 +58,25 @@ export default function CommercantDashboard() {
 
         try {
             setLoading(true);
+            const { startDate, endDate } = getCurrentMonthDates();
 
-            const [analyticsData, pendingCount] = await Promise.all([
-                getAnalyticsOverview(
-                    selectedBusiness.id,
-                    periodDates.startDate || undefined,
-                    periodDates.endDate || undefined
-                ).catch(() => null),
+            const [analyticsData, pendingCount, processingData] = await Promise.all([
+                getAnalyticsOverview(selectedBusiness.id, startDate, endDate).catch(() => null),
                 getPendingOrdersCount(selectedBusiness.id, 'SALE').catch(() => 0),
+                getProcessingPurchasesCount(selectedBusiness.id).catch(() => ({ count: 0, totalItems: 0 })),
             ]);
 
             if (analyticsData) {
                 setAnalytics(analyticsData);
-            } else {
-                setAnalytics({
-                    totalSalesAmount: 0,
-                    totalSalesOrders: 0,
-                    averageOrderValue: 0,
-                    totalProductsSold: 0,
-                    totalPurchaseAmount: 0,
-                    totalPurchaseOrders: 0,
-                    currentInventoryValue: 0,
-                    totalMembers: 0,
-                    uniqueCustomers: 0,
-                    averageBusinessRating: 0,
-                    totalBusinessReviews: 0,
-                });
             }
             setPendingOrders(pendingCount);
+            setProcessingPurchases(processingData);
         } catch (err) {
             console.error('Error fetching data:', err);
         } finally {
             setLoading(false);
         }
-    }, [selectedBusiness, periodDates]);
+    }, [selectedBusiness]);
 
     // Fetch charts data
     const fetchChartsData = useCallback(async () => {
@@ -101,23 +84,18 @@ export default function CommercantDashboard() {
 
         try {
             setChartsLoading(true);
-            const { startDate, endDate } = getLast30DaysDates();
-
-            const [sales30, salesPeriod, inventoryData] = await Promise.all([
-                getSales(selectedBusiness.id, { startDate, endDate, unit: 'DAY' }).catch(() => null),
-                getSales(selectedBusiness.id, { unit: salesUnit }).catch(() => null),
-                getInventory(selectedBusiness.id).catch(() => null),
-            ]);
-
-            setSales30Days(sales30);
-            setSalesData(salesPeriod);
-            setInventory(inventoryData);
+            // On mobile we just get generic sales data, no specific date range for charts except if they have filters?
+            // Mobile SalesBarChart uses SalesByProductCategory (from getSales?).
+            // Let's call getSales with monthly overview dates or default.
+            // Actually Mobile calls: getSales(id) inside AnalyticsCard component.
+            const salesRes = await getSales(selectedBusiness.id).catch(() => null);
+            setSalesData(salesRes);
         } catch (error) {
             console.error('Error fetching charts data:', error);
         } finally {
             setChartsLoading(false);
         }
-    }, [selectedBusiness, salesUnit]);
+    }, [selectedBusiness]);
 
     useEffect(() => {
         fetchData();
@@ -127,15 +105,6 @@ export default function CommercantDashboard() {
         fetchChartsData();
     }, [fetchChartsData]);
 
-    const handlePeriodChange = (newPeriod: PeriodType, dates: PeriodDates) => {
-        setPeriod(newPeriod);
-        setPeriodDates(dates);
-    };
-
-    const handleSalesUnitChange = (unit: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR') => {
-        setSalesUnit(unit);
-    };
-
     const formatNumber = (num: number | undefined): string => {
         if (num === undefined || num === null) return '0';
         return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(num);
@@ -143,18 +112,22 @@ export default function CommercantDashboard() {
 
     const currencySymbol = 'KMF';
 
-    // Transform inventory losses for chart
-    const inventoryLosses = inventory?.lossesByMovementType?.map(item => ({
-        movementType: item.movementType,
-        totalQuantity: item.totalQuantity,
-        totalValue: parseFloat(String(item.totalValue).replace(',', '')) || 0,
-    })) || [];
-
     // Transform sales by category for expense chart
     const expenseCategories = salesData?.salesByProductCategory?.map(cat => ({
         category: cat.categoryName,
-        amount: cat.totalRevenue,
+        amount: Number(cat.totalRevenue),
         percentage: 0,
+    })) || [];
+
+    // Transform data for Revenue Map (Flux de tresorerie)
+    // IMPORTANT: Mobile uses CashFlowChart for 'Flux de trésorerie'. 
+    // And RevenueDistributionChart for 'Répartition des Revenus' (Wait, name conflict).
+    // In mobile analytics/index.tsx line 43: RevenueDistributionChart.
+    // In web it's also RevenueDistributionChart.
+    // We map salesByPeriod to the format expected by RevenueDistributionChart.
+    const revenueData = salesData?.salesByPeriod?.map(item => ({
+        period: item.period,
+        revenue: item.totalAmount
     })) || [];
 
     return (
@@ -165,10 +138,6 @@ export default function CommercantDashboard() {
                     <section className={styles.section}>
                         <div className={styles.sectionHeader}>
                             <h2>Vue d&apos;Ensemble</h2>
-                            <PeriodFilter
-                                value={period}
-                                onChange={handlePeriodChange}
-                            />
                         </div>
 
                         {loading ? (
@@ -183,11 +152,14 @@ export default function CommercantDashboard() {
                                     <div className={styles.cardIcon}>💰</div>
                                     <div className={styles.cardContent}>
                                         <span className={styles.cardLabel}>
-                                            CA {getPeriodLabel(period)}
+                                            CA Mensuel
                                         </span>
-                                        <span className={styles.cardValue}>
-                                            {formatNumber(analytics?.totalSalesAmount)} <span className={styles.cardUnit}>{currencySymbol}</span>
-                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                                            <span className={styles.cardValue}>
+                                                {formatNumber(analytics?.totalSalesAmount)}
+                                            </span>
+                                            <span className={styles.cardUnit}>{currencySymbol}</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -196,7 +168,7 @@ export default function CommercantDashboard() {
                                     <div className={`${styles.overviewCard} ${styles.cardPurple}`}>
                                         <div className={styles.cardIcon}>🛒</div>
                                         <div className={styles.cardContent}>
-                                            <span className={styles.cardLabel}>Commandes en attente</span>
+                                            <span className={styles.cardLabel}>En attente</span>
                                             <span className={styles.cardValue}>
                                                 {pendingOrders} client{pendingOrders > 1 ? 's' : ''}
                                             </span>
@@ -206,9 +178,11 @@ export default function CommercantDashboard() {
                                     <div className={`${styles.overviewCard} ${styles.cardGreen}`}>
                                         <div className={styles.cardIcon}>💵</div>
                                         <div className={styles.cardContent}>
-                                            <span className={styles.cardLabel}>Articles vendus</span>
+                                            <span className={styles.cardLabel}>Achats en cours</span>
                                             <span className={styles.cardValue}>
-                                                {formatNumber(analytics?.totalProductsSold)} article{(analytics?.totalProductsSold || 0) > 1 ? 's' : ''}
+                                                {processingPurchases?.totalItems || 0} article
+                                                {(processingPurchases?.totalItems || 0) > 1 ? 's' : ''} commandé
+                                                {(processingPurchases?.totalItems || 0) > 1 ? 's' : ''}
                                             </span>
                                         </div>
                                     </div>
@@ -257,51 +231,28 @@ export default function CommercantDashboard() {
                         </div>
                     </section>
 
-                    {/* Lien Tarifs Livreurs */}
-                    <Link href="/dashboard/commercant/carriers" className={styles.carriersLink}>
-                        <span className={styles.carrierIcon}>👤</span>
-                        <span className={styles.carrierText}>Tarifs des livreurs</span>
-                        <span className={styles.carrierArrow}>›</span>
-                    </Link>
-
-                    {/* Section Charts - Comme le mobile */}
+                    {/* Section Charts - STRICTLY ALIGNED WITH MOBILE */}
                     <section className={styles.section}>
                         <h2>Statistiques</h2>
 
-                        {/* CA 30 jours - Bar Chart */}
-                        <Sales30DaysChart
-                            data={sales30Days?.salesByPeriod || []}
+                        {/* 1. SalesByCategory (Bar Chart) - Mobile "Revenus par catégorie" */}
+                        <SalesByCategoryChart
+                            data={salesData?.salesByProductCategory || []}
                             loading={chartsLoading}
                             currencySymbol={currencySymbol}
                         />
 
-                        {/* Top Produits - Donut */}
-                        <TopProductsChart
-                            data={salesData?.topSellingProducts || []}
-                            loading={chartsLoading}
-                            currencySymbol={currencySymbol}
-                            title="Top 5 Produits"
-                        />
-
-                        {/* Évolution Ventes - Line Chart */}
-                        <SalesByPeriodChart
-                            data={salesData?.salesByPeriod || []}
-                            loading={chartsLoading}
-                            currencySymbol={currencySymbol}
-                            onUnitChange={handleSalesUnitChange}
-                        />
-
-                        {/* Répartition par catégorie */}
+                        {/* 2. ExpenseDistribution (Donut) - Mobile "Répartition des dépenses" */}
                         <ExpenseDistributionChart
                             data={expenseCategories}
                             loading={chartsLoading}
                             currencySymbol={currencySymbol}
-                            title="Répartition par catégorie"
+                            title="Répartition des dépenses"
                         />
 
-                        {/* Pertes d'inventaire */}
-                        <InventoryLossesChart
-                            data={inventoryLosses}
+                        {/* 3. RevenueDistribution (Area) - Mobile "Flux de trésorerie" */}
+                        <RevenueDistributionChart
+                            data={revenueData}
                             loading={chartsLoading}
                             currencySymbol={currencySymbol}
                         />

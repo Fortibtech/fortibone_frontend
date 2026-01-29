@@ -20,3 +20,6 @@ export type { CashFlowData } from './CashFlowChart';
 export { default as Sales30DaysChart } from './Sales30DaysChart';
 export type { Sales30DaysData, Sales30DaysChartProps } from './Sales30DaysChart';
 
+export { default as SalesByCategoryChart } from './SalesByCategoryChart';
+export type { SalesByProductCategory, SalesByCategoryChartProps } from './SalesByCategoryChart';
+

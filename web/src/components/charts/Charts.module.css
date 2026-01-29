@@ -235,8 +235,26 @@
     color: #6b7280;
 }
 
-.topProductValue {
-    font-size: 14px;
+
+.filterButtons {
+    display: flex;
+    gap: 8px;
+}
+
+.filterBtn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    background-color: #F5F5F5;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.filterBtnActive {
+    background-color: #E8FFF6;
+    color: #00D09C;
     font-weight: 600;
-    color: #22d989;
 }
