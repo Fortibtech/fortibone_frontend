@@ -9,7 +9,7 @@ import { useCartStore } from '@/stores/cartStore';
 import { searchProducts } from '@/lib/api/products';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import WebProductCard from '@/components/cards/WebProductCard';
-import styles from './home.module.css';
+import styles from './page.module.css';
 
 interface Product {
     id: string;
