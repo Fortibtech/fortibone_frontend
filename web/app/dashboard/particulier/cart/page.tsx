@@ -258,7 +258,7 @@ export default function CartPage() {
                                         onClick={handleBuyNow}
                                         disabled={isLoading}
                                     >
-                                        Passer au paiement
+                                        Passer la commande maintenant
                                     </button>
 
                                     <div style={{ fontSize: '12px', color: '#999', textAlign: 'center', marginTop: '8px' }}>

@@ -167,6 +167,12 @@
     gap: 12px;
 }
 
+/* Yellow Theme for Expenses Card */
+.expenseBox {
+    background-color: #FFF9E6;
+    border-color: #FFC107;
+}
+
 .statBox {
     flex: 1;
     padding: 12px;
@@ -272,6 +278,11 @@
     font-size: 14px;
     font-weight: 600;
     color: #000;
+}
+
+.txRef {
+    font-size: 12px;
+    color: #999;
 }
 
 .txDate {

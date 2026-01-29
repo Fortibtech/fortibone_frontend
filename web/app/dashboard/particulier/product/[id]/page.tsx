@@ -199,9 +199,12 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                             )}
                         </div>
 
-                        {/* Sold By */}
+                        {/* Sold By - Updated with Pill Badge */}
                         <div className={styles.soldBy}>
-                            Vendu par <Link href={`/dashboard/particulier/business/${product.businessId}`} className={styles.vendorLink}>Voir le vendeur</Link>
+                            Vendu par
+                            <Link href={`/dashboard/particulier/business/${product.businessId}`} className={styles.businessBadge}>
+                                {product.business?.name || 'Voir le vendeur'}
+                            </Link>
                         </div>
 
                         {/* Rating */}

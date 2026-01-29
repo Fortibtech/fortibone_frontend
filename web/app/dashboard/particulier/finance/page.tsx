@@ -20,52 +20,35 @@ export default function FinancePage() {
         const fetchData = async () => {
             try {
                 setLoading(true);
+                // Matched Mobile logic: Fetch 100 transactions to calculate expenses accurately
                 const [walletData, txData] = await Promise.all([
                     getWallet(),
-                    getWalletTransactions({ page: 1, limit: 50 })
+                    getWalletTransactions({ page: 1, limit: 100 })
                 ]);
                 setWallet(walletData);
                 const allTransactions = txData.data || [];
                 setTransactions(allTransactions);
 
-                // Calculate totals like mobile StatsCard
-                // Check both 'type' and 'provider' fields (API may use either)
-                // Income: DEPOSIT, PAYMENT, REFUND types/providers
-                const deposits = allTransactions
-                    .filter((tx: WalletTransaction) => {
-                        const provider = (tx.provider || '').toUpperCase();
-                        const type = ((tx as any).type || '').toUpperCase();  // API returns type field
-                        const amount = parseFloat(String(tx.amount)) || 0;
-                        const isCompleted = tx.status?.toUpperCase() === 'COMPLETED';
+                // Calculate Expenses like mobile TotalExpensesCard
+                // Mobile Logic: Sum of negative amounts OR specific provider types
+                let expensesSum = 0;
+                allTransactions.forEach((tx: WalletTransaction) => {
+                    const provider = (tx.provider || '').toUpperCase();
+                    const amountRaw = parseFloat(String(tx.amount)) || 0;
 
-                        // Income types
-                        const incomeTypes = ['DEPOSIT', 'PAYMENT', 'REFUND'];
-                        const isIncomeType = incomeTypes.includes(type) || incomeTypes.includes(provider);
-                        const isPositiveAmount = amount > 0;
+                    // Expense conditions from mobile
+                    const isExpense = amountRaw < 0 || ['PAYMENT', 'TRANSFER', 'WITHDRAWAL'].includes(provider);
 
-                        return isCompleted && (isIncomeType || isPositiveAmount);
-                    })
-                    .reduce((sum: number, tx: WalletTransaction) => sum + Math.abs(parseFloat(String(tx.amount))), 0);
+                    if (isExpense && amountRaw < 0) {
+                        expensesSum += amountRaw;
+                    }
+                });
 
-                // Expenses: WITHDRAWAL, TRANSFER types/providers, or negative amounts
-                const withdrawals = allTransactions
-                    .filter((tx: WalletTransaction) => {
-                        const provider = (tx.provider || '').toUpperCase();
-                        const type = ((tx as any).type || '').toUpperCase();  // API returns type field
-                        const amount = parseFloat(String(tx.amount)) || 0;
-                        const isCompleted = tx.status?.toUpperCase() === 'COMPLETED';
+                setTotalWithdrawals(Math.abs(expensesSum));
 
-                        // Expense types
-                        const expenseTypes = ['WITHDRAWAL', 'TRANSFER'];
-                        const isExpenseType = expenseTypes.includes(type) || expenseTypes.includes(provider);
-                        const isNegativeAmount = amount < 0;
-
-                        return isCompleted && (isExpenseType || isNegativeAmount);
-                    })
-                    .reduce((sum: number, tx: WalletTransaction) => sum + Math.abs(parseFloat(String(tx.amount))), 0);
-
-                setTotalDeposits(deposits);
-                setTotalWithdrawals(withdrawals);
+                // Note: "Total Deposits" is replaced by "Available Balance" in UI to match mobile
+                // so we don't strictly need to calculate total deposits here anymore, 
+                // but keeping it simple.
             } catch (error) {
                 console.error('Erreur chargement wallet:', error);
             } finally {
@@ -134,17 +117,19 @@ export default function FinancePage() {
                         </Link>
                     </div>
                     <div className={styles.statsRow}>
+                        {/* LEFT: Available Balance (Green Theme like Mobile AvailableBalanceCard) */}
                         <div className={styles.statBox}>
-                            <div className={styles.statIcon}>↙️</div>
-                            <span className={styles.statLabel}>Total Entrées</span>
-                            <span className={styles.statValue} style={{ color: '#00af66' }}>
-                                {loading ? '...' : `${formatAmount(totalDeposits)} ${currencySymbol}`}
+                            <div className={styles.statIcon} style={{ color: '#4CAF50' }}>↙️</div>
+                            <span className={styles.statLabel}>Solde disponible</span>
+                            <span className={styles.statValue} style={{ color: '#000' }}>
+                                {loading ? '...' : `${formatAmount(balance)} ${currencySymbol}`}
                             </span>
                         </div>
-                        <div className={styles.statBox}>
-                            <div className={styles.statIcon}>↗️</div>
-                            <span className={styles.statLabel}>Total Sorties</span>
-                            <span className={styles.statValue} style={{ color: '#ff4444' }}>
+                        {/* RIGHT: Expenses (Yellow Theme like Mobile TotalExpensesCard) */}
+                        <div className={`${styles.statBox} ${styles.expenseBox}`}>
+                            <div className={styles.statIcon} style={{ color: '#FFC107' }}>↗️</div>
+                            <span className={styles.statLabel}>En dépenses</span>
+                            <span className={styles.statValue} style={{ color: '#000' }}>
                                 {loading ? '...' : `${formatAmount(totalWithdrawals)} ${currencySymbol}`}
                             </span>
                         </div>
@@ -191,6 +176,10 @@ export default function FinancePage() {
                                                 {tx.provider === 'DEPOSIT' ? 'Dépôt' :
                                                     tx.provider === 'WITHDRAWAL' ? 'Retrait' :
                                                         tx.provider === 'TRANSFER' ? 'Transfert' : tx.provider}
+                                            </span>
+                                            {/* Reference ID like Mobile */}
+                                            <span className={styles.txRef}>
+                                                {(tx as any).providerTransactionId || (tx as any).orderId || tx.id || 'N/A'}
                                             </span>
                                             <span className={styles.txDate}>
                                                 {new Date(tx.createdAt).toLocaleDateString('fr-FR')}

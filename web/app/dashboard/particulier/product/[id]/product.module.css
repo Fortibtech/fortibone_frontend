@@ -171,6 +171,25 @@
     /* Tweak spacing */
 }
 
+/* New Business Badge Style (Mobile Parity) */
+.businessBadge {
+    display: inline-flex;
+    align-items: center;
+    background-color: #ECFDF5;
+    color: #059669;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.businessBadge:hover {
+    background-color: #D1FAE5;
+}
+
+/* Original Link Style (Fallback/Desktop alternate if needed) */
 .vendorLink {
     color: var(--color-primary);
     font-weight: 500;
@@ -204,7 +223,9 @@
 .price {
     font-size: 40px;
     font-weight: 700;
-    color: var(--color-primary);
+    /* Updated to match Mobile: Black/Dark Gray instead of Green */
+    color: #111;
+    /* color: var(--color-primary); */
     /* Emerald Green Price */
     letter-spacing: -1px;
     display: flex;
@@ -368,11 +389,30 @@
     box-shadow: var(--shadow-md);
 }
 
-.addToCartBtn:disabled {
-    background: var(--color-gray-300);
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+/* Responsive Mobile Bottom Bar */
+@media (max-width: 640px) {
+    .quantitySection {
+        margin-top: 0;
+        /* Reset for desktop flow if needed, but here we go fixed */
+    }
+
+    .addToCartGroup {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        padding: 16px;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        height: auto;
+        border-top: 1px solid #eee;
+    }
+
+    /* Adjust padding to prevent footer overlap */
+    .container {
+        padding-bottom: 100px;
+    }
 }
 
 /* Reviews - Clean up */

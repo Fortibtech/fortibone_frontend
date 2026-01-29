@@ -16,7 +16,8 @@ import styles from './deposit.module.css';
 // Clé publique Stripe (identique à mobile)
 const stripePromise = loadStripe('pk_test_51PBf5wRqgxgrSOxzkT3CoAj3wnYQKPSKxZLmtaH9lt8XXO8NoIknakl1nMxj14Mj25f3VC56dchbm7E4ATNXco2200dXM6svtP');
 
-const presets = [10000, 20000, 50000, 100000];
+const presets = [10000, 20000, 50000, 15000];
+const MAX_AMOUNT = 99999;
 
 // Composant interne avec accès aux hooks Stripe
 function DepositForm() {
@@ -66,6 +67,11 @@ function DepositForm() {
     const handleDeposit = async () => {
         if (amount < 1000) {
             setError('Montant minimum: 1 000 ' + currencySymbol);
+            return;
+        }
+
+        if (amount > MAX_AMOUNT) {
+            setError(`Montant maximum: ${MAX_AMOUNT.toLocaleString('fr-FR')} ${currencySymbol}`);
             return;
         }
 

@@ -1,0 +1,226 @@
+.container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    /* Mobile: ensure padding for fixed footer if needed */
+    padding-bottom: 80px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* Match Mobile Transfer Header */
+    padding: 12px 16px;
+    /* Match Mobile paddingHorizontal: 16, paddingVertical: 12 */
+    border-bottom: 1px solid #E5E7EB;
+    /* Match Mobile #E5E7EB */
+    background: #FFFFFF;
+}
+
+.backButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    /* Match Mobile padding: 4 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.title {
+    font-size: 18px;
+    /* Match Mobile */
+    font-weight: 600;
+    color: #111111;
+    /* Match Mobile */
+}
+
+.content {
+    flex: 1;
+    padding: 20px 16px 30px;
+    /* Match Mobile contentContainerStyle */
+    overflow-y: auto;
+}
+
+.section {
+    margin-bottom: 24px;
+}
+
+.label {
+    display: block;
+    font-size: 15px;
+    /* Match Mobile sectionTitle */
+    font-weight: 600;
+    color: #374151;
+    /* Match Mobile */
+    margin-bottom: 12px;
+}
+
+.amountDisplay {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 16px;
+    /* Match Mobile */
+}
+
+.amountValue {
+    font-size: 40px;
+    /* Match Mobile amountDisplay */
+    font-weight: 700;
+    color: #111111;
+}
+
+.currency {
+    font-size: 20px;
+    /* Match Mobile */
+    color: #6B7280;
+}
+
+.presets {
+    display: flex;
+    flex-wrap: wrap;
+    /* Match Mobile flexWrap: "wrap" */
+    justify-content: space-between;
+    /* Match Mobile */
+    gap: 10px;
+    /* Match Mobile */
+    margin-bottom: 16px;
+}
+
+.preset {
+    width: 30%;
+    /* Match Mobile width: "30%" */
+    padding: 12px 0;
+    /* Match Mobile paddingVertical: 12 */
+    border-radius: 12px;
+    /* Match Mobile */
+    border: 1px solid #E5E7EB;
+    /* Match Mobile */
+    background: #FFFFFF;
+    font-size: 13px;
+    /* Match Mobile */
+    font-weight: 500;
+    /* Match Mobile: default is regular but text color #374151 */
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preset:hover {
+    border-color: var(--color-primary);
+}
+
+.preset.active {
+    background: var(--color-primary);
+    /* #00BFA5 */
+    border-color: var(--color-primary);
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+.customInput,
+.input {
+    width: 100%;
+    padding: 16px;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    font-size: 16px;
+    background: #FFFFFF;
+}
+
+.customInput {
+    text-align: center;
+}
+
+.input:focus,
+.customInput:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.helpText {
+    font-size: 12px;
+    color: #6B7280;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.error {
+    background: #fef2f2;
+    color: #dc2626;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+.success {
+    background: #ECFDF5;
+    color: #047857;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+/* Footer Fixed at Bottom for Mobile */
+.footer {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border-top: 1px solid #E5E7EB;
+    background: #FFFFFF;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 101;
+}
+
+/* Responsive: On desktop, footer doesn't need to be fixed if inside a layout, 
+   but requirements aim for mobile parity. 
+   If user is on proper mobile, 'left: 0, right: 0' works. 
+   Inside DashboardLayout? We might need to adjust 'left' if Sidebar is present.
+   For now, we target Mobile View so fixed bottom is appropriate. 
+*/
+
+.cancelButton {
+    flex: 1;
+    padding: 16px;
+    border-radius: 12px;
+    border: none;
+    background: #F3F4F6;
+    /* Match Mobile */
+    color: var(--color-primary);
+    /* Match Mobile */
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.confirmButton {
+    flex: 2;
+    padding: 16px;
+    border-radius: 12px;
+    border: none;
+    background: var(--color-primary);
+    /* #00BFA5 */
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.confirmButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Hide Sidebar override if possible? No, that's in Layout. */
