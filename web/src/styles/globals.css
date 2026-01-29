@@ -2,12 +2,12 @@
 
 /* ===== CSS Variables ===== */
 :root {
-  /* Primary Colors - ALIGNED WITH MOBILE #1BB874 */
-  --color-primary: #1BB874;
-  --color-primary-light: #22d989;
-  --color-primary-dark: #16a465;
-  --color-primary-50: #e6f9f1;
-  --color-primary-100: #d1fae5;
+  /* Primary Colors - ALIGNED WITH MOBILE #00BFA5 (Komora Teal) */
+  --color-primary: #00BFA5;
+  --color-primary-light: #26C6AC;
+  --color-primary-dark: #00897B;
+  --color-primary-50: #E0F2F1;
+  --color-primary-100: #B2DFDB;
 
   /* Secondary Colors */
   --color-secondary: #0ea5e9;
@@ -205,11 +205,14 @@ input::placeholder {
   font-size: var(--text-sm);
   font-weight: 500;
   padding: var(--space-3) var(--space-6);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  /* 12px (Mobile Match) */
   border: none;
   cursor: pointer;
   transition: all var(--transition-fast);
   text-decoration: none;
+  min-height: 48px;
+  /* Close to Mobile 50px */
 }
 
 .btn:disabled {
@@ -218,11 +221,15 @@ input::placeholder {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  background: var(--color-primary);
+  /* Flat Color Mobile Style */
   color: var(--color-white);
+  font-weight: 600;
+  /* Bold like mobile */
 }
 
 .btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
@@ -259,23 +266,28 @@ input::placeholder {
 .btn-lg {
   padding: var(--space-4) var(--space-8);
   font-size: var(--text-base);
+  min-height: 56px;
 }
 
 .btn-sm {
   padding: var(--space-2) var(--space-4);
   font-size: var(--text-xs);
+  min-height: 36px;
 }
 
 .btn-icon {
   padding: var(--space-2);
   width: 40px;
   height: 40px;
+  min-height: 40px;
+  border-radius: var(--radius-full);
 }
 
 /* ===== Cards (Mobile Match) ===== */
 .card {
   background-color: var(--color-white);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
+  /* 12px (Mobile) */
   box-shadow: var(--shadow-sm);
   border: 1px solid transparent;
   /* Cleaner look */

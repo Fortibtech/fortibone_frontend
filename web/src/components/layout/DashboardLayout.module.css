@@ -27,133 +27,47 @@
 }
 
 /* === PREMIUM LAYOUT - Full Width Content === */
+/* === PREMIUM LAYOUT - REFACTORED FOR STRICT ALIGNMENT === */
 .content {
     flex: 1;
     overflow-y: auto;
     width: 100%;
-
-    /* === STRIPE/LINEAR STYLE: Full width, generous padding === */
-    max-width: none;
-    /* Removed 1440px restriction for premium feel */
-    margin: 0;
-    padding: var(--space-8) var(--space-8);
+    margin: 0 auto;
+    /* Centering */
+    padding: var(--space-6) var(--space-8);
 }
 
-/* === Premium Grid Utilities === */
-.premiumGrid {
-    display: grid;
-    gap: var(--space-6);
-    width: 100%;
-}
-
-/* Stats row - 3 columns on desktop */
-.statsRow {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-6);
-}
-
-/* Dual section - 2/3 + 1/3 split */
-.dualSection {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: var(--space-6);
-}
-
-/* Full width section */
-.fullSection {
-    width: 100%;
-}
-
-.overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 90;
-    animation: fadeIn var(--transition-fast);
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-/* === RESPONSIVE BREAKPOINTS === */
-
-/* Large Desktop (1920px+) */
-@media (min-width: 1920px) {
-    .content {
-        padding: var(--space-10) var(--space-12);
-    }
-}
-
-/* Desktop (1440px+) */
+/* Desktop: Max Width strict to avoid "empty space" feel */
 @media (min-width: 1440px) {
     .content {
-        padding: var(--space-8) var(--space-10);
+        max-width: 1440px;
+        padding: var(--space-8);
     }
 
-    .statsRow {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
-/* Laptop (1280px - 1439px) */
-@media (max-width: 1439px) and (min-width: 1280px) {
-    .content {
-        padding: var(--space-6) var(--space-8);
+    /* On 1920px screens, keep the content centered with gray background */
+    .layout {
+        background-color: var(--color-gray-50);
     }
 }
 
-/* Tablet (1024px - 1279px) */
-@media (max-width: 1279px) and (min-width: 1024px) {
-    .sidebarContainer.collapsed {
-        width: var(--sidebar-collapsed-width);
-    }
-
-    .content {
-        padding: var(--space-6);
-    }
-
-    .dualSection {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Tablet and below - Sidebar overlay */
+/* Tablet and below: STRICT NO SIDEBAR */
 @media (max-width: 1024px) {
     .sidebarContainer {
-        position: fixed;
-        z-index: 100;
-        transform: translateX(-100%);
-        transition: transform var(--transition-base);
-        width: var(--sidebar-width);
-    }
-
-    .sidebarContainer.open {
-        transform: translateX(0);
-    }
-
-    .sidebarContainer.collapsed {
-        width: var(--sidebar-width);
+        display: none !important;
+        /* Strict hide as requested */
     }
 
     .main {
         margin-left: 0 !important;
         padding-bottom: var(--mobile-nav-height);
-    }
-
-    .main.collapsed {
-        margin-left: 0;
+        /* Space for Bottom Bar */
+        width: 100%;
     }
 
     .content {
         padding: var(--space-4);
+        /* Mobile Padding 16px */
+        max-width: 100%;
     }
 
     .statsRow {
