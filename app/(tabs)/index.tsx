@@ -1,7 +1,9 @@
 // app/(tabs)/index.tsx
-import { getAllProductsLike, ProductSearchResponse } from "@/api/Products";
+
+import { getAllProductsLike } from "@/api/Products";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useCartStore } from "@/stores/useCartStore";
+import { useUserLocationStore } from "@/stores/useUserLocationStore"; // ← Ajout important
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { JSX, useEffect, useState } from "react";
@@ -19,32 +21,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Polygon } from "react-native-svg";
-
-// 🔹 image fallback si produit n'a pas d'image
-const fallbackImage = require("@/assets/images/store-placeholder.png");
-
-// Type produit minimal (adapté à ton API)
-type Product = {
-  id: string;
-  productId: string;
-  name: string;
-  businessName?: string;
-  category?: string;
-  rating?: number;
-  image_url?: string | null;
-};
+import { Products } from "@/types/Product";
 
 const HomePage: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const itemsCount = useCartStore((state) => state.items.length);
+  const [products, setProducts] = useState<Products[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [suggestions, setSuggestions] = useState<Products[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const cartItems = useCartStore((s: { items: any }) => s.items);
-  const totalCount = cartItems.reduce(
-    (sum: any, item: { quantity: any }) => sum + item.quantity,
-    0
-  );
+
+  // Récupération de la position de l'utilisateur
+  const { latitude: userLat, longitude: userLng } = useUserLocationStore();
 
   useEffect(() => {
     fetchProducts();
@@ -67,29 +55,52 @@ const HomePage: React.FC = () => {
   const fetchProducts = async (search: string = "") => {
     try {
       setLoading(true);
-      const params = search ? { search } : {};
-      const response: ProductSearchResponse = await getAllProductsLike(params);
-      setProducts(response.data);
+
+      const baseParams = search ? { search } : {};
+
+      const [merchantsRes, restaurantsRes]: any = await Promise.all([
+        getAllProductsLike({
+          ...baseParams,
+          businessType: "COMMERCANT",
+        }),
+        getAllProductsLike({
+          ...baseParams,
+          businessType: "RESTAURATEUR",
+        }),
+      ]);
+
+      const merged = [...merchantsRes.data, ...restaurantsRes.data];
+
+      setProducts(merged);
     } catch (error) {
       console.error("❌ Erreur lors du chargement des produits :", error);
     } finally {
       setLoading(false);
     }
   };
-
   const fetchSuggestions = async (query: string) => {
     try {
-      const response: ProductSearchResponse = await getAllProductsLike({
-        search: query,
-        limit: 5,
-      });
-      setSuggestions(response.data);
+      const [merchantsRes, restaurantsRes]: any = await Promise.all([
+        getAllProductsLike({
+          search: query,
+          limit: 5,
+          businessType: "COMMERCANT",
+        }),
+        getAllProductsLike({
+          search: query,
+          limit: 5,
+          businessType: "RESTAURATEUR",
+        }),
+      ]);
+
+      const merged = [...merchantsRes.data, ...restaurantsRes.data].slice(0, 5); // on limite à 5 suggestions
+
+      setSuggestions(merged);
     } catch (error) {
       console.error("❌ Erreur lors du chargement des suggestions :", error);
       setSuggestions([]);
     }
   };
-
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
   };
@@ -101,7 +112,7 @@ const HomePage: React.FC = () => {
     Keyboard.dismiss();
   };
 
-  const handleSuggestionSelect = (product: Product) => {
+  const handleSuggestionSelect = (product: Products) => {
     setSearchQuery(product.name);
     setSuggestions([]);
     setShowSuggestions(false);
@@ -109,32 +120,78 @@ const HomePage: React.FC = () => {
     fetchProducts(product.name);
   };
 
+  // Fonction de calcul de distance (Haversine)
+  const calculateDistance = (
+    userLat: number | null,
+    userLng: number | null,
+    prodLat: number | null,
+    prodLng: number | null
+  ): string => {
+    if (!userLat || !userLng || !prodLat || !prodLng) {
+      return "Distance inconnue";
+    }
+
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const R = 6371; // Rayon de la Terre en km
+
+    const dLat = toRad(prodLat - userLat);
+    const dLon = toRad(prodLng - userLng);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(userLat)) *
+        Math.cos(toRad(prodLat)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+
+    if (distance < 1) {
+      return `${Math.round(distance * 1000)} m de vous`;
+    }
+    return `à ${distance.toFixed(1)} km de vous`;
+  };
+
+  // Fonction pour générer les étoiles
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    const stars = [];
+
+    for (let i = 0; i < fullStars; i++) {
+      stars.push("🌟");
+    }
+    if (hasHalfStar) {
+      stars.push("⭐");
+    }
+    while (stars.length < 5) {
+      stars.push("☆");
+    }
+
+    return stars.join("");
+  };
+
   const renderHeader = (): JSX.Element => (
     <View style={styles.header}>
       <View style={styles.header2}>
-        <TouchableOpacity
-          // onPress={() => router.push("/(profile-particulier)/category")}
-          style={{ padding: 8 }}
-        >
+        <TouchableOpacity style={{ padding: 8 }}>
           <Ionicons name="grid-outline" size={24} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerLeft}>
           <View style={styles.logoContainer}>
-            <Image
-              source={require("@/assets/images/logo/white.png")}
-              style={[styles.bgImage, { top: 0, left: 0 }]}
-            />
-            <Text style={styles.logoText}>ForthOne</Text>
+            <Text style={styles.logoText}>KomoraLink</Text>
           </View>
         </View>
+
         <TouchableOpacity
           style={styles.notificationButton}
-           onPress={() => router.push("/(profile-particulier)/cart")}
+          onPress={() => router.push("/(profile-particulier)/cart")}
         >
           <Ionicons name="cart-outline" size={24} color="#fff" />
-          {totalCount > 0 && (
+          {itemsCount > 0 && (
             <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{totalCount}</Text>
+              <Text style={styles.cartBadgeText}>{itemsCount}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -161,6 +218,12 @@ const HomePage: React.FC = () => {
           onSubmitEditing={handleSearchSubmit}
           returnKeyType="search"
         />
+        <TouchableOpacity
+          style={styles.mapIconButton}
+          onPress={() => router.push("/client-produit-details/map")}
+        >
+          <Ionicons name="map-outline" size={24} color="white" />
+        </TouchableOpacity>
       </View>
       {showSuggestions && suggestions.length > 0 && (
         <View style={styles.searchSuggestions}>
@@ -198,11 +261,10 @@ const HomePage: React.FC = () => {
         </Svg>
         <View style={styles.bannerContentWrapper}>
           <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>Don&apos;t Miss Out!</Text>
-            <Text style={styles.bannerSubtitle}>Discount up to 50%</Text>
-            <TouchableOpacity style={styles.bannerButton}>
-              <Text style={styles.bannerButtonText}>Check Now</Text>
-            </TouchableOpacity>
+            <Text style={styles.bannerTitle}>Ne ratez pas ça !</Text>
+            <Text style={styles.bannerSubtitle}>
+              Jusqu&apos;à 50 % de réduction
+            </Text>
           </View>
           <View style={styles.bannerImageContainer}>
             <Image
@@ -215,38 +277,59 @@ const HomePage: React.FC = () => {
     </View>
   );
 
-  const renderEnterpriseCard = (product: Product): JSX.Element => (
-    <TouchableOpacity
-      key={product.id}
-      style={styles.gridItem}
-      onPress={() =>
-        router.push({
-          pathname: "/client-produit-details/[id]",
-          params: { id: product.productId.toString() },
-        })
-      }
-      activeOpacity={0.8}
-    >
-      <Image
-        source={product.image_url ? { uri: product.image_url } : fallbackImage}
-        style={styles.gridImage}
-      />
-      <View style={styles.gridContent}>
-        <Text style={styles.gridTitle} numberOfLines={1}>
-          {product.name}
-        </Text>
-        <Text style={styles.gridCategory}>{product.category || "Divers"}</Text>
-        <View style={styles.gridFooter}>
-          <View style={styles.ratingContainer}>
-            <Text style={styles.rating}>{product.rating ?? 0} k</Text>
+  const renderEnterpriseCard = (product: Products): JSX.Element => {
+    const rating = product.averageRating ?? 0;
+    const reviewCount = product.reviewCount ?? 0;
+
+    const distanceText = calculateDistance(
+      userLat,
+      userLng,
+      product.latitude,
+      product.longitude
+    );
+
+    return (
+      <TouchableOpacity
+        key={product.id}
+        style={styles.gridItem}
+        onPress={() =>
+          router.push({
+            pathname: "/client-produit-details/[id]",
+            params: { id: product.productId },
+          })
+        }
+        activeOpacity={0.8}
+      >
+        <Image
+          source={{
+            uri: product.productImageUrl || "https://via.placeholder.com/300",
+          }}
+          style={styles.gridImage}
+          resizeMode="cover"
+        />
+
+        <View style={styles.gridContent}>
+          <Text style={styles.gridTitle} numberOfLines={2}>
+            {product.name}
+          </Text>
+
+          <Text style={styles.gridPrice}>
+            {product.price.toLocaleString("fr-FR")} {product.currencyCode}
+          </Text>
+
+          <View style={styles.ratingRow}>
+            <Text style={styles.starsText}>{renderStars(rating)}</Text>
+            {reviewCount > 0 && (
+              <Text style={styles.reviewCountText}>({reviewCount})</Text>
+            )}
           </View>
-          <View style={styles.discountBadge}>
-            <Ionicons name="add" style={styles.discountText} />
-          </View>
+
+          {/* Distance réelle */}
+          <Text style={styles.distanceText}>{distanceText}</Text>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const renderSkeleton = (): JSX.Element => (
     <View style={styles.loadingContainer}>
@@ -281,10 +364,34 @@ const HomePage: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-    justifyContent: "center",
+  mapIconButton: {
+    paddingLeft: 12,
+    paddingRight: 8,
+  },
+  gridPrice: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#059669",
+    marginVertical: 4,
+  },
+  ratingRow: {
+    flexDirection: "row",
     alignItems: "center",
+    marginTop: 4,
+  },
+  starsText: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  reviewCountText: {
+    fontSize: 13,
+    color: "#666",
+  },
+  distanceText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 6,
+    fontStyle: "italic",
   },
   container: {
     flex: 1,
@@ -303,28 +410,19 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   headerLeft: {
-    flexDirection: "row",
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   logoContainer: {
-    marginLeft: 12,
-    justifyContent: "flex-start",
+    justifyContent: "center",
     alignItems: "center",
-    alignContent: "center",
-    flexDirection: "row",
-  },
-  bgImage: {
-    width: 20,
-    height: 20,
-    marginRight: 10,
-    marginTop: 5,
-    resizeMode: "contain",
   },
   logoText: {
     color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: 1,
   },
   notificationButton: {
     padding: 4,
@@ -442,23 +540,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontWeight: "400",
   },
-  bannerButton: {
-    backgroundColor: "#059669",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignSelf: "flex-start",
-    shadowColor: "#059669",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  bannerButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   bannerImageContainer: {
     width: 200,
     height: 150,
@@ -527,42 +608,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#333",
     marginBottom: 1,
-  },
-  gridCategory: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 1,
-    fontWeight: "400",
-  },
-  gridFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  rating: {
-    fontSize: 13,
-    color: "#333",
-    marginLeft: 4,
-    fontWeight: "800",
-  },
-  discountBadge: {
-    backgroundColor: "#FFD700",
-    borderRadius: 80,
-    width: 40,
-    height: 40,
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    alignContent: "center",
-  },
-  discountText: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "white",
   },
   loadingContainer: {
     flex: 1,

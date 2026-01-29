@@ -3,6 +3,7 @@ import BackButton from "@/components/BackButton";
 import CustomButton from "@/components/CustomButton";
 import { useUserStore } from "@/store/userStore";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage"; // ← Important
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -15,14 +16,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const OtpVerify = () => {
-  const email = useUserStore((state) => state.email); // récupère l'email depuis le store
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]); // 6 cases
+  const email = useUserStore((state) => state.email);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
-  const [timer, setTimer] = useState(600); // 10 minutes
+  const [timer, setTimer] = useState(600);
   const router = useRouter();
   const inputsRef = useRef<TextInput[]>([]);
 
-  // Timer
   useEffect(() => {
     if (timer <= 0) return;
     const interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
@@ -53,29 +53,39 @@ const OtpVerify = () => {
     try {
       console.log("Code OTP saisi:", code, "pour email:", email);
 
-      // 🔹 Vérification du code + récupération du token et du profil
       const data = await verifyEmail(email!, code);
 
-      // 🔑 Sauvegarde du token
       const store = useUserStore.getState();
       await store.setToken(data.access_token);
 
-      // 🟢 Met à jour directement le profil dans le store
       if (data.userProfile) {
         store.setUserProfile(data.userProfile);
-        console.log("✅ Profil mis à jour après OTP:", data.userProfile);
       } else {
-        // fallback : rafraîchit depuis l'API si le profil n'est pas renvoyé
         await store.refreshProfile();
       }
 
       Alert.alert("✅ Succès", "Votre compte est vérifié !");
 
-      // 🎯 Redirection selon le type de compte
-      const profileType = store.userProfile?.profileType;
-      if (profileType === "PRO") {
+      // 🔹 On lit la même clé que dans Onboarding et Register : "userProfile"
+      let savedProfile: string | null = null;
+      try {
+        savedProfile = await AsyncStorage.getItem("userProfile");
+        console.log(
+          "🔍 Profil choisi au onboarding (AsyncStorage) :",
+          savedProfile
+        );
+      } catch (error) {
+        console.error("Erreur lecture AsyncStorage :", error);
+      }
+
+      // Redirection selon le choix initial de l'utilisateur
+      if (savedProfile === "professionnel") {
+        // On peut nettoyer la clé après usage (optionnel mais propre)
+        await AsyncStorage.removeItem("userProfile");
         router.replace("/(create-business)/");
       } else {
+        // Par défaut : particulier (ou si valeur inconnue)
+        await AsyncStorage.removeItem("userProfile");
         router.replace("/(tabs)");
       }
     } catch (error: any) {
@@ -85,17 +95,17 @@ const OtpVerify = () => {
       setLoading(false);
     }
   };
+
   const handleResendOtp = async () => {
     try {
-      const result = await resendOtp(email!, "EMAIL_VERIFICATION");
-      console.log("✅ OTP renvoyé:", result.message);
-      Alert.alert("Succès", "OTP renvoyé");
-      setTimer(600); // reset timer
+      await resendOtp(email!, "EMAIL_VERIFICATION");
+      Alert.alert("Succès", "Un nouveau code a été envoyé");
+      setTimer(600);
     } catch (error: any) {
-      console.error("⚠️ Erreur:", error);
       Alert.alert("Erreur", error.message || "Impossible de renvoyer l'OTP");
     }
   };
+
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
       .toString()
@@ -140,7 +150,7 @@ const OtpVerify = () => {
           ))}
         </View>
 
-        <TouchableOpacity onPress={handleResendOtp}>
+        <TouchableOpacity onPress={handleResendOtp} disabled={timer > 0}>
           <Text style={styles.subtitle}>
             Vous n&apos;avez pas reçu le code ?{" "}
             <Text style={{ color: timer > 0 ? "#9ca3af" : "#16a34a" }}>
@@ -158,7 +168,7 @@ const OtpVerify = () => {
             borderRadius={50}
             fontSize={16}
             onPress={handleSubmit}
-            disabled={loading}
+            disabled={loading || !otp.every((d) => d !== "")}
           />
         </View>
       </View>

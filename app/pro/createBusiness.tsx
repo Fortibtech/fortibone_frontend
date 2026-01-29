@@ -21,7 +21,6 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
-
 // Import des services API
 import {
   BusinessesService,
@@ -51,12 +50,10 @@ const MapPicker: React.FC<MapPickerProps> = ({
   });
   const [loadingLocation, setLoadingLocation] = useState(false);
   const webViewRef = useRef<WebView>(null);
-
   const getCurrentLocation = async () => {
     try {
       setLoadingLocation(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
-
       if (status !== "granted") {
         Alert.alert(
           "Permission refusée",
@@ -64,7 +61,6 @@ const MapPicker: React.FC<MapPickerProps> = ({
         );
         return;
       }
-
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
@@ -587,6 +583,7 @@ const CreateBusiness: React.FC = () => {
         longitude: business.longitude!,
         currencyId: business.currencyId!,
         activitySector: "",
+        commerceType: "PHYSICAL"
       });
 
       console.log("✅ Entreprise créée:", newBusiness);

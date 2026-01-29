@@ -23,6 +23,7 @@ interface StockReceptionModalProps {
     expirationDate: Date;
     lotNumber: string;
   }) => void;
+  symbol: string;
 }
 
 export default function StockReceptionModal({
@@ -30,6 +31,7 @@ export default function StockReceptionModal({
   onClose,
   product,
   onValidate,
+  symbol,
 }: StockReceptionModalProps) {
   const [quantity, setQuantity] = useState(10);
   const [receptionDate, setReceptionDate] = useState(new Date());
@@ -149,7 +151,9 @@ export default function StockReceptionModal({
                 <View style={styles.productDetails}>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Prix Unitaire</Text>
-                    <Text style={styles.detailValue}>{product.price} €</Text>
+                    <Text style={styles.detailValue}>
+                      {product.price} {symbol || ""}
+                    </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Stock Actuel</Text>

@@ -22,7 +22,11 @@ import {
   BatchPayload,
   addVariantBatch,
 } from "@/api/Inventory";
+
 import Toast from "react-native-toast-message";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
+import { Batch, getVariantBatches } from "@/api/inventory/batchesApi";
 
 // === Types ===
 type OperationType = "Entrée" | "Sortie" | "Ajustement";
@@ -38,7 +42,7 @@ type LotOption = {
   label: string;
   batchId: string;
   available: number;
-  exp: string;
+  exp: string; // Format JJ/MM/AAAA
 };
 
 const operationTypes: readonly OperationType[] = [
@@ -56,28 +60,12 @@ const motifs: readonly Motif[] = [
   "Autre",
 ] as const;
 
-// === Lots simulés (à remplacer par API) ===
-const simulatedLots: LotOption[] = [
-  {
-    label: "Lot #002 (5 unités) Exp: 30/11/2025",
-    batchId: "clw9a1b2c0000d4t6efgh1234",
-    available: 5,
-    exp: "30/11/2025",
-  },
-  {
-    label: "Lot #001 (3 unités) Exp: 15/10/2025",
-    batchId: "clw9a1b2c0000d4t6efgh5678",
-    available: 3,
-    exp: "15/10/2025",
-  },
-];
-
 // === Composant principal ===
 export default function StockAdjustment() {
   // === Paramètres ===
   const { businessId: rawBusinessId, productId: rawProductId } =
     useLocalSearchParams();
-
+  const business = useBusinessStore((state) => state.business);
   const businessId = Array.isArray(rawBusinessId)
     ? rawBusinessId[0]?.trim()
     : rawBusinessId?.trim();
@@ -89,7 +77,10 @@ export default function StockAdjustment() {
   // === États ===
   const [inventory, setInventory] = useState<Product[]>([]);
   const [operationType, setOperationType] = useState<OperationType>("Entrée");
-  const [selectedLot, setSelectedLot] = useState<LotOption>(simulatedLots[0]);
+  const [lots, setLots] = useState<LotOption[]>([]);
+  const [selectedLot, setSelectedLot] = useState<LotOption | null>(null);
+  const [lotsLoading, setLotsLoading] = useState(false);
+  const [symbol, setSymbol] = useState<string | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [motif, setMotif] = useState<Motif>("Reception de stock");
   const [totalPages, setTotalPages] = useState(1);
@@ -121,6 +112,10 @@ export default function StockAdjustment() {
         setInventory((prev) => (page === 1 ? mapped : [...prev, ...mapped]));
         setTotalPages(res.totalPages);
         setCurrentPage(page);
+        if (business) {
+          const symbol = await getCurrencySymbolById(business.currencyId);
+          setSymbol(symbol);
+        }
       } catch (err) {
         Toast.show({
           type: "error",
@@ -131,7 +126,7 @@ export default function StockAdjustment() {
         setLoading(false);
       }
     },
-    [loading, totalPages, businessId]
+    [loading, totalPages, businessId, business]
   );
 
   useEffect(() => {
@@ -144,6 +139,68 @@ export default function StockAdjustment() {
     return inventory.find((item) => item.id === productId) || null;
   }, [inventory, productId]);
 
+  // === Charger les lots depuis l'API ===
+  const fetchBatches = useCallback(async () => {
+    if (!currentProduct?.id) return;
+
+    setLotsLoading(true);
+    try {
+      const response = await getVariantBatches({
+        variantId: currentProduct.id,
+        limit: 50, // Suffisant pour la plupart des cas
+      });
+
+      const formattedLots: LotOption[] = response.data
+        .filter((batch: Batch) => batch.quantity > 0) // Optionnel : cacher les lots à 0
+        .map((batch: Batch) => {
+          const expDate = new Date(batch.expirationDate);
+          const formattedExp = expDate.toLocaleDateString("fr-FR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          });
+
+          return {
+            label: `Lot #${batch.id.slice(-6)} (${batch.quantity} unité${
+              batch.quantity > 1 ? "s" : ""
+            }) Exp: ${formattedExp}`,
+            batchId: batch.id,
+            available: batch.quantity,
+            exp: formattedExp,
+          };
+        })
+        // Tri par date d'expiration décroissante (plus récent en haut)
+        .sort((a, b) => {
+          const dateA = a.exp.split("/").reverse().join("");
+          const dateB = b.exp.split("/").reverse().join("");
+          return dateB.localeCompare(dateA);
+        });
+
+      setLots(formattedLots);
+
+      // Sélectionner automatiquement le premier lot si aucun n'est sélectionné
+      if (formattedLots.length > 0 && !selectedLot) {
+        setSelectedLot(formattedLots[0]);
+      } else if (formattedLots.length === 0) {
+        setSelectedLot(null);
+      }
+    } catch (err) {
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Impossible de charger les lots",
+      });
+      setLots([]);
+      setSelectedLot(null);
+    } finally {
+      setLotsLoading(false);
+    }
+  }, [currentProduct?.id, selectedLot]);
+
+  useEffect(() => {
+    fetchBatches();
+  }, [fetchBatches]);
+
   // === Alerte si produit non trouvé ===
   useEffect(() => {
     if (inventory.length > 0 && productId && !currentProduct) {
@@ -155,10 +212,7 @@ export default function StockAdjustment() {
     }
   }, [currentProduct, inventory, productId]);
 
-  // === Récupérer batchId ===
-  const getBatchIdFromLot = (lot: LotOption): string => lot.batchId;
-
-  // === Ajustement du stock (compatible backend) ===
+  // === Ajustement du stock ===
   const handleAdjust = async () => {
     if (!currentProduct || !quantity || !motif || !selectedLot) {
       Alert.alert("Champ manquant", "Veuillez remplir tous les champs.", [
@@ -193,23 +247,21 @@ export default function StockAdjustment() {
         quantityChange,
         type,
         reason: motif,
-        // batchId: getBatchIdFromLot(selectedLot), // Réactivé
+        batchId: selectedLot.batchId, // Important : on envoie le vrai batchId
       };
 
       await adjustVariantStock(currentProduct.id, payload);
 
-      // Alert de succès
       Alert.alert(
         "Succès",
-        `Stock ajusté : ${
-          quantityChange >= 0 ? "+" : ""
-        }${quantityChange} unité(s)`,
-        [{ text: "OK", onPress: () => fetchInventory(1) }] // Recharger après OK
+        `Stock ajusté : ${quantityChange >= 0 ? "+" : ""}${Math.abs(
+          quantityChange
+        )} unité(s)`,
+        [{ text: "OK", onPress: () => fetchInventory(1) }]
       );
 
       setQuantity(1);
     } catch (err: any) {
-      // Alert d'erreur
       Alert.alert("Erreur", err.message || "Échec de l’ajustement du stock", [
         { text: "OK" },
       ]);
@@ -217,7 +269,8 @@ export default function StockAdjustment() {
       setSubmitting(false);
     }
   };
-  // === Ajout de lot (modal) ===
+
+  // === Ajout de lot via modal ===
   const handleValidate = useCallback(
     async (data: {
       quantity: number;
@@ -235,7 +288,6 @@ export default function StockAdjustment() {
       try {
         await addVariantBatch(currentProduct!.id, payload);
 
-        // Alert de succès
         Alert.alert(
           "Succès",
           `${data.quantity} unité(s) ajoutée(s) au stock !`,
@@ -245,12 +297,12 @@ export default function StockAdjustment() {
               onPress: () => {
                 setModalVisible(false);
                 fetchInventory(1);
+                fetchBatches(); // Recharger les lots après ajout
               },
             },
           ]
         );
       } catch (error: any) {
-        // Alert d'erreur
         Alert.alert(
           "Erreur",
           error.message || "Impossible d’ajouter le lot. Réessayez.",
@@ -258,8 +310,9 @@ export default function StockAdjustment() {
         );
       }
     },
-    [currentProduct, fetchInventory]
+    [currentProduct, fetchInventory, fetchBatches]
   );
+
   // === Rendu ===
   if (loading && inventory.length === 0) {
     return (
@@ -326,7 +379,9 @@ export default function StockAdjustment() {
             <View style={styles.productDetails}>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Prix Unitaire</Text>
-                <Text style={styles.detailValue}>{currentProduct.price} €</Text>
+                <Text style={styles.detailValue}>
+                  {currentProduct.price} {symbol || ""}
+                </Text>
               </View>
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Stock Actuel</Text>
@@ -350,7 +405,7 @@ export default function StockAdjustment() {
           </View>
         </View>
 
-        {/* === Formulaire === */}
+        {/* Formulaire */}
         <View style={styles.field}>
           <Text style={styles.label}>
             Type d&apos;Opération <Text style={styles.required}>*</Text>
@@ -388,13 +443,20 @@ export default function StockAdjustment() {
           <TouchableOpacity
             style={styles.select}
             onPress={() => setShowLot(!showLot)}
+            disabled={lotsLoading || lots.length === 0}
           >
-            <Text style={styles.selectText}>{selectedLot.label}</Text>
+            <Text style={styles.selectText}>
+              {lotsLoading
+                ? "Chargement des lots..."
+                : selectedLot
+                ? selectedLot.label
+                : "Aucun lot disponible"}
+            </Text>
             <ChevronDown size={20} color="#666" />
           </TouchableOpacity>
-          {showLot && (
+          {showLot && lots.length > 0 && (
             <View style={styles.dropdown}>
-              {simulatedLots.map((lot) => (
+              {lots.map((lot) => (
                 <TouchableOpacity
                   key={lot.batchId}
                   style={styles.dropdownItem}
@@ -450,7 +512,6 @@ export default function StockAdjustment() {
             <Text style={styles.unitLabel}>Unité(s)</Text>
           </View>
 
-          {/* Toggle pour Ajustement */}
           {operationType === "Ajustement" && (
             <View style={styles.toggleContainer}>
               <TouchableOpacity
@@ -521,6 +582,7 @@ export default function StockAdjustment() {
         onClose={() => setModalVisible(false)}
         product={currentProduct}
         onValidate={handleValidate}
+        symbol={symbol || ""}
       />
 
       {/* Bottom Actions */}
@@ -537,7 +599,7 @@ export default function StockAdjustment() {
             submitting && styles.validateButtonDisabled,
           ]}
           onPress={handleAdjust}
-          disabled={submitting}
+          disabled={submitting || !selectedLot}
         >
           {submitting ? (
             <ActivityIndicator color="#FFF" />
@@ -550,7 +612,7 @@ export default function StockAdjustment() {
   );
 }
 
-// === Styles ===
+// === Styles (inchangés) ===
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F5F5F5" },
   header: {

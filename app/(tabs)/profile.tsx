@@ -34,7 +34,8 @@ type ProfileRoutes =
   | "/(profile-particulier)/favorites"
   | "/(profile-particulier)/help"
   | "/(profile-particulier)/about"
-  | "/(profile-particulier)/my-transactions";
+  | "/(profile-particulier)/my-transactions"
+  | "/finance/Transactions";
 
 const ProfilePage = () => {
   const router = useRouter();
@@ -107,34 +108,10 @@ const ProfilePage = () => {
     },
     {
       title: "Mes Transactions",
-      route: "/(profile-particulier)/my-transactions",
+      route: "/finance/Transactions",
       icon: "swap-horizontal-outline",
     },
-    {
-      title: "Mes restaurants favoris",
-      route: "/(profile-particulier)/user-businesses",
-      icon: "business-outline",
-    },
-    // {
-    //   title: "Notifications",
-    //   route: "/(profile-particulier)/notifications",
-    //   icon: "notifications-outline",
-    // },
-    // {
-    //   title: "Catégories",
-    //   route: "/(profile-particulier)/category",
-    //   icon: "grid-outline",
-    // },
-    // {
-    //   title: "Aide",
-    //   route: "/(profile-particulier)/help",
-    //   icon: "help-circle-outline",
-    // },
-    // {
-    //   title: "À propos",
-    //   route: "/(profile-particulier)/about",
-    //   icon: "information-circle-outline",
-    // },
+
   ];
 
   const renderMenuItem = ({
@@ -275,21 +252,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f8f8",
   },
+
   contentWrapper: {
     flex: 1,
   },
+
+  // HEADER
   header: {
-    paddingHorizontal: width * 0.05, // 🔥 Responsive padding (already present)
+    paddingHorizontal: width * 0.05,
     paddingVertical: 16,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
     alignItems: "center",
     justifyContent: "center",
-    // 🔥 Add shadow for depth
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -298,9 +277,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#333",
     letterSpacing: 0.3,
-    maxWidth: width * 0.9, // 🔥 Constrain title width (accounting for padding)
-    textAlign: "center", // 🔥 Ensure text is centered
+    maxWidth: width * 0.9,
+    textAlign: "center",
   },
+
+  // SCROLL
   content: {
     flex: 1,
   },
@@ -308,6 +289,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: width * 0.05,
     paddingBottom: 120,
   },
+
+  // USER SECTION
   userSection: {
     alignItems: "center",
     marginVertical: 24,
@@ -325,7 +308,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.18,
     shadowRadius: 6,
     elevation: 4,
   },
@@ -334,11 +317,6 @@ const styles = StyleSheet.create({
     height: isTablet ? 100 : 80,
     borderRadius: isTablet ? 50 : 40,
     resizeMode: "cover",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
   },
   editIconWrapper: {
     position: "absolute",
@@ -364,13 +342,16 @@ const styles = StyleSheet.create({
     maxWidth: width * 0.8,
     textAlign: "center",
   },
+
+  // MENU SECTION
   menuSection: {
     backgroundColor: "#fff",
     borderRadius: 12,
     marginBottom: 20,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
   },
@@ -383,7 +364,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: isTablet ? 18 : 16,
+    paddingVertical: isTablet ? 18 : 14,
   },
   menuItemLeft: {
     flexDirection: "row",
@@ -393,9 +374,12 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: isTablet ? 18 : 16,
     color: "#333",
-    marginLeft: 16,
+    marginLeft: 14,
     fontWeight: "500",
+    flexShrink: 1,
   },
+
+  // LOGOUT
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -403,10 +387,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     paddingVertical: 16,
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
   },

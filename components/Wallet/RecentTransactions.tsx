@@ -1,177 +1,198 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+// components/dashboard/RecentTransactions.tsx
+import React, { useState, useCallback } from "react";
 import {
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
+  Dimensions,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
 import { GetWalletTransactions } from "@/api/wallet";
-export const RecentTransactions = () => {
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+
+const { width } = Dimensions.get("window");
+
+type RecentTx = {
+  id: string;
+  title: string;
+  reference: string;
+  date: string;
+  amount: number;
+  type: "income" | "expense";
+};
+
+export const RecentTransactions = ({ currency }: { currency: string }) => {
   const router = useRouter();
-  const { width } = Dimensions.get("window");
-
+  const [transactions, setTransactions] = useState<RecentTx[]>([]);
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<any[]>([]);
 
-  useEffect(() => {
-    loadTransactions();
-  }, []);
-
-  const loadTransactions = async () => {
+  const loadRecent = async () => {
     try {
       setLoading(true);
+      const res = await GetWalletTransactions({ limit: 20 });
 
-      const res = await GetWalletTransactions({ limit: 15 });
+      const raw = Array.isArray(res) ? res : res?.data || [];
 
-      // Normalisation robuste du format de réponse
-      const rawTransactions = Array.isArray(res)
-        ? res
-        : Array.isArray(res?.data)
-        ? res.data
-        : [];
+      const formatted: RecentTx[] = raw.slice(0, 20).map((t: any) => {
+        const provider = (t.provider || "").toString().toUpperCase();
+        const amountRaw = Number(t.amount) || 0;
 
-      const formatted = rawTransactions.map((t: any) => ({
-        id: t.id || t.providerTransactionId || "#",
-        date: new Date(
-          t.createdAt || t.created_at || Date.now()
-        ).toLocaleDateString("fr-FR", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        }),
-        amount: Math.abs(Number(t.amount) || 0),
-        type:
-          ["DEPOSIT", "REFUND", "ADJUSTMENT", "deposit", "refund"].includes(
-            t.provider
-          ) ||
-          t.type === "DEPOSIT" ||
-          t.provider === "DEPOSIT"
-            ? "incoming"
-            : "outgoing",
-      }));
+        const isIncome =
+          amountRaw > 0 ||
+          provider === "DEPOSIT" ||
+          provider === "REFUND" ||
+          provider === "ADJUSTMENT";
+
+        const title = (() => {
+          switch (provider) {
+            case "DEPOSIT":
+              return "Dépôt d'argent";
+            case "WITHDRAWAL":
+              return "Retrait d'argent";
+            case "PAYMENT":
+              return t.metadata?.customer_name
+                ? `Paiement de ${t.metadata.customer_name}`
+                : "Paiement reçu";
+            case "REFUND":
+              return "Remboursement";
+            case "ADJUSTMENT":
+              return "Ajustement manuel";
+            case "TRANSFER":
+              return "Transfert";
+            default:
+              return "Transaction";
+          }
+        })();
+
+        return {
+          id: t.id || t.providerTransactionId || "#",
+          title,
+          reference: t.providerTransactionId || t.orderId || t.id || "N/A",
+          date: format(
+            new Date(t.createdAt || t.created_at || Date.now()),
+            "dd MMM yyyy 'à' HH:mm",
+            { locale: fr }
+          ),
+          amount: Math.abs(amountRaw),
+          type: isIncome ? "income" : "expense",
+        };
+      });
 
       setTransactions(formatted);
-    } catch (error) {
-      console.error("Erreur chargement transactions:", error);
+    } catch (err) {
+      console.error("Erreur recent transactions:", err);
       setTransactions([]);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <View
-        style={{
-          padding: 20,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <ActivityIndicator size="large" color="#58617b" />
-        <Text style={{ marginTop: 10 }}>Chargement...</Text>
-      </View>
-    );
-  }
+  useFocusEffect(
+    useCallback(() => {
+      loadRecent();
+    }, [])
+  );
 
   return (
-    <View style={[styles.container, { width: width - 32 }]}>
-      {/* ---------- En-tête ---------- */}
+    <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Transactions Récentes</Text>
-
-        {/* ➜ Bouton "Voir plus" pour aller vers la page détaillée */}
-        <TouchableOpacity
-          onPress={() => router.push("/finance/Transactions")}
-          style={styles.seeMore}
-        >
-          <Text style={styles.seeMoreText}>Voir plus</Text>
-          <Ionicons name="chevron-forward" size={16} color="#58617b" />
-        </TouchableOpacity>
+        <Text style={styles.title}>Transactions récentes</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => router.push("/finance/Transactions")}
+            style={styles.seeMore}
+          >
+            <Text style={styles.seeMoreText}>Voir tout</Text>
+            <Ionicons name="chevron-forward" size={18} color="#58617b" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* ---------- Liste scrollable ---------- */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {transactions.length === 0 ? (
-          <Text style={{ textAlign: "center", paddingVertical: 20 }}>
-            Aucune transaction trouvée.
-          </Text>
-        ) : (
-          transactions.map((transaction, index) => (
-            <View key={index} style={styles.transactionItem}>
-              {/* ---------- Icône ---------- */}
-              <View style={styles.iconContainer}>
+      {/* Content */}
+      {loading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator size="small" color="#58617b" />
+          <Text style={styles.loadingText}>Chargement...</Text>
+        </View>
+      ) : transactions.length === 0 ? (
+        <View style={styles.empty}>
+          <Feather name="inbox" size={48} color="#ddd" />
+          <Text style={styles.emptyText}>Aucune transaction</Text>
+        </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 70 }}
+          style={{ maxHeight: 330 }} // 👈 SCROLL FIX
+        >
+          {transactions.map((t) => (
+            <View key={t.id} style={styles.transactionItem}>
+              {/* Icône */}
+              <View
+                style={[
+                  styles.iconContainer,
+                  t.type === "income" ? styles.incomeBg : styles.expenseBg,
+                ]}
+              >
                 <Feather
                   name={
-                    transaction.type === "incoming"
-                      ? "arrow-up-right"
-                      : "arrow-down-left"
+                    t.type === "income" ? "arrow-up-right" : "arrow-down-left"
                   }
-                  size={16}
-                  color={
-                    transaction.type === "incoming" ? "#00af66" : "#ef4444"
-                  }
-                  style={styles.arrow}
+                  size={18}
+                  color={t.type === "income" ? "#00af66" : "#ef4444"}
+                  style={{ transform: [{ rotate: "20deg" }] }}
                 />
               </View>
 
-              {/* ---------- Détails ---------- */}
-              <View style={styles.transactionDetails}>
-                <Text style={styles.transactionId}>{transaction.id}</Text>
-                <Text style={styles.transactionDate}>{transaction.date}</Text>
+              {/* Infos */}
+              <View style={styles.info}>
+                <Text style={styles.transactionTitle} numberOfLines={1}>
+                  {t.title}
+                </Text>
+                <Text style={styles.transactionRef} numberOfLines={1}>
+                  {t.reference}
+                </Text>
+                <Text style={styles.transactionDate}>{t.date}</Text>
               </View>
 
-              {/* ---------- Montant ---------- */}
-              <View style={styles.amountContainer}>
-                <Text
-                  style={[
-                    styles.amount,
-                    {
-                      color:
-                        transaction.type === "incoming" ? "#00af66" : "#ef4444",
-                    },
-                  ]}
-                >
-                  {transaction.type === "incoming" ? "+" : "-"}
-                  {Math.abs(transaction.amount).toLocaleString("fr-FR", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                  <Text style={styles.currency}> KMF</Text>
-                </Text>
-              </View>
+              {/* Montant */}
+              <Text
+                style={[
+                  styles.amount,
+                  { color: t.type === "income" ? "#00af66" : "#ef4444" },
+                ]}
+              >
+                {t.type === "income" ? "+ " : "− "}
+                {t.amount.toLocaleString("fr-FR", {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}{" "}
+                {currency}
+              </Text>
             </View>
-          ))
-        )}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 };
 
-export default RecentTransactions;
-
-/* ------------------------------------------------------------------
- STYLES (inchangés, on respecte totalement ton UI/UX existant)
------------------------------------------------------------------- */
-
 const styles = StyleSheet.create({
   container: {
-    padding: 12,
+    width: width - 32,
     backgroundColor: "#fff",
+
     borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
     borderColor: "#eef0f4",
     marginTop: 16,
-    flex: 1,
   },
   header: {
     flexDirection: "row",
@@ -181,8 +202,16 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    color: "#000",
     fontWeight: "600",
+    color: "#000",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  refreshBtn: {
+    padding: 4,
   },
   seeMore: {
     flexDirection: "row",
@@ -192,59 +221,67 @@ const styles = StyleSheet.create({
   seeMoreText: {
     fontSize: 14,
     color: "#58617b",
+    fontWeight: "500",
   },
-  scrollView: {
-    minHeight: 200,
-    flex: 1,
+  loading: {
+    alignItems: "center",
+    paddingVertical: 30,
+    gap: 8,
   },
-  scrollContent: {
-    paddingBottom: 8,
+  loadingText: {
+    color: "#58617b",
+    fontSize: 14,
+  },
+  empty: {
+    alignItems: "center",
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyText: {
+    color: "#999",
+    fontSize: 15,
   },
   transactionItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#eef0f4",
+    borderBottomColor: "#f0f0f0",
   },
   iconContainer: {
     width: 40,
     height: 40,
-    backgroundColor: "#f6f8f9",
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
   },
-  arrow: {
-    transform: [{ rotate: "20deg" }],
-  },
-  transactionDetails: {
+  incomeBg: { backgroundColor: "#ecfdf5" },
+  expenseBg: { backgroundColor: "#fef2f2" },
+  info: {
     flex: 1,
-    justifyContent: "center",
   },
-  transactionId: {
-    fontSize: 14,
+  transactionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
     color: "#000",
-    fontWeight: "500",
+  },
+  transactionRef: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
   },
   transactionDate: {
     fontSize: 12,
-    color: "#58617b",
-    fontWeight: "400",
+    color: "#999",
     marginTop: 4,
   },
-  amountContainer: {
-    justifyContent: "center",
-    alignItems: "flex-end",
-  },
   amount: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
-  },
-  currency: {
-    fontSize: 14,
-    color: "#000",
-    fontWeight: "600",
+    minWidth: 100,
+    textAlign: "right",
   },
 });
+
+export default RecentTransactions;

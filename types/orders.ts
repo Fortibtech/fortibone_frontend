@@ -124,7 +124,9 @@ export interface MyOrder {
     | "DELIVERED"
     | "COMPLETED"
     | "CANCELLED"
-    | "REFUNDED";
+    | "REFUNDED"
+    | "PAID"
+    | "PENDING_PAYMENT";
   totalAmount: string;
   notes: string | null;
   createdAt: string;
@@ -208,7 +210,6 @@ export interface Business {
 
 export interface OrderResponse {
   id: string;
-  profileImageUrl: string | null;
   orderNumber: string;
   type: "SALE" | "PURCHASE" | "RESERVATION";
   status:
@@ -219,7 +220,9 @@ export interface OrderResponse {
     | "DELIVERED"
     | "COMPLETED"
     | "CANCELLED"
-    | "REFUNDED";
+    | "REFUNDED"
+    | "PAID"
+    | "PENDING_PAYMENT";
   totalAmount: string;
   notes: string | null;
   createdAt: string;

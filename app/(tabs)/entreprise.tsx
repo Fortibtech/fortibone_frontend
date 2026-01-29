@@ -1,7 +1,7 @@
-import { getBusinesses } from "@/api/client/business";
+import { getBusinesses, BusinessType } from "@/api/client/business";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { JSX, useEffect, useMemo, useRef, useState } from "react";
+import React, { JSX, useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -14,98 +14,191 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// 🔥 Get screen width for responsive design
+import type { Business, GetBusinessesResponse } from "@/api/client/business";
+
 const { width } = Dimensions.get("window");
 
 interface Category {
   id: string;
   name: string;
-}
-
-interface Enterprise {
-  id: string;
-  name: string;
-  rating: number;
-  category: string;
-  image: string;
-  categoryId: string;
+  type?: BusinessType | "all";
 }
 
 const EnterprisePage: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>([
-    { id: "all", name: "Tout" },
-  ]);
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [searchText, setSearchText] = useState<string>("");
-  const searchInputRef = useRef<TextInput>(null);
+  // Catégories affichées
+  const categories: Category[] = [
+    { id: "all", name: "Tout", type: "all" },
+    { id: "restaurateur", name: "Restaurants", type: "RESTAURATEUR" },
+    { id: "commercant", name: "Commerçants", type: "COMMERCANT" },
+  ];
 
-  useEffect(() => {
-    const loadEnterprises = async () => {
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [enterprises, setEnterprises] = useState<Business[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState<string>("");
+  const [selectedSector, setSelectedSector] = useState<string | null>(null);
+  const [dropdownVisible, setDropdownVisible] = useState<boolean>(false);
+  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+
+  const searchInputRef = useRef<TextInput>(null);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // ==================== CHARGEMENT DES ENTREPRISES ====================
+  const loadEnterprises = useCallback(
+    async (page: number = 1, resetData: boolean = false) => {
       try {
         setLoading(true);
-        const res = await getBusinesses();
 
-        const mapped: Enterprise[] = res.data.map((b) => ({
-          id: b.id,
-          name: b.name,
-          rating: b.averageRating || 0,
-          category: b.type,
-          image:
-            b.logoUrl || b.coverImageUrl || "https://via.placeholder.com/150",
-          categoryId: b.type.toLowerCase(),
-        }));
+        // On récupère les données avec les filtres de recherche et pagination
+        // On ne filtre pas par type ici pour pouvoir tout exclure manuellement ensuite
+        const res: GetBusinessesResponse = await getBusinesses({
+          search: searchText || undefined,
+          page: page,
+          limit: 90,
+        });
 
-        setEnterprises(mapped);
+        // Traitement des images
+        const processedData: Business[] = res.data.map((b) => {
+          let imageUrl =
+            "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image";
+          const possible = [b.logoUrl, b.coverImageUrl].filter(Boolean);
+          if (possible.length > 0) {
+            imageUrl = possible[0];
+            if (!imageUrl.startsWith("http")) imageUrl = `https://${imageUrl}`;
+          }
+          return { ...b, imageUrl };
+        });
 
-        const uniqueTypes = Array.from(
-          new Set(mapped.map((e) => e.categoryId))
+        // 🔥 EXCLUSION DES TYPES INDÉSIRABLES
+        let filteredData = processedData.filter(
+          (b) => b.type !== "FOURNISSEUR" && b.type !== "LIVREUR"
         );
-        const dynamicCategories: Category[] = uniqueTypes.map((type) => ({
-          id: type,
-          name: type.charAt(0).toUpperCase() + type.slice(1),
-        }));
 
-        setCategories([{ id: "all", name: "Tout" }, ...dynamicCategories]);
+        // Appliquer le filtre par catégorie si ce n'est pas "Tout"
+        if (activeCategory !== "all") {
+          const currentCategory = categories.find(
+            (c) => c.id === activeCategory
+          );
+          if (currentCategory?.type && currentCategory.type !== "all") {
+            filteredData = filteredData.filter(
+              (b) => b.type === currentCategory.type
+            );
+          }
+        }
+
+        // Filtre par secteur d'activité
+        const finalData = selectedSector
+          ? filteredData.filter(
+              (b) =>
+                b.activitySector?.toLowerCase().trim() ===
+                selectedSector.toLowerCase().trim()
+            )
+          : filteredData;
+
+        if (resetData) {
+          setEnterprises(finalData);
+        } else {
+          setEnterprises((prev) => [...prev, ...finalData]);
+        }
+
+        // Pagination
+        const total = res.pagination?.totalPages || res.totalPages || 1;
+        setTotalPages(total);
+        setHasMore(page < total);
+        setCurrentPage(page);
       } catch (err) {
-        console.error("❌ Erreur chargement entreprises:", err);
+        console.error("Erreur chargement entreprises:", err);
       } finally {
         setLoading(false);
       }
-    };
-    loadEnterprises();
+    },
+    [activeCategory, searchText, selectedSector]
+  );
+
+  // ==================== CHARGEMENT DES SECTEURS DISPONIBLES ====================
+  const loadAvailableSectors = useCallback(async () => {
+    try {
+      const res: GetBusinessesResponse = await getBusinesses({
+        limit: 1000,
+      });
+
+      const allSectors = res.data
+        .map((b) => b.activitySector?.trim())
+        .filter(Boolean) as string[];
+
+      // On garde uniquement les secteurs des entreprises autorisées
+      const validSectors = res.data
+        .filter((b) => b.type !== "FOURNISSEUR" && b.type !== "LIVREUR")
+        .map((b) => b.activitySector?.trim())
+        .filter(Boolean) as string[];
+
+      const uniqueSectors = Array.from(new Set(validSectors)).sort();
+      setAvailableSectors(uniqueSectors);
+    } catch (err) {
+      console.error("Erreur chargement secteurs:", err);
+    }
   }, []);
 
-  const navigateToEnterpriseDetails = (
-    enterpriseId: string,
-    enterpriseName: string
-  ): void => {
-    router.push({
-      pathname: "/enterprise-details/[id]",
-      params: { id: enterpriseId, name: enterpriseName },
-    });
+  // ==================== EFFETS ====================
+  useEffect(() => {
+    loadAvailableSectors();
+  }, [loadAvailableSectors]);
+
+  useEffect(() => {
+    loadEnterprises(1, true);
+  }, [activeCategory, selectedSector, loadEnterprises]);
+
+  useEffect(() => {
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+
+    debounceTimeout.current = setTimeout(() => {
+      loadEnterprises(1, true);
+    }, 500);
+
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
+  }, [searchText]);
+
+  // ==================== NAVIGATION ====================
+  const navigateToDetails = (business: Business) => {
+    if (business.type === "RESTAURATEUR") {
+      router.push({
+        pathname: "/(client-restaurant)/restaurants-details/[restaurantsId]",
+        params: { restaurantsId: business.id, name: business.name },
+      });
+    } else {
+      router.push({
+        pathname: "/enterprise-details/[id]",
+        params: { id: business.id, name: business.name },
+      });
+    }
   };
 
-  const filteredEnterprises = useMemo(() => {
-    return enterprises.filter((enterprise) => {
-      const matchCategory =
-        activeCategory === "all" || enterprise.categoryId === activeCategory;
-      const matchSearch = enterprise.name
-        .toLowerCase()
-        .includes(searchText.toLowerCase());
-      return matchCategory && matchSearch;
-    });
-  }, [enterprises, activeCategory, searchText]);
+  // ==================== PAGINATION INFINIE ====================
+  const loadMoreEnterprises = () => {
+    if (!loading && hasMore) {
+      loadEnterprises(currentPage + 1, false);
+    }
+  };
 
+  // ==================== RENDERS ====================
   const renderHeader = (): JSX.Element => (
     <View style={styles.header}>
-      <Pressable
-        onPress={() => searchInputRef.current?.focus()}
-        accessibilityLabel="Rechercher une entreprise"
-      >
+      <Pressable onPress={() => searchInputRef.current?.focus()}>
         <Ionicons
           name="search"
           size={20}
@@ -113,28 +206,85 @@ const EnterprisePage: React.FC = () => {
           style={styles.searchIcon}
         />
       </Pressable>
+
       <TextInput
         ref={searchInputRef}
-        placeholder="Rechercher par nom ou categorie..."
+        placeholder="Rechercher par nom..."
         placeholderTextColor="#999"
         style={styles.searchInput}
         value={searchText}
         onChangeText={setSearchText}
-        accessibilityLabel="Barre de recherche"
       />
+
+      <Pressable
+        onPress={() => setDropdownVisible(true)}
+        style={styles.dropdownTrigger}
+      >
+        <Ionicons
+          name="chevron-down"
+          size={22}
+          color={selectedSector ? "#00C851" : "#999"}
+        />
+      </Pressable>
+
       {searchText.length > 0 && (
-        <Pressable
-          onPress={() => setSearchText("")}
-          accessibilityLabel="Effacer la recherche"
-        >
-          <Ionicons
-            name="close-circle"
-            size={20}
-            color="#999"
-            style={styles.clearIcon}
-          />
+        <Pressable onPress={() => setSearchText("")} style={{ marginLeft: 8 }}>
+          <Ionicons name="close-circle" size={20} color="#999" />
         </Pressable>
       )}
+
+      <Modal
+        visible={dropdownVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setDropdownVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.dropdownMenu}>
+              <ScrollView showsVerticalScrollIndicator={true}>
+                <TouchableOpacity
+                  style={[
+                    styles.dropdownItem,
+                    !selectedSector && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedSector(null);
+                    setDropdownVisible(false);
+                  }}
+                >
+                  <Text style={styles.dropdownText}>Tous les secteurs</Text>
+                  {!selectedSector && (
+                    <Ionicons name="checkmark" size={20} color="#00C851" />
+                  )}
+                </TouchableOpacity>
+
+                {availableSectors.map((sector) => (
+                  <TouchableOpacity
+                    key={sector}
+                    style={[
+                      styles.dropdownItem,
+                      selectedSector?.toLowerCase() === sector.toLowerCase() &&
+                        styles.dropdownItemActive,
+                    ]}
+                    onPress={() => {
+                      setSelectedSector(sector);
+                      setDropdownVisible(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownText}>
+                      {sector.charAt(0).toUpperCase() + sector.slice(1)}
+                    </Text>
+                    {selectedSector?.toLowerCase() === sector.toLowerCase() && (
+                      <Ionicons name="checkmark" size={20} color="#00C851" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 
@@ -145,7 +295,7 @@ const EnterprisePage: React.FC = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabScrollContent}
       >
-        {categories.map((category: Category) => (
+        {categories.map((category) => (
           <TouchableOpacity
             key={category.id}
             style={[
@@ -154,10 +304,9 @@ const EnterprisePage: React.FC = () => {
             ]}
             onPress={() => setActiveCategory(category.id)}
             activeOpacity={0.7}
-            accessibilityLabel={`Filtrer par ${category.name}`}
           >
             {activeCategory === category.id && (
-              <Ionicons name="flame-outline" size={20} color={"red"} />
+              <Ionicons name="flame-outline" size={20} color="red" />
             )}
             <Text
               style={[
@@ -173,39 +322,52 @@ const EnterprisePage: React.FC = () => {
     </View>
   );
 
-  const renderEnterpriseCard = ({
-    item,
-  }: {
-    item: Enterprise;
-  }): JSX.Element => (
+  const renderEnterpriseCard = ({ item }: { item: Business }) => (
     <TouchableOpacity
       style={styles.enterpriseCard}
-      onPress={() => navigateToEnterpriseDetails(item.id, item.name)}
+      onPress={() => navigateToDetails(item)}
       activeOpacity={0.8}
-      accessibilityLabel={`Voir détails de ${item.name}`}
     >
       <Image
-        source={{ uri: item.image }}
+        source={{
+          uri:
+            item.coverImageUrl ||
+            "https://via.placeholder.com/150/CCCCCC/FFFFFF?text=No+Image",
+        }}
         style={styles.enterpriseImage}
         resizeMode="cover"
       />
       <View style={styles.enterpriseContent}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.enterpriseTitle} numberOfLines={1}>
             {item.name}
           </Text>
-          <Text style={styles.enterpriseCategory}>{item.category}</Text>
+          <Text style={styles.enterpriseCategory}>
+            {item.activitySector
+              ? item.activitySector.charAt(0).toUpperCase() +
+                item.activitySector.slice(1)
+              : "Non spécifié"}
+          </Text>
         </View>
         <View style={styles.ratingContainer}>
           <Ionicons name="star" size={14} color="#FFD700" />
-          <Text style={styles.rating}>{item.rating}</Text>
+          <Text style={styles.rating}>{item.averageRating || 0}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 
-  const renderEnterpriseGrid = (): JSX.Element => {
-    if (loading) {
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={{ paddingVertical: 20 }}>
+        <ActivityIndicator size="small" color="#00C851" />
+      </View>
+    );
+  };
+
+  const renderEnterpriseGrid = () => {
+    if (loading && enterprises.length === 0) {
       return (
         <View style={{ flex: 1, alignItems: "center", marginTop: 50 }}>
           <ActivityIndicator size="large" color="#00C851" />
@@ -213,23 +375,29 @@ const EnterprisePage: React.FC = () => {
       );
     }
 
-    if (filteredEnterprises.length === 0) {
+    if (enterprises.length === 0) {
       return (
         <View style={{ alignItems: "center", marginTop: 50 }}>
-          <Text>Aucune entreprise trouvée.</Text>
+          <Ionicons name="search-outline" size={80} color="#E0E0E0" />
+          <Text style={{ marginTop: 16, fontSize: 16, color: "#999" }}>
+            Aucune entreprise trouvée
+          </Text>
         </View>
       );
     }
 
     return (
       <FlatList
-        data={filteredEnterprises}
+        data={enterprises}
         renderItem={renderEnterpriseCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         numColumns={2}
         contentContainerStyle={styles.grid}
-        columnWrapperStyle={styles.columnWrapper} // 🔥 Added for spacing between columns
+        columnWrapperStyle={styles.columnWrapper}
         showsVerticalScrollIndicator={false}
+        onEndReached={loadMoreEnterprises}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
       />
     );
   };
@@ -262,13 +430,36 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   searchIcon: { marginRight: 8 },
-  clearIcon: { marginLeft: 8 },
-  searchInput: {
+  searchInput: { flex: 1, height: 48, color: "#333", fontSize: 16 },
+  dropdownTrigger: { paddingHorizontal: 8, justifyContent: "center" },
+  modalOverlay: {
     flex: 1,
-    height: 48,
-    color: "#333",
-    fontSize: 16,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
+  dropdownMenu: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 8,
+    width: "85%",
+    maxHeight: "70%",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  dropdownItemActive: { backgroundColor: "#f0fff4" },
+  dropdownText: { fontSize: 16, color: "#333" },
   tabContainer: { paddingVertical: 12 },
   tabScrollContent: { paddingHorizontal: 16 },
   tab: {
@@ -280,6 +471,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E8E9ED",
     minHeight: 48,
+    justifyContent: "center",
   },
   activeTab: {
     backgroundColor: "#00C851",
@@ -289,17 +481,10 @@ const styles = StyleSheet.create({
   },
   tabText: { fontSize: 14, fontWeight: "500", color: "#666" },
   activeTabText: { color: "#fff", fontWeight: "600", marginLeft: 6 },
-  grid: {
-    paddingHorizontal: 20, // 🔥 Increased padding to prevent sticking to edges
-    paddingTop: 16,
-    paddingBottom: 120,
-  },
-  columnWrapper: {
-    justifyContent: "space-between", // 🔥 Ensures spacing between cards in a row
-    marginBottom: 16, // 🔥 Adds vertical spacing between rows
-  },
+  grid: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 120 },
+  columnWrapper: { justifyContent: "space-between", marginBottom: 16 },
   enterpriseCard: {
-    width: (width - 56) / 2, // 🔥 Adjusted width to account for increased padding and gap
+    width: (width - 56) / 2,
     backgroundColor: "#fff",
     borderRadius: 12,
     shadowColor: "#000",
@@ -309,15 +494,12 @@ const styles = StyleSheet.create({
     elevation: 3,
     overflow: "hidden",
   },
-  enterpriseImage: {
-    width: "100%",
-    height: 120,
-    backgroundColor: "#F5F6FA",
-  },
+  enterpriseImage: { width: "100%", height: 120, backgroundColor: "#CCCCCC" },
   enterpriseContent: {
     padding: 12,
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   enterpriseTitle: {
     fontSize: 15,

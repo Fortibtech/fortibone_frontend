@@ -6,13 +6,14 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import RevenueDistributionChart from "@/components/Chart/RevenueDistributionChart";
 import ExpenseDistributionChart from "@/components/Chart/ExpenseDistributionChart";
-import { SalesByCategoryChart } from "@/components/Chart/SalesBarChart";
 import { getSales, SalesResponse } from "@/api/analytics";
 import { useEffect, useState } from "react";
+import SalesByPeriodChart from "../Chart/SalesByPeriodChart";
+import InventoryLossesChart from "../Chart/InventoryLossesChart";
 type FeatherIconName =
   | "filter"
   | "bold"
@@ -52,8 +53,19 @@ const AnalyticsCard = ({ icon, title, onPress }: props) => (
   </TouchableOpacity>
 );
 
-type AnalyticsComponentProps = { id: string };
-export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
+type AnalyticsComponentProps = {
+  id: string;
+  currencyId: string;
+  show: boolean;
+  refreshKey?: number; // 👈 Nouvelle prop
+};
+
+export default function AnalyticsComponent({
+  id,
+  currencyId,
+  show,
+  refreshKey = 0,
+}: AnalyticsComponentProps) {
   const [data, setData] = useState<SalesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,9 +84,11 @@ export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
       setLoading(false);
     }
   };
+
+  // Recharger quand id OU refreshKey change
   useEffect(() => {
     fetchData();
-  }, [id]);
+  }, [id, refreshKey]); // 👈 Ajouter refreshKey en dépendance
 
   if (loading) {
     return (
@@ -133,16 +147,65 @@ export default function AnalyticsComponent({ id }: AnalyticsComponentProps) {
           }
         />
       </View>
-
+      {/* Nouveau bouton livreurs*/}
+      <TouchableOpacity
+        style={styles.statsButton}
+        onPress={() => router.push("/(carriers)/")}
+      >
+        <Ionicons name="pricetag" size={20} color="#6366F1" />
+        <Text style={styles.statsButtonText}>Tarifs des livreurs</Text>
+        <Ionicons name="chevron-forward" size={20} color="#6366F1" />
+      </TouchableOpacity>
       <Text style={styles.sectionTitle}>Statistiques</Text>
-      <SalesByCategoryChart data={data.salesByPeriod} />
-      <ExpenseDistributionChart businessId={id} />
-      <RevenueDistributionChart businessId={id} />
+      <SalesByPeriodChart
+        businessId={id}
+        currencyId={currencyId}
+        refreshKey={refreshKey} // 👈 Nouvelle prop
+      />
+      <ExpenseDistributionChart
+        businessId={id}
+        currencyId={currencyId}
+        refreshKey={refreshKey} // 👈 Nouvelle prop
+      />
+      <RevenueDistributionChart
+        businessId={id}
+        currencyId={currencyId}
+        refreshKey={refreshKey} // 👈 Nouvelle prop
+      />
+      <InventoryLossesChart
+        businessId={id}
+        currencyId={currencyId}
+        refreshKey={refreshKey} // 👈 Nouvelle prop
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  // Nouveau bouton stats
+  statsButton: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    marginBottom: 100,
+    paddingVertical: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statsButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6366F1",
+  },
   errorText: {
     fontSize: 16,
     color: "#dc2626",
@@ -186,7 +249,7 @@ const styles = StyleSheet.create({
   },
   cardsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 4,
     marginBottom: 32,
   },
   card: {
@@ -194,7 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 12,
     padding: 16,
-    marginHorizontal: 6,
+
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },

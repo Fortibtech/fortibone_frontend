@@ -1,5 +1,5 @@
 "use client";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type React from "react";
 import { useState } from "react";
 import {
@@ -9,7 +9,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from "react-native";
 import { useUserStore } from "@/store/userStore";
 import { router } from "expo-router";
@@ -17,6 +16,15 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import LogoutModal from "./logoutModal";
 import ShareAppModal from "./shareAppModal";
 import { useUserAvatar } from "@/hooks/useUserAvatar";
+import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
+import {
+  BusinessesService,
+  cacheManager,
+  SelectedBusinessManager,
+} from "@/api";
+import { useBusinessStore } from "@/store/businessStore";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface MenuItem {
   id: string;
@@ -27,11 +35,12 @@ interface MenuItem {
 }
 
 const SettingsMenu: React.FC = () => {
-  const [loading, setLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const user = useUserStore.getState().userProfile;
+  const user = useUserStore((state) => state.userProfile);
+  const bumpAvatar = useUserStore((state) => state.bumpAvatarVersion);
   const { uri } = useUserAvatar();
+  console.log(bumpAvatar);
   const handleViewProfile = () => {
     router.push("/fournisseurSetting/userProfile");
   };
@@ -42,6 +51,16 @@ const SettingsMenu: React.FC = () => {
 
   const handleMyBusiness = () => {
     router.push("/fournisseurSetting/companyProfile");
+  };
+
+  // === NOUVEAU : Mes commandes ===
+  const handleMyOrders = () => {
+    router.push("/(achats)/my-orders/"); // ← Adapte selon ta route réelle des commandes
+  };
+
+  // === NOUVEAU : Mon panier ===
+  const handleMyCart = () => {
+    router.push("/(achats)/shopping-cart"); // ← Ta page panier
   };
 
   const handleAppSettings = () => {
@@ -69,35 +88,90 @@ const SettingsMenu: React.FC = () => {
   };
 
   const handleRateApp = () => {
-    Alert.alert("Noter", "Merci de votre soutien !");
+    alert("Merci pour votre soutien ! 🌟");
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Se Déconnecter",
-      "Êtes-vous sûr de vouloir vous déconnecter ?",
-      [
-        {
-          text: "Annuler",
-          style: "cancel",
-        },
-        {
-          text: "Déconnecter",
-          style: "destructive",
-          onPress: () => {
-            router.replace("/");
-          },
-        },
-      ]
-    );
-  };
+  const handleConfirmLogout = async () => {
+    setShowLogoutModal(false);
 
+    try {
+      console.log("🧹 Début vidage complet...");
+
+      // 🔥 1. Reset business Zustand
+      useBusinessStore.getState().setBusiness(null);
+      console.log("✅ Business reset à null");
+
+      // 🔥 2. Clear ton cache custom (mémoire + AsyncStorage)
+      await cacheManager.clearAll();
+      console.log("✅ CacheManager vidé");
+
+      // 🔥 3. Clear selected business
+      await SelectedBusinessManager.clearSelectedBusiness?.();
+      await BusinessesService.clearSelectedBusiness?.();
+
+      // 🔥 4. Clear AsyncStorage (auth, stores persistés, etc.)
+      await AsyncStorage.clear();
+      console.log("✅ AsyncStorage vidé");
+
+      // 🔥 5. Logout user (Zustand)
+      await useUserStore.getState().logout();
+
+      console.log("✅ Déconnexion totale réussie");
+
+      Toast.show({
+        type: "success",
+        text1: "Déconnexion réussie",
+        text2: "À bientôt ! 👋",
+        position: "bottom",
+        visibilityTime: 3000,
+      });
+      router.replace("/");
+    } catch (error) {
+      console.error("❌ Erreur lors de la déconnexion :", error);
+
+      // Fallback dur
+      try {
+        useBusinessStore.getState().setBusiness(null);
+        await cacheManager.clearAll();
+        await AsyncStorage.clear();
+        await useUserStore.getState().logout();
+      } catch (e) {
+        console.error("Force clear failed:", e);
+      }
+
+      Toast.show({
+        type: "error",
+        text1: "Erreur",
+        text2: "Déconnexion forcée appliquée.",
+        position: "bottom",
+      });
+      router.replace("/");
+    } finally {
+      router.replace("/");
+    }
+  };
   const menuItems: MenuItem[] = [
     {
       id: "business",
       iconName: "store",
       title: "Mon Commerce",
       onPress: handleMyBusiness,
+      showArrow: true,
+    },
+    // === AJOUT : Mes commandes ===
+    {
+      id: "orders",
+      iconName: "receipt-long",
+      title: "Mes commandes",
+      onPress: handleMyOrders,
+      showArrow: true,
+    },
+    // === AJOUT : Mon panier ===
+    {
+      id: "cart",
+      iconName: "shopping-cart",
+      title: "Mon panier",
+      onPress: handleMyCart,
       showArrow: true,
     },
     {
@@ -154,7 +228,7 @@ const SettingsMenu: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <SafeAreaView style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
@@ -163,19 +237,23 @@ const SettingsMenu: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Menu</Text>
         <View style={styles.placeholder} />
-      </View>
+      </SafeAreaView>
 
       <ScrollView style={styles.content}>
         <View style={styles.profileCard}>
-          <Image
-            source={
-              user?.profileImageUrl
-                ?    user.profileImageUrl 
-                : require("@/assets/images/icon.png")
-            }
-            style={styles.avatar}
-            resizeMode="cover"
-          />
+          {uri ? (
+            <Image
+              key={uri}
+              source={{ uri }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.avatar, styles.placeholderAvatar]}>
+              <Ionicons name="person" size={40} color="#ccc" />
+            </View>
+          )}
+
           <View style={styles.profileInfo}>
             <Text style={styles.userName}>
               {user?.firstName || "Jean"} {user?.lastName || "Dupont"}
@@ -232,18 +310,20 @@ const SettingsMenu: React.FC = () => {
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={() => setShowLogoutModal(true)}
-          disabled={loading}
         >
           <MaterialIcons name="logout" size={20} color="#FFFFFF" />
           <Text style={styles.logoutButtonText}>Se Déconnecter</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Modale personnalisée pour déconnexion */}
       <LogoutModal
         visible={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}
-        onLogout={handleLogout}
+        onLogout={handleConfirmLogout}
       />
+
+      {/* Modale partage */}
       <ShareAppModal
         visible={showShareModal}
         onClose={() => setShowShareModal(false)}
@@ -251,7 +331,6 @@ const SettingsMenu: React.FC = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -265,17 +344,12 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#F8F1F1FF",
-    height: 90,
   },
   backButton: {
     borderWidth: 1,
     borderRadius: 50,
     borderColor: "#F8F1F1FF",
     padding: 5,
-  },
-  backIcon: {
-    fontSize: 24,
-    color: "#000000",
   },
   headerTitle: {
     fontSize: 18,
@@ -287,8 +361,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    alignContent: "center",
-    // justifyContent:'center'
   },
   profileCard: {
     flexDirection: "row",
@@ -305,6 +377,10 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     backgroundColor: "#E8E8E8",
     marginRight: 20,
+  },
+  placeholderAvatar: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   profileInfo: {
     flex: 1,
@@ -385,19 +461,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 14,
   },
-  menuIcon: {
-    fontSize: 18,
-  },
   menuItemText: {
     fontSize: 14,
     color: "#000000",
     flex: 1,
     fontWeight: "500",
-  },
-  arrow: {
-    fontSize: 20,
-    color: "#CCCCCC",
-    marginLeft: 8,
   },
   footer: {
     paddingHorizontal: 20,
@@ -414,14 +482,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 24,
   },
-  logoutIcon: {
-    fontSize: 18,
-    marginRight: 10,
-  },
   logoutButtonText: {
     fontSize: 15,
     fontWeight: "600",
     color: "#FFFFFF",
+    marginLeft: 10,
   },
 });
 

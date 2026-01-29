@@ -4,7 +4,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import CashFlowChart from "@/components/Chart/CashFlowChart";
@@ -12,10 +11,23 @@ import ExpenseBreakdownChart from "@/components/Chart/ExpenseBreakdownChart";
 import TotalExpensesCard from "@/components/cards/TotalExpensesCard";
 import AvailableBalanceCard from "@/components/cards/AvailableBalanceCard";
 import BackButtonAdmin from "@/components/Admin/BackButton";
-
-const { width } = Dimensions.get("window");
+import { useBusinessStore } from "@/store/businessStore";
+import { useEffect, useState } from "react";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 export default function StatsDashboard() {
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchSymbol = async () => {
+      if (business) {
+        const symbol = await getCurrencySymbolById(business.currencyId);
+        setSymbol(symbol);
+      }
+    };
+    fetchSymbol();
+  }, [business]);
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -34,21 +46,21 @@ export default function StatsDashboard() {
         {/* Cards */}
         <View style={styles.cardsContainer}>
           <AvailableBalanceCard
-            currency="KMF"
+            currency={symbol}
             backgroundColor="#E8F5E9"
             iconColor="#4CAF50"
           />
 
           <TotalExpensesCard
-            currency="KMF"
+            currency={symbol}
             backgroundColor="#FFF9E6"
             iconColor="#FFC107"
           />
         </View>
 
         {/* Répartition des Revenus */}
-        <CashFlowChart period="6m" />
-        <ExpenseBreakdownChart />
+        <CashFlowChart period="6m" currency={symbol} />
+        <ExpenseBreakdownChart currency={symbol} />
       </ScrollView>
     </View>
   );

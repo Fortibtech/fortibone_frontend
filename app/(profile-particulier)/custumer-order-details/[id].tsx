@@ -16,6 +16,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import { getCustomerDetailById } from "@/api/customers";
 import { CustomerDetailResponse } from "@/types/customers";
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 export default function ClientProfile() {
   const router = useRouter();
@@ -27,7 +29,8 @@ export default function ClientProfile() {
   const [data, setData] = useState<CustomerDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const business = useBusinessStore((state) => state.business);
+  const [symbol, setSymbol] = useState<string | null>(null);
   useEffect(() => {
     if (!customerId || !businessId) return;
 
@@ -36,6 +39,9 @@ export default function ClientProfile() {
         setLoading(true);
         setError(null);
         const result = await getCustomerDetailById(businessId, customerId);
+        if (!business) return;
+        const symbol = await getCurrencySymbolById(business.currencyId);
+        setSymbol(symbol);
         setData(result);
       } catch (err: any) {
         setError(err.message);
@@ -44,20 +50,16 @@ export default function ClientProfile() {
         setLoading(false);
       }
     };
-
     fetchCustomer();
   }, [customerId, businessId]);
-
   // Formatage sécurisé
   const formatPrice = (value: any): string => {
     const num = Number(value) || 0;
-    return num.toFixed(2).replace(".", ",") + " €";
+    return num.toFixed(2).replace(".", ",") + ` ${symbol}`;
   };
-
   const formatDate = (iso: string | null): string => {
     return iso ? new Date(iso).toLocaleDateString("fr-FR") : "—";
   };
-
   // Couleurs par statut
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -82,7 +84,7 @@ export default function ClientProfile() {
       </View>
     );
   };
-
+  console.log("🧱 clients:\n", JSON.stringify(data, null, 2));
   // Bouton Contacter
   const handleContact = () => {
     if (!data?.customerInfo) return;
@@ -407,7 +409,7 @@ const styles = StyleSheet.create({
   },
   statLabel: { fontSize: 14, color: "#6B7280", marginBottom: 8 },
   statValue: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: "700",
     color: "#111827",
     marginBottom: 16,

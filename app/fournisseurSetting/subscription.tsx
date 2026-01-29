@@ -1,35 +1,21 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native"
-import { useRouter } from "expo-router"
-import MaterialIcons from "react-native-vector-icons/MaterialIcons"
-
-interface Feature {
-  id: string
-  icon: string
-  text: string
-}
-
-type SubscriptionType = "annual" | "monthly"
+import type React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
+import { useRouter } from "expo-router";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import KomoraLinkAds from "@/components/Abonnement/KomoraLinkAds";
+import KomoraLinkPricingCards from "@/components/Abonnement/KomoraLinkPricingCards";
+import BoostFlexibleCPC from "@/components/Abonnement/BoostFlexibleCPC";
 
 const Subscription: React.FC = () => {
-  const router = useRouter()
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionType>("annual")
-
-  const features: Feature[] = [
-    { id: "1", icon: "star-outline", text: "Publicités avancées" },
-    { id: "2", icon: "trending-up", text: "Analytics avancées" },
-    { id: "3", icon: "shopping-bag", text: "Jusqu'à 10 [commerces]" },
-    { id: "4", icon: "schedule", text: "Support prioritaire" },
-    { id: "5", icon: "card-membership", text: "Badge 'Fournisseur Premium'" },
-  ]
-
-  const handleStartTrial = () => {
-    Alert.alert("Succès", "Essai gratuit de 7 jours activé !")
-  }
-
+  const router = useRouter();
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -43,83 +29,19 @@ const Subscription: React.FC = () => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Premium Card */}
-        <View style={styles.premiumCard}>
-          <Text style={styles.premiumTitle}>Premium</Text>
-          <Text style={styles.premiumDescription}>
-            Bénéficiez d'un accès complet aux{"\n"}fonctionnalités avancées de FortibOne.
-          </Text>
-
-          {/* Features List */}
-          <View style={styles.featuresList}>
-            <Text style={styles.featuresTitle}>Ce plan inclus</Text>
-            {features.map((feature) => (
-              <View key={feature.id} style={styles.featureItem}>
-                <MaterialIcons name={feature.icon} size={20} color="#333333" />
-                <Text style={styles.featureText}>{feature.text}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Plans */}
-        {/* Annual Plan */}
-        <TouchableOpacity
-          style={[styles.planCard, selectedPlan === "annual" && styles.planCardSelected]}
-          onPress={() => setSelectedPlan("annual")}
-        >
-          <View style={styles.planHeader}>
-            <View style={styles.planRadio}>
-              {selectedPlan === "annual" && <View style={styles.planRadioSelected} />}
-            </View>
-            <View style={styles.planDetails}>
-              <Text style={styles.planName}>Annuel</Text>
-              <View style={styles.badgeContainer}>
-                <View style={styles.recommendedBadge}>
-                  <Text style={styles.recommendedText}>recommandé</Text>
-                </View>
-                <Text style={styles.discount}>-22%</Text>
-              </View>
-            </View>
-          </View>
-          <Text style={styles.planPrice}>28€/an</Text>
-        </TouchableOpacity>
-
-        {/* Monthly Plan */}
-        <TouchableOpacity
-          style={[styles.planCard, selectedPlan === "monthly" && styles.planCardSelected]}
-          onPress={() => setSelectedPlan("monthly")}
-        >
-          <View style={styles.planHeader}>
-            <View style={styles.planRadio}>
-              {selectedPlan === "monthly" && <View style={styles.planRadioSelected} />}
-            </View>
-            <Text style={styles.planName}>Mensuel</Text>
-          </View>
-          <Text style={styles.planPrice}>3€/mois</Text>
-        </TouchableOpacity>
-
-        
+        <KomoraLinkAds />
+        <KomoraLinkPricingCards />
+        <BoostFlexibleCPC />
       </ScrollView>
-
-      {/* Footer Button */}
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.trialButton} onPress={handleStartTrial}>
-          <MaterialIcons name="card-giftcard" size={18}  />
-          <Text style={styles.trialButtonText}>Commencer 7 jours gratuit</Text>
-        </TouchableOpacity>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 16 }}>
-                <MaterialIcons name="info" style={{ marginRight: 5 }} size={18} color="#58617B" />
-                <Text style={styles.trialNote}>Puis vous serez facturé 28€/an</Text>
-            </View>
-      </View>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
+    paddingBottom: 100,
   },
   header: {
     flexDirection: "row",
@@ -129,7 +51,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
-        height: 100,
+    height: 100,
   },
   headerTitle: {
     fontSize: 18,
@@ -280,6 +202,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
-})
+});
 
-export default Subscription
+export default Subscription;

@@ -1,9 +1,10 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const BalanceCard = ({ balance }: { balance: number }) => {
+const BalanceCard = ({ balance, symbol }: { balance: number; symbol: string }) => {
   const [hidden, setHidden] = useState(false);
   const router = useRouter();
 
@@ -18,7 +19,7 @@ const BalanceCard = ({ balance }: { balance: number }) => {
       {/* Ligne 2 - Montant */}
       <View style={styles.rowBetween}>
         <Text style={styles.amount}>
-          {hidden ? "••••••" : `${balance?.toFixed(2) ?? "0.00"} KMF`}
+          {hidden ? "••••••" : `${balance?.toFixed(2) ?? "0.00"} ${symbol}`}
         </Text>
         <TouchableOpacity onPress={() => setHidden(!hidden)}>
           <Ionicons
@@ -36,7 +37,7 @@ const BalanceCard = ({ balance }: { balance: number }) => {
           style={[styles.actionBtn, styles.depositBtn]}
           onPress={() => router.push("/finance/DepositScreen")}
         >
-          <Feather name="arrow-down-left" size={24} color="#fff" />
+          <Feather name="arrow-down-left" size={20} color="#fff" />
           <Text style={styles.depositText}>Dépôt</Text>
         </TouchableOpacity>
 
@@ -45,18 +46,18 @@ const BalanceCard = ({ balance }: { balance: number }) => {
           style={[styles.actionBtn, styles.withdrawBtn]}
           onPress={() => router.push("/finance/RetraitArgent")}
         >
-          <Feather name="arrow-up-right" size={24} color="#ff4444" />
+          <Feather name="arrow-up-right" size={20} color="#ff4444" />
           <Text style={styles.withdrawText}>Retrait</Text>
         </TouchableOpacity>
 
         {/* Transfert */}
-        {/* <TouchableOpacity
+        <TouchableOpacity
           style={[styles.actionBtn, styles.transferBtn]}
-          onPress={() => router.push("/finance/TransfertScreen")}
+          onPress={() => router.push("/finance/TransferMoney")}
         >
-          <MaterialIcons name="swap-horiz" size={24} color="#fff" />
-          <Text style={styles.transferText}>Transfert</Text>
-        </TouchableOpacity> */}
+          <MaterialIcons name="swap-horiz" size={20} color="#fff" />
+          <Text style={styles.transferText}>Transfer</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -94,21 +95,20 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: "row",
-    gap: 12, // espacement régulier et confortable entre les boutons
-    paddingHorizontal: 4, // petite marge pour éviter que ça colle aux bords
+    gap: 8, // ✅ Réduit de 12 à 8
     justifyContent: "space-between",
   },
   actionBtn: {
+    flex: 1, // ✅ Utilise flex: 1 au lieu de width: "30%"
     flexDirection: "row",
-    width: "30%",
     alignItems: "center",
-    justifyContent: "center", // centre parfaitement icône + texte
-    height: 50,
-    borderRadius: 28,
-    paddingHorizontal: 12, // espacement interne identique
-    gap: 8,
+    justifyContent: "center",
+    height: 40, // ✅ Réduit de 50 à 48
+    width: "100%",
+    borderRadius: 24,
+    paddingHorizontal: 10, // ✅ Réduit de 12 à 10
+    gap: 6, // ✅ Réduit de 8 à 6
   },
-
   // Dépôt
   depositBtn: {
     backgroundColor: "#00af66",
@@ -116,9 +116,9 @@ const styles = StyleSheet.create({
   depositText: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 15,
+    fontSize: 10, // ✅ Réduit de 15 à 14
+    flexShrink: 1, // ✅ Permet au texte de s'adapter
   },
-
   // Retrait
   withdrawBtn: {
     backgroundColor: "#fff",
@@ -128,9 +128,9 @@ const styles = StyleSheet.create({
   withdrawText: {
     color: "#ff4444",
     fontWeight: "600",
-    fontSize: 15,
+    fontSize: 10, // ✅ Réduit de 15 à 14
+    flexShrink: 1, // ✅ Permet au texte de s'adapter
   },
-
   // Transfert
   transferBtn: {
     backgroundColor: "#3366ff",
@@ -138,7 +138,8 @@ const styles = StyleSheet.create({
   transferText: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 15,
+    fontSize: 10,
+    flexShrink: 1, // ✅ Permet au texte de s'adapter
   },
 });
 

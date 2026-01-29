@@ -1,4 +1,3 @@
-// app/(achats)/product-details/[productId]/index.tsx
 import { useState, useRef, useCallback, useEffect } from "react";
 import { ProductService } from "@/api";
 import {
@@ -16,11 +15,13 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useProCartStore } from "@/stores/achatCartStore"; // CORRIGÉ : c'est useProCartStore
 import Toast from "react-native-toast-message";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import BackButtonAdmin from "@/components/Admin/BackButton";
+import { useProCartStore } from "@/stores/achatCartStore"; // Ton store
+import { useBusinessStore } from "@/store/businessStore";
+import { getCurrencySymbolById } from "@/api/currency/currencyApi";
 
 const { width } = Dimensions.get("window");
 
@@ -44,39 +45,74 @@ interface DisplayProduct {
 }
 
 export default function ProductDetailsScreen() {
-  const { productId, bussinessId } = useLocalSearchParams<{
-    productId: string;
-    bussinessId: string;
-  }>();
+  const { productId } = useLocalSearchParams<{ productId: string }>();
+  const business = useBusinessStore((state) => state.business);
 
   const [productData, setProductData] = useState<DisplayProduct | null>(null);
+  const [supplierBusinessId, setSupplierBusinessId] = useState<string | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const [symbol, setSymbol] = useState<string | null>(null);
+  // Zustand
+  const items = useProCartStore((state) => state.items);
+  const addItem = useProCartStore((state) => state.addItem);
+  const removeItem = useProCartStore((state) => state.removeItem);
 
-  // CORRIGÉ : on utilise le bon store PRO
-  const addToCart = useProCartStore((state) => state.addItem);
+  // Est-ce que ce produit est déjà dans le panier ?
+  const isInCart =
+    productData && supplierBusinessId
+      ? items.some(
+          (item) =>
+            item.productId === productData.id &&
+            item.variant.id === productData.variant.id &&
+            item.supplierBusinessId === supplierBusinessId
+        )
+      : false;
 
-  const handleAddToCart = () => {
-    if (!productData || !bussinessId) return;
+  const handleCartAction = () => {
+    if (!productData || !supplierBusinessId) {
+      Alert.alert(
+        "Erreur",
+        "Impossible d'ajouter au panier : fournisseur inconnu."
+      );
+      return;
+    }
 
-    addToCart(
-      productData.id,
-      productData.name,
-      productData.variant,
-      quantity,
-      productData.images[0]?.url,
-      bussinessId // supplierBusinessId
-    );
+    // console.log("🛒 Action panier :", isInCart ? "Retirer" : "Ajouter");
+    // console.log("Produit :", productData.name);
+    // console.log("Fournisseur ID :", supplierBusinessId);
+    // console.log("Quantité :", quantity);
 
-    Toast.show({
-      type: "success",
-      text1: "Ajouté au panier !",
-      text2: `${quantity} × ${productData.name}`,
-      position: "bottom",
-      visibilityTime: 2000,
-    });
+    if (isInCart) {
+      removeItem(productData.id, productData.variant.id, supplierBusinessId);
+      Toast.show({
+        type: "info",
+        text1: "Retiré du panier",
+        text2: productData.name,
+        position: "bottom",
+        visibilityTime: 2000,
+      });
+    } else {
+      addItem(
+        productData.id,
+        productData.name,
+        productData.variant,
+        quantity,
+        productData.images[0]?.url || null,
+        supplierBusinessId
+      );
+      Toast.show({
+        type: "success",
+        text1: "Ajouté au panier !",
+        text2: `${quantity} × ${productData.name}`,
+        position: "bottom",
+        visibilityTime: 2000,
+      });
+    }
   };
 
   const fetchProduct = useCallback(async () => {
@@ -84,6 +120,30 @@ export default function ProductDetailsScreen() {
     setLoading(true);
     try {
       const product: Product = await ProductService.getProductById(productId);
+      if (business) {
+        const symbol = await getCurrencySymbolById(business.currencyId);
+        setSymbol(symbol);
+      }
+      // === RÉCUPÉRATION DU BUSINESS ID DU FOURNISSEUR ===
+      // Adapte cette ligne selon la structure réelle de ton objet Product
+      const businessId =
+        product.business?.id || // le plus courant
+        product.businessId ||
+        product.ownerBusinessId ||
+        product.supplier?.id ||
+        null;
+
+      if (!businessId) {
+        console.warn(
+          "Attention : aucun businessId trouvé pour ce produit",
+          product
+        );
+        Alert.alert("Info", "Ce produit n'a pas de fournisseur identifié.");
+      }
+
+      setSupplierBusinessId(businessId);
+
+      // === LE RESTE DE TON CODE (variante, images, etc.) ===
       const variant = product.variants[0];
       if (!variant) throw new Error("Aucune variante trouvée");
 
@@ -187,7 +247,7 @@ export default function ProductDetailsScreen() {
       </SafeAreaView>
     );
   }
-
+  console.log("🧱 ProductData:\n", JSON.stringify(productData, null, 2));
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -202,7 +262,7 @@ export default function ProductDetailsScreen() {
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
       >
-        {/* CAROUSEL */}
+        {/* CAROUSEL IMAGES */}
         <View style={styles.carousel}>
           <ScrollView
             ref={scrollViewRef}
@@ -237,7 +297,7 @@ export default function ProductDetailsScreen() {
           </View>
         </View>
 
-        {/* INFOS */}
+        {/* INFOS PRODUIT */}
         <View style={styles.infoCard}>
           <View style={styles.categories}>
             <Text style={styles.category}>{productData.category}</Text>
@@ -258,7 +318,10 @@ export default function ProductDetailsScreen() {
               <Text style={styles.price}>
                 {productData.price.toLocaleString("fr-FR")}
               </Text>
-              <Text style={styles.unit}> FCFA {productData.priceUnit}</Text>
+              <Text style={styles.unit}>
+                {" "}
+                {symbol} {productData.priceUnit}
+              </Text>
             </View>
             <Text style={styles.minimum}>
               Minimum : {productData.minimumOrder} pièces
@@ -297,13 +360,18 @@ export default function ProductDetailsScreen() {
       <View style={styles.bottomBar}>
         <View style={styles.quantityControl}>
           <TouchableOpacity
-            style={styles.qtyBtn}
+            style={[
+              styles.qtyBtn,
+              quantity <= productData.minimumOrder && styles.qtyBtnDisabled,
+            ]}
             onPress={() => updateQuantity(-1)}
             disabled={quantity <= productData.minimumOrder}
           >
             <Ionicons name="remove" size={20} color="#00B87C" />
           </TouchableOpacity>
+
           <Text style={styles.qtyText}>{quantity}</Text>
+
           <TouchableOpacity
             style={styles.qtyBtn}
             onPress={() => updateQuantity(1)}
@@ -311,15 +379,23 @@ export default function ProductDetailsScreen() {
             <Ionicons name="add" size={20} color="#00B87C" />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addToCartBtn} onPress={handleAddToCart}>
-          <Text style={styles.addToCartText}>Ajouter au panier</Text>
+
+        <TouchableOpacity
+          style={[
+            styles.cartButton,
+            isInCart ? styles.removeFromCartBtn : styles.addToCartBtn,
+          ]}
+          onPress={handleCartAction}
+        >
+          <Text style={styles.cartButtonText}>
+            {isInCart ? "Retirer du panier" : "Ajouter au panier"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
-// Tes styles originaux (inchangés)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F5F5F5" },
   header: {
@@ -394,6 +470,7 @@ const styles = StyleSheet.create({
   descItem: { fontSize: 14, color: "#666", lineHeight: 20 },
   label: { color: "#666" },
   value: { color: "#000", fontWeight: "500" },
+
   bottomBar: {
     position: "absolute",
     bottom: 0,
@@ -426,18 +503,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
+  qtyBtnDisabled: { opacity: 0.5 },
   qtyText: {
     fontSize: 18,
     fontWeight: "600",
     color: "#000",
     paddingHorizontal: 20,
   },
-  addToCartBtn: {
+  cartButton: {
     flex: 1,
-    backgroundColor: "#00B87C",
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
   },
-  addToCartText: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
+  addToCartBtn: { backgroundColor: "#00B87C" },
+  removeFromCartBtn: { backgroundColor: "#EF4444" },
+  cartButtonText: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
 });

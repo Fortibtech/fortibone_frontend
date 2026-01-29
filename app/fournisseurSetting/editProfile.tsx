@@ -7,9 +7,9 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import MaterialIcon from "react-native-vector-icons/MaterialIcons";
 import { updateUserProfile } from "@/api/Users";
@@ -17,7 +17,10 @@ import { UserProfile, useUserStore } from "@/store/userStore";
 import { router } from "expo-router";
 
 const EditProfileScreen = () => {
-  const user = useUserStore((state) => state.userProfile);
+  // ❇️ VERSION PRO :
+  // On ne déclenche AUCUN rerender via Zustand.
+  // On lit la valeur une seule fois :
+  const user = useUserStore.getState().userProfile;
   const setUserProfile = useUserStore.getState().setUserProfile;
 
   const [loading, setLoading] = useState(false);
@@ -33,21 +36,22 @@ const EditProfileScreen = () => {
     fonction: "Responsable commercial",
   });
 
-  // ⭐️ Hydratation du formulaire une seule fois au montage
+  // ⭐️ Hydratation du formulaire une seule fois, jamais plus
   useEffect(() => {
-    if (user) {
-      setFormData({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        phoneNumber: user.phoneNumber || "",
-        dateOfBirth: user.dateOfBirth || "",
-        country: user.country || "",
-        city: user.city || "",
-        gender: (user.gender as any) || "MALE",
-        fonction: "Responsable commercial",
-      });
-    }
-  }, [user]); // ← tableau vide = exécute une seule fois
+    if (!user) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      phoneNumber: user.phoneNumber || "",
+      dateOfBirth: user.dateOfBirth || "",
+      country: user.country || "",
+      city: user.city || "",
+      gender: (user.gender as any) || "MALE",
+      fonction: prev.fonction, // ne vient pas du user
+    }));
+  }, []); // ← tableau vide = ne reroule jamais
 
   const handleSave = async () => {
     setLoading(true);
@@ -63,7 +67,6 @@ const EditProfileScreen = () => {
       };
 
       const updatedUser = await updateUserProfile(payload);
-
       const data = updatedUser.data || updatedUser;
 
       setUserProfile({
@@ -138,7 +141,7 @@ const EditProfileScreen = () => {
           />
         </View>
 
-        {/* Ville / Pays — même logique */}
+        {/* Ville / Pays … */}
       </ScrollView>
 
       {/* FOOTER */}
@@ -170,7 +173,7 @@ const EditProfileScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
-  formContainer: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+  formContainer: { flex: 1, paddingHorizontal: 20, paddingTop: 40 },
   inputGroup: { marginBottom: 24 },
   label: { fontSize: 14, fontWeight: "500", color: "#000000", marginBottom: 8 },
   required: { color: "#FF3B30" },

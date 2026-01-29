@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { GetWalletTransactions } from "@/api/wallet";
 
 type Props = {
-  currency?: string; // ex: "KMF", "MAD", "EUR" → par défaut KMF
+  currency?: string | null;
   backgroundColor?: string;
   iconColor?: string;
 };
@@ -15,7 +15,7 @@ const TotalExpensesCard: React.FC<Props> = ({
   backgroundColor = "#FFF9E6",
   iconColor = "#FFC107",
 }) => {
-  const [totalExpenses, setTotalExpenses] = useState<number | null>(null);
+  const [totalExpenses, setTotalExpenses] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,38 +27,44 @@ const TotalExpensesCard: React.FC<Props> = ({
       setLoading(true);
 
       const response = await GetWalletTransactions({
-        limit: 100,
-        status: "COMPLETED", // indispensable pour éviter le 400 sur status
-        // type: "WITHDRAWAL" ou "PAYMENT" si tu veux être plus précis (optionnel)
+        limit: 100, // assez pour couvrir les dépenses récentes
+        status: "COMPLETED",
       });
 
-      const txs = response?.data || [];
+      const txs = Array.isArray(response) ? response : response?.data || [];
 
-      const total = txs
-        .filter(
-          (t: any) => !["DEPOSIT", "REFUND", "ADJUSTMENT"].includes(t.provider)
-        )
-        .reduce(
-          (sum: number, t: any) => sum + Math.abs(Number(t.amount || 0)),
-          0
-        );
+      let expensesSum = 0;
 
-      setTotalExpenses(total);
+      txs.forEach((t: any) => {
+        const provider = (t.provider || "").toString().toUpperCase();
+        const amountRaw = Number(t.amount || 0);
+
+        // On considère comme dépense :
+        // - soit le montant est négatif
+        // - soit c'est un PAYMENT, TRANSFER, WITHDRAWAL (même si montant positif par erreur API)
+        const isExpense =
+          amountRaw < 0 ||
+          ["PAYMENT", "TRANSFER", "WITHDRAWAL"].includes(provider);
+
+        if (isExpense && amountRaw < 0) {
+          expensesSum += amountRaw; // amountRaw est négatif → on additionne la valeur négative
+        }
+      });
+
+      // On prend la valeur absolue pour afficher un montant positif dans la carte
+      setTotalExpenses(Math.abs(expensesSum));
     } catch (err) {
-      console.error("Erreur chargement dépenses", err);
+      console.error("Erreur chargement dépenses totales :", err);
       setTotalExpenses(0);
     } finally {
       setLoading(false);
     }
   };
 
-  const formattedAmount =
-    totalExpenses !== null
-      ? totalExpenses.toLocaleString("fr-FR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })
-      : "0,00";
+  const formattedAmount = totalExpenses.toLocaleString("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
   return (
     <View style={[styles.card, { backgroundColor }]}>
@@ -80,7 +86,6 @@ const TotalExpensesCard: React.FC<Props> = ({
 
 export default TotalExpensesCard;
 
-// Styles identiques à ton design
 const styles = StyleSheet.create({
   card: {
     flex: 1,
