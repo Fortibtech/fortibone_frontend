@@ -4,6 +4,7 @@ import { useUserStore } from '@/stores/userStore';
 import { useBusinessStore } from '@/stores/businessStore';
 import BusinessSelector from '@/components/business/BusinessSelector';
 import styles from './MobileHeader.module.css';
+import Link from 'next/link';
 
 interface MobileHeaderProps {
     showBusinessSelector?: boolean;
@@ -32,13 +33,15 @@ export default function MobileHeader({ showBusinessSelector = true }: MobileHead
                             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                         </svg>
                     </button>
-                    <div className={styles.userAvatar}>
+
+                    {/* FIXED: Profile Icon is now clickable */}
+                    <Link href={isPro ? "/dashboard/commercant/settings" : "/dashboard/particulier/profile"} className={styles.userAvatar}>
                         {userProfile?.profileImageUrl ? (
                             <img src={userProfile.profileImageUrl} alt="" />
                         ) : (
                             <span>{userProfile?.firstName?.charAt(0) || 'U'}</span>
                         )}
-                    </div>
+                    </Link>
                 </div>
             </div>
 

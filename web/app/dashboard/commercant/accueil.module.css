@@ -76,8 +76,8 @@
 }
 
 .cardGreen {
-    background: #F2FCF1;
-    border-color: #68F755;
+    background: var(--color-primary-50);
+    border-color: var(--color-primary);
 }
 
 .cardIcon {
@@ -143,14 +143,14 @@
 
 .analyticsCard:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(27, 184, 116, 0.15);
-    border-color: #1BB874;
+    box-shadow: 0 4px 16px rgba(0, 191, 165, 0.15);
+    border-color: var(--color-primary);
 }
 
 .analyticsIcon {
     width: 56px;
     height: 56px;
-    background: #ECFDF5;
+    background: var(--color-primary-50);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -168,7 +168,7 @@
     position: absolute;
     bottom: 12px;
     right: 12px;
-    color: #1BB874;
+    color: var(--color-primary);
     font-size: 1.2rem;
     font-weight: bold;
 }
@@ -223,7 +223,7 @@
     width: 40px;
     height: 40px;
     border: 3px solid #f0f0f0;
-    border-top-color: #7C3AED;
+    border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: 16px;

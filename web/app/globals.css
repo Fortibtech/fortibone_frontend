@@ -1,9 +1,8 @@
-:root {
-    /* === BRAND IDENTITY (Aligned with Mobile #1BB874) === */
-    --color-primary: #1BB874;
-    --color-primary-dark: #16a465;
-    --color-primary-50: #e6f9f1;
-    --color-primary-100: #d1fae5;
+    /* === BRAND IDENTITY (Aligned with Mobile #00BFA5) === */
+    --color-primary: #00BFA5;
+    --color-primary-dark: #00897B;
+    --color-primary-50: #E0F2F1;
+    --color-primary-100: #B2DFDB;
 
     --color-secondary: #f59e0b;
     --color-secondary-dark: #d97706;
@@ -49,8 +48,10 @@
 
     /* === SHADOWS === */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
     /* === TYPOGRAPHY === */
     --text-xs: 0.75rem;
@@ -59,15 +60,15 @@
     --text-lg: 1.125rem;
     --text-xl: 1.25rem;
     --text-2xl: 1.5rem;
-}
+    }
 
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--color-gray-50);
-    color: var(--color-gray-900);
-}
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--color-gray-50);
+        color: var(--color-gray-900);
+    }
 
-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-}
+    input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }

@@ -1,0 +1,134 @@
+/* [project]/admin/src/app/login/login.module.css [app-client] (css) */
+.login-module__kdNUiG__container {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+}
+
+.login-module__kdNUiG__loginBox {
+  text-align: center;
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 400px;
+  padding: 40px;
+  box-shadow: 0 20px 60px #0000004d;
+}
+
+.login-module__kdNUiG__logo {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  border-radius: 16px;
+  justify-content: center;
+  align-items: center;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 20px;
+  font-size: 28px;
+  font-weight: 700;
+  display: flex;
+}
+
+.login-module__kdNUiG__title {
+  color: var(--color-gray-900);
+  margin-bottom: 8px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.login-module__kdNUiG__subtitle {
+  color: var(--color-gray-500);
+  margin-bottom: 32px;
+  font-size: 14px;
+}
+
+.login-module__kdNUiG__error {
+  color: var(--color-error);
+  background: #ef44441a;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.login-module__kdNUiG__form {
+  flex-direction: column;
+  gap: 20px;
+  display: flex;
+}
+
+.login-module__kdNUiG__inputGroup {
+  text-align: left;
+}
+
+.login-module__kdNUiG__label {
+  color: var(--color-gray-700);
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  display: block;
+}
+
+.login-module__kdNUiG__input {
+  border: 1px solid var(--color-gray-200);
+  box-sizing: border-box;
+  border-radius: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  transition: all .2s;
+}
+
+.login-module__kdNUiG__input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-50);
+  outline: none;
+}
+
+.login-module__kdNUiG__input::placeholder {
+  color: var(--color-gray-400);
+}
+
+.login-module__kdNUiG__button {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all .2s;
+}
+
+.login-module__kdNUiG__button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px #05966966;
+}
+
+.login-module__kdNUiG__button:disabled {
+  opacity: .7;
+  cursor: not-allowed;
+}
+
+.login-module__kdNUiG__footer {
+  color: var(--color-gray-400);
+  margin-top: 32px;
+  font-size: 12px;
+}
+
+@media (max-width: 480px) {
+  .login-module__kdNUiG__loginBox {
+    padding: 32px 24px;
+  }
+
+  .login-module__kdNUiG__title {
+    font-size: 20px;
+  }
+}
+
+/*# sourceMappingURL=admin_src_app_login_login_module_3e7d77bb.css.map*/

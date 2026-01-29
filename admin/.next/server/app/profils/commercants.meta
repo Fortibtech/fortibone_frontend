@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/profils/layout,_N_T_/profils/commercants/layout,_N_T_/profils/commercants/page,_N_T_/profils/commercants"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/profils/commercants/__PAGE__",
+    "/profils/commercants",
+    "/profils",
+    "/_index",
+    "/_head"
+  ]
+}

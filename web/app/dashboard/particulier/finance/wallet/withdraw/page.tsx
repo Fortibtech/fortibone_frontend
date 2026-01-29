@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getWallet, createWithdraw, type Wallet } from '@/lib/api';
-import styles from '../deposit/deposit.module.css';
+import styles from './withdraw.module.css';
 
 const presets = [10000, 25000, 50000, 100000, 200000];
 
@@ -127,19 +127,12 @@ export default function WithdrawPage() {
                 </div>
 
                 <div className={styles.content}>
-                    {/* Balance Card */}
-                    <div style={{
-                        background: '#fff',
-                        borderRadius: 16,
-                        padding: 20,
-                        marginBottom: 24,
-                        border: '2px solid #00BFA5',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                    }}>
-                        <p style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Solde disponible</p>
-                        <p style={{ fontSize: 32, fontWeight: 700, color: '#00BFA5' }}>
+                    {/* Balance Card - Mobile Style */}
+                    <div className={styles.balanceCard}>
+                        <span className={styles.balanceLabel}>Solde disponible</span>
+                        <span className={styles.balanceAmount}>
                             {balance.toLocaleString('fr-FR')} {currencySymbol}
-                        </p>
+                        </span>
                     </div>
 
                     {/* Méthode */}
