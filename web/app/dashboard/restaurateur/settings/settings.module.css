@@ -1,6 +1,7 @@
 .container {
-    padding: 24px;
+    padding: var(--space-6);
     max-width: 800px;
+    margin: 0 auto;
 }
 
 .header {
@@ -9,29 +10,30 @@
 
 .title {
     font-size: 28px;
-    font-weight: 700;
-    color: #111;
+    font-weight: 800;
+    color: var(--color-gray-900);
     margin-bottom: 8px;
 }
 
 .subtitle {
     font-size: 14px;
-    color: #666;
+    color: var(--color-gray-500);
 }
 
 .section {
-    background: #fff;
-    border-radius: 16px;
+    background: white;
+    border-radius: var(--radius-xl);
     padding: 24px;
     margin-bottom: 24px;
-    border: 1px solid #f0f0f0;
+    border: 1px solid var(--color-gray-200);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .sectionTitle {
     font-size: 18px;
     font-weight: 600;
-    color: #111;
-    margin-bottom: 20px;
+    color: var(--color-gray-900);
+    margin-bottom: 24px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -40,14 +42,15 @@
 .sectionIcon {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, #F59E0B, #d97706);
-    border-radius: 10px;
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: white;
 }
 
+/* Forms */
 .formGroup {
     margin-bottom: 20px;
 }
@@ -56,37 +59,45 @@
     display: block;
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--color-gray-700);
     margin-bottom: 8px;
 }
 
 .input {
     width: 100%;
     padding: 12px 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
     font-size: 15px;
-    transition: border-color 0.2s;
+    transition: all 0.2s;
+    background: var(--color-gray-50);
 }
 
 .input:focus {
     outline: none;
-    border-color: #F59E0B;
+    border-color: var(--color-primary);
+    background: white;
+    box-shadow: 0 0 0 2px var(--color-primary-light-20);
 }
 
 .textarea {
     width: 100%;
     padding: 12px 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-lg);
     font-size: 15px;
     resize: vertical;
     min-height: 100px;
+    transition: all 0.2s;
+    background: var(--color-gray-50);
+    font-family: inherit;
 }
 
 .textarea:focus {
     outline: none;
-    border-color: #F59E0B;
+    border-color: var(--color-primary);
+    background: white;
+    box-shadow: 0 0 0 2px var(--color-primary-light-20);
 }
 
 .row {
@@ -96,17 +107,26 @@
 }
 
 @media (max-width: 640px) {
+    .container {
+        padding: 16px;
+    }
+
     .row {
         grid-template-columns: 1fr;
     }
+
+    .section {
+        padding: 16px;
+    }
 }
 
+/* Toggles */
 .toggleRow {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 16px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid var(--color-gray-100);
 }
 
 .toggleRow:last-child {
@@ -115,32 +135,35 @@
 
 .toggleInfo {
     flex: 1;
+    padding-right: 16px;
 }
 
 .toggleLabel {
     font-size: 15px;
     font-weight: 500;
-    color: #111;
+    color: var(--color-gray-900);
     margin-bottom: 4px;
 }
 
 .toggleDescription {
     font-size: 13px;
-    color: #666;
+    color: var(--color-gray-500);
+    line-height: 1.4;
 }
 
 .toggle {
     position: relative;
     width: 50px;
     height: 28px;
-    background: #e5e7eb;
+    background: var(--color-gray-200);
     border-radius: 999px;
     cursor: pointer;
     transition: background 0.2s;
+    flex-shrink: 0;
 }
 
 .toggle.active {
-    background: #F59E0B;
+    background: var(--color-primary);
 }
 
 .toggleKnob {
@@ -149,155 +172,69 @@
     left: 2px;
     width: 24px;
     height: 24px;
-    background: #fff;
+    background: white;
     border-radius: 50%;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
+    transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .toggle.active .toggleKnob {
     transform: translateX(22px);
 }
 
+/* Buttons */
 .buttonGroup {
     display: flex;
     gap: 12px;
     margin-top: 24px;
 }
 
-.saveButton {
-    padding: 14px 28px;
-    background: linear-gradient(135deg, #F59E0B, #d97706);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.saveButton:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-}
-
-.cancelButton {
-    padding: 14px 28px;
-    background: #f3f4f6;
-    color: #666;
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.cancelButton:hover {
-    background: #e5e7eb;
-}
-
-.dangerSection {
-    background: #fef2f2;
-    border-color: #fecaca;
-}
-
-.dangerButton {
-    padding: 12px 24px;
-    background: #ef4444;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.dangerButton:hover {
-    background: #dc2626;
-}
-
+/* Avatar Section */
 .avatarSection {
     display: flex;
     align-items: center;
     gap: 20px;
     margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--color-gray-100);
 }
 
 .avatar {
     width: 80px;
     height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #F59E0B, #d97706);
+    border-radius: 20px;
+    /* Squircle */
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: white;
     font-size: 28px;
     font-weight: 700;
+    box-shadow: 0 4px 12px var(--color-primary-light-20);
 }
 
 .avatarInfo h3 {
     font-size: 18px;
-    font-weight: 600;
-    color: #111;
+    font-weight: 700;
+    color: var(--color-gray-900);
     margin-bottom: 4px;
 }
 
 .avatarInfo p {
     font-size: 14px;
-    color: #666;
+    color: var(--color-gray-500);
 }
 
 .changeAvatarBtn {
-    padding: 8px 16px;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 13px;
-    cursor: pointer;
-    margin-top: 8px;
+    margin-top: 12px;
+    /* Use Button component styling instead */
 }
 
+/* Loading */
 .loadingContainer {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 20px;
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid #f3f4f6;
-    border-top-color: #F59E0B;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.successMessage {
-    padding: 12px 16px;
-    background: #d1fae5;
-    color: #065f46;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    font-size: 14px;
-}
-
-.errorMessage {
-    padding: 12px 16px;
-    background: #fecaca;
-    color: #991b1b;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    font-size: 14px;
+    gap: 16px;
+    padding: 40px;
 }

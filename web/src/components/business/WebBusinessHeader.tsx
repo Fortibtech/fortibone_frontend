@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui';
 import styles from './WebBusinessHeader.module.css';
 
 interface WebBusinessHeaderProps {
@@ -109,13 +110,15 @@ export default function WebBusinessHeader({
                 {/* Actions (Right Side) */}
                 <div className={styles.actions}>
                     {phoneNumber && (
-                        <a href={`tel:${phoneNumber}`} className={styles.actionBtn}>
-                            Appeler
-                        </a>
+                        <div onClick={() => window.open(`tel:${phoneNumber}`, '_self')}>
+                            <Button variant="outline">
+                                📞 Appeler
+                            </Button>
+                        </div>
                     )}
-                    <button className={styles.actionBtnPrimary}>
-                        Contacter
-                    </button>
+                    <Button variant="primary">
+                        💬 Contacter
+                    </Button>
                 </div>
             </div>
         </div>

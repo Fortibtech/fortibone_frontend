@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getMyOrders, Order } from '@/lib/api/orders';
+import { Skeleton, EmptyState } from '@/components/ui';
 import styles from './orders.module.css';
 
 export default function OrdersPage() {
@@ -79,8 +80,8 @@ export default function OrdersPage() {
                 {/* Header */}
                 <div className={styles.header}>
                     <button onClick={() => router.back()} className={styles.backButton}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                        Retour
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <span className="hidden md:inline">Retour</span>
                     </button>
                     <h1 className={styles.title}>Vos commandes</h1>
                 </div>
@@ -88,16 +89,23 @@ export default function OrdersPage() {
                 {/* Content */}
                 {loading && page === 1 ? (
                     <div className={styles.loading}>
-                        <div className={styles.spinner} />
-                        <p>Chargement des commandes...</p>
+                        {[1, 2, 3, 4].map((i) => (
+                            <Skeleton key={i} height={100} style={{ borderRadius: 12 }} />
+                        ))}
                     </div>
                 ) : orders.length === 0 ? (
                     <div className={styles.empty}>
-                        <span className={styles.emptyIcon}>🛒</span>
-                        <p className={styles.emptyTitle}>Aucune commande pour le moment</p>
-                        <p className={styles.emptySubtitle}>
-                            Elles apparaîtront ici dès que vous en passerez une
-                        </p>
+                        <EmptyState
+                            title="Aucune commande"
+                            description="Vos commandes passées apparaîtront ici."
+                            icon={
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.2 }}>
+                                    <circle cx="9" cy="21" r="1"></circle>
+                                    <circle cx="20" cy="21" r="1"></circle>
+                                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                </svg>
+                            }
+                        />
                     </div>
                 ) : (
                     <div className={styles.list}>
@@ -120,35 +128,30 @@ export default function OrdersPage() {
                                     className={styles.orderItem}
                                     onClick={() => handleOrderClick(order.id)}
                                 >
-                                    {/* Order ID */}
-                                    <div className={styles.cellOrder}>
-                                        <div className={styles.rowBetween}>
-                                            <span>#{order.orderNumber}</span>
-                                            {/* Mobile-only status badge if needed, or keeping unified structure */}
+                                    {/* Mobile Row 1: Order + Status */}
+                                    <div className={styles.mobileRowTop}>
+                                        <div className={styles.cellOrder}>#{order.orderNumber}</div>
+                                        <div className={styles.cellStatus}>
+                                            <span
+                                                className={styles.statusBadge}
+                                                style={{ backgroundColor: status.bg, color: status.color }}
+                                            >
+                                                {status.text}
+                                            </span>
                                         </div>
                                     </div>
 
-                                    {/* Date */}
-                                    <div className={styles.cellDate}>
-                                        {formatDate(order.createdAt)}
+                                    {/* Mobile Row 2: Date + Total */}
+                                    <div className={styles.mobileRowBottom}>
+                                        <div className={styles.cellDate}>
+                                            {formatDate(order.createdAt)}
+                                        </div>
+                                        <div className={styles.cellTotal}>
+                                            {total} KMF
+                                        </div>
                                     </div>
 
-                                    {/* Status */}
-                                    <div className={styles.cellStatus}>
-                                        <span
-                                            className={styles.statusBadge}
-                                            style={{ backgroundColor: status.bg, color: status.color }}
-                                        >
-                                            {status.text}
-                                        </span>
-                                    </div>
-
-                                    {/* Total */}
-                                    <div className={styles.cellTotal}>
-                                        {total} KMF
-                                    </div>
-
-                                    {/* Action Arrow */}
+                                    {/* Desktop Action (Hidden on Mobile) */}
                                     <div className={styles.cellAction}>
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                                     </div>
@@ -162,7 +165,7 @@ export default function OrdersPage() {
                                 onClick={() => setPage(prev => prev + 1)}
                                 disabled={loading}
                             >
-                                {loading ? 'Chargement...' : 'Charger les commandes suivantes'}
+                                {loading ? 'Chargement...' : 'Charger plus'}
                             </button>
                         )}
                     </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout';
+import { Button } from '@/components/ui';
 import { useBusinessStore } from '@/stores/businessStore';
 import { updateBusiness } from '@/lib/api/business';
 import styles from './settings.module.css';
@@ -108,8 +109,6 @@ export default function RestaurateurSettingsPage() {
                     <p className={styles.subtitle}>Gérez les paramètres de votre restaurant</p>
                 </div>
 
-                {/* Toast handles success/error messages now */}
-
                 {/* Business Info Section */}
                 <div className={styles.section}>
                     <h2 className={styles.sectionTitle}>
@@ -124,7 +123,7 @@ export default function RestaurateurSettingsPage() {
                         <div className={styles.avatarInfo}>
                             <h3>{selectedBusiness.name}</h3>
                             <p>{selectedBusiness.type || 'Restaurant'}</p>
-                            <button className={styles.changeAvatarBtn}>Changer le logo</button>
+                            <Button size="sm" variant="outline" className="mt-2">Changer le logo</Button>
                         </div>
                     </div>
 
@@ -251,25 +250,29 @@ export default function RestaurateurSettingsPage() {
                                 Mettre à jour votre mot de passe de connexion
                             </div>
                         </div>
-                        <button className={styles.cancelButton}>Modifier</button>
+                        <Button variant="outline" size="sm">Modifier</Button>
                     </div>
                 </div>
 
                 {/* Save Button */}
                 <div className={styles.buttonGroup}>
-                    <button
-                        className={styles.saveButton}
+                    <Button
+                        variant="primary"
+                        size="lg"
+                        className="flex-1"
+                        isLoading={loading}
                         onClick={handleSave}
-                        disabled={loading}
                     >
-                        {loading ? 'Enregistrement...' : 'Enregistrer les modifications'}
-                    </button>
-                    <button
-                        className={styles.cancelButton}
+                        Enregistrer
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="lg"
+                        className="flex-1"
                         onClick={() => router.back()}
                     >
                         Annuler
-                    </button>
+                    </Button>
                 </div>
             </div>
         </DashboardLayout>

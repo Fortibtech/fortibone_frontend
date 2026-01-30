@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { getWalletTransactions, type WalletTransaction } from '@/lib/api';
+import { Skeleton, EmptyState, EmptyIllustrations, Button } from '@/components/ui';
 import styles from './WalletStatisticsView.module.css';
 
 interface WalletStatisticsViewProps {
@@ -117,7 +118,50 @@ export default function WalletStatisticsView({ symbol = 'KMF', period: initialPe
     };
 
     if (loading) {
-        return <div className={styles.loading}>Chargement des statistiques...</div>;
+        return (
+            <div className={styles.container}>
+                {/* Period Selector Skeleton */}
+                <div className={styles.periodSelector}>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <Skeleton key={i} width={60} height={36} style={{ borderRadius: 20 }} />
+                    ))}
+                </div>
+
+                {/* Chart Card Skeleton */}
+                <div className={styles.chartCard} style={{ border: 'none', boxShadow: 'none' }}>
+                    <Skeleton width={200} height={24} style={{ marginBottom: 20 }} />
+                    <Skeleton width="100%" height={300} />
+                </div>
+
+                <div className={styles.gridRow}>
+                    {/* Pie Chart Skeleton */}
+                    <div className={styles.chartCard} style={{ border: 'none', boxShadow: 'none' }}>
+                        <Skeleton width={200} height={24} style={{ marginBottom: 20 }} />
+                        <Skeleton width="100%" height={300} />
+                    </div>
+
+                    {/* Metrics Skeleton */}
+                    <div className={styles.metricsCard} style={{ border: 'none', boxShadow: 'none' }}>
+                        <Skeleton width={150} height={24} style={{ marginBottom: 20 }} />
+                        <div className={styles.metricsList}>
+                            <div className={styles.metricItem}>
+                                <Skeleton width={100} height={20} />
+                                <Skeleton width={120} height={28} />
+                            </div>
+                            <div className={styles.metricItem}>
+                                <Skeleton width={100} height={20} />
+                                <Skeleton width={120} height={28} />
+                            </div>
+                            <div className={styles.metricDivider} />
+                            <div className={styles.metricItem}>
+                                <Skeleton width={100} height={20} />
+                                <Skeleton width={120} height={28} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -125,13 +169,15 @@ export default function WalletStatisticsView({ symbol = 'KMF', period: initialPe
             {/* Period Selector */}
             <div className={styles.periodSelector}>
                 {(['1w', '1m', '3m', '6m', '1y'] as const).map(p => (
-                    <button
+                    <Button
                         key={p}
-                        className={`${styles.periodBtn} ${period === p ? styles.active : ''}`}
+                        variant={period === p ? 'primary' : 'outline'}
+                        size="sm"
                         onClick={() => setPeriod(p)}
+                        className={styles.periodBtn} // Optional: keep for specific margins if needed
                     >
                         {p}
-                    </button>
+                    </Button>
                 ))}
             </div>
 
@@ -181,7 +227,13 @@ export default function WalletStatisticsView({ symbol = 'KMF', period: initialPe
                                 </PieChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className={styles.emptyChart}>Aucune donnée de dépense pour cette période</div>
+                            <div className={styles.emptyChart}>
+                                <EmptyState
+                                    title="Aucune dépense"
+                                    description="Pas de données de dépenses pour cette période."
+                                    icon={EmptyIllustrations.Data}
+                                />
+                            </div>
                         )}
                     </div>
                 </div>

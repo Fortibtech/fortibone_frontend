@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getOrderById, payOrder, Order, OrderStatus } from '@/lib/api/orders';
+import { Skeleton, Button } from '@/components/ui';
 import styles from './order-detail.module.css';
 
 type PaymentMethod = 'WALLET' | 'KARTAPAY' | 'STRIPE';
@@ -146,9 +147,26 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     if (loading) {
         return (
             <DashboardLayout businessType="PARTICULIER">
-                <div className={styles.loading}>
-                    <div className={styles.spinner} />
-                    <p>Chargement de la commande...</p>
+                <div className={styles.container}>
+                    {/* Header Skeleton */}
+                    <div className={styles.header}>
+                        <Skeleton width={40} height={40} style={{ borderRadius: '50%' }} />
+                        <Skeleton width={200} height={28} />
+                        <div style={{ width: 40 }} />
+                    </div>
+
+                    <div className={styles.loading}>
+                        {/* Status Skeleton */}
+                        <Skeleton height={100} style={{ borderRadius: 12 }} />
+
+                        {/* Timeline Skeleton */}
+                        <Skeleton height={120} style={{ borderRadius: 12 }} />
+
+                        {/* Items Skeleton */}
+                        {[1, 2].map(i => (
+                            <Skeleton key={i} height={80} style={{ borderRadius: 8 }} />
+                        ))}
+                    </div>
                 </div>
             </DashboardLayout>
         );
@@ -386,8 +404,11 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                 {/* Actions */}
                 <div className={styles.actions}>
                     {order.status === 'PENDING_PAYMENT' && (
-                        <button
-                            className={styles.payBtn}
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            fullWidth
+                            isLoading={paying}
                             onClick={() => {
                                 setPaymentModal(true);
                                 setPaymentMethod('WALLET');
@@ -396,14 +417,16 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                             }}
                         >
                             💳 Payer maintenant
-                        </button>
+                        </Button>
                     )}
-                    <button
-                        className={styles.contactBtn}
+                    <Button
+                        variant="outline"
+                        size="lg"
+                        fullWidth
                         onClick={() => alert('Fonctionnalité à venir: contacter le vendeur')}
                     >
                         📞 Contacter le vendeur
-                    </button>
+                    </Button>
                 </div>
             </div>
 

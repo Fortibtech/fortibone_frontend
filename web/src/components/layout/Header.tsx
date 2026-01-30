@@ -9,6 +9,14 @@ import styles from './Header.module.css';
 interface HeaderProps {
     title?: string;
     onMenuClick?: () => void;
+    /** Header style variant: 'primary' (green/teal) or 'standard' (white) */
+    variant?: 'primary' | 'standard';
+    /** Show search bar in header */
+    showSearch?: boolean;
+    /** Show cart button with badge */
+    showCart?: boolean;
+    /** Cart items count for badge */
+    cartCount?: number;
 }
 
 // Icons for menu items
@@ -54,12 +62,26 @@ const menuIcons = {
     ),
 };
 
-export default function Header({ title, onMenuClick }: HeaderProps) {
+import { getPendingOrdersCount } from '@/lib/api';
+
+// ...
+
+export default function Header({
+    title,
+    onMenuClick,
+    variant = 'standard',
+    showSearch = false,
+    showCart = false,
+    cartCount = 0,
+}: HeaderProps) {
     const router = useRouter();
     const { userProfile, logout } = useUserStore();
     const { selectedBusiness } = useBusinessStore();
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Notification state
+    const [notificationCount, setNotificationCount] = useState(0);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -71,6 +93,43 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Listen for global shortcuts
+    useEffect(() => {
+        const handleFocusSearch = () => {
+            const searchInput = document.querySelector('input[type="text"][placeholder="Rechercher..."]') as HTMLInputElement;
+            if (searchInput) {
+                searchInput.focus();
+            }
+        };
+
+        window.addEventListener('focus-search', handleFocusSearch);
+        return () => window.removeEventListener('focus-search', handleFocusSearch);
+    }, []);
+
+    // Fetch notifications (Pending Orders for Business)
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            if (selectedBusiness?.id) {
+                try {
+                    // Fetch pending sales orders
+                    const count = await getPendingOrdersCount(selectedBusiness.id, 'SALE');
+                    setNotificationCount(count);
+                } catch (error) {
+                    console.error('Error fetching notifications:', error);
+                }
+            } else {
+                setNotificationCount(0);
+            }
+        };
+
+        fetchNotifications();
+
+        // Optional: Poll every 60s
+        const interval = setInterval(fetchNotifications, 60000);
+        return () => clearInterval(interval);
+    }, [selectedBusiness?.id]);
+
 
     const handleLogout = () => {
         logout();
@@ -86,8 +145,13 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
     const dashboardType = selectedBusiness?.type?.toLowerCase() || 'commercant';
     const isPro = userProfile?.profileType === 'PRO';
 
+    // Build header class based on variant
+    const headerClass = variant === 'primary'
+        ? `${styles.header} ${styles.headerPrimary}`
+        : styles.header;
+
     return (
-        <header className={styles.header}>
+        <header className={headerClass}>
             {/* Mobile menu button */}
             <button
                 className={styles.menuBtn}
@@ -115,12 +179,15 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
             {/* Right section */}
             <div className={styles.actions}>
                 {/* Notifications */}
+                {/* Notifications */}
                 <button className={styles.iconBtn} aria-label="Notifications">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                         <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                     </svg>
-                    <span className={styles.badge}>3</span>
+                    {notificationCount > 0 && (
+                        <span className={styles.badge}>{notificationCount}</span>
+                    )}
                 </button>
 
                 {/* Search (desktop only) - Visible only for PARTICULIER or if no business selected */}

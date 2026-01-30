@@ -11,6 +11,57 @@
     z-index: 50;
 }
 
+/* Primary (Green/Teal) Header Variant - Mobile-aligned */
+.headerPrimary {
+    background-color: var(--color-primary);
+    border-bottom: none;
+    color: white;
+}
+
+.headerPrimary .menuBtn,
+.headerPrimary .iconBtn {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.headerPrimary .menuBtn:hover,
+.headerPrimary .iconBtn:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+.headerPrimary .title,
+.headerPrimary .name,
+.headerPrimary .hello {
+    color: white;
+}
+
+.headerPrimary .hello {
+    opacity: 0.9;
+}
+
+.headerPrimary .searchContainer {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: transparent;
+}
+
+.headerPrimary .searchContainer:focus-within {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: none;
+}
+
+.headerPrimary .searchInput {
+    color: white;
+}
+
+.headerPrimary .searchInput::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.headerPrimary .searchContainer svg {
+    color: rgba(255, 255, 255, 0.8);
+}
+
 .menuBtn {
     display: none;
     width: 40px;

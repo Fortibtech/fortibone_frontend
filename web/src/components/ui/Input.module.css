@@ -1,0 +1,86 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.inputWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: #111;
+    background-color: white;
+    transition: all 0.2s ease;
+}
+
+.input:focus {
+    outline: none;
+    border-color: #111;
+    box-shadow: 0 0 0 1px #111;
+}
+
+.input:disabled {
+    background-color: #f9fafb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.input.error {
+    border-color: #ef4444;
+}
+
+.input.error:focus {
+    box-shadow: 0 0 0 1px #ef4444;
+}
+
+.input.hasLeftIcon {
+    padding-left: 36px;
+}
+
+.input.hasRightIcon {
+    padding-right: 36px;
+}
+
+.leftIcon,
+.rightIcon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.leftIcon {
+    left: 10px;
+}
+
+.rightIcon {
+    right: 10px;
+}
+
+.errorMessage {
+    font-size: 0.75rem;
+    color: #ef4444;
+    margin-top: 2px;
+}

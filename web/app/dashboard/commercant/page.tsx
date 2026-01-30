@@ -2,6 +2,7 @@
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout';
+import { Skeleton } from '@/components/ui';
 import { useBusinessStore } from '@/stores/businessStore';
 import {
     getAnalyticsOverview,
@@ -17,9 +18,10 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { PeriodType, PeriodDates } from '@/components/shared';
 import {
-    SalesByCategoryChart,
+    SalesByPeriodChart,
     ExpenseDistributionChart,
     RevenueDistributionChart,
+    InventoryLossesChart,
 } from '@/components/charts';
 import styles from './page.module.css';
 
@@ -30,13 +32,17 @@ export default function CommercantDashboard() {
     // Period filter state
     const [period, setPeriod] = useState<PeriodType>('all');
 
+    // Unit filter for SalesByPeriodChart (aligned with mobile)
+    type UnitType = 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
+    const [unit, setUnit] = useState<UnitType>('MONTH');
+
     // Analytics data from API
     const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
     const [pendingOrders, setPendingOrders] = useState(0);
     const [processingPurchases, setProcessingPurchases] = useState<{ count: number; totalItems: number } | null>(null);
 
     const [salesData, setSalesData] = useState<SalesResponse | null>(null);
-    // const [inventory, setInventory] = useState<InventoryResponse | null>(null);
+    const [inventory, setInventory] = useState<InventoryResponse | null>(null);
     const [chartsLoading, setChartsLoading] = useState(true);
 
     // Helper to get CURRENT MONTH dates (Mobile Logic)
@@ -78,24 +84,25 @@ export default function CommercantDashboard() {
         }
     }, [selectedBusiness]);
 
-    // Fetch charts data
+    // Fetch charts data - aligned with mobile (includes unit param for SalesByPeriodChart)
     const fetchChartsData = useCallback(async () => {
         if (!selectedBusiness) return;
 
         try {
             setChartsLoading(true);
-            // On mobile we just get generic sales data, no specific date range for charts except if they have filters?
-            // Mobile SalesBarChart uses SalesByProductCategory (from getSales?).
-            // Let's call getSales with monthly overview dates or default.
-            // Actually Mobile calls: getSales(id) inside AnalyticsCard component.
-            const salesRes = await getSales(selectedBusiness.id).catch(() => null);
+            // Fetch sales with unit parameter (for SalesByPeriodChart) and inventory (for InventoryLossesChart)
+            const [salesRes, inventoryRes] = await Promise.all([
+                getSales(selectedBusiness.id, { unit }).catch(() => null),
+                getInventory(selectedBusiness.id).catch(() => null),
+            ]);
             setSalesData(salesRes);
+            setInventory(inventoryRes);
         } catch (error) {
             console.error('Error fetching charts data:', error);
         } finally {
             setChartsLoading(false);
         }
-    }, [selectedBusiness]);
+    }, [selectedBusiness, unit]);
 
     useEffect(() => {
         fetchData();
@@ -141,9 +148,37 @@ export default function CommercantDashboard() {
                         </div>
 
                         {loading ? (
-                            <div className={styles.loadingContainer}>
-                                <div className={styles.spinner} />
-                                <p>Chargement des statistiques...</p>
+                            <div className={styles.overviewGrid}>
+                                <div className={`${styles.overviewCard} ${styles.cardLarge} ${styles.cardGreen}`}>
+                                    <div className={styles.cardContent} style={{ width: '100%' }}>
+                                        <Skeleton width="40%" height={16} style={{ marginBottom: 8 }} />
+                                        <Skeleton width="70%" height={32} style={{ marginBottom: 8 }} />
+                                        <Skeleton width="30%" height={16} />
+                                    </div>
+                                    <div className={styles.cardIcon}>
+                                        <Skeleton variant="circle" width={48} height={48} />
+                                    </div>
+                                </div>
+                                <div className={styles.rightColumn}>
+                                    <div className={`${styles.overviewCard} ${styles.cardYellow}`}>
+                                        <div className={styles.cardIcon}>
+                                            <Skeleton variant="circle" width={32} height={32} />
+                                        </div>
+                                        <div className={styles.cardContent} style={{ flex: 1 }}>
+                                            <Skeleton width={100} height={16} style={{ marginBottom: 4 }} />
+                                            <Skeleton width={60} height={24} />
+                                        </div>
+                                    </div>
+                                    <div className={`${styles.overviewCard} ${styles.cardPurple}`}>
+                                        <div className={styles.cardIcon}>
+                                            <Skeleton variant="circle" width={32} height={32} />
+                                        </div>
+                                        <div className={styles.cardContent} style={{ flex: 1 }}>
+                                            <Skeleton width={100} height={16} style={{ marginBottom: 4 }} />
+                                            <Skeleton width={40} height={24} />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <div className={styles.overviewGrid}>
@@ -195,7 +230,7 @@ export default function CommercantDashboard() {
                     <section className={styles.section}>
                         <h2>Analytics</h2>
                         <div className={styles.analyticsGrid}>
-                            <Link href="/dashboard/commercant/analytics?tab=ventes" className={styles.analyticsCard}>
+                            <Link href="/dashboard/commercant/analytics-ventes" className={styles.analyticsCard}>
                                 <div className={styles.analyticsIcon}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00BFA5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="12" y1="1" x2="12" y2="23"></line>
@@ -205,7 +240,7 @@ export default function CommercantDashboard() {
                                 <span className={styles.analyticsLabel}>Ventes</span>
                                 <span className={styles.analyticsArrow}>›</span>
                             </Link>
-                            <Link href="/dashboard/commercant/analytics?tab=achats" className={styles.analyticsCard}>
+                            <Link href="/dashboard/commercant/analytics-purchases" className={styles.analyticsCard}>
                                 <div className={styles.analyticsIcon}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00BFA5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
@@ -216,7 +251,7 @@ export default function CommercantDashboard() {
                                 <span className={styles.analyticsLabel}>Achats</span>
                                 <span className={styles.analyticsArrow}>›</span>
                             </Link>
-                            <Link href="/dashboard/commercant/analytics?tab=stock" className={styles.analyticsCard}>
+                            <Link href="/dashboard/commercant/stock-tracking" className={styles.analyticsCard}>
                                 <div className={styles.analyticsIcon}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00BFA5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
@@ -229,17 +264,25 @@ export default function CommercantDashboard() {
                                 <span className={styles.analyticsArrow}>›</span>
                             </Link>
                         </div>
+
+                        {/* Carriers Link - Mobile aligned */}
+                        <Link href="/dashboard/commercant/carriers" className={styles.carriersLink}>
+                            <span className={styles.carrierIcon}>🏷️</span>
+                            <span className={styles.carrierText}>Tarifs des livreurs</span>
+                            <span className={styles.carrierArrow}>›</span>
+                        </Link>
                     </section>
 
                     {/* Section Charts - STRICTLY ALIGNED WITH MOBILE */}
                     <section className={styles.section}>
                         <h2>Statistiques</h2>
 
-                        {/* 1. SalesByCategory (Bar Chart) - Mobile "Revenus par catégorie" */}
-                        <SalesByCategoryChart
-                            data={salesData?.salesByProductCategory || []}
+                        {/* 1. SalesByPeriodChart (Line) - Mobile "Évolution des ventes" */}
+                        <SalesByPeriodChart
+                            data={salesData?.salesByPeriod || []}
                             loading={chartsLoading}
                             currencySymbol={currencySymbol}
+                            onUnitChange={(newUnit) => setUnit(newUnit)}
                         />
 
                         {/* 2. ExpenseDistribution (Donut) - Mobile "Répartition des dépenses" */}
@@ -253,6 +296,13 @@ export default function CommercantDashboard() {
                         {/* 3. RevenueDistribution (Area) - Mobile "Flux de trésorerie" */}
                         <RevenueDistributionChart
                             data={revenueData}
+                            loading={chartsLoading}
+                            currencySymbol={currencySymbol}
+                        />
+
+                        {/* 4. InventoryLossesChart - Mobile "Pertes d'inventaire" */}
+                        <InventoryLossesChart
+                            data={inventory?.lossesByMovementType || []}
                             loading={chartsLoading}
                             currencySymbol={currencySymbol}
                         />

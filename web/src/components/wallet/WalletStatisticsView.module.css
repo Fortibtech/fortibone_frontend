@@ -1,87 +1,96 @@
 .container {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
     width: 100%;
 }
 
 .loading {
     padding: 40px;
     text-align: center;
-    color: #6B7280;
-    font-size: 14px;
+    color: #6b7280;
 }
 
+/* Period Selector */
 .periodSelector {
     display: flex;
-    justify-content: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
 }
 
 .periodBtn {
-    padding: 6px 16px;
-    border-radius: 9999px;
-    border: 1px solid #E5E7EB;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid #e5e7eb;
     background: white;
-    font-size: 14px;
+    color: #4b5563;
+    font-size: 0.875rem;
     font-weight: 500;
-    color: #6B7280;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .periodBtn:hover {
-    background: #F9FAFB;
+    background: #f9fafb;
+    border-color: #d1d5db;
 }
 
 .periodBtn.active {
-    background: #DCFCE7;
-    color: #1BB874;
-    border-color: #DCFCE7;
+    background: #111;
+    color: white;
+    border-color: #111;
 }
 
+/* Charts Grid */
 .chartCard {
     background: white;
     border-radius: 16px;
-    border: 1px solid #E5E7EB;
     padding: 24px;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 24px;
+    border: 1px solid #f3f4f6;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chartCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+    border-color: #e5e7eb;
 }
 
 .chartTitle {
-    font-size: 16px;
+    font-size: 1.125rem;
     font-weight: 600;
-    color: #111827;
+    color: #1f2937;
     margin-bottom: 24px;
 }
 
 .chartContainer {
     width: 100%;
     min-height: 300px;
+    position: relative;
+    z-index: 10;
 }
 
 .gridRow {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 24px;
 }
 
-.emptyChart {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 300px;
-    color: #9CA3AF;
-    font-size: 14px;
-}
-
+/* Metrics Card */
 .metricsCard {
     background: white;
     border-radius: 16px;
-    border: 1px solid #E5E7EB;
     padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f3f4f6;
     height: fit-content;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metricsCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+    border-color: #e5e7eb;
 }
 
 .metricsList {
@@ -97,18 +106,18 @@
 }
 
 .metricLabel {
-    font-size: 14px;
-    color: #6B7280;
+    color: #6b7280;
+    font-size: 0.95rem;
 }
 
 .metricValue {
-    font-size: 16px;
     font-weight: 600;
-    color: #111827;
+    font-size: 1.125rem;
+    color: #111;
 }
 
 .metricValue.income {
-    color: #22d989;
+    color: #10B981;
 }
 
 .metricValue.expense {
@@ -117,8 +126,17 @@
 
 .metricDivider {
     height: 1px;
-    background: #E5E7EB;
+    background: #f3f4f6;
     margin: 4px 0;
+}
+
+.emptyChart {
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {

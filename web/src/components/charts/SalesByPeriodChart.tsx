@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { EmptyState, EmptyIllustrations } from '@/components/ui';
 import styles from './Charts.module.css';
 
 export interface SalesByPeriodData {
@@ -111,8 +112,11 @@ export default function SalesByPeriodChart({
                     </div>
                 </div>
                 <div className={styles.emptyChart}>
-                    <span className={styles.emptyIcon}>📈</span>
-                    <p className={styles.emptyText}>Aucune donnée disponible</p>
+                    <EmptyState
+                        title="Données indisponibles"
+                        description="Aucune vente n'a été enregistrée pour cette période."
+                        icon={EmptyIllustrations.Chart}
+                    />
                 </div>
             </div>
         );

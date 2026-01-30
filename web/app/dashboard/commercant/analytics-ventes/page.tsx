@@ -128,6 +128,25 @@ export default function AnalyticsVentesPage() {
         },
     ] : [];
 
+    const handleExportCSV = () => {
+        if (!data) return;
+
+        const csvContent = [
+            'Métrique;Valeur',
+            ...cards.map(card => `"${card.title}";"${card.value}"`)
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `analytics_ventes_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <ProtectedRoute requiredProfileType="PRO">
             <DashboardLayout businessType="COMMERCANT" title="Vue d'ensemble">
@@ -137,6 +156,9 @@ export default function AnalyticsVentesPage() {
                             ←
                         </button>
                         <h1 className={styles.title}>Vue d&apos;ensemble</h1>
+                        <button onClick={handleExportCSV} className={styles.actionBtn} title="Exporter en CSV">
+                            📥
+                        </button>
                     </div>
 
                     {loading ? (
@@ -162,6 +184,6 @@ export default function AnalyticsVentesPage() {
                     )}
                 </div>
             </DashboardLayout>
-        </ProtectedRoute>
+        </ProtectedRoute >
     );
 }

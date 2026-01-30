@@ -8,11 +8,25 @@
     flex-shrink: 0;
     width: var(--sidebar-width);
     transition: width var(--transition-base);
-    z-index: 50;
+    z-index: 100;
+    position: relative;
 }
 
 .sidebarContainer.collapsed {
     width: var(--sidebar-collapsed-width);
+}
+
+/* Hover expand - sidebar floats over content when expanded from collapsed state */
+.sidebarContainer.collapsed:hover {
+    width: var(--sidebar-width);
+}
+
+/* Overlay for mobile sidebar */
+.overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 90;
 }
 
 .main {
@@ -26,25 +40,22 @@
     max-width: 100%;
 }
 
-/* === PREMIUM LAYOUT - Full Width Content === */
-/* === PREMIUM LAYOUT - REFACTORED FOR STRICT ALIGNMENT === */
+/* === PREMIUM LAYOUT - Full Width Fluid Content === */
 .content {
     flex: 1;
     overflow-y: auto;
     width: 100%;
+    max-width: 1800px;
     margin: 0 auto;
-    /* Centering */
-    padding: var(--space-6) var(--space-8);
+    padding: clamp(16px, 3vw, 48px);
 }
 
-/* Desktop: Max Width strict to avoid "empty space" feel */
-@media (min-width: 1440px) {
+/* Desktop: Fluid layout with smart padding */
+@media (min-width: 1280px) {
     .content {
-        max-width: 1440px;
-        padding: var(--space-8);
+        padding: clamp(24px, 4vw, 64px);
     }
 
-    /* On 1920px screens, keep the content centered with gray background */
     .layout {
         background-color: var(--color-gray-50);
     }

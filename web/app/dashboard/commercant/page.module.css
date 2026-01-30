@@ -43,6 +43,13 @@
     align-items: center;
     gap: 16px;
     border: 2px solid;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
+}
+
+.overviewCard:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.15);
 }
 
 .cardLarge {
@@ -66,18 +73,33 @@
 }
 
 .cardYellow {
-    background: #F1E9C7;
-    border-color: #FACC15;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #fcd34d;
+}
+
+.cardYellow:hover {
+    border-color: #fbbf24;
+    box-shadow: 0 12px 24px -10px rgba(251, 191, 36, 0.3);
 }
 
 .cardPurple {
-    background: #E5E9FF;
-    border-color: #506EFF;
+    background: linear-gradient(135deg, #f3f4f6 0%, #e0e7ff 100%);
+    border-color: #a5b4fc;
+}
+
+.cardPurple:hover {
+    border-color: #818cf8;
+    box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.25);
 }
 
 .cardGreen {
-    background: var(--color-primary-50);
-    border-color: var(--color-primary);
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border-color: #6ee7b7;
+}
+
+.cardGreen:hover {
+    border-color: #34d399;
+    box-shadow: 0 12px 24px -10px rgba(16, 185, 129, 0.25);
 }
 
 .cardIcon {
@@ -124,6 +146,7 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
+    margin-bottom: 24px;
 }
 
 .analyticsCard {
@@ -137,13 +160,30 @@
     text-decoration: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     border: 1px solid #f0f0f0;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
+    overflow: hidden;
+}
+
+.analyticsCard::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.analyticsCard:hover::after {
+    opacity: 1;
 }
 
 .analyticsCard:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 191, 165, 0.15);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -10px rgba(0, 191, 165, 0.2);
     border-color: var(--color-primary);
 }
 
@@ -184,13 +224,14 @@
     text-decoration: none;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     border: 1px solid #f0f0f0;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-bottom: 32px;
 }
 
 .carriersLink:hover {
+    transform: translateY(-2px);
     border-color: #8B5CF6;
-    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.15);
+    box-shadow: 0 8px 16px rgba(139, 92, 246, 0.15);
 }
 
 .carrierIcon {

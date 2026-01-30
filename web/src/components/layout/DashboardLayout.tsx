@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import MobileNav from './MobileNav';
@@ -23,23 +23,57 @@ export default function DashboardLayout({
     showStandardHeaderOnDesktop = false
 }: DashboardLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    // PREMIUM UX: Sidebar collapsed by default on desktop
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+    const [sidebarHovered, setSidebarHovered] = useState(false);
 
-    // Toggle collapse state
+    // Toggle collapse state (for button click)
     const toggleCollapse = () => {
         setSidebarCollapsed(!sidebarCollapsed);
     };
+
+    // Hover handlers for sidebar auto-expand
+    const handleSidebarMouseEnter = () => setSidebarHovered(true);
+    const handleSidebarMouseLeave = () => setSidebarHovered(false);
+
+    // Sidebar is visually expanded if: not collapsed OR hovered
+    const isSidebarExpanded = !sidebarCollapsed || sidebarHovered;
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Command/Ctrl + K to focus search
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                // Dispatch event so Header can pick it up
+                const event = new CustomEvent('focus-search');
+                window.dispatchEvent(event);
+            }
+
+            // Escape to close sidebar if open
+            if (e.key === 'Escape') {
+                if (sidebarOpen) setSidebarOpen(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [sidebarOpen]);
 
     // Afficher le BusinessSelector seulement pour les PRO (pas PARTICULIER)
     const showBusinessSelector = businessType !== 'PARTICULIER';
 
     return (
         <div className={styles.layout}>
-            {/* Desktop Sidebar */}
-            <div className={`${styles.sidebarContainer} ${sidebarCollapsed ? styles.collapsed : ''} ${sidebarOpen ? styles.open : ''}`}>
+            {/* Desktop Sidebar with Hover Expand */}
+            <div
+                className={`${styles.sidebarContainer} ${!isSidebarExpanded ? styles.collapsed : ''} ${sidebarOpen ? styles.open : ''}`}
+                onMouseEnter={handleSidebarMouseEnter}
+                onMouseLeave={handleSidebarMouseLeave}
+            >
                 <Sidebar
                     businessType={businessType}
-                    collapsed={sidebarCollapsed}
+                    collapsed={!isSidebarExpanded}
                     onToggleCollapse={toggleCollapse}
                 />
             </div>
@@ -53,7 +87,7 @@ export default function DashboardLayout({
             )}
 
             {/* Main Content */}
-            <main className={`${styles.main} ${sidebarCollapsed ? styles.collapsed : ''}`}>
+            <main className={`${styles.main} ${!isSidebarExpanded ? styles.collapsed : ''}`}>
                 {customHeaderRender ? (
                     <>
                         {/* Custom Header (Mobile Only if hybrid mode) */}

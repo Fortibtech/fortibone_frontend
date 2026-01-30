@@ -7,6 +7,7 @@ import { Heart, ArrowLeft, AlertCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout';
 import { getFavorites, deleteFavorite, type UserFavorite } from '@/lib/api';
 import WebProductCard from '@/components/cards/WebProductCard';
+import { Skeleton, EmptyState, EmptyIllustrations, Button } from '@/components/ui';
 import styles from './favorites.module.css';
 
 export default function FavoritesPage() {
@@ -53,41 +54,41 @@ export default function FavoritesPage() {
                 {/* Header */}
                 <div className={styles.header}>
                     <button onClick={() => router.back()} className={styles.backButton}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                        Retour
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <span className="hidden md:inline">Retour</span>
                     </button>
                     <div>
                         <h1 className={styles.title}>Mes favoris</h1>
-                        <p className={styles.subtitle}>{favorites.length} articles sauvegardés</p>
+                        {!loading && <p className={styles.subtitle}>{favorites.length} article{favorites.length !== 1 ? 's' : ''}</p>}
                     </div>
                 </div>
 
-                {/* Error state */}
-                {error && (
-                    <div className={styles.error}>
-                        <p>{error}</p>
-                        <button onClick={fetchFavorites} className={styles.retryBtn}>
-                            Réessayer
-                        </button>
-                    </div>
-                )}
-
                 {/* Content */}
                 {loading ? (
-                    <div className={styles.loading}>
-                        <div className={styles.spinner} />
-                        <p>Chargement des favoris...</p>
+                    <div className={styles.loadingContainer}>
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <Skeleton width="100%" style={{ aspectRatio: '1/1', borderRadius: 12 }} />
+                                <Skeleton width="80%" height={16} />
+                                <Skeleton width="40%" height={16} />
+                            </div>
+                        ))}
                     </div>
                 ) : favorites.length === 0 && !error ? (
                     <div className={styles.empty}>
-                        <span className={styles.emptyIcon}>❤️</span>
-                        <p className={styles.emptyTitle}>Votre liste de souhaits est vide</p>
-                        <p className={styles.emptySubtitle}>
-                            Explorez nos produits et cliquez sur le cœur pour les ajouter ici.
-                        </p>
-                        <button onClick={() => router.push('/dashboard/particulier')} className={styles.exploreBtn}>
-                            Explorer la boutique
-                        </button>
+                        <EmptyState
+                            title="Votre liste est vide"
+                            description="Ajoutez des articles en favoris pour les retrouver ici."
+                            icon={EmptyIllustrations.Wishlist || <span style={{ fontSize: 48 }}>❤️</span>}
+                            action={
+                                <Button
+                                    variant="primary"
+                                    onClick={() => router.push('/dashboard/particulier')}
+                                >
+                                    Explorer la boutique
+                                </Button>
+                            }
+                        />
                     </div>
                 ) : (
                     <div className={styles.grid}>
