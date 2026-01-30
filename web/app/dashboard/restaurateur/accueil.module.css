@@ -193,22 +193,30 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .overviewGrid {
-        flex-direction: column;
+
+    /* Keep Bento Grid Layout on Mobile */
+    .overviewCard {
+        padding: 14px;
     }
 
     .cardLarge {
-        min-height: auto;
+        min-height: 150px;
     }
 
-    .rightColumn {
-        flex-direction: row;
+    .cardValue {
+        font-size: 1.25rem;
     }
-}
 
-@media (max-width: 480px) {
-    .rightColumn {
-        flex-direction: column;
+    .cardLarge .cardValue {
+        font-size: 1.5rem;
+    }
+
+    .rightColumn .cardValue {
+        font-size: 1rem;
+    }
+
+    .cardIcon {
+        font-size: 2rem;
     }
 }
 

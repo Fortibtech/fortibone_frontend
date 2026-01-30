@@ -251,16 +251,26 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .overviewGrid {
-        flex-direction: column;
+
+    /* Keep Bento Grid Layout on Mobile */
+    .overviewCard {
+        padding: 16px;
     }
 
     .cardLarge {
-        min-height: auto;
+        min-height: 160px;
     }
 
-    .rightColumn {
-        flex-direction: row;
+    .cardValue {
+        font-size: 1.5rem;
+    }
+
+    .cardIcon {
+        font-size: 2rem;
+    }
+
+    .rightColumn .cardValue {
+        font-size: 1.25rem;
     }
 
     .quickGrid {
@@ -268,12 +278,18 @@
     }
 }
 
-@media (max-width: 480px) {
-    .rightColumn {
+@media (max-width: 380px) {
+
+    /* Very small screens: Stack vertically */
+    .overviewGrid {
         flex-direction: column;
     }
 
+    .rightColumn {
+        flex-direction: row;
+    }
+
     .quickGrid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
     }
 }
