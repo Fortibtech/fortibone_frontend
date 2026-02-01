@@ -495,10 +495,9 @@ export default function CareersPage() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '8px' }}>CV (PDF ou Word)</label>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '8px' }}>CV (PDF ou Word) - Optionnel</label>
                                     <input
                                         type="file"
-                                        required
                                         accept=".pdf,.doc,.docx"
                                         onChange={(e) => {
                                             const file = e.target.files ? e.target.files[0] : null;
