@@ -317,8 +317,20 @@ export default function CareersPage() {
                                         )}
                                     </div>
                                     <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a', marginBottom: '8px', lineHeight: '1.4' }}>{job.title}</h3>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '14px' }}>
-                                        <span>📍</span> {job.location}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#64748b', fontSize: '14px', flexWrap: 'wrap' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>📍 {job.location}</span>
+                                        {job.targetCandidates && job.targetCandidates > 1 && (
+                                            <span style={{
+                                                background: '#dcfce7',
+                                                color: '#166534',
+                                                padding: '2px 8px',
+                                                borderRadius: '12px',
+                                                fontSize: '12px',
+                                                fontWeight: '600'
+                                            }}>
+                                                {job.targetCandidates} postes
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
