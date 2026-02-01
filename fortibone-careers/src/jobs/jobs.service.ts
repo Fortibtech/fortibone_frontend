@@ -44,6 +44,12 @@ export class JobsService {
         });
     }
 
+    async findAllAdmin() {
+        return this.prisma.job.findMany({
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
     async findOne(id: string) {
         return this.prisma.job.findUnique({ where: { id } });
     }

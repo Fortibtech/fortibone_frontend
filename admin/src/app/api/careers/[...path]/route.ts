@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const CAREERS_SERVICE_URL = 'http://localhost:8081/api';
+const CAREERS_SERVICE_URL = process.env.CAREERS_API_URL || 'http://localhost:8081/api';
 
 async function handler(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
     const { path: pathArray } = await params;

@@ -56,7 +56,7 @@ export interface JobPosition {
 
 export const getJobs = async (): Promise<JobPosition[]> => {
     try {
-        const response = await careersApi.get<JobPosition[]>('/jobs');
+        const response = await careersApi.get<JobPosition[]>('/jobs/all');
         return response.data;
     } catch (error) {
         console.error('Error fetching jobs:', error);
